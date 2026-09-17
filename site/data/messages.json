@@ -1,6 +1,66 @@
 {
   "messages": [
     {
+      "msgIdServer": "7398756571",
+      "msgTime": 1789656872423,
+      "msgType": "LIVEPUSH",
+      "text": "",
+      "images": [],
+      "audio": null,
+      "video": null,
+      "link": null,
+      "sender": {
+        "userId": "",
+        "nickname": "",
+        "avatar": ""
+      },
+      "raw": {
+        "bodys": "{\"livePushInfo\":{\"liveCover\":\"/2026/0917/89653517x1gsy4pbdn801ivhc8ubhfr4.jpg\",\"liveTitle\":\"1\",\"liveId\":\"1307478939104251904\",\"shortPath\":\"live/playdetail?id\\u003d1307478939104251904\"},\"messageType\":\"LIVEPUSH\"}",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"GNZ48-王语晨\",\"teamLogo\":\"/mediasource/teamLogo2/all/gnz48_n3.png\",\"avatar\":\"/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif\",\"badge\":[],\"level\":4,\"roleId\":3,\"vip\":false,\"pfUrl\":\"\"},\"monthCardBadge\":{}}",
+        "msgType": "LIVEPUSH"
+      }
+    },
+    {
+      "msgIdServer": "7398756561",
+      "msgTime": 1789656845833,
+      "msgType": "TEXT",
+      "text": "我来啵啵哈哈哈",
+      "images": [],
+      "audio": null,
+      "video": null,
+      "link": null,
+      "sender": {
+        "userId": "",
+        "nickname": "",
+        "avatar": ""
+      },
+      "raw": {
+        "bodys": "我来啵啵哈哈哈",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\",\"teamLogo\":\"/mediasource/teamLogo2/all/gnz48_n3.png\",\"avatar\":\"/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif\",\"level\":4,\"roleId\":3,\"vip\":false,\"pfUrl\":\"/backstage/2025/0822/aiy8n5febvwm8b435ysn8nk.png\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "TEXT"
+      }
+    },
+    {
+      "msgIdServer": "7398609474",
+      "msgTime": 1789656837030,
+      "msgType": "REPLY",
+      "text": "",
+      "images": [],
+      "audio": null,
+      "video": null,
+      "link": null,
+      "sender": {
+        "userId": "",
+        "nickname": "",
+        "avatar": ""
+      },
+      "raw": {
+        "bodys": "{\"replyInfo\":{\"replyText\":\"yuchen you are🔥🔥\",\"replyName\":\"方琪琪\",\"replyMessageId\":\"8ca4e39d-0a56-480f-9157-46ef1faa9c54\",\"text\":\"fangqi you are so beautiful🌸🌸\"},\"messageType\":\"REPLY\"}",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\",\"teamLogo\":\"/mediasource/teamLogo2/all/gnz48_n3.png\",\"avatar\":\"/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif\",\"level\":4,\"roleId\":3,\"vip\":false,\"pfUrl\":\"/backstage/2025/0822/aiy8n5febvwm8b435ysn8nk.png\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "REPLY"
+      }
+    },
+    {
       "msgIdServer": "7398527257",
       "msgTime": 1789654986019,
       "msgType": "TEXT",

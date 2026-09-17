@@ -35,11 +35,26 @@ else
       commit -q -m "auto: 增量补档 $(date '+%Y-%m-%d %H:%M')"
 fi
 
-echo "[4/4] 推送到 GitHub ..."
+echo "[4/5] 推送到 GitHub (main) ..."
 if [ -n "${GH_TOKEN:-}" ]; then
   git push "https://${GH_TOKEN}@github.com/winccctan/wangyuchen-archive.git" main
 else
   git push origin main
 fi
 
-echo "✓ 完成：Cloudflare Pages 将自动部署最新版本"
+echo "[5/5] 同步 GitHub Pages 镜像 (gh-pages) ..."
+TMP="$(mktemp -d)"
+cp -R dist/. "$TMP/"
+( cd "$TMP" \
+  && git init -q && git add -A \
+  && git -c user.email=archive@local -c user.name=wangyuchen-archive \
+        commit -q -m "auto: site update $(date '+%Y-%m-%d %H:%M')" \
+  && git branch -M gh-pages \
+  && if [ -n "${GH_TOKEN:-}" ]; then \
+       git push -f "https://${GH_TOKEN}@github.com/winccctan/wangyuchen-archive.git" gh-pages; \
+     else \
+       git push -f origin gh-pages; \
+     fi )
+rm -rf "$TMP"
+
+echo "✓ 完成：GitHub 已更新，Cloudflare Pages（Connect to Git）将自动部署最新版本"
