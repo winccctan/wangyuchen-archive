@@ -14,6 +14,8 @@ import {
   fetchLiveListPage,
   fetchOpenLivePage
 } from './lib/api.mjs';
+// 消息解析统一走 lib/message.mjs（按 msgType 精确提取正文 / 引用 / 媒体 / 卡片）
+import { parseMessage } from './lib/message.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = resolve(__dirname, '../site/data');
@@ -34,72 +36,6 @@ async function loadJson(p) {
 
 async function saveJson(p, obj) {
   await writeFile(p, JSON.stringify(obj, null, 2), 'utf8');
-}
-
-/* ----------------------- 消息解析 ----------------------- */
-function safeJson(str) {
-  if (typeof str !== 'string') return null;
-  try {
-    return JSON.parse(str);
-  } catch {
-    return null;
-  }
-}
-
-// 从 bodys / extInfo 中抽取媒体地址（图片 / 音频 / 视频）
-function extractMedia(obj) {
-  const out = { images: [], audio: null, video: null, link: null };
-  if (!obj || typeof obj !== 'object') return out;
-  const collect = (v) => {
-    if (!v) return;
-    if (typeof v === 'string') {
-      if (/\.(mp4|m3u8|mov)$/i.test(v)) out.video = v;
-      else if (/\.(mp3|m4a|wav|amr)$/i.test(v)) out.audio = v;
-      else if (/\.(jpg|jpeg|png|gif|webp)$/i.test(v) || v.includes('source') || v.includes('48.cn')) out.images.push(v);
-      else out.link = v;
-    } else if (Array.isArray(v)) {
-      v.forEach(collect);
-    } else if (typeof v === 'object') {
-      ['url', 'src', 'coverPath', 'imageUrl', 'originUrl', 'playUrl', 'fileUrl'].forEach((k) => {
-        if (v[k]) collect(v[k]);
-      });
-      if (v.list) collect(v.list);
-    }
-  };
-  ['url', 'src', 'coverPath', 'image', 'images', 'list', 'bodys', 'ext'].forEach((k) => {
-    if (obj[k]) collect(obj[k]);
-  });
-  return out;
-}
-
-function normalizeMessage(raw) {
-  const bodysObj = safeJson(raw.bodys);
-  const extObj = safeJson(raw.extInfo);
-  const msgType = raw.msgType || 'UNKNOWN';
-  const text = typeof raw.bodys === 'string' && !bodysObj ? raw.bodys : '';
-  const media = extractMedia(bodysObj || raw.bodys);
-
-  const sender = (extObj && extObj.userInfo) || (extObj && extObj.sender) || {};
-  return {
-    msgIdServer: raw.msgIdServer,
-    msgTime: Number(raw.msgTime) || 0,
-    msgType,
-    text,
-    images: media.images,
-    audio: media.audio,
-    video: media.video,
-    link: media.link,
-    sender: {
-      userId: sender.userId || sender.sourceId || '',
-      nickname: sender.nickname || sender.userName || sender.name || '',
-      avatar: sender.avatar || sender.userAvatar || ''
-    },
-    raw: {
-      bodys: raw.bodys,
-      extInfo: raw.extInfo,
-      msgType
-    }
-  };
 }
 
 /* ----------------------- 抓取：口袋发言 ----------------------- */
@@ -130,7 +66,7 @@ async function scrapeMessages() {
     for (const raw of messages) {
       if (known.has(raw.msgIdServer)) continue;
       known.add(raw.msgIdServer);
-      merged.set(raw.msgIdServer, normalizeMessage(raw));
+      merged.set(raw.msgIdServer, parseMessage(raw));
       added++;
     }
     total += added;

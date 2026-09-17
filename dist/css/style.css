@@ -121,8 +121,52 @@ body {
   background: var(--primary-soft); color: var(--primary-dark);
 }
 .msg-sender { font-size: 12px; color: var(--muted); }
+.msg-sender.other { color: var(--primary-dark); font-weight: 600; }
+.msg.from-other { background: #fbfeff; border-style: dashed; }
 .msg-body { font-size: 15px; white-space: pre-wrap; word-break: break-word; }
 .msg-body.empty { color: var(--muted); font-style: italic; }
+
+/* 回复 / 礼物回复的引用块 */
+.msg-quote {
+  border-left: 3px solid var(--primary);
+  background: var(--primary-soft);
+  border-radius: 0 8px 8px 0;
+  padding: 7px 10px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+.msg-quote-who { color: var(--primary-dark); font-size: 12px; margin-bottom: 2px; }
+.msg-quote-text {
+  color: var(--muted); white-space: pre-wrap; word-break: break-word;
+  display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
+}
+
+/* 语音 */
+.msg-audio { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.voice-badge {
+  font-size: 12px; color: var(--primary-dark); background: var(--primary-soft);
+  border-radius: 999px; padding: 2px 10px; white-space: nowrap;
+}
+.msg-audio audio { flex: 1; min-width: 200px; margin-top: 0; }
+
+/* 卡片消息（直播推送 / 分享 / 红包） */
+.msg-card {
+  display: flex; gap: 10px; align-items: stretch;
+  border: 1px solid var(--border); border-radius: 10px;
+  background: #fbfeff; padding: 8px; margin-top: 8px;
+}
+.msg-card-pic {
+  width: 92px; height: 92px; object-fit: cover; border-radius: 8px;
+  background: var(--primary-soft); flex: 0 0 auto; cursor: zoom-in;
+}
+.msg-card-main { display: flex; flex-direction: column; justify-content: center; gap: 3px; min-width: 0; }
+.msg-card-title { font-size: 14px; font-weight: 600; word-break: break-word; }
+.msg-card-desc { font-size: 13px; color: var(--muted); word-break: break-word; }
+.msg-card-link { font-size: 12px; color: var(--primary-dark); text-decoration: none; }
+.msg-card-link.muted { color: var(--muted); word-break: break-all; }
+.msg-card-live .msg-card-title::before { content: '🔴 '; }
+.msg-card-redpacket .msg-card-title::before { content: '🧧 '; }
+.msg-card-share .msg-card-title::before { content: '🔗 '; }
 .msg-images { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; margin-top: 8px; }
 .msg-images img { width: 100%; border-radius: 8px; cursor: zoom-in; transition: transform .15s; }
 .msg-images img:hover { transform: scale(1.02); }
