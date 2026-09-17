@@ -23,7 +23,7 @@ function read(name, key) {
 // messages.json 仍保留全量存档，这里只压缩给网页用的 bundle。
 function slimMessage(m) {
   if (!m || !m.raw) return m;
-  const hasBody = m.text || m.link ||
+  const hasBody = m.text || m.link || m.reply || m.card ||
     (Array.isArray(m.images) && m.images.length) || m.audio || m.video;
   if (hasBody) {
     const { raw, ...rest } = m; // eslint-disable-line no-unused-vars

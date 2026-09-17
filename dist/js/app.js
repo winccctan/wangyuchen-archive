@@ -142,13 +142,25 @@ function fmtTime(ts) {
 
 const TYPE_LABEL = {
   TEXT: '文字', IMAGE: '图片', REPLY: '回复', GIFTREPLY: '礼物回复',
-  AUDIO: '语音', VIDEO: '视频', LIVEPUSH: '直播', OPEN_LIVE: '公演直播',
+  AUDIO: '语音', AUDIO_GIFT_REPLY: '语音回复', VIDEO: '视频',
+  LIVEPUSH: '直播推送', OPEN_LIVE: '公演直播',
   FLIPCARD: '翻牌', FLIPCARD_AUDIO: '翻牌语音', FLIPCARD_VIDEO: '翻牌视频',
   EXPRESS: '表情', EXPRESSIMAGE: '表情包', PRESENT_NORMAL: '礼物',
-  PRESENT_TEXT: '文字礼物', VOTE: '投票', TRIP_INFO: '行程', DELETE: '撤回',
-  DISABLE_SPEAK: '禁言', SESSION_DIANTAI: '电台', CLOSE_ROOM_CHAT: '闭房',
-  RED_PACKET_2024: '红包', ZHONGQIU_ACTIVITY_LANTERN_FANS: '中秋灯笼'
+  PRESENT_TEXT: '文字礼物', SHARE_POSTS: '分享', VOTE: '投票', TRIP_INFO: '行程',
+  DELETE: '撤回', DISABLE_SPEAK: '禁言', SESSION_DIANTAI: '电台', CLOSE_ROOM_CHAT: '闭房',
+  RED_PACKET_2024: '红包', RED_PACKET_2026: '红包', RED_PACKET_QIXI_2025: '七夕红包',
+  ZHONGQIU_ACTIVITY_LANTERN_FANS: '中秋灯笼'
 };
+
+// 王语晨本人的口袋 userId：用于区分「她本人发言」与房间里的其他人（粉丝 / 袋王 / 队友）
+const SELF_ID = '89653517';
+
+// 语音/视频时长（传入毫秒）
+function fmtDur(ms) {
+  const s = Math.round(Number(ms) / 1000);
+  if (!s || s < 0) return '';
+  return s < 60 ? `${s}"` : `${Math.floor(s / 60)}'${pad(s % 60)}"`;
+}
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -351,9 +363,16 @@ function renderGuide() {
     </div>`;
 }
 
-function matchQuery(text, sender) {
+// 一条消息可用于搜索的全部文字
+function msgSearchText(m) {
+  return [m.text, m.reply?.name, m.reply?.text, m.card?.title, m.card?.desc]
+    .filter(Boolean).join(' ').toLowerCase();
+}
+
+function matchQuery(m) {
   if (!state.query) return true;
-  return (text || '').toLowerCase().includes(state.query) || (sender || '').toLowerCase().includes(state.query);
+  const q = state.query.toLowerCase();
+  return msgSearchText(m).includes(q) || (m.sender?.nickname || '').toLowerCase().includes(q);
 }
 
 function renderMessages() {
@@ -367,7 +386,7 @@ function renderMessages() {
       return true;
     });
   }
-  if (state.query) list = list.filter((m) => matchQuery(m.text, m.sender?.nickname));
+  if (state.query) list = list.filter((m) => matchQuery(m));
 
   if (!list.length) {
     panel.innerHTML = `<div class="empty-state">暂无口袋发言数据。<br/>若尚未抓取，请设置 <code>POCKET48_TOKEN</code> 后运行 <code>node scrape.mjs</code>。</div>`;
@@ -387,22 +406,75 @@ function renderMessages() {
     </div>`).join('');
 }
 
+// 回复 / 礼物回复的引用块：她回复了谁、原话是什么
+function renderQuote(reply) {
+  if (!reply || (!reply.name && !reply.text)) return '';
+  const who = reply.name ? `回复 <b>@${escapeHtml(reply.name)}</b>` : '引用';
+  return `<div class="msg-quote">
+    <div class="msg-quote-who">↩︎ ${who}</div>
+    ${reply.text ? `<div class="msg-quote-text">${escapeHtml(reply.text)}</div>` : ''}
+  </div>`;
+}
+
+// 卡片类消息：直播推送 / 分享 / 红包
+function renderCard(card) {
+  if (!card) return '';
+  const pic = card.pic
+    ? `<img class="msg-card-pic" loading="lazy" src="${escapeHtml(toUrl(card.pic))}" onclick="window.__lightbox.querySelector('img').src=this.src;window.__lightbox.classList.add('show')" />`
+    : '';
+  const link = card.url
+    ? (/^https?:/i.test(card.url)
+      ? `<a class="msg-card-link" href="${escapeHtml(card.url)}" target="_blank" rel="noopener">查看详情 ›</a>`
+      : `<span class="msg-card-link muted">${escapeHtml(card.url)}</span>`)
+    : '';
+  return `<div class="msg-card msg-card-${escapeHtml(card.kind || 'info')}">
+    ${pic}
+    <div class="msg-card-main">
+      <div class="msg-card-title">${escapeHtml(card.title || '')}</div>
+      ${card.desc ? `<div class="msg-card-desc">${escapeHtml(card.desc)}</div>` : ''}
+      ${link}
+    </div>
+  </div>`;
+}
+
 function renderMsg(m) {
   const typeLabel = TYPE_LABEL[m.msgType] || m.msgType || '其他';
   let body = '';
+
+  // 1) 引用块（回复谁 / 什么礼物 / 什么提问）
+  body += renderQuote(m.reply);
+  // 2) 正文
   if (m.text) body += `<div class="msg-body">${escapeHtml(m.text)}</div>`;
+  // 3) 媒体
   if (m.images?.length) {
     body += `<div class="msg-images">${m.images.map((u) => `<img loading="lazy" src="${escapeHtml(toUrl(u))}" onclick="window.__lightbox.querySelector('img').src=this.src;window.__lightbox.classList.add('show')" />`).join('')}</div>`;
   }
-  if (m.audio) body += `<div class="msg-media"><audio controls src="${escapeHtml(toUrl(m.audio))}"></audio></div>`;
-  if (m.video) body += `<div class="msg-media"><video controls src="${escapeHtml(toUrl(m.video))}"></video></div>`;
+  if (m.audio) {
+    const dur = fmtDur(m.duration);
+    body += `<div class="msg-media msg-audio">
+      ${dur ? `<span class="voice-badge">语音 ${dur}</span>` : ''}
+      <audio controls preload="none" src="${escapeHtml(toUrl(m.audio))}"></audio>
+    </div>`;
+  }
+  if (m.video) {
+    body += `<div class="msg-media"><video controls preload="metadata" src="${escapeHtml(toUrl(m.video))}"></video></div>`;
+  }
   if (m.link) body += `<div class="msg-link">🔗 <a href="${escapeHtml(m.link)}" target="_blank" rel="noopener">${escapeHtml(m.link)}</a></div>`;
+  // 4) 卡片
+  body += renderCard(m.card);
+
   if (!body) {
     body = `<div class="msg-body empty">［${typeLabel}］无文本内容</div>
       <div class="msg-raw"><details><summary>查看原始数据</summary><pre>${escapeHtml(JSON.stringify(m.raw, null, 2))}</pre></details></div>`;
   }
-  const sender = m.sender?.nickname ? `<span class="msg-sender">@${escapeHtml(m.sender.nickname)}</span>` : '';
-  return `<div class="msg">
+
+  // 她本人的消息不重复标注昵称；房间里其他人的消息（粉丝 / 袋王 / 队友）标注出来
+  const isSelf = String(m.sender?.userId || '') === SELF_ID;
+  const sender = !isSelf && m.sender?.nickname
+    ? `<span class="msg-sender other">@${escapeHtml(m.sender.nickname)}</span>`
+    : '';
+
+  return `<div class="msg${isSelf ? '' : ' from-other'}">
     <div class="msg-head">
       <span class="msg-time">${fmtTime(m.msgTime)}</span>
       <span class="msg-type">${typeLabel}</span>
