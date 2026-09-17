@@ -155,27 +155,42 @@ function escapeHtml(s) {
 }
 
 /* ---------------- 数据加载 ---------------- */
-// 优先使用 archive.js（window.__ARCHIVE__，file:// 直接打开可用）；
-// 若以 HTTP 部署则回退到 fetch 加载 JSON。
-async function init() {
-  let data = window.__ARCHIVE__;
-  if (!data) {
-    try {
-      const [meta, msg, live, perf] = await Promise.all([
-        fetchJson('meta.json'), fetchJson('messages.json'),
-        fetchJson('live.json'), fetchJson('performances.json')
-      ]);
-      data = {
-        meta,
-        messages: msg.messages || [],
-        live: live.live || [],
-        performances: perf.performances || []
-      };
-    } catch (e) {
-      document.querySelector('.content').innerHTML =
-        `<div class="empty-state">数据加载失败：${escapeHtml(e.message)}<br/>请先运行抓取脚本（详见 README）。</div>`;
-      return;
+// file:// 直接打开：fetch 被 CORS 拦截，只能靠注入 <script> 加载 archive.js。
+// HTTP 部署：每次都「强制不走缓存」拉最新的 archive.js，
+//   这样重新上传新数据后，访客刷新页面 / 点「检查更新」即可看到最新，无需硬刷新。
+async function loadArchive() {
+  if (location.protocol === 'file:') {
+    if (!window.__ARCHIVE__) {
+      await new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = './data/archive.js';
+        s.onload = resolve;
+        s.onerror = () => reject(new Error('加载 data/archive.js 失败'));
+        document.body.appendChild(s);
+      });
     }
+    return window.__ARCHIVE__;
+  }
+  // HTTP(S)：?t= 让每次请求都是不同 URL，绕过浏览器与 CDN 缓存；no-store 双保险。
+  const res = await fetch(`./data/archive.js?t=${Date.now()}`, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`加载 archive.js 失败: ${res.status}`);
+  const text = await res.text();
+  const data = new Function(`${text}\n;return window.__ARCHIVE__;`)();
+  window.__ARCHIVE__ = data;
+  return data;
+}
+
+async function init() {
+  let data = null;
+  try {
+    data = await loadArchive();
+  } catch (e) {
+    if (window.__ARCHIVE__) data = window.__ARCHIVE__; // 兜底层
+  }
+  if (!data) {
+    document.querySelector('.content').innerHTML =
+      `<div class="empty-state">数据加载失败，请确认已部署 data/archive.js 或先用 file:// 打开。<br/>错误：${escapeHtml((data && '') || '未知')}</div>`;
+    return;
   }
   DATA.meta = data.meta;
   DATA.messages = data.messages || [];
@@ -192,6 +207,44 @@ async function fetchJson(name) {
   return res.json();
 }
 
+/* ---------------- 检查更新 ---------------- */
+function showToast(msg, isError) {
+  let t = document.getElementById('toast');
+  if (!t) { t = document.createElement('div'); t.id = 'toast'; t.className = 'toast'; document.body.appendChild(t); }
+  t.textContent = msg;
+  t.style.background = isError ? '#c0392b' : '#2bc4e0';
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+async function checkForUpdates() {
+  const btn = document.getElementById('refreshBtn');
+  if (!btn || btn.disabled) return;
+  const oldCount = DATA.messages.length + DATA.live.length + DATA.performances.length;
+  const oldUpdated = DATA.meta && DATA.meta.lastUpdated;
+  const oldText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '检查中…';
+  try {
+    const data = await loadArchive();
+    DATA.meta = data.meta;
+    DATA.messages = data.messages || [];
+    DATA.live = data.live || [];
+    DATA.performances = data.performances || [];
+    renderMeta();
+    renderAll();
+    const newCount = DATA.messages.length + DATA.live.length + DATA.performances.length;
+    const changed = newCount !== oldCount || (DATA.meta && DATA.meta.lastUpdated && oldUpdated && DATA.meta.lastUpdated !== oldUpdated);
+    showToast(changed ? '✅ 已更新到最新补档' : '✅ 已是最新');
+  } catch (e) {
+    showToast('⚠️ 更新检查失败：' + e.message, true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = oldText;
+  }
+}
+
 function renderMeta() {
   const m = DATA.meta;
   if (!m) return;
@@ -205,6 +258,8 @@ function renderMeta() {
 
 /* ---------------- 事件 ---------------- */
 function bindEvents() {
+  const refreshBtn = document.getElementById('refreshBtn');
+  if (refreshBtn) refreshBtn.addEventListener('click', checkForUpdates);
   document.querySelectorAll('.tab').forEach((btn) => {
     btn.addEventListener('click', () => {
       state.tab = btn.dataset.tab;
