@@ -1,0 +1,7 @@
+# 依赖与私有配置
+node_modules/
+scraper/.env
+scraper/cron.log
+
+# 系统文件
+.DS_Store

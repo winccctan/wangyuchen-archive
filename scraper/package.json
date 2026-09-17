@@ -1,0 +1,16 @@
+{
+  "name": "wangyuchen-archive-scraper",
+  "version": "1.0.0",
+  "description": "王语晨补档站 - 口袋48 数据抓取脚本（逆向自 48tools）",
+  "type": "module",
+  "scripts": {
+    "scrape": "node scrape.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "GPL-3.0",
+  "dependencies": {
+    "undici": "^8.10.2"
+  }
+}
