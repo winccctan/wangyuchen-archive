@@ -260,17 +260,35 @@ async function run() {
   console.log('[抓取] 直播（录播）...');
   const liveRec = await safe('直播-录播', () => scrapeLiveByMember(true));
   const liveOk = liveNow !== null || liveRec !== null;
-  const liveList = [...(liveNow || []), ...(liveRec || [])]
+  const liveFresh = [...(liveNow || []), ...(liveRec || [])]
     .filter((v, i, a) => a.findIndex((x) => x.liveId === v.liveId) === i)
     .sort((a, b) => Number(b.ctime || 0) - Number(a.ctime || 0));
+  // 关键：与已有数据合并。翻页上限（MAX_PAGES）较小时本次只拿到最新几页，
+  // 若不合并会把历史直播/公演“截断”。新条目优先，旧条目保留。
+  const livePrev = ((await loadJson(resolve(DATA_DIR, 'live.json')))?.live) || [];
+  const liveMap = new Map(livePrev.map((m) => [String(m.liveId), m]));
+  for (const it of liveFresh) {
+    const k = String(it.liveId);
+    liveMap.set(k, { ...(liveMap.get(k) || {}), ...it });
+  }
+  const liveList = [...liveMap.values()].sort((a, b) => Number(b.ctime || 0) - Number(a.ctime || 0));
 
   console.log('[抓取] 公演（直播）...');
   const perfNow = await safe('公演-直播', () => scrapePerformances(false));
   console.log('[抓取] 公演（录播）...');
   const perfRec = await safe('公演-录播', () => scrapePerformances(true));
   const perfOk = perfNow !== null || perfRec !== null;
-  const performances = [...(perfNow || []), ...(perfRec || [])]
+  const perfFresh = [...(perfNow || []), ...(perfRec || [])]
     .filter((v, i, a) => a.findIndex((x) => x.liveId === v.liveId) === i)
+    .sort((a, b) => Number(b.stime || b.ctime || 0) - Number(a.stime || a.ctime || 0));
+  // 同上：与已有公演数据合并，避免翻页上限导致历史被截断。
+  const perfPrev = ((await loadJson(resolve(DATA_DIR, 'performances.json')))?.performances) || [];
+  const perfMap = new Map(perfPrev.map((m) => [String(m.liveId), m]));
+  for (const it of perfFresh) {
+    const k = String(it.liveId);
+    perfMap.set(k, { ...(perfMap.get(k) || {}), ...it });
+  }
+  const performances = [...perfMap.values()]
     .sort((a, b) => Number(b.stime || b.ctime || 0) - Number(a.stime || a.ctime || 0));
 
   // 补充视频播放地址（增量：已有 playUrl 的复用，避免重复请求）
