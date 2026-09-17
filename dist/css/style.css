@@ -164,6 +164,21 @@ body {
 .msg-card-desc { font-size: 13px; color: var(--muted); word-break: break-word; }
 .msg-card-link { font-size: 12px; color: var(--primary-dark); text-decoration: none; }
 .msg-card-link.muted { color: var(--muted); word-break: break-all; }
+.msg-card-link.as-btn {
+  background: none; border: none; padding: 0; font-family: inherit;
+  cursor: pointer; text-align: left;
+}
+.msg-card-link.as-btn:hover { text-decoration: underline; }
+
+/* 「加载更早的消息」按钮 */
+.load-more {
+  display: block; width: 100%; margin: 4px 0 24px;
+  padding: 13px; border-radius: 12px;
+  border: 1px dashed var(--primary); background: var(--primary-soft);
+  color: var(--primary-dark); font-size: 14px; font-weight: 600;
+  cursor: pointer; font-family: inherit; transition: background .15s, color .15s;
+}
+.load-more:hover { background: var(--primary); color: #fff; border-style: solid; }
 .msg-card-live .msg-card-title::before { content: '🔴 '; }
 .msg-card-redpacket .msg-card-title::before { content: '🧧 '; }
 .msg-card-share .msg-card-title::before { content: '🔗 '; }
@@ -232,13 +247,45 @@ body {
 .empty-state { text-align: center; color: var(--muted); padding: 60px 20px; }
 .empty-state a { color: var(--primary-dark); }
 
-/* Lightbox */
+/* Lightbox：大图预览 + 打开原图 / 下载 */
 .lightbox {
-  position: fixed; inset: 0; background: rgba(0,0,0,.85);
-  display: none; align-items: center; justify-content: center; z-index: 99;
+  position: fixed; inset: 0; background: rgba(0, 0, 0, .88);
+  display: none; flex-direction: column; align-items: center; justify-content: center;
+  gap: 12px; z-index: 99;
 }
 .lightbox.show { display: flex; }
-.lightbox img { max-width: 92vw; max-height: 92vh; border-radius: 8px; }
+.lb-stage {
+  flex: 1; width: 100%; display: flex; align-items: center; justify-content: center;
+  padding: 10px; min-height: 0;
+}
+.lightbox img {
+  max-width: 94vw; max-height: 82vh; border-radius: 8px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, .5); background: #fff;
+}
+.lightbox.loading .lb-stage::after {
+  content: '加载中…'; color: #cfe; font-size: 14px; position: absolute;
+}
+.lightbox.broken .lb-stage::after {
+  content: '图片加载失败，可点下方「打开原图」在新标签页查看';
+  color: #ffd7d7; font-size: 13px; position: absolute; text-align: center; padding: 0 20px;
+}
+.lb-bar { display: flex; gap: 8px; padding: 12px 12px 0; }
+.lb-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: rgba(255, 255, 255, .14); color: #fff; border: 1px solid rgba(255, 255, 255, .25);
+  border-radius: 999px; padding: 7px 15px; font-size: 13px; font-weight: 600;
+  text-decoration: none; cursor: pointer; font-family: inherit;
+  transition: background .15s;
+}
+.lb-btn:hover { background: rgba(255, 255, 255, .28); }
+.lb-tip { color: rgba(255, 255, 255, .55); font-size: 12px; padding-bottom: 14px; }
+
+/* 加载失败的图片：显示占位，点击仍可在新标签打开 */
+.msg-images img.failed,
+.msg-card-pic.failed {
+  background: var(--primary-soft) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236f97a3'%3E%3Cpath d='M21 5v14H3V5h18m0-2H3a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z'/%3E%3C/svg%3E") center/40px no-repeat;
+  min-height: 90px; object-fit: contain;
+}
 
 /* ---------------- 新粉指南 ---------------- */
 .guide { max-width: 1000px; margin: 0 auto; }

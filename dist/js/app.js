@@ -1,6 +1,6 @@
 // 王语晨补档站 - 前端逻辑
 const DATA = { meta: null, messages: [], live: [], performances: [] };
-const state = { tab: 'messages', query: '', dateFrom: null, dateTo: null };
+const state = { tab: 'messages', query: '', dateFrom: null, dateTo: null, dayLimit: 3 };
 
 const $ = (sel) => document.querySelector(sel);
 const panels = {
@@ -273,13 +273,7 @@ function bindEvents() {
   const refreshBtn = document.getElementById('refreshBtn');
   if (refreshBtn) refreshBtn.addEventListener('click', checkForUpdates);
   document.querySelectorAll('.tab').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      state.tab = btn.dataset.tab;
-      document.querySelectorAll('.tab').forEach((b) => b.classList.toggle('active', b === btn));
-      Object.entries(panels).forEach(([k, el]) => el.classList.toggle('active', k === state.tab));
-      $('#dateFilter').hidden = state.tab !== 'messages';
-      renderAll();
-    });
+    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
   });
   $('#searchInput').addEventListener('input', (e) => { state.query = e.target.value.trim().toLowerCase(); renderAll(); });
   $('#dateFrom').addEventListener('change', (e) => { state.dateFrom = e.target.value ? new Date(e.target.value).getTime() : null; renderMessages(); });
@@ -291,10 +285,42 @@ function bindEvents() {
     $('#dateFrom').value = ''; $('#dateTo').value = '';
     renderMessages();
   });
+  // 图片放大预览：支持在新标签打开原图 / 下载，方便保存
   const lb = document.createElement('div');
   lb.className = 'lightbox';
-  lb.innerHTML = '<img alt="预览" />';
-  lb.addEventListener('click', () => lb.classList.remove('show'));
+  lb.innerHTML = `
+    <div class="lb-bar">
+      <a class="lb-btn" id="lbOpen" href="#" target="_blank" rel="noopener">⤢ 打开原图</a>
+      <a class="lb-btn" id="lbSave" href="#" download>⤓ 下载</a>
+      <button class="lb-btn" id="lbClose" type="button">✕ 关闭</button>
+    </div>
+    <div class="lb-stage">
+      <img alt="图片预览" referrerpolicy="no-referrer" />
+    </div>
+    <div class="lb-tip">点击空白处关闭</div>`;
+  const lbImg = lb.querySelector('img');
+  lbImg.addEventListener('load', () => lb.classList.remove('loading'));
+  lbImg.addEventListener('error', () => {
+    lb.classList.remove('loading');
+    lb.classList.add('broken');
+  });
+
+  window.__lightboxShow = (src) => {
+    if (!src) return;
+    lb.classList.add('show', 'loading');
+    lb.classList.remove('broken');
+    lbImg.src = src;
+    lb.querySelector('#lbOpen').href = src;
+    const save = lb.querySelector('#lbSave');
+    save.href = src;
+    save.setAttribute('download', (src.split('/').pop().split('?')[0] || 'image.jpg'));
+  };
+  lb.querySelector('#lbClose').addEventListener('click', () => lb.classList.remove('show'));
+  lb.addEventListener('click', (e) => {
+    // 点图片本体或工具栏时不关闭
+    if (e.target.closest('.lb-bar') || e.target.tagName === 'IMG') return;
+    lb.classList.remove('show');
+  });
   document.body.appendChild(lb);
   window.__lightbox = lb;
 
@@ -315,11 +341,27 @@ function bindEvents() {
     if (socialBtn) {
       e.stopPropagation();
       openSocial(socialBtn.dataset.web, socialBtn.dataset.scheme);
+      return;
+    }
+    // 开播推送卡片 → 站内「直播 / 录播」页
+    const gotoBtn = e.target.closest('[data-goto]');
+    if (gotoBtn) {
+      e.stopPropagation();
+      switchTab(gotoBtn.dataset.goto);
     }
   });
 }
 
 /* ---------------- 渲染 ---------------- */
+function switchTab(name) {
+  state.tab = name;
+  document.querySelectorAll('.tab').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
+  Object.entries(panels).forEach(([k, el]) => el.classList.toggle('active', k === name));
+  const df = $('#dateFilter');
+  if (df) df.hidden = name !== 'messages';
+  renderAll();
+}
+
 function renderAll() {
   if (state.tab === 'messages') renderMessages();
   else if (state.tab === 'live') renderLive();
@@ -378,6 +420,7 @@ function matchQuery(m) {
 function renderMessages() {
   const panel = panels.messages;
   let list = DATA.messages;
+  const filtering = !!(state.dateFrom || state.dateTo || state.query);
   if (state.dateFrom || state.dateTo) {
     list = list.filter((m) => {
       const t = m.msgTime;
@@ -399,11 +442,42 @@ function renderMessages() {
     (groups[d] ||= []).push(m);
   }
   const sortedDays = Object.keys(groups).sort((a, b) => (b > a ? 1 : -1));
-  panel.innerHTML = sortedDays.map((day) => `
-    <div class="day-group">
+
+  // 全量存档有 400+ 天、1.5 万条，一次性渲染会让手机卡顿/内存吃紧：
+  // 默认只渲染最近若干天，底部提供「加载更早」；搜索或日期筛选时直接全量展示。
+  const limit = filtering ? sortedDays.length : Math.min(state.dayLimit, sortedDays.length);
+  const shown = sortedDays.slice(0, limit);
+  const restDays = sortedDays.length - limit;
+  const restCount = restDays > 0
+    ? sortedDays.slice(limit).reduce((n, d) => n + groups[d].length, 0)
+    : 0;
+
+  // 单条消息渲染异常不应拖垮整个列表
+  const renderDay = (day) => `<div class="day-group">
       <div class="day-label">${day}（${groups[day].length}）</div>
-      ${groups[day].map(renderMsg).join('')}
-    </div>`).join('');
+      ${groups[day].map((m) => {
+        try {
+          return renderMsg(m);
+        } catch (err) {
+          return `<div class="msg"><div class="msg-body empty">［该条消息渲染失败］</div></div>`;
+        }
+      }).join('')}
+    </div>`;
+
+  panel.innerHTML = shown.map(renderDay).join('')
+    + (restDays > 0
+      ? `<button class="load-more" id="loadMore" type="button">加载更早的消息（还有 ${restCount} 条 / ${restDays} 天）</button>`
+      : '');
+
+  const moreBtn = document.getElementById('loadMore');
+  if (moreBtn) {
+    moreBtn.addEventListener('click', () => {
+      const y = window.scrollY;
+      state.dayLimit += 7;
+      renderMessages();
+      window.scrollTo(0, y);
+    });
+  }
 }
 
 // 回复 / 礼物回复的引用块：她回复了谁、原话是什么
@@ -416,17 +490,28 @@ function renderQuote(reply) {
   </div>`;
 }
 
-// 卡片类消息：直播推送 / 分享 / 红包
-function renderCard(card) {
+// 卡片消息（直播推送 / 分享 / 红包）
+// 注意：函数名必须区别于直播面板的 renderCard(item, timeKey)，否则会被后者覆盖
+/** 图片：点击放大预览，预览层支持「打开原图 / 下载 / 关闭」 */
+function imgHtml(url, cls) {
+  const u = escapeHtml(toUrl(url));
+  return `<img class="${cls}" loading="lazy" decoding="async" referrerpolicy="no-referrer"
+    src="${u}" alt="图片"
+    onclick="window.__lightboxShow(this.src)"
+    onerror="this.classList.add('failed');this.setAttribute('data-src',this.src)" />`;
+}
+
+function renderMsgCard(card) {
   if (!card) return '';
-  const pic = card.pic
-    ? `<img class="msg-card-pic" loading="lazy" src="${escapeHtml(toUrl(card.pic))}" onclick="window.__lightbox.querySelector('img').src=this.src;window.__lightbox.classList.add('show')" />`
-    : '';
-  const link = card.url
-    ? (/^https?:/i.test(card.url)
-      ? `<a class="msg-card-link" href="${escapeHtml(card.url)}" target="_blank" rel="noopener">查看详情 ›</a>`
-      : `<span class="msg-card-link muted">${escapeHtml(card.url)}</span>`)
-    : '';
+  const pic = card.pic ? imgHtml(card.pic, 'msg-card-pic') : '';
+  // 开播推送：跳站内「直播 / 录播」页（原始 shortPath 无跳转意义）
+  const link = card.kind === 'live'
+    ? `<button class="msg-card-link as-btn" type="button" data-goto="live">前往直播 / 录播 ›</button>`
+    : (card.url
+      ? (/^https?:/i.test(card.url)
+        ? `<a class="msg-card-link" href="${escapeHtml(card.url)}" target="_blank" rel="noopener">查看详情 ›</a>`
+        : `<span class="msg-card-link muted">${escapeHtml(card.url)}</span>`)
+      : '');
   return `<div class="msg-card msg-card-${escapeHtml(card.kind || 'info')}">
     ${pic}
     <div class="msg-card-main">
@@ -447,7 +532,7 @@ function renderMsg(m) {
   if (m.text) body += `<div class="msg-body">${escapeHtml(m.text)}</div>`;
   // 3) 媒体
   if (m.images?.length) {
-    body += `<div class="msg-images">${m.images.map((u) => `<img loading="lazy" src="${escapeHtml(toUrl(u))}" onclick="window.__lightbox.querySelector('img').src=this.src;window.__lightbox.classList.add('show')" />`).join('')}</div>`;
+    body += `<div class="msg-images">${m.images.map((u) => imgHtml(u, '')).join('')}</div>`;
   }
   if (m.audio) {
     const dur = fmtDur(m.duration);
@@ -461,7 +546,7 @@ function renderMsg(m) {
   }
   if (m.link) body += `<div class="msg-link">🔗 <a href="${escapeHtml(m.link)}" target="_blank" rel="noopener">${escapeHtml(m.link)}</a></div>`;
   // 4) 卡片
-  body += renderCard(m.card);
+  body += renderMsgCard(m.card);
 
   if (!body) {
     body = `<div class="msg-body empty">［${typeLabel}］无文本内容</div>
@@ -575,7 +660,7 @@ function renderCard(item, timeKey) {
     ? `<button class="play-btn" data-play="${escapeHtml(item.playUrl)}" data-title="${escapeHtml(title + ' · ' + time)}">▶ 播放</button>`
     : `<span class="no-play">无视频</span>`;
   return `<div class="card">
-    ${cover ? `<img class="card-img" loading="lazy" src="${escapeHtml(cover)}" alt="" onclick="window.__lightbox.querySelector('img').src=this.src;window.__lightbox.classList.add('show')" />` : ''}
+    ${cover ? `<img class="card-img" loading="lazy" referrerpolicy="no-referrer" src="${escapeHtml(cover)}" alt="" onclick="window.__lightboxShow(this.src)" onerror="this.classList.add('failed')" />` : ''}
     <div class="card-body">
       <p class="card-title">${escapeHtml(title)}</p>
       ${sub ? `<p class="card-sub">${escapeHtml(sub)}</p>` : ''}

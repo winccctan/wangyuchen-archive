@@ -46,11 +46,14 @@ run_once() {
 
   # ---------- 抓取后条数对比 ----------
   local new_counts="$(python3 -c "import json;print(json.load(open('site/data/meta.json'))['counts'])")"
+  # 历史消息按最新解析规则重跑一遍（幂等，无需重新抓取；解析规则更新后自动生效）
+  "$NODE" scripts/reparse-messages.mjs >/dev/null 2>&1 || true
   echo "    抓取前条数: ${old_counts:-（无）}"
   echo "    抓取后条数: ${new_counts}"
 
-  if [ -n "${old_counts}" ] && [ "$old_counts" = "$new_counts" ]; then
-    echo "→ 数据条数未变化，跳过提交与部署（不触发空构建）"
+  if [ -n "${old_counts}" ] && [ "$old_counts" = "$new_counts" ] \
+     && git diff --quiet -- site/data/messages.json; then
+    echo "→ 数据条数与内容均未变化，跳过提交与部署（不触发空构建）"
     return 0
   fi
 
