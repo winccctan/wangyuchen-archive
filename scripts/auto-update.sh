@@ -18,12 +18,13 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-# ---------- 防重叠：同一时刻只允许一个实例 ----------
-exec 9>/tmp/wyc-auto-update.lock
-if ! flock -n 9; then
+# ---------- 防重叠：同一时刻只允许一个实例（用 mkdir 原子锁，免依赖 flock） ----------
+LOCKDIR=/tmp/wyc-auto-update.lock
+if ! mkdir "$LOCKDIR" 2>/dev/null; then
   echo "已有实例在运行，本次跳过"
   exit 0
 fi
+trap 'rm -rf "$LOCKDIR"' EXIT
 
 NODE="${NODE:-/Users/tansy/.workbuddy/binaries/node/versions/22.22.2/bin/node}"
 MAX_PAGES="${MAX_PAGES:-3}"
