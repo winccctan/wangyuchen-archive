@@ -1,0 +1,273 @@
+// 口袋48 API 客户端
+// 参考 48tools: packages/48tools/src/utils/snh48.ts 与 packages/48tools/src/services/48/index.ts
+import { API_BASE } from './config.mjs';
+import { generatePa } from './pa.mjs';
+
+// 代理出口支持（零依赖）：设置 SCRAPE_PROXY（或 HTTPS_PROXY）后，
+// 通过 HTTP CONNECT 隧道 + TLS 经代理发出请求。
+// 用于「境外本机 + 国内代理」：无论你在哪，都能从大陆 IP 访问口袋48。
+import { request as httpsRequest } from 'node:https';
+import { connect as tlsConnect } from 'node:tls';
+import { URL } from 'node:url';
+
+const PROXY_URL =
+  process.env.SCRAPE_PROXY || process.env.HTTPS_PROXY || process.env.https_proxy || '';
+
+if (PROXY_URL) {
+  console.log('[代理] 已启用，请求经代理出口发出：' + PROXY_URL.replace(/\/\/[^@/]*@/, '//***@'));
+}
+
+// 经代理发起一次 HTTPS POST（CONNECT 隧道）
+function requestViaProxy(url, { method, headers, body }) {
+  return new Promise((resolve, reject) => {
+    const target = new URL(url);
+    const proxy = new URL(PROXY_URL);
+    const hostPort = `${target.hostname}:${target.port || 443}`;
+    const connectHeaders = { Host: hostPort };
+    if (proxy.username) {
+      const cred = `${decodeURIComponent(proxy.username)}:${decodeURIComponent(proxy.password || '')}`;
+      connectHeaders['Proxy-Authorization'] = 'Basic ' + Buffer.from(cred).toString('base64');
+    }
+    const connectReq = httpsRequest({
+      host: proxy.hostname,
+      port: Number(proxy.port) || 443,
+      method: 'CONNECT',
+      path: hostPort,
+      headers: connectHeaders,
+      rejectUnauthorized: false,
+      timeout: 20000
+    });
+    connectReq.on('timeout', () => { connectReq.destroy(new Error('代理 CONNECT 超时')); });
+    connectReq.on('connect', (res, socket) => {
+      if (res.statusCode !== 200) {
+        socket.destroy();
+        reject(new Error(`代理 CONNECT 失败：HTTP ${res.statusCode}`));
+        return;
+      }
+      // 底层 socket 也要设超时：HTTP 的 timeout 选项不覆盖 TLS 握手阶段，
+      // 若服务端不回应握手，请求会永久挂起（此前抓取卡死即由此引起）。
+      socket.setTimeout(20000, () => socket.destroy(new Error('代理隧道 socket 超时')));
+      const tlsSocket = tlsConnect(
+        { socket, servername: target.hostname, rejectUnauthorized: false },
+        () => {
+          const req = httpsRequest(
+            {
+              createConnection: () => tlsSocket,
+              method,
+              path: target.pathname + target.search,
+              headers: { ...headers, Host: target.hostname },
+              timeout: 20000
+            },
+            (r) => {
+              const chunks = [];
+              r.on('data', (c) => chunks.push(c));
+              r.on('end', () =>
+                resolve({ status: r.statusCode, text: Buffer.concat(chunks).toString('utf8') })
+              );
+            }
+          );
+          req.on('timeout', () => { tlsSocket.destroy(new Error('请求超时')); });
+          req.on('error', reject);
+          if (body) req.write(body);
+          req.end();
+        }
+      );
+      tlsSocket.setTimeout(20000, () => tlsSocket.destroy(new Error('TLS 会话超时')));
+      tlsSocket.on('timeout', () => tlsSocket.destroy(new Error('TLS 会话超时')));
+      tlsSocket.on('error', reject);
+    });
+    connectReq.on('error', reject);
+    connectReq.end();
+  });
+}
+
+// 构造请求头（与 48tools createHeaders 保持一致）
+// 注意：Node 的 fetch 不允许手动设置 Host，URL 已隐含 Host，故省略。
+function randomDeviceId() {
+  const s = 'QWERTYUIOPASDFGHJKLZXCVBNM1234567890';
+  const pick = (n) => Array.from({ length: n }, () => s[Math.floor(Math.random() * s.length)]).join('');
+  return `${pick(8)}-${pick(4)}-${pick(4)}-${pick(4)}-${pick(12)}`;
+}
+
+function buildAppInfo() {
+  return JSON.stringify({
+    vendor: 'apple',
+    deviceId: randomDeviceId(),
+    appVersion: '7.0.4',
+    appBuild: '23011601',
+    osVersion: '16.3.1',
+    osType: 'ios',
+    deviceName: 'iPhone XR',
+    os: 'ios'
+  });
+}
+
+const APP_USER_AGENT = 'PocketFans201807/6.0.16 (iPhone; iOS 13.5.1; Scale/2.00)';
+
+async function buildHeaders(token) {
+  const headers = {
+    'Content-Type': 'application/json;charset=utf-8',
+    appInfo: buildAppInfo(),
+    'User-Agent': APP_USER_AGENT,
+    'Accept-Language': 'zh-Hans-AW;q=1'
+  };
+  if (token) {
+    headers.token = token;
+    // pa 为反爬签名，由 wasm 生成；带 token 的请求必须携带
+    headers.pa = generatePa();
+  }
+  return headers;
+}
+
+async function postJson(path, body, { token } = {}) {
+  const url = API_BASE + path;
+  const headers = await buildHeaders(token);
+  const payload = JSON.stringify(body);
+
+  // 有代理：走 CONNECT 隧道；无代理：直连（原生 fetch）
+  if (PROXY_URL) {
+    const res = await requestViaProxy(url, { method: 'POST', headers, body: payload });
+    if (res.status < 200 || res.status >= 300) {
+      throw new Error(`请求失败 ${res.status} ${path}: ${res.text.slice(0, 200)}`);
+    }
+    return JSON.parse(res.text);
+  }
+
+  const res = await fetch(url, { method: 'POST', headers, body: payload });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`请求失败 ${res.status} ${path}: ${text.slice(0, 200)}`);
+  }
+  return res.json();
+}
+
+/* ------------------------- 口袋发言（房间消息） ------------------------- */
+// POST /im/api/v1/team/message/list/homeowner
+// body: { channelId, serverId, nextTime, limit }
+export async function fetchMessagePage({ serverId, channelId, nextTime = 0, limit = 700, token }) {
+  if (!token) throw new Error('口袋发言需要 POCKET48_TOKEN');
+  const data = await postJson('/im/api/v1/team/message/list/homeowner', {
+    channelId,
+    serverId,
+    nextTime,
+    limit
+  }, { token });
+  const content = data?.content || {};
+  return {
+    messages: Array.isArray(content.message) ? content.message : [],
+    nextTime: content.nextTime ?? 0
+  };
+}
+
+/* ------------------------- 直播 / 录播（按成员） ------------------------- */
+// POST /live/api/v1/live/getLiveList
+// body: { debug, next, groupId, userId, record }
+export async function fetchLiveListPage({ groupId, userId, next, record }) {
+  const data = await postJson('/live/api/v1/live/getLiveList', {
+    debug: true,
+    next: String(next),
+    groupId,
+    userId,
+    record: !!record
+  });
+  const content = data?.content || {};
+  return {
+    list: Array.isArray(content.liveList) ? content.liveList : [],
+    next: content.next ?? '0'
+  };
+}
+
+/* ------------------------- 公演（官方公开直播/录播） ------------------------- */
+// POST /live/api/v1/live/getOpenLiveList
+// body: { debug, groupId, next, record }
+export async function fetchOpenLivePage({ groupId, next, record }) {
+  const data = await postJson('/live/api/v1/live/getOpenLiveList', {
+    debug: false,
+    groupId,
+    next: Number(next) || 0,
+    record: !!record
+  });
+  const content = data?.content || {};
+  return {
+    list: Array.isArray(content.liveList) ? content.liveList : [],
+    next: content.next ?? '0'
+  };
+}
+
+/* ------------------------- 播放地址（直播 / 公演详情） ------------------------- */
+// 直播播放地址：POST /live/api/v1/live/getLiveOne  -> content.playStreamPath
+// 参考 48tools: requestLiveRoomInfo
+export async function fetchLiveOne(liveId) {
+  const data = await postJson('/live/api/v1/live/getLiveOne', { liveId });
+  const content = data?.content || {};
+  return {
+    playStreamPath: content.playStreamPath || '',
+    title: content.title || '',
+    ctime: content.ctime || ''
+  };
+}
+
+// 公演播放地址：POST /live/api/v1/live/getOpenLiveOne -> content.playStreams[].streamPath
+// 参考 48tools: requestLiveOne
+export async function fetchOpenLiveOne(liveId, token) {
+  const data = await postJson('/live/api/v1/live/getOpenLiveOne', { liveId }, { token });
+  const content = data?.content || {};
+  const streams = Array.isArray(content.playStreams) ? content.playStreams : [];
+  return {
+    streams: streams
+      .map((s) => ({ name: s.streamName, path: s.streamPath || '' }))
+      .filter((s) => s.path),
+    // 取第一个可用流作为默认
+    playStreamPath: (streams.find((s) => s.streamPath) || {}).path || '',
+    title: content.title || '',
+    subTitle: content.subTitle || ''
+  };
+}
+
+/* ------------------------- 登录（手机号 + 短信验证码，拿 POCKET48_TOKEN） ------------------------- */
+// 参考 48tools: packages/48tools/src/services/48/login/index.ts
+// 无需 token；短信接口不带 pa，登录接口带 pa。
+
+// 发送短信验证码
+// 注意：外国手机号（非 +86）会触发人机验证（SNH48 饭圈知识题），
+// 此时接口返回 status=2001 且 message 内含 {question, answer:[{option,value}]}，
+// 需把所选选项的 value 作为 answer 一起重发。
+// 参考 48tools: services/48/login/index.ts requestSMS({mobile, area, answer})
+export async function sendSms(mobile, area = '86', answer) {
+  const body = { mobile, area };
+  if (answer) body.answer = answer;
+  const data = await postJson('/user/api/v1/sms/send2', body);
+  if (data?.status !== 200 && data?.success !== true) {
+    const err = new Error('短信发送失败：' + JSON.stringify(data).slice(0, 600));
+    err.payload = data;
+    try {
+      const inner = JSON.parse(data?.message || '');
+      if (inner && inner.question) err.verification = inner; // {question, answer:[{option,value}]}
+    } catch { /* message 不是 JSON，忽略 */ }
+    throw err;
+  }
+  return data;
+}
+
+// 验证码登录，返回 { token, ... }（LoginUserInfo）
+export async function loginMobileCode(mobile, code) {
+  const headers = { ...(await buildHeaders()), pa: generatePa() };
+  const url = API_BASE + '/user/api/v1/login/app/mobile/code';
+  const payload = JSON.stringify({ mobile, code });
+
+  let res;
+  if (PROXY_URL) {
+    res = await requestViaProxy(url, { method: 'POST', headers, body: payload });
+  } else {
+    const r = await fetch(url, { method: 'POST', headers, body: payload });
+    res = { status: r.status, text: await r.text() };
+  }
+  if (res.status < 200 || res.status >= 300) {
+    throw new Error(`登录失败 ${res.status}: ${res.text.slice(0, 200)}`);
+  }
+  const data = JSON.parse(res.text);
+  if (!data?.content?.token) {
+    throw new Error('登录响应中没有 token：' + JSON.stringify(data).slice(0, 200));
+  }
+  return data.content; // { token, userId, nickname, ... }
+}

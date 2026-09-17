@@ -1,0 +1,54 @@
+// 生成发布目录 dist/：只包含站点运行必需的文件。
+// 目的：site/data 里的 messages.json / live.json / performances.json 是完整存档（十几 MB），
+// 网页实际只需要已合并好的 archive.js，打包进发布目录会拖慢加载甚至超出部署体积限制。
+// 用法：node scripts/build-dist.mjs
+import { mkdirSync, copyFileSync, readFileSync, writeFileSync, rmSync, statSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve, join } from 'node:path';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const ROOT = resolve(__dirname, '..');
+const SITE = join(ROOT, 'site');
+const DIST = join(ROOT, 'dist');
+
+rmSync(DIST, { recursive: true, force: true });
+mkdirSync(DIST, { recursive: true });
+
+function cp(rel) {
+  const src = join(SITE, rel);
+  const dst = join(DIST, rel);
+  mkdirSync(dirname(dst), { recursive: true });
+  copyFileSync(src, dst);
+  return statSync(dst).size;
+}
+
+const files = [
+  'index.html',
+  'css/style.css',
+  'js/app.js',
+  'vendor/hls.min.js',
+  'assets/newfan-guide.jpg',
+  'data/archive.js'
+];
+
+let total = 0;
+for (const f of files) {
+  const size = cp(f);
+  total += size;
+  console.log(`  ${f.padEnd(22)} ${(size / 1024).toFixed(1)} KB`);
+}
+
+// 给静态资源加版本号查询串，避免浏览器/CDN 缓存住旧文件导致页面“点了没内容”。
+// 只在 dist/（HTTP 部署）上加；site/ 需支持 file:// 直接打开，file:// 下带查询串会取不到文件。
+const VERSION = Date.now();
+const htmlPath = join(DIST, 'index.html');
+const html = readFileSync(htmlPath, 'utf8');
+const bumped = html.replace(
+  /(href|src)="(\.\/(?:css|js|vendor|data|assets)\/[^"]+\.(?:css|js))"/g,
+  (_m, attr, url) => `${attr}="${url}?v=${VERSION}"`
+);
+writeFileSync(htmlPath, bumped);
+console.log(`\n  缓存版本号 v=${VERSION}`);
+
+console.log(`\n✓ 发布目录就绪：${DIST}`);
+console.log(`  总计 ${(total / 1048576).toFixed(2)} MB（原始 site/ 含全量存档约 13MB）`);

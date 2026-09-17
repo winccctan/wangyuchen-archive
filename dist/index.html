@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>王语晨 · 补档站</title>
+  <link rel="stylesheet" href="./css/style.css?v=1789653791052" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="avatar" id="memberAvatar">王</div>
+      <div class="member-meta">
+        <h1 id="memberName">王语晨</h1>
+        <p id="memberSub">GNZ48 TEAM NIII · 十三期生</p>
+      </div>
+      <div class="stat" id="statBox">
+        <div class="stat-item"><span class="num" id="statMsg">0</span><span class="lbl">口袋发言</span></div>
+        <div class="stat-item"><span class="num" id="statLive">0</span><span class="lbl">直播/录播</span></div>
+        <div class="stat-item"><span class="num" id="statPerf">0</span><span class="lbl">公演</span></div>
+      </div>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="messages">口袋发言</button>
+    <button class="tab" data-tab="live">直播 / 录播</button>
+    <button class="tab" data-tab="performances">公演</button>
+    <button class="tab" data-tab="guide">新粉指南</button>
+  </nav>
+
+  <div class="toolbar">
+    <input type="search" id="searchInput" placeholder="搜索发言内容 / 标题…" />
+    <div class="date-filter" id="dateFilter" hidden>
+      <label>从 <input type="date" id="dateFrom" /></label>
+      <label>至 <input type="date" id="dateTo" /></label>
+      <button id="dateClear">清除</button>
+    </div>
+    <span class="updated" id="updatedAt"></span>
+  </div>
+
+  <main class="content">
+    <section id="panel-messages" class="panel active"></section>
+    <section id="panel-live" class="panel"></section>
+    <section id="panel-performances" class="panel"></section>
+    <section id="panel-guide" class="panel"></section>
+  </main>
+
+  <footer class="site-footer">
+    <p>数据逆向自 <a href="https://github.com/duan602728596/48tools" target="_blank" rel="noopener">48tools</a>，仅供个人补档 / 学习用途。</p>
+  </footer>
+
+  <!-- 视频播放器（hls.js 支持 m3u8 直播/录播播放） -->
+  <div class="player-modal" id="playerModal" hidden>
+    <div class="player-box">
+      <button class="player-close" id="playerClose" aria-label="关闭">×</button>
+      <div class="player-title" id="playerTitle"></div>
+      <video id="playerVideo" controls autoplay playsinline></video>
+      <div class="player-hint" id="playerHint"></div>
+    </div>
+  </div>
+
+  <script src="./vendor/hls.min.js?v=1789653791052"></script>
+  <script src="./data/archive.js?v=1789653791052"></script>
+  <script src="./js/app.js?v=1789653791052"></script>
+</body>
+</html>
