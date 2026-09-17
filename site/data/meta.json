@@ -12,10 +12,10 @@
     "period": "GNZ48 十三期生"
   },
   "apiBase": "https://pocketapi.48.cn",
-  "lastUpdated": "2026-09-17T14:48:45.855Z",
+  "lastUpdated": "2026-09-17T14:55:14.313Z",
   "counts": {
-    "messages": 10057,
-    "live": 82,
+    "messages": 10060,
+    "live": 83,
     "performances": 383
   },
   "note": "由 48tools 接口逆向抓取，仅供个人补档 / 学习用途。"
