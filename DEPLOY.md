@@ -62,3 +62,43 @@ cd scraper && node scrape.mjs && cd ..
 node scripts/build-dist.mjs
 # 3) 重新上传到你的托管（Cloudflare 自动重部署 / GitHub push / CloudStudio 重新部署）
 ```
+
+自动化：`scripts/auto-update.sh` 已接入计划任务（每 5 分钟循环 + 每小时兜底触发），
+抓取 → 重解析 → 构建 → 提交 → 推送 main / gh-pages，Cloudflare Pages 随 push 自动部署。
+
+## 消息解析规则（重要）
+
+口袋房间不同 `msgType` 的 `bodys` 结构完全不同，统一由 `scraper/lib/message.mjs`
+的 `parseMessage()` 解析（新抓取与历史数据共用同一套规则）：
+
+| msgType | 正文来源 | 其它 |
+| --- | --- | --- |
+| `TEXT` / `PRESENT_TEXT` | `bodys` 原文 | — |
+| `REPLY` | `replyInfo.text` | `replyInfo.replyName/replyText` → 引用块 |
+| `GIFTREPLY` | `giftReplyInfo.text` | `replyText`（送了啥）→ 引用块 |
+| `AUDIO_GIFT_REPLY` | — | `voiceUrl` 语音 + `replyText` 引用 |
+| `AUDIO` | — | `bodys.url`（aac 直链）+ `dur`(ms) |
+| `VIDEO` | — | `bodys.url`（mp4 直链） |
+| `IMAGE` | — | `bodys.url` |
+| `EXPRESSIMAGE` | — | `expressImgInfo.emotionRemote` |
+| `LIVEPUSH` | — | `livePushInfo` → 开播卡片 |
+| `SHARE_POSTS` | — | `shareInfo` → 分享卡片 |
+| `RED_PACKET_*` | — | `blessMessage` / `coverUrl` → 红包卡片 |
+
+兜底：以上都没命中时，深挖 `bodys` 里的 URL（按扩展名归类图片/语音/视频）。
+
+注意事项：
+- `bodys` 可能是**纯数字字符串**（如 `"5"`），`JSON.parse` 后会变成 number，
+  必须回退成原文，否则正文会丢失。
+- 发送者昵称在 `extInfo.user.nickName`（大写 N），不是 `userInfo`/`sender`。
+
+### 解析规则升级后如何补全历史数据
+
+历史存档里保留了完整 `raw.bodys` / `raw.extInfo`，因此**不需要重新抓取**：
+
+```bash
+node scripts/reparse-messages.mjs   # 首次运行会备份为 site/data/messages.json.bak
+node scripts/build-dist.mjs
+```
+
+该脚本是幂等的，已接入 `auto-update.sh`，规则更新后自动生效。
