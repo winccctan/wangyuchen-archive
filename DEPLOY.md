@@ -7,19 +7,22 @@
 
 ---
 
-## 方案 A：Cloudflare Pages（★推荐，国内外都能开，免费持久）
+## 方案 A：Cloudflare Workers（★当前使用，国内外都能开，免费持久）
 
-最适合"国内国外朋友都能访问"。全球 CDN，域名 `xxx.pages.dev`，可绑自定义域名。
+本项目当前就是以 **Cloudflare Workers（Git 构建）** 部署的，**不使用 Cloudflare Pages**。
+构建由仓库根的 `wrangler.jsonc` 驱动：
 
-1. 注册 Cloudflare 账号（免费）。
-2. Cloudflare 控制台 → **Workers & Pages** → **Create** → **Pages** → 连接 Git 仓库（先把本仓库推到 GitHub/GitLab）。
-3. 构建设置：
-   - **Framework preset**: `None`
-   - **Build command**: 留空（或 `node scripts/build-dist.mjs`，二选一；若留空请确保先本地生成好 `dist/`）
-   - **Build output directory**: `dist`
-4. 部署完成，拿到 `https://<项目名>.pages.dev`，发给朋友即可。
+- `wrangler.jsonc`：`name = wangyuchen-archive`、`main = worker/index.js`、`assets.directory = ./dist`、`ai.binding = AI`。
+- `worker/index.js`：
+  - `GET /translate?tl=<语言>&q=<原文>` → 用 **Cloudflare Workers AI**（`@cf/meta/m2m100-1.2b`）做翻译，返回 `{ text }`（边缘缓存 24h）；
+  - `GET /ping` → `pong`（健康检查）；
+  - 其余请求 `env.ASSETS.fetch(request)` 透传 `dist/` 静态资源。
+- 静态站点**无需额外 Build command**（`dist/` 已提交入库）；推送到 `main` 后 Workers 自动构建部署。
 
-> 想用命令行直传（无需 Git）：装 `wrangler` 后执行 `npx wrangler pages deploy dist`。
+自定义域名：在 Worker 的 **Settings → Domains & Routes** 绑定（如 `idol.wyc0518.cc`）。
+
+> 命令行手动部署：`npx wrangler deploy`。
+> ⚠️ 已弃用 Pages：仓库里**不再有** `functions/`（Pages Functions），历史 Pages 项目可删除。
 
 ---
 
@@ -64,7 +67,7 @@ node scripts/build-dist.mjs
 ```
 
 自动化：`scripts/auto-update.sh` 已接入计划任务（每 5 分钟循环 + 每小时兜底触发），
-抓取 → 重解析 → 构建 → 提交 → 推送 main / gh-pages，Cloudflare Pages 随 push 自动部署。
+抓取 → 重解析 → 构建 → 提交 → 推送 main / gh-pages，Cloudflare Workers 随 push 自动部署。
 
 ## 消息解析规则（重要）
 

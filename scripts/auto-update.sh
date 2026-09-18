@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 自动补档：增量抓取 -> 重新生成站点 dist/ -> 推送到 GitHub
-# 推送后 Cloudflare Pages（Connect to Git）会自动重新部署，站点即变最新。
+# 推送后 Cloudflare Workers（Git 构建）会自动重新部署，站点即变最新。
 #
 # 用法：
 #   bash scripts/auto-update.sh            # 单次增量补档
@@ -93,7 +93,7 @@ run_once() {
        fi )
   rm -rf "$TMP"
 
-  echo "✓ 完成：GitHub 已更新，Cloudflare Pages（Connect to Git）将自动部署最新版本"
+  echo "✓ 完成：GitHub 已更新，Cloudflare Workers（Git 构建）将自动部署最新版本"
 }
 
 # ---------- 循环模式：每 5 分钟一次，运行至整点附近，避免与整点触发重叠 ----------
