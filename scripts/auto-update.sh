@@ -50,13 +50,15 @@ run_once() {
   "$NODE" scripts/reparse-messages.mjs >/dev/null 2>&1 || true
   # 前瞻累积「当前场次」的参演名单（官方只公开当前场次名单，历史场次靠日积月累）
   "$NODE" scripts/capture-roster.mjs >/dev/null 2>&1 || true
+  # 前瞻累积「公演排期 / 即将开始」（口袋 App 成员页「公演」标签的内容，窗口很短，必须定期累积）
+  "$NODE" scripts/capture-schedule.mjs >/dev/null 2>&1 || true
   echo "    抓取前条数: ${old_counts:-（无）}"
   echo "    抓取后条数: ${new_counts}"
 
   # 注意：只比 messages.json 会漏掉「直播状态变化」（status 2→3 不改变条数），
   # 导致直播结束后状态永远不更新。故改为比较全部三个数据文件。
   if [ -n "${old_counts}" ] && [ "$old_counts" = "$new_counts" ] \
-     && git diff --quiet -- site/data/messages.json site/data/live.json site/data/performances.json site/data/rosters.json; then
+     && git diff --quiet -- site/data/messages.json site/data/live.json site/data/performances.json site/data/rosters.json site/data/schedule.json; then
     echo "→ 数据条数与内容均未变化，跳过提交与部署（不触发空构建）"
     return 0
   fi
