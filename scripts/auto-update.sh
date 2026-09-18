@@ -99,13 +99,13 @@ run_once() {
 # ---------- 循环模式：每 5 分钟一次，运行至整点附近，避免与整点触发重叠 ----------
 if [ "${LOOP:-0}" = "1" ]; then
   echo "=== 循环模式：每 5 分钟一次（运行约 55 分钟）==="
-  local END=$(( $(date +%s) + 55 * 60 ))
+  END=$(( $(date +%s) + 55 * 60 ))
   while [ "$(date +%s)" -lt "$END" ]; do
     run_once || true
     # 对齐到下一个 5 分钟整点，减少漂移
-    local NOW=$(date +%s)
-    local NEXT=$(( (NOW / 300 + 1) * 300 ))
-    local SLEEP=$(( NEXT - NOW ))
+    NOW=$(date +%s)
+    NEXT=$(( (NOW / 300 + 1) * 300 ))
+    SLEEP=$(( NEXT - NOW ))
     [ "$SLEEP" -gt 0 ] && sleep "$SLEEP"
   done
   echo "=== 循环结束，等待下次整点定时触发 ==="

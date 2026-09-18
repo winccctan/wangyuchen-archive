@@ -204,13 +204,27 @@ function msgKey(m) {
 }
 
 // 调接口翻译单段文本（失败抛错，由调用方决定如何展示）
+// 策略：① 先走同域代理 /translate（Cloudflare Pages Function，国内网络也能用）；
+//       ② 若代理不可用（GitHub Pages 镜像 / file:// 打开 / 代理未部署），兜底直连 Google 公开接口。
 async function translateText(text, target) {
   if (target === 'zh' || !text) return text;
-  const url = `${TRANSLATE_ENDPOINT}&tl=${encodeURIComponent(target)}&q=${encodeURIComponent(text)}`;
-  const res = await fetch(url, { cache: 'no-store' });
+  const q = encodeURIComponent(text);
+  const tl = encodeURIComponent(target);
+  const parse = (data) => ((data && data[0]) || []).map((seg) => seg[0]).join('');
+
+  // ① 同域代理
+  try {
+    const r = await fetch(`/translate?tl=${tl}&q=${q}`, { cache: 'no-store' });
+    if (r.ok) {
+      const out = parse(await r.json());
+      if (out) return out;
+    }
+  } catch { /* 落到直连 */ }
+
+  // ② 直连 Google 公开接口
+  const res = await fetch(`${TRANSLATE_ENDPOINT}&tl=${tl}&q=${q}`, { cache: 'no-store' });
   if (!res.ok) throw new Error('HTTP ' + res.status);
-  const data = await res.json();
-  const out = (data[0] || []).map((seg) => seg[0]).join('');
+  const out = parse(await res.json());
   return out || text;
 }
 
