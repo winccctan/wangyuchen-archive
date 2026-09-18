@@ -229,20 +229,23 @@ async function translateText(text, target) {
     }
   });
 
-  let lastErr;
+  const errs = []; // 记录每个源失败原因，便于用户反馈时定位
   for (const s of sources) {
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 3000); // 单个源超时，避免被墙的 Google 长时间挂起
+    const timer = setTimeout(() => ctrl.abort(), 6000); // 单个源超时（MyMemory 有时较慢）
     try {
       const r = await fetch(s.url, { cache: 'no-store', signal: ctrl.signal });
       if (s.kind === 'proxy') proxyOk = r.ok; // 记录代理可用性（404 时后续跳过）
-      if (!r.ok) continue;
+      if (!r.ok) { errs.push(`${s.kind}=HTTP${r.status}`); continue; }
       const out = s.parse(await r.json());
-      if (out && out !== text) return out; // 排除空或原样返回
-    } catch (e) { lastErr = e; if (s.kind === 'proxy') proxyOk = false; }
-    finally { clearTimeout(timer); }
+      if (out) return out; // 有译文即用（与原文相同也视为「无需翻译」，不再判定为失败）
+      errs.push(`${s.kind}=空`);
+    } catch (e) {
+      errs.push(`${s.kind}=${(e && e.name) || '网络错误'}`);
+      if (s.kind === 'proxy') proxyOk = false;
+    } finally { clearTimeout(timer); }
   }
-  throw lastErr || new Error('所有翻译源均失败');
+  throw new Error(errs.join(' / '));
 }
 
 // 从缓存生成译文块（已展开但缓存缺失时返回「翻译中…」占位）
@@ -271,8 +274,8 @@ async function doTranslate(mid) {
       try {
         t = await translateText(s.text, lang);
         trSet(s.text, lang, t);
-      } catch {
-        t = '__ERR__';
+      } catch (e) {
+        t = '__ERR__' + ((e && e.message) || '失败');
       }
     }
     s._t = t;
@@ -280,10 +283,14 @@ async function doTranslate(mid) {
   }
   const box = document.getElementById('tr-' + mid);
   if (box) {
-    box.innerHTML = segs.map((s) =>
-      `<div class="tr-item">${s.label ? `<span class="tr-label">${escapeHtml(s.label)}</span>` : ''}` +
-      `<span class="tr-text">${s._t === '__ERR__' ? '<span class="tr-err">翻译失败，点「翻译」重试</span>' : escapeHtml(s._t)}</span></div>`
-    ).join('');
+    box.innerHTML = segs.map((s) => {
+      const isErr = typeof s._t === 'string' && s._t.startsWith('__ERR__');
+      const body = isErr
+        ? `<span class="tr-err">翻译失败（${escapeHtml(s._t.slice(7))}）</span>`
+        : escapeHtml(s._t);
+      return `<div class="tr-item">${s.label ? `<span class="tr-label">${escapeHtml(s.label)}</span>` : ''}` +
+        `<span class="tr-text">${body}</span></div>`;
+    }).join('');
   }
 }
 
