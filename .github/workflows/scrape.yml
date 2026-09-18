@@ -1,0 +1,68 @@
+# 王语晨补档站 · 每小时自动抓取工作流
+name: 每小时自动补档
+
+on:
+  schedule:
+    - cron: '0 * * * *'          # 每小时整点（UTC）
+  workflow_dispatch: {}          # 允许手动 / Cloudflare Worker 触发
+
+permissions:
+  contents: write
+
+concurrency:
+  group: scrape
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      POCKET48_TOKEN: ${{ secrets.POCKET48_TOKEN }}
+      SCRAPE_PROXY: ${{ secrets.SCRAPE_PROXY }}
+      MAX_PAGES: "3"
+      MAX_DETAILS: "40"
+      BILI_PAGE_BUDGET: "6"
+      PAGE_SLEEP: "1500"
+      BILI_SPACE_BAN_TRIES: "0"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install scraper deps
+        working-directory: scraper
+        run: npm ci
+      - name: 抓取口袋发言 / 直播 / 公演
+        working-directory: scraper
+        run: node scrape.mjs
+      - name: 重解析历史消息（幂等）
+        run: node scripts/reparse-messages.mjs || true
+      - name: 累积当前场次参演名单（前瞻）
+        run: node scripts/capture-roster.mjs || true
+      - name: 抓取她的公演记录
+        run: MAX_DETAILS=40 node scripts/scrape-hers-performances.mjs || true
+      - name: 抓取 B站 公演录像备用源
+        run: BILI_PAGE_BUDGET=6 PAGE_SLEEP=1500 BILI_SPACE_BAN_TRIES=0 node scripts/fetch-bili-videos.mjs || true
+      - name: 构建发布目录 dist/
+        run: node scripts/build-dist.mjs
+      - name: 提交并推送 main
+        run: |
+          git config user.email "archive@local"
+          git config user.name "wangyuchen-archive"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "数据无变化，跳过提交"
+          else
+            git commit -m "auto: 增量补档 $(date '+%Y-%m-%d %H:%M UTC')"
+            git push origin main
+          fi
+      - name: 镜像 gh-pages 分支
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash scripts/mirror-gh-pages.sh
