@@ -1,0 +1,5 @@
+{
+  "_说明": "手工维护。herPerformances=她参加的公演名称关键词（留空则不过滤、显示全部 TEAM NIII 公演）；bili=按名称模糊匹配的 B 站链接。构建时（scripts/build-archive.mjs）会据此筛选并挂上 B 站跳转。",
+  "herPerformances": [],
+  "bili": []
+}

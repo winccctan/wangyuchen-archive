@@ -906,7 +906,11 @@ function renderCard(item, timeKey) {
   const canPlay = !!item.playUrl;
   const playBtn = canPlay
     ? `<button class="play-btn" data-play="${escapeHtml(item.playUrl)}" data-title="${escapeHtml(title + ' · ' + time)}">▶ 播放</button>`
-    : `<span class="no-play">无视频</span>`;
+    : (item.biliUrl ? '' : `<span class="no-play">无视频</span>`);
+  // 无录播（或有）时的 B 站跳转（按名称手工匹配挂上）
+  const biliBtn = item.biliUrl
+    ? `<a class="bili-btn" href="${escapeHtml(item.biliUrl)}" target="_blank" rel="noopener">📺 B 站观看</a>`
+    : '';
   return `<div class="card">
     ${cover ? `<img class="card-img" loading="lazy" referrerpolicy="no-referrer" src="${escapeHtml(cover)}" alt="" onclick="window.__lightboxShow(this.src)" onerror="this.classList.add('failed')" />` : ''}
     <div class="card-body">
@@ -917,7 +921,7 @@ function renderCard(item, timeKey) {
         <span>🕒 ${escapeHtml(time)}</span>
         ${playNum ? `<span>▶ ${escapeHtml(String(playNum))}</span>` : ''}
       </div>
-      <div class="card-actions">${playBtn}</div>
+      <div class="card-actions">${playBtn}${biliBtn}</div>
     </div>
   </div>`;
 }
