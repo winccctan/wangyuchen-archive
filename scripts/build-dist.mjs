@@ -28,6 +28,7 @@ const files = [
   'js/app.js',
   'vendor/hls.min.js',
   'assets/newfan-guide.jpg',
+  'data/meta.json', // 仅 0.5KB：前端用它取数据版本号，决定是否复用缓存的大文件
   'data/archive.js'
 ];
 

@@ -44,6 +44,15 @@ function applyFreshPolicy(res, url) {
   const p = url.pathname;
   const isHtml = p === '/' || p.endsWith('/') || p.endsWith('.html');
   const isData = p.startsWith('/data/');
+  // 带内容版本号的数据文件（如 /data/archive.js?v=<lastUpdated>）内容不可变：
+  //   允许浏览器与 CDN 长期缓存（数据一变版本号就变 → URL 变 → 自动失效），
+  //   这样重复访问不再重下十几 MB，只剩一次 500 字节的 meta.json 校验。
+  const ver = url.searchParams.get('v');
+  if (isData && ver) {
+    const h = new Headers(res.headers);
+    h.set('Cache-Control', 'public, max-age=31536000, immutable');
+    return new Response(res.body, { status: res.status, statusText: res.statusText, headers: h });
+  }
   if (!isHtml && !isData) return res;
   const headers = new Headers(res.headers);
   headers.set('Cache-Control', 'no-cache, must-revalidate');
