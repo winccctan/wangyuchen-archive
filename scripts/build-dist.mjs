@@ -28,6 +28,8 @@ const files = [
   'js/app.js',
   'vendor/hls.min.js',
   'assets/newfan-guide.jpg',
+  'assets/avatar.png',        // 头部头像（透明底抠图）
+  'assets/avatar-round.png',  // 网站图标 / apple-touch-icon
   'data/meta.json', // 仅 0.5KB：前端用它取数据版本号，决定是否复用缓存的大文件
   'data/archive.js'
 ];
@@ -45,7 +47,7 @@ const VERSION = Date.now();
 const htmlPath = join(DIST, 'index.html');
 const html = readFileSync(htmlPath, 'utf8');
 const bumped = html.replace(
-  /(href|src)="(\.\/(?:css|js|vendor|data|assets)\/[^"]+\.(?:css|js))"/g,
+  /(href|src)="(\.\/(?:css|js|vendor|data|assets)\/[^"]+\.(?:css|js|png|jpe?g|webp|svg|ico))"/g,
   (_m, attr, url) => `${attr}="${url}?v=${VERSION}"`
 );
 writeFileSync(htmlPath, bumped);

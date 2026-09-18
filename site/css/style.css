@@ -367,6 +367,8 @@ body {
 .site-footer a { color: var(--primary-dark); }
 
 @media (max-width: 560px) {
+  .avatar { height: 74px; }
+  .header-inner { gap: 12px; }
   .stat { width: 100%; justify-content: space-around; }
   .card-grid { grid-template-columns: 1fr; }
   .toolbar { gap: 8px; }
@@ -380,6 +382,7 @@ body {
 
 /* 极窄屏（≤380px）：更新时间独占一行，三个按钮整排靠右，避免任何单个按钮被挤到下一行 */
 @media (max-width: 380px) {
+  .avatar { height: 66px; }
   .toolbar { gap: 6px; }
   .toolbar-actions { gap: 6px; }
   .updated { flex: 1 1 100%; font-size: 11px; }

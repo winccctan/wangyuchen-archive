@@ -33,6 +33,17 @@ MAX_PAGES="${MAX_PAGES:-3}"
 if [ -z "${GH_TOKEN:-}" ] && [ -f scraper/.env ]; then
   GH_TOKEN="$(grep -E '^GH_TOKEN=' scraper/.env | head -1 | cut -d= -f2- || true)"
 fi
+# 必须 export：镜像脚本 scripts/mirror-gh-pages.sh 是子进程，
+# 不导出的话它读不到 GH_TOKEN，会退化成匿名 https 推送而报 "could not read Username"。
+export GH_TOKEN
+
+# 自动提交只允许碰「站点产物 + 构建脚本」，避免把别人（或 agent）正在改到一半的
+# 无关文件（如 scraper/ 下的调试代码）一并扫进 auto 提交。
+SITE_PATHS=(
+  site/index.html site/css site/js site/vendor site/assets site/data
+  dist scripts/build-dist.mjs scripts/mirror-gh-pages.sh scripts/auto-update.sh
+  worker wrangler.jsonc .github
+)
 
 run_once() {
   # ---------- 记录抓取前的条数（用于判断是否有新数据） ----------
@@ -74,7 +85,7 @@ run_once() {
   "$NODE" scripts/build-dist.mjs
 
   echo "[3/4] 提交变更..."
-  git add -A
+  git add -A -- "${SITE_PATHS[@]}"
   if git diff --cached --quiet; then
     echo "    无文件变化，跳过提交"
   else
