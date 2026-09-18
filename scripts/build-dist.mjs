@@ -28,14 +28,14 @@ const files = [
   'js/app.js',
   'vendor/hls.min.js',
   'assets/newfan-guide.jpg',
-  'assets/gs2024-1.jpg',      // 2024 公式照（微博）
+  'assets/gs2024-1.jpg',      // 2024 公式照（微博，蓝格纹礼服）
   'assets/gs2024-2.jpg',
   'assets/gs2024-3.jpg',
-  'assets/gs2025-1.jpg',      // 2025 公式照（微博）
-  'assets/gs2025-2.jpg',
+  'assets/gs2024-4.jpg',      // 2024 特写
+  'assets/gs2025-1.jpg',      // 2025 公式照（微博，白礼服+皇冠）
+  'assets/gs2025-2.jpg',      // 2025 特写
   'assets/gs2025-3.jpg',
   'assets/gs2025-4.jpg',
-  'assets/gs2025-5.jpg',
   'assets/member-gs1.jpg',    // 2026 官网公式照 1
   'assets/member-gs2.jpg',    // 2026 官网公式照 2
   'assets/member-gs4.jpg',    // 2026 官网公式照 3
