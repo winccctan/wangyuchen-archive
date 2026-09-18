@@ -32,10 +32,12 @@ function slimMessage(m) {
   return m;
 }
 
-/* ---------------- 公演：按「她参加」筛选 + 挂 B 站跳转（手工维护） ---------------- */
-// 接口没有参演成员数据，无法自动判断她参加了哪些公演；改由 site/data/performances-manual.json 手工维护：
-//   herPerformances: 名称关键词数组（非空时，公演页只保留命中的）
-//   bili: [{ match: 关键词, url: B站链接 }] —— 按名称模糊匹配挂到对应公演
+/* ---------------- 公演：按「她参加」筛选 + 挂 B 站跳转 ---------------- */
+// site/data/performances-manual.json 维护：
+//   rule:            { fromDate, requireTeam, excludeSubtitleKeywords } —— 近似规则（无实拍名单时用）
+//   herPerformances: 显式名称关键词数组（命中即保留，优先级高于 rule）
+//   bili:            [{ match, url }] —— 按名称模糊匹配挂 B 站链接
+// site/data/rosters.json 为 scripts/capture-roster.mjs 前瞻累积的「实拍名单」，按日期匹配，命中即以名单为准。
 const norm = (s) => String(s || '')
   .replace(/[０-９ａ-ｚＡ-Ｚ]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0)) // 全角转半角
   .toLowerCase()
@@ -50,31 +52,72 @@ function matchName(p, keyword) {
   return sub.includes(k) || hay.includes(k) || (sub.length >= 4 && k.includes(sub));
 }
 
-function enrichPerformances(list, manual) {
+const shDate = (ms) => (Number.isFinite(Number(ms)) ? new Date(Number(ms) + 8 * 3600 * 1000).toISOString().slice(0, 10) : '');
+
+function enrichPerformances(list, manual, rosters) {
+  const rule = manual?.rule || {};
+  const from = rule.fromDate ? Date.parse(rule.fromDate + 'T00:00:00+08:00') : null;
+  const requireTeam = rule.requireTeam || '';
+  const excSub = (rule.excludeSubtitleKeywords || []).filter(Boolean);
   const keys = (manual?.herPerformances || []).filter(Boolean);
   const bili = (manual?.bili || []).filter((x) => x && x.match);
-  let out = list;
-  if (keys.length) out = out.filter((p) => keys.some((k) => matchName(p, k)));
+
+  const rosterByDate = {};
+  for (const s of Object.values(rosters?.shows || {})) {
+    if (s?.date && Array.isArray(s.members) && s.members.length) rosterByDate[s.date] = s.members;
+  }
+
+  const teamsOf = (p) => (p.teamList || []).map((t) => t?.teamName).filter(Boolean);
+  const subHas = (p, kw) => norm((p.subTitle || '') + (p.title || '')).includes(norm(kw));
+  const hasRule = !!(from || requireTeam || excSub.length);
+
+  let dropped = 0, byRoster = 0;
+  const kept = [];
+  for (const p of list) {
+    const roster = rosterByDate[shDate(p.stime)];
+    if (roster) { // 1) 有实拍名单 → 以名单为准
+      if (roster.includes('王语晨')) { kept.push(p); byRoster++; } else dropped++;
+      continue;
+    }
+    if (keys.length && keys.some((k) => matchName(p, k))) { kept.push(p); continue; } // 2) 显式关键词
+    if (!hasRule) { kept.push(p); continue; } // 4) 无规则 → 全保留
+    const okDate = from == null || Number(p.stime) >= from;
+    const okTeam = !requireTeam || teamsOf(p).includes(requireTeam);
+    const okExc = !excSub.some((k) => subHas(p, k));
+    if (okDate && okTeam && okExc) kept.push(p); else dropped++; // 3) 规则近似
+  }
+
   let biliHit = 0;
-  out = out.map((p) => {
+  const out = kept.map((p) => {
     const hit = bili.find((b) => matchName(p, b.match));
     if (!hit) return p;
     biliHit++;
     return { ...p, biliUrl: hit.url };
   });
-  if (keys.length || bili.length) {
-    console.log(`  公演：筛选后 ${out.length}/${list.length} 条，挂上 B 站链接 ${biliHit} 条`);
+
+  if (hasRule || keys.length || bili.length) {
+    console.log(`  公演：保留 ${out.length}/${list.length}（筛掉 ${dropped}，其中按实拍名单保留 ${byRoster}）；挂 B 站链接 ${biliHit} 条；已累积名单天数 ${Object.keys(rosterByDate).length}`);
   }
   return out;
 }
 
 const manual = read('performances-manual.json') || {};
+const rosters = read('rosters.json') || { shows: {} };
 
 const archive = {
   meta: read('meta.json'),
   messages: read('messages.json', 'messages').map(slimMessage),
   live: read('live.json', 'live'),
-  performances: enrichPerformances(read('performances.json', 'performances'), manual)
+  performances: enrichPerformances(read('performances.json', 'performances'), manual, rosters)
+};
+
+// 页头统计以「实际渲染的条数」为准：公演经过筛选、直播经过补档合并，
+// 可能与 meta.json 里抓取时记录的原始计数不同（否则页头会显示 383 但列表只有 155）。
+archive.meta = archive.meta || {};
+archive.meta.counts = {
+  messages: archive.messages.length,
+  live: archive.live.length,
+  performances: archive.performances.length
 };
 
 const js = `/* 由 scripts/build-archive.mjs 自动生成，请勿手动编辑 */\nwindow.__ARCHIVE__ = ${JSON.stringify(archive)};\n`;

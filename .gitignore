@@ -11,3 +11,7 @@ site/data/*.bak
 
 # 项目级 agent 记忆（不入库）
 scraper/.workbuddy/
+
+# 补档断点游标（本机状态，不入库）
+scraper/.live-cursor.json
+scraper/.live-cursor.json.tmp

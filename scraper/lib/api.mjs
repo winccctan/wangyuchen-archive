@@ -181,20 +181,32 @@ export async function fetchMessagePage({ serverId, channelId, nextTime = 0, limi
 
 /* ------------------------- 直播 / 录播（按成员） ------------------------- */
 // POST /live/api/v1/live/getLiveList
-// body: { debug, next, groupId, userId, record }
+// body: { debug, next, groupId | userId, record }
+//
+// ⚠️ 两个必须踩对的坑（否则会退化成「翻全团列表、命中率仅 2%」）：
+//   1) **按成员查询时不能带 groupId** —— 同时传 groupId+userId 时服务端按 groupId 返回全团；
+//      只传 userId 才是「该成员的全部录播」。（实测：只传 userId → 20/20 条全是她）
+//   2) **next 必须非 0** —— next=0 时服务端忽略 userId（与 48tools requestLiveList 的 fix 一致）。
+//      故按成员翻页前，先用 fetchNewestLiveId() 取全团最新 liveId 作起点。
 export async function fetchLiveListPage({ groupId, userId, next, record }) {
-  const data = await postJson('/live/api/v1/live/getLiveList', {
-    debug: true,
-    next: String(next),
-    groupId,
-    userId,
-    record: !!record
-  });
+  const body = { debug: true, next: String(next), record: !!record };
+  if (userId !== undefined && userId !== null && String(userId) !== '') {
+    body.userId = Number(userId); // 按成员查询：只传 userId，切勿带 groupId
+  } else {
+    body.groupId = groupId;
+  }
+  const data = await postJson('/live/api/v1/live/getLiveList', body);
   const content = data?.content || {};
   return {
     list: Array.isArray(content.liveList) ? content.liveList : [],
     next: content.next ?? '0'
   };
+}
+
+// 取「全团最新一条录播」的 liveId，作为按成员翻页的 next 起点（见上面坑 2）
+export async function fetchNewestLiveId({ groupId, record = true } = {}) {
+  const { list } = await fetchLiveListPage({ groupId, next: '0', record });
+  return list[0]?.liveId || '0';
 }
 
 /* ------------------------- 公演（官方公开直播/录播） ------------------------- */
