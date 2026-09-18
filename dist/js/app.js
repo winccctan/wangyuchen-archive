@@ -101,15 +101,15 @@ const PROFILE = {
       ]
     }
   ],
-  // 公式照（按年份分组）：2024/2025 来自微博，2026 来自 SNH48 官网成员资料
+  // 公式照（按年份倒序分组）：2026 官网，2025 白礼服+皇冠、2024 蓝格纹礼服（均来自微博）
   galleryByYear: [
     {
-      year: '2024',
-      source: '微博',
+      year: '2026',
+      source: 'SNH48 官网成员资料',
       photos: [
-        './assets/gs2024-1.jpg',
-        './assets/gs2024-2.jpg',
-        './assets/gs2024-3.jpg'
+        './assets/member-gs1.jpg',
+        './assets/member-gs2.jpg',
+        './assets/member-gs4.jpg'
       ]
     },
     {
@@ -119,17 +119,17 @@ const PROFILE = {
         './assets/gs2025-1.jpg',
         './assets/gs2025-2.jpg',
         './assets/gs2025-3.jpg',
-        './assets/gs2025-4.jpg',
-        './assets/gs2025-5.jpg'
+        './assets/gs2025-4.jpg'
       ]
     },
     {
-      year: '2026',
-      source: 'SNH48 官网成员资料',
+      year: '2024',
+      source: '微博',
       photos: [
-        './assets/member-gs1.jpg',
-        './assets/member-gs2.jpg',
-        './assets/member-gs4.jpg'
+        './assets/gs2024-1.jpg',
+        './assets/gs2024-2.jpg',
+        './assets/gs2024-3.jpg',
+        './assets/gs2024-4.jpg'
       ]
     }
   ],
