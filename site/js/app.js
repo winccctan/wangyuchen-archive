@@ -230,42 +230,32 @@ async function translateText(text, target) {
     return t;
   };
 
-  // 多个翻译源，**并行竞速**：谁先成功用谁（并行可避免被墙源拖慢整体；单源失败不影响其它）。
+  // 翻译源按「质量优先」依次尝试（前一个失败才用下一个）：
+  //   1) Google 直连         —— 质量最好（海外/镜像可用；大陆被墙会快速失败后自动降级）
+  //   2) 同域代理 /translate —— Cloudflare Workers AI 翻译（稳定可用、含大陆；质量中等）
+  //   3) MyMemory            —— 公共兜底
   const sources = [];
-  if (proxyOk !== false) sources.push({ kind: 'proxy', url: `/translate?tl=${tl}&q=${q}`, parse: pParse });
-  sources.push({ kind: 'google', url: gUrl, parse: gParse });
-  sources.push({ kind: 'mymemory', url: `https://api.mymemory.translated.net/get?langpair=zh|${target}&q=${q}`, parse: mmParse });
-  sources.push({ kind: 'allorigins', url: `https://api.allorigins.win/raw?url=${encodeURIComponent(gUrl)}`, parse: gParse });
-  sources.push({ kind: 'codetabs', url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(gUrl)}`, parse: gParse });
+  sources.push({ kind: 'google', url: gUrl, parse: gParse, timeout: 2500 });
+  if (proxyOk !== false) sources.push({ kind: 'proxy', url: `/translate?tl=${tl}&q=${q}`, parse: pParse, timeout: 9000 });
+  sources.push({ kind: 'mymemory', url: `https://api.mymemory.translated.net/get?langpair=zh|${target}&q=${q}`, parse: mmParse, timeout: 6000 });
 
   const errs = []; // 记录每个源失败原因，便于用户反馈时定位
-  const attempt = (s) => new Promise((resolve, reject) => {
+  for (const s of sources) {
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 8000); // 单源超时上限
-    fetch(s.url, { cache: 'no-store', signal: ctrl.signal })
-      .then((r) => {
-        if (s.kind === 'proxy') proxyOk = r.ok; // 记录代理可用性（404 后不再请求）
-        if (!r.ok) throw new Error('HTTP' + r.status);
-        return r.json();
-      })
-      .then((d) => {
-        const out = s.parse(d);
-        if (!out) throw new Error('空');
-        resolve(out);
-      })
-      .catch((e) => {
-        if (s.kind === 'proxy') proxyOk = false;
-        errs.push(`${s.kind}=${(e && e.name) || 'err'}`);
-        reject(e);
-      })
-      .finally(() => clearTimeout(timer));
-  });
-
-  try {
-    return await Promise.any(sources.map(attempt));
-  } catch {
-    throw new Error(errs.join(' / ') || '全部翻译源失败');
+    const timer = setTimeout(() => ctrl.abort(), s.timeout);
+    try {
+      const r = await fetch(s.url, { cache: 'no-store', signal: ctrl.signal });
+      if (s.kind === 'proxy') proxyOk = r.ok; // 记录代理可用性（失败后不再请求）
+      if (!r.ok) { errs.push(`${s.kind}=HTTP${r.status}`); continue; }
+      const out = s.parse(await r.json());
+      if (out) return out;
+      errs.push(`${s.kind}=空`);
+    } catch (e) {
+      errs.push(`${s.kind}=${(e && e.name) || '网络错误'}`);
+      if (s.kind === 'proxy') proxyOk = false;
+    } finally { clearTimeout(timer); }
   }
+  throw new Error(errs.join(' / ') || '全部翻译源失败');
 }
 
 // 从缓存生成译文块（已展开但缓存缺失时返回「翻译中…」占位）
