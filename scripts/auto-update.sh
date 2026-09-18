@@ -71,15 +71,44 @@ run_once() {
         commit -q -m "auto: 增量补档 $(date '+%Y-%m-%d %H:%M')"
   fi
 
-  echo "[4/4] 推送到 GitHub (main) ..."
+  echo "[4/5] 推送到 GitHub (main) ..."
   if [ -n "${GH_TOKEN:-}" ]; then
     git push "https://${GH_TOKEN}@github.com/winccctan/wangyuchen-archive.git" main
   else
     git push origin main
   fi
 
-  # 注意：不再同步 gh-pages 镜像。Cloudflare Workers（Git 构建）会构建所有分支，
-  # 而 gh-pages 分支只有 dist/ 静态文件、没有 wrangler.jsonc，构建必然失败 —— 已弃用该镜像。
+  echo "[5/5] 同步分支镜像 (gh-pages) ..."
+  # 该分支用于 GitHub Pages 镜像。注意：Cloudflare Workers（Git 构建）会构建**所有分支**，
+  # 所以镜像分支根目录也要放一份 wrangler.jsonc + worker/，否则 Wrangler 会报
+  # "Missing entry-point to Worker script or to assets directory" 而构建失败。
+  # 这里让镜像分支的 Worker 配置与 main 等价（静态目录改为分支根 ./），内容一致、无副作用。
+  local TMP="$(mktemp -d)"
+  cp -R dist/. "$TMP/"
+  mkdir -p "$TMP/worker"
+  cp worker/index.js "$TMP/worker/index.js"
+  cat > "$TMP/wrangler.jsonc" <<'JSONC'
+{
+  "name": "wangyuchen-archive",
+  "compatibility_date": "2026-09-17",
+  "main": "worker/index.js",
+  "assets": { "directory": "./", "binding": "ASSETS", "run_worker_first": true },
+  "ai": { "binding": "AI" }
+}
+JSONC
+  touch "$TMP/.nojekyll"
+  ( cd "$TMP" \
+    && git init -q && git add -A \
+    && git -c user.email=archive@local -c user.name=wangyuchen-archive \
+          commit -q -m "auto: mirror update $(date '+%Y-%m-%d %H:%M')" \
+    && git branch -M gh-pages \
+    && if [ -n "${GH_TOKEN:-}" ]; then \
+         git push -f "https://${GH_TOKEN}@github.com/winccctan/wangyuchen-archive.git" gh-pages; \
+       else \
+         git push -f origin gh-pages; \
+       fi )
+  rm -rf "$TMP"
+
   echo "✓ 完成：GitHub 已更新，Cloudflare Workers（Git 构建）将自动部署最新版本"
 }
 
