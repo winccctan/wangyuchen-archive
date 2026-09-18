@@ -5,7 +5,7 @@
       "coverPath": "/2026/0917/89653517x1gsy4pbdn801ivhc8ubhfr4.jpg",
       "title": "1",
       "liveType": 1,
-      "status": 2,
+      "status": 3,
       "ctime": "1789656871612",
       "userInfo": {
         "userId": "89653517",
@@ -39,7 +39,8 @@
       "coverHeight": 1104,
       "onlineUserNum": 1263,
       "agentId": "0",
-      "playUrl": ""
+      "playUrl": "",
+      "duration": "01:12:50"
     },
     {
       "liveId": "1306046852958588928",
