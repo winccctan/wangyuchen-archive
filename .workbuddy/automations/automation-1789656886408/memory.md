@@ -20,3 +20,15 @@
 ## 注意（后续触发参考）
 - 该脚本循环模式此前可能从未成功运行过（历史 auto commit 来自非 LOOP 的单次调用）。本次已修正。
 - 每小时触发时若上一实例仍在（锁存在）会自动跳过；正常情况下 55 分钟运行会在整点前结束并释放锁。
+
+## 2026-09-18 20:51 (GMT+9) 触发
+- 锁不存在，启动 `LOOP=1 bash scripts/auto-update.sh`（后台任务 Yxhfut，约 55 分钟自退）。首轮抓取正常（口袋发言 54657→54660，新增 3），重建 dist 并提交 0299cc4。
+- **⚠️ 关键故障（需上报用户）：`git push main` 被拒 `! [rejected] main -> main (fetch first)`**。经核查，远程 main 顶端为 `f3819ee auto: 增量补档 2026-09-18 10:28 UTC`（author=archive@local，UTC 时区），本地 main 顶端为 0299cc4（GMT+9），本地还领先 2 笔提交（9ce7a76, 0299cc4）。根因＝**存在另一套环境的克隆在并行向同一仓库 main 推送**（同一自动化被重复运行；两边提交消息时区不同 GMT+9 vs UTC 可佐证）。脚本因 `git push ... || true` 容错而仍 exit 0 并打印"完成"，但 main（Cloudflare Pages）实际未更新，公开站点缺本克隆的增量；gh-pages 强制更新成功但用的是本克隆不完整数据（缺 f3819ee 的 71 行发言）。
+- 后果：main 与 gh-pages 两个公开镜像均不再完整（各缺对方数据）。循环继续运行，每轮 main push 持续失败、gh-pages 持续被本克隆覆盖。
+- 未改动 scraper/.env 或任何配置。建议：① 定位并停用重复运行的自动化实例；② 由我做一次受控合并（rebase/merge 两克隆的 site/data 后统一推送 main+gh-pages）以恢复完整——涉及 git surgery，需用户确认后再做。
+
+## 2026-09-18 18:51 (GMT+9) 触发
+- 锁不存在，正常启动 `LOOP=1 bash scripts/auto-update.sh`（后台任务 C3LeCX，日志 /tmp/wyc-loop.log，约 55 分钟后自退）。
+- **前期 workflow-scope 阻塞已解除**：工作流提交 2e2809f 已在 origin/main，首轮 main push `4acea09..b8ca6ed main -> main` 成功 → Cloudflare Pages（Connect to Git 接 main）随 push 正常重新部署。
+- **⚠️ 新故障（被 `run_once || true` 吞掉、脚本仍 exit 0，但每轮真实发生）：gh-pages 镜像同步失败** `fatal: could not read Username for 'https://github.com': terminal prompts disabled`。根因：auto-update.sh 从 scraper/.env 读取 GH_TOKEN 但**未 export**，子进程 scripts/mirror-gh-pages.sh 看不到 GH_TOKEN，回退到明文 URL 而失败。主站（Cloudflare）不受影响；gh-pages 备份分支停更。修复需给 auto-update.sh 加一行 `export GH_TOKEN`（改脚本非 scraper/.env），按用户"不要改动配置"要求未改，待用户确认。
+- 抓取正常（JP 代理）：首轮 口袋发言 54657 / 直播 783 / 公演 383，无新增但数据文件有变动 → 仍重建 dist 并提交推送。
