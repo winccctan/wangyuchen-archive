@@ -322,41 +322,75 @@ async function translateAllVisible() {
 }
 
 /* ---------------- 数据加载 ---------------- */
-// file:// 直接打开：fetch 被 CORS 拦截，只能靠注入 <script> 加载 archive.js。
-// HTTP 部署：每次都「强制不走缓存」拉最新的 archive.js，
-//   这样重新上传新数据后，访客刷新页面 / 点「检查更新」即可看到最新，无需硬刷新。
-async function loadArchive() {
-  if (location.protocol === 'file:') {
-    if (!window.__ARCHIVE__) {
-      await new Promise((resolve, reject) => {
-        const s = document.createElement('script');
-        s.src = './data/archive.js';
-        s.onload = resolve;
-        s.onerror = () => reject(new Error('加载 data/archive.js 失败'));
-        document.body.appendChild(s);
-      });
+// 加载策略（兼顾「快」与「新」，且对手机/弱网友好）：
+//   ① 先用 ~500 字节的 meta.json 取当前数据版本（lastUpdated），该请求每次都取最新（开销可忽略）；
+//   ② 再以 <script src="./data/archive.js?v=<版本>"> 加载大文件：
+//        数据没变 → 版本号没变 → 浏览器/CDN 直接命中缓存（秒开，不再重下十几 MB）；
+//        数据一变 → 版本号随之变化 → URL 不同 → 自动拉到最新，且不会命中旧缓存。
+//   ③ 失败自动换一种 URL 再试一次（弱网、连接中断很常见），仍失败才提示，并附上真实原因。
+// 说明：改用 <script> 注入而非 fetch + new Function()，让浏览器原生解析，
+//      避免再把十几 MB 的源码字符串复制一份交给 V8 编译，显著降低手机端内存峰值。
+function injectScript(src) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = src;
+    s.async = true;
+    s.onload = () => { if (s.parentNode) s.parentNode.removeChild(s); resolve(); };
+    s.onerror = () => { if (s.parentNode) s.parentNode.removeChild(s); reject(new Error('无法下载数据文件 data/archive.js')); };
+    (document.head || document.body).appendChild(s);
+  });
+}
+
+// 取当前数据版本：用体积极小的 meta.json（每次都强制取最新）。取不到则返回空串。
+async function dataVersion() {
+  try {
+    const r = await fetch(`./data/meta.json?t=${Date.now()}`, { cache: 'no-store' });
+    if (r.ok) {
+      const m = await r.json();
+      if (m && m.lastUpdated) return String(m.lastUpdated);
     }
-    return window.__ARCHIVE__;
+  } catch (_) { /* 取不到版本就退回不带版本号的 URL */ }
+  return '';
+}
+
+async function loadArchive() {
+  const isFile = location.protocol === 'file:';
+  let candidates;
+  if (isFile) {
+    // file:// 下带查询串会取不到文件，只能直接加载
+    candidates = ['./data/archive.js'];
+  } else {
+    const ver = await dataVersion();
+    candidates = ver
+      ? [`./data/archive.js?v=${encodeURIComponent(ver)}`, `./data/archive.js?t=${Date.now()}`]
+      : [`./data/archive.js?t=${Date.now()}`];
   }
-  // HTTP(S)：?t= 让每次请求都是不同 URL，绕过浏览器与 CDN 缓存；no-store 双保险。
-  const res = await fetch(`./data/archive.js?t=${Date.now()}`, { cache: 'no-store' });
-  if (!res.ok) throw new Error(`加载 archive.js 失败: ${res.status}`);
-  const text = await res.text();
-  const data = new Function(`${text}\n;return window.__ARCHIVE__;`)();
-  window.__ARCHIVE__ = data;
-  return data;
+  let lastErr = null;
+  for (const src of candidates) {
+    try {
+      await injectScript(src);
+      if (window.__ARCHIVE__) return window.__ARCHIVE__;
+      lastErr = new Error('数据文件内容为空');
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr || new Error('加载数据文件 data/archive.js 失败');
 }
 
 async function init() {
   let data = null;
+  let err = null;
   try {
     data = await loadArchive();
   } catch (e) {
-    if (window.__ARCHIVE__) data = window.__ARCHIVE__; // 兜底层
+    err = e;
+    if (window.__ARCHIVE__) data = window.__ARCHIVE__; // 兜底层：拿不到新数据时先用已加载的旧数据
   }
   if (!data) {
     document.querySelector('.content').innerHTML =
-      `<div class="empty-state">数据加载失败，请确认已部署 data/archive.js 或先用 file:// 打开。<br/>错误：${escapeHtml((data && '') || '未知')}</div>`;
+      `<div class="empty-state">数据加载失败：${escapeHtml((err && err.message) || '未知原因')}<br/>` +
+      `请检查网络后刷新重试；若持续失败，说明数据可能尚未部署完成。</div>`;
     return;
   }
   DATA.meta = data.meta;
