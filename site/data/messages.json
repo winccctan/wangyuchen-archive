@@ -1,6 +1,77 @@
 {
   "messages": [
     {
+      "msgIdServer": "7399805209",
+      "msgTime": 1789726915393,
+      "msgType": "TEXT",
+      "text": "但是上面怎么是空的",
+      "reply": null,
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟",
+        "avatar": "/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif"
+      },
+      "raw": {
+        "bodys": "但是上面怎么是空的",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\",\"teamLogo\":\"/mediasource/teamLogo2/all/gnz48_n3.png\",\"avatar\":\"/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif\",\"level\":4,\"roleId\":3,\"vip\":false,\"pfUrl\":\"/backstage/2025/0822/aiy8n5febvwm8b435ysn8nk.png\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "TEXT"
+      }
+    },
+    {
+      "msgIdServer": "7399756468",
+      "msgTime": 1789726888621,
+      "msgType": "IMAGE",
+      "text": "",
+      "reply": null,
+      "images": [
+        "https://kd48-nosdn.yunxinsvr.com/NDA5MzEwOA==/bmltYV8xMTMzMjAyNjQ4MDBfMTc4OTU1NDg2NDI4Ml9hZGIwYTNhZS05MTRlLTRkMDQtOGJjOS1iYzA0NzE5MmUyZTQ="
+      ],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟",
+        "avatar": "/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif"
+      },
+      "raw": {
+        "bodys": "{\"size\":1407276,\"ext\":\"jpg\",\"w\":4284,\"url\":\"https:\\/\\/kd48-nosdn.yunxinsvr.com\\/NDA5MzEwOA==\\/bmltYV8xMTMzMjAyNjQ4MDBfMTc4OTU1NDg2NDI4Ml9hZGIwYTNhZS05MTRlLTRkMDQtOGJjOS1iYzA0NzE5MmUyZTQ=\",\"md5\":\"c17cbd589c43f27378313bbb52594d31\",\"h\":5712}",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\",\"teamLogo\":\"/mediasource/teamLogo2/all/gnz48_n3.png\",\"avatar\":\"/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif\",\"level\":4,\"roleId\":3,\"vip\":false,\"pfUrl\":\"/backstage/2025/0822/aiy8n5febvwm8b435ysn8nk.png\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "IMAGE"
+      }
+    },
+    {
+      "msgIdServer": "7399756789",
+      "msgTime": 1789726876556,
+      "msgType": "TEXT",
+      "text": "好大一杯奶茶",
+      "reply": null,
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟",
+        "avatar": "/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif"
+      },
+      "raw": {
+        "bodys": "好大一杯奶茶",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\",\"teamLogo\":\"/mediasource/teamLogo2/all/gnz48_n3.png\",\"avatar\":\"/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif\",\"level\":4,\"roleId\":3,\"vip\":false,\"pfUrl\":\"/backstage/2025/0822/aiy8n5febvwm8b435ysn8nk.png\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "TEXT"
+      }
+    },
+    {
       "msgIdServer": "7399493922",
       "msgTime": 1789711141052,
       "msgType": "IMAGE",
