@@ -1051,6 +1051,20 @@ function liveStatusBadge(status) {
   return '<span class="badge end">已结束</span>';
 }
 
+// 直播「结束判定」前端兜底：口袋48 的直播结束后若官方未生成回放，该条目会从
+// 「直播中」「录播」两个列表同时消失，抓取端拿不到状态更新，本地 status 可能仍停在 2。
+// 这里按开播时间兜底：开播已超过 6 小时仍标记「直播中」的，一律按已结束呈现。
+// （单场口袋直播极少超过 6 小时，阈值足够安全；抓取端正常时不会走到这里。）
+const LIVE_STALE_MS = 6 * 3600 * 1000;
+function displayStatus(item) {
+  const s = Number(item.status);
+  if (s === 2 && item.ctime) {
+    const started = Number(item.ctime);
+    if (Number.isFinite(started) && started > 0 && Date.now() - started > LIVE_STALE_MS) return 3;
+  }
+  return s;
+}
+
 // 视频播放器（hls.js 播放 m3u8；Safari 原生支持）
 let hlsInstance = null;
 function setPlayerStatus(text, isError) {
@@ -1130,9 +1144,12 @@ function renderCard(item, timeKey) {
   const time = fmtDate(item[timeKey]) + ' ' + fmtTime(item[timeKey]);
   const playNum = item.playNum || item.playCount || '';
   const canPlay = !!item.playUrl;
+  const st = displayStatus(item);
   // 排期累积来的场次（尚未开演 / 尚无录播）标记为 upcoming；
   // playUrlDead = 官方回放流已失效（ts.48.cn），此时若挂了 B 站备用源就只显示 B 站按钮
-  const noPlayText = item.upcoming ? '即将开演' : (item.playUrlDead ? '官方回放已失效' : '无视频');
+  const noPlayText = item.upcoming ? '即将开演'
+    : (item.playUrlDead ? '官方回放已失效'
+    : (timeKey === 'ctime' && st === 3 ? '无回放' : '无视频'));
   const playBtn = canPlay
     ? `<button class="play-btn" data-play="${escapeHtml(item.playUrl)}" data-title="${escapeHtml(title + ' · ' + time)}">▶ 播放</button>`
     : (item.biliUrl ? '' : `<span class="no-play">${noPlayText}</span>`);
@@ -1146,7 +1163,7 @@ function renderCard(item, timeKey) {
       <p class="card-title">${escapeHtml(title)}</p>
       ${sub ? `<p class="card-sub">${escapeHtml(sub)}</p>` : ''}
       <div class="card-meta">
-        ${item.upcoming ? '<span class="badge soon">即将开始</span>' : liveStatusBadge(item.status)}
+        ${item.upcoming ? '<span class="badge soon">即将开始</span>' : liveStatusBadge(st)}
         <span>🕒 ${escapeHtml(time)}</span>
         ${playNum ? `<span>▶ ${escapeHtml(String(playNum))}</span>` : ''}
       </div>
