@@ -406,15 +406,19 @@ function showToast(msg, isError, linkUrl) {
   t._timer = setTimeout(() => t.classList.remove('show'), 4200);
 }
 
-/* ---------------- 刷新：仅拉取已部署的最新数据 ----------------
- * 真实抓取由 GitHub Actions 每小时 cron 自动完成；本按钮只重新加载当前已部署的数据，
- * 不触发抓取、不弹提示、不开新标签，对外完全无感。 */
+/* ---------------- 刷新：触发一次最新抓取 + 拉取最新数据 ----------------
+ * 点刷新 = 经 Worker 静默触发一次后台抓取（Worker 内部有 15 分钟冷却，粉丝狂点也不会把 GitHub 打爆），
+ * 随后立即重新加载当前已部署的最新数据。全程不弹提示、不开新标签，对外完全无感；
+ * 若 Cloudflare 密钥未配置导致触发失败，则仅拉取最新数据，不影响浏览。 */
 async function checkForUpdates() {
   const btn = document.getElementById('refreshBtn');
   if (!btn || btn.disabled) return;
   const oldText = btn.textContent;
   btn.disabled = true;
   btn.textContent = '刷新中…';
+  // 1) 静默触发一次后台抓取（失败也不提示）
+  fetch('/scrape', { method: 'POST', cache: 'no-store' }).catch(() => {});
+  // 2) 重新加载当前已部署的最新数据（?t= 绕过缓存，粉丝点一下即见最新快照）
   try {
     const data = await loadArchive();
     DATA.meta = data.meta;
