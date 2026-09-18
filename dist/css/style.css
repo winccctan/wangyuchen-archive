@@ -223,6 +223,14 @@ body {
 }
 .play-btn:hover { background: var(--primary-dark); }
 .no-play { font-size: 12px; color: var(--muted); }
+/* B 站跳转（无录播时的手工补充链接，按名称匹配挂上） */
+.bili-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: #fb7299; color: #fff; border: none; text-decoration: none;
+  padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 600;
+  transition: background .15s;
+}
+.bili-btn:hover { background: #e55c86; color: #fff; }
 
 /* 视频播放器弹窗 */
 .player-modal {

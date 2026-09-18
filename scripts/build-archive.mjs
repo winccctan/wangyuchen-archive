@@ -32,11 +32,49 @@ function slimMessage(m) {
   return m;
 }
 
+/* ---------------- 公演：按「她参加」筛选 + 挂 B 站跳转（手工维护） ---------------- */
+// 接口没有参演成员数据，无法自动判断她参加了哪些公演；改由 site/data/performances-manual.json 手工维护：
+//   herPerformances: 名称关键词数组（非空时，公演页只保留命中的）
+//   bili: [{ match: 关键词, url: B站链接 }] —— 按名称模糊匹配挂到对应公演
+const norm = (s) => String(s || '')
+  .replace(/[０-９ａ-ｚＡ-Ｚ]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0)) // 全角转半角
+  .toLowerCase()
+  .replace(/[\s\u3000]/g, '')
+  .replace(/[《》「」『』（）()[\]【】·・:：,，.。!！?？~～\-—_/\\|'"“”‘’]/g, '');
+
+function matchName(p, keyword) {
+  const k = norm(keyword);
+  if (!k) return false;
+  const sub = norm(p.subTitle);
+  const hay = norm((p.title || '') + (p.subTitle || ''));
+  return sub.includes(k) || hay.includes(k) || (sub.length >= 4 && k.includes(sub));
+}
+
+function enrichPerformances(list, manual) {
+  const keys = (manual?.herPerformances || []).filter(Boolean);
+  const bili = (manual?.bili || []).filter((x) => x && x.match);
+  let out = list;
+  if (keys.length) out = out.filter((p) => keys.some((k) => matchName(p, k)));
+  let biliHit = 0;
+  out = out.map((p) => {
+    const hit = bili.find((b) => matchName(p, b.match));
+    if (!hit) return p;
+    biliHit++;
+    return { ...p, biliUrl: hit.url };
+  });
+  if (keys.length || bili.length) {
+    console.log(`  公演：筛选后 ${out.length}/${list.length} 条，挂上 B 站链接 ${biliHit} 条`);
+  }
+  return out;
+}
+
+const manual = read('performances-manual.json') || {};
+
 const archive = {
   meta: read('meta.json'),
   messages: read('messages.json', 'messages').map(slimMessage),
   live: read('live.json', 'live'),
-  performances: read('performances.json', 'performances')
+  performances: enrichPerformances(read('performances.json', 'performances'), manual)
 };
 
 const js = `/* 由 scripts/build-archive.mjs 自动生成，请勿手动编辑 */\nwindow.__ARCHIVE__ = ${JSON.stringify(archive)};\n`;
