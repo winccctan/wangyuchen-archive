@@ -31,11 +31,7 @@
 
   <div class="toolbar">
     <input type="search" id="searchInput" placeholder="搜索发言内容 / 标题…" />
-    <div class="date-filter" id="dateFilter" hidden>
-      <label>从 <input type="date" id="dateFrom" /></label>
-      <label>至 <input type="date" id="dateTo" /></label>
-      <button id="dateClear">清除</button>
-    </div>
+    <button id="dateToggleBtn" class="date-toggle-btn" type="button" title="按时间筛选" hidden>📅 时间</button>
     <span class="updated" id="updatedAt"></span>
     <select id="langSelect" class="lang-select" title="选择翻译语言">
       <option value="zh">中文</option>
@@ -67,6 +63,25 @@
       <div class="player-title" id="playerTitle"></div>
       <video id="playerVideo" controls autoplay playsinline></video>
       <div class="player-hint" id="playerHint"></div>
+    </div>
+  </div>
+
+  <!-- 时间筛选弹窗（点确认才刷新） -->
+  <div class="date-modal" id="dateModal" hidden>
+    <div class="date-box">
+      <div class="date-title">按时间筛选</div>
+      <label class="date-field">从 <input type="date" id="dateFrom" /></label>
+      <label class="date-field">至 <input type="date" id="dateTo" /></label>
+      <div class="date-quick">
+        <button type="button" data-quick="all">全部</button>
+        <button type="button" data-quick="7">近 7 天</button>
+        <button type="button" data-quick="30">近 30 天</button>
+        <button type="button" data-quick="90">近 90 天</button>
+      </div>
+      <div class="date-actions">
+        <button type="button" id="dateCancel">取消</button>
+        <button type="button" id="dateConfirm" class="primary">确认</button>
+      </div>
     </div>
   </div>
 

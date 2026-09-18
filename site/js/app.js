@@ -141,6 +141,12 @@ function fmtTime(ts) {
   if (isNaN(d)) return '';
   return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
+// 时间戳 → <input type="date"> 需要的 YYYY-MM-DD（本地时区）
+function toDateInput(ts) {
+  const d = new Date(Number(ts));
+  if (isNaN(d)) return '';
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
 
 const TYPE_LABEL = {
   TEXT: '文字', IMAGE: '图片', REPLY: '回复', GIFTREPLY: '礼物回复',
@@ -370,7 +376,7 @@ async function init() {
   rebuildIndex();
   renderMeta();
   bindEvents();
-  renderAll();
+  switchTab(state.tab); // 走一遍 tab 切换逻辑：正确显示/隐藏「时间」按钮并渲染当前面板
 }
 
 function rebuildIndex() {
@@ -465,15 +471,38 @@ function bindEvents() {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
   });
   $('#searchInput').addEventListener('input', (e) => { state.query = e.target.value.trim().toLowerCase(); renderAll(); });
-  $('#dateFrom').addEventListener('change', (e) => { state.dateFrom = e.target.value ? new Date(e.target.value).getTime() : null; renderMessages(); });
-  $('#dateTo').addEventListener('change', (e) => {
-    state.dateTo = e.target.value ? new Date(e.target.value).getTime() + 86400000 : null; renderMessages();
-  });
-  $('#dateClear').addEventListener('click', () => {
-    state.dateFrom = state.dateTo = null;
-    $('#dateFrom').value = ''; $('#dateTo').value = '';
-    renderMessages();
-  });
+  // 时间筛选：弹窗 + 点「确认」才刷新；含「全部 / 近 N 天」快捷
+  const dateModal = document.getElementById('dateModal');
+  const openDateModal = () => {
+    $('#dateFrom').value = state.dateFrom ? toDateInput(state.dateFrom) : '';
+    $('#dateTo').value = state.dateTo ? toDateInput(state.dateTo - 1) : ''; // dateTo 存的是「次日 0 点」，回填减一天
+    dateModal.hidden = false;
+  };
+  const closeDateModal = () => { dateModal.hidden = true; };
+  const dateToggle = document.getElementById('dateToggleBtn');
+  if (dateToggle) dateToggle.addEventListener('click', openDateModal);
+  if (dateModal) {
+    dateModal.addEventListener('click', (e) => { if (e.target === dateModal) closeDateModal(); });
+    document.getElementById('dateCancel').addEventListener('click', closeDateModal);
+    dateModal.querySelectorAll('[data-quick]').forEach((b) => {
+      b.addEventListener('click', () => {
+        const q = b.dataset.quick;
+        if (q === 'all') { $('#dateFrom').value = ''; $('#dateTo').value = ''; return; }
+        const days = Number(q) || 7;
+        $('#dateFrom').value = toDateInput(Date.now() - (days - 1) * 86400000);
+        $('#dateTo').value = toDateInput(Date.now());
+      });
+    });
+    document.getElementById('dateConfirm').addEventListener('click', () => {
+      const f = $('#dateFrom').value, t = $('#dateTo').value;
+      state.dateFrom = f ? new Date(f + 'T00:00:00').getTime() : null;          // 本地 0 点
+      state.dateTo = t ? new Date(t + 'T00:00:00').getTime() + 86400000 : null; // 次日 0 点（含当天）
+      closeDateModal();
+      state.dayLimit = 3;
+      renderMessages();
+      showToast(state.dateFrom || state.dateTo ? '✅ 已按时间筛选' : '✅ 已显示全部时间');
+    });
+  }
   // 图片放大预览：支持在新标签打开原图 / 下载，方便保存
   const lb = document.createElement('div');
   lb.className = 'lightbox';
@@ -564,7 +593,7 @@ function switchTab(name) {
   state.tab = name;
   document.querySelectorAll('.tab').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
   Object.entries(panels).forEach(([k, el]) => el.classList.toggle('active', k === name));
-  const df = $('#dateFilter');
+  const df = $('#dateToggleBtn');
   if (df) df.hidden = name !== 'messages';
   renderAll();
 }
