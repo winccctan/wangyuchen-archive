@@ -119,7 +119,27 @@ async function buildHeaders(token) {
   return headers;
 }
 
-async function postJson(path, body, { token } = {}) {
+// 网络抖动重试包装：代理出口偶发 socket hang up / ECONNREFUSED / 超时。
+// 长时间补抓（上千页）必须靠它扛住抖动，否则中途一断整批白跑（业务类错误不重试）。
+async function postJson(path, body, { token, retries = 5 } = {}) {
+  let lastErr;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await postJsonOnce(path, body, { token });
+    } catch (e) {
+      lastErr = e;
+      const msg = String((e && e.message) || e);
+      const retriable = /socket hang up|ECONNREFUSED|ECONNRESET|ETIMEDOUT|EAI_AGAIN|ENOTFOUND|timeout|超时|fetch failed|network|other side closed/i.test(msg);
+      if (!retriable || attempt === retries) throw e;
+      const wait = Math.min(5000, 700 * (attempt + 1));
+      console.warn(`[重试 ${attempt + 1}/${retries}] ${path}：${msg.slice(0, 90)}（${wait}ms 后重试）`);
+      await new Promise((r) => setTimeout(r, wait));
+    }
+  }
+  throw lastErr;
+}
+
+async function postJsonOnce(path, body, { token } = {}) {
   const url = API_BASE + path;
   const headers = await buildHeaders(token);
   const payload = JSON.stringify(body);

@@ -47,10 +47,17 @@ async function scrapeMessages() {
   const existing = (await loadJson(resolve(DATA_DIR, 'messages.json')))?.messages || [];
   const known = new Set(existing.map((m) => m.msgIdServer));
 
+  // 常规增量：从最新往回翻（取最新几页即可）。
+  // BACKFILL=1：从「现有最早一条」继续往回翻，用于补齐历史 —— 避免白翻已有页面（每页仅 50 条）。
   let nextTime = 0;
+  if (process.env.BACKFILL === '1' && existing.length) {
+    const oldestKnown = Math.min(...existing.map((m) => Number(m.msgTime) || Infinity));
+    if (Number.isFinite(oldestKnown)) nextTime = oldestKnown + 1;
+  }
   const merged = new Map(existing.map((m) => [m.msgIdServer, m]));
   let pages = 0;
   let total = existing.length;
+  let oldestTs = Infinity;
 
   console.log('[抓取] 口袋发言 ...');
   while (pages < MAX_PAGES) {
@@ -64,6 +71,8 @@ async function scrapeMessages() {
     if (!messages.length) break;
     let added = 0;
     for (const raw of messages) {
+      const t = Number(raw.msgTime);
+      if (t && t < oldestTs) oldestTs = t;
       if (known.has(raw.msgIdServer)) continue;
       known.add(raw.msgIdServer);
       merged.set(raw.msgIdServer, parseMessage(raw));
@@ -71,6 +80,9 @@ async function scrapeMessages() {
     }
     total += added;
     pages++;
+    if (pages === 1 || pages % 20 === 0) {
+      console.log(`  [发言] 第 ${pages} 页，本页 ${messages.length} 条，累计 ${total} 条，最早 ${oldestTs < Infinity ? new Date(oldestTs).toISOString().slice(0, 10) : '-'}`);
+    }
     if (!nt || nt === 0) break;
     nextTime = nt;
     await sleep(300);
@@ -108,6 +120,7 @@ async function scrapeLiveByMember(record) {
     if (!nx || nx === '0') break;
     next = nx;
     pages++;
+    if (pages % 20 === 0) console.log(`  [直播] record=${record} 第 ${pages} 页，已收集 ${all.size} 条`);
     await sleep(300);
   }
   return [...all.values()];
@@ -211,41 +224,55 @@ async function run() {
 
   const messages = await safe('口袋发言', scrapeMessages);
 
-  console.log('[抓取] 直播（直播中）...');
-  const liveNow = await safe('直播-直播中', () => scrapeLiveByMember(false));
-  console.log('[抓取] 直播（录播）...');
-  const liveRec = await safe('直播-录播', () => scrapeLiveByMember(true));
-  const liveOk = liveNow !== null || liveRec !== null;
-  const liveFresh = [...(liveNow || []), ...(liveRec || [])]
-    .filter((v, i, a) => a.findIndex((x) => x.liveId === v.liveId) === i)
-    .sort((a, b) => Number(b.ctime || 0) - Number(a.ctime || 0));
-  // 关键：与已有数据合并。翻页上限（MAX_PAGES）较小时本次只拿到最新几页，
-  // 若不合并会把历史直播/公演“截断”。新条目优先，旧条目保留。
-  const livePrev = ((await loadJson(resolve(DATA_DIR, 'live.json')))?.live) || [];
-  const liveMap = new Map(livePrev.map((m) => [String(m.liveId), m]));
-  for (const it of liveFresh) {
-    const k = String(it.liveId);
-    liveMap.set(k, { ...(liveMap.get(k) || {}), ...it });
+  const skipLive = process.env.SKIP_LIVE === '1';
+  let liveOk = false;
+  let liveList = [];
+  if (skipLive) {
+    console.log('[跳过] 直播 / 录播（SKIP_LIVE=1）');
+  } else {
+    console.log('[抓取] 直播（直播中）...');
+    const liveNow = await safe('直播-直播中', () => scrapeLiveByMember(false));
+    console.log('[抓取] 直播（录播）...');
+    const liveRec = await safe('直播-录播', () => scrapeLiveByMember(true));
+    liveOk = liveNow !== null || liveRec !== null;
+    const liveFresh = [...(liveNow || []), ...(liveRec || [])]
+      .filter((v, i, a) => a.findIndex((x) => x.liveId === v.liveId) === i)
+      .sort((a, b) => Number(b.ctime || 0) - Number(a.ctime || 0));
+    // 关键：与已有数据合并。翻页上限（MAX_PAGES）较小时本次只拿到最新几页，
+    // 若不合并会把历史直播/公演“截断”。新条目优先，旧条目保留。
+    const livePrev = ((await loadJson(resolve(DATA_DIR, 'live.json')))?.live) || [];
+    const liveMap = new Map(livePrev.map((m) => [String(m.liveId), m]));
+    for (const it of liveFresh) {
+      const k = String(it.liveId);
+      liveMap.set(k, { ...(liveMap.get(k) || {}), ...it });
+    }
+    liveList = [...liveMap.values()].sort((a, b) => Number(b.ctime || 0) - Number(a.ctime || 0));
   }
-  const liveList = [...liveMap.values()].sort((a, b) => Number(b.ctime || 0) - Number(a.ctime || 0));
 
-  console.log('[抓取] 公演（直播）...');
-  const perfNow = await safe('公演-直播', () => scrapePerformances(false));
-  console.log('[抓取] 公演（录播）...');
-  const perfRec = await safe('公演-录播', () => scrapePerformances(true));
-  const perfOk = perfNow !== null || perfRec !== null;
-  const perfFresh = [...(perfNow || []), ...(perfRec || [])]
-    .filter((v, i, a) => a.findIndex((x) => x.liveId === v.liveId) === i)
-    .sort((a, b) => Number(b.stime || b.ctime || 0) - Number(a.stime || a.ctime || 0));
-  // 同上：与已有公演数据合并，避免翻页上限导致历史被截断。
-  const perfPrev = ((await loadJson(resolve(DATA_DIR, 'performances.json')))?.performances) || [];
-  const perfMap = new Map(perfPrev.map((m) => [String(m.liveId), m]));
-  for (const it of perfFresh) {
-    const k = String(it.liveId);
-    perfMap.set(k, { ...(perfMap.get(k) || {}), ...it });
+  const skipPerf = process.env.SKIP_PERF === '1';
+  let perfOk = false;
+  let performances = [];
+  if (skipPerf) {
+    console.log('[跳过] 公演（SKIP_PERF=1）');
+  } else {
+    console.log('[抓取] 公演（直播）...');
+    const perfNow = await safe('公演-直播', () => scrapePerformances(false));
+    console.log('[抓取] 公演（录播）...');
+    const perfRec = await safe('公演-录播', () => scrapePerformances(true));
+    perfOk = perfNow !== null || perfRec !== null;
+    const perfFresh = [...(perfNow || []), ...(perfRec || [])]
+      .filter((v, i, a) => a.findIndex((x) => x.liveId === v.liveId) === i)
+      .sort((a, b) => Number(b.stime || b.ctime || 0) - Number(a.stime || a.ctime || 0));
+    // 同上：与已有公演数据合并，避免翻页上限导致历史被截断。
+    const perfPrev = ((await loadJson(resolve(DATA_DIR, 'performances.json')))?.performances) || [];
+    const perfMap = new Map(perfPrev.map((m) => [String(m.liveId), m]));
+    for (const it of perfFresh) {
+      const k = String(it.liveId);
+      perfMap.set(k, { ...(perfMap.get(k) || {}), ...it });
+    }
+    performances = [...perfMap.values()]
+      .sort((a, b) => Number(b.stime || b.ctime || 0) - Number(a.stime || a.ctime || 0));
   }
-  const performances = [...perfMap.values()]
-    .sort((a, b) => Number(b.stime || b.ctime || 0) - Number(a.stime || a.ctime || 0));
 
   // 补充视频播放地址（增量：已有 playUrl 的复用，避免重复请求）
   if (liveOk && liveList.length) {
