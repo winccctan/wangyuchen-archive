@@ -1,6 +1,8 @@
 // 王语晨补档站 - 前端逻辑
 const DATA = { meta: null, messages: [], live: [], performances: [] };
-const state = { tab: 'messages', query: '', dateFrom: null, dateTo: null, dayLimit: 3 };
+// msgKey → message，便于翻译时按 id 取到原文（重新渲染后 DOM 里只剩 mid）
+const MSG_INDEX = new Map();
+const state = { tab: 'messages', query: '', dateFrom: null, dateTo: null, dayLimit: 3, lang: 'zh', expanded: new Set() };
 
 const $ = (sel) => document.querySelector(sel);
 const panels = {
@@ -166,6 +168,111 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
+/* ---------------- 多语言翻译（浏览器按需，免费接口 + localStorage 缓存） ---------------- */
+// 目标语言：中 / 英 / 西 / 日 / 越 / 韩。选「中文」时不做任何翻译。
+// 翻译走 translate.googleapis.com 的公开 endpoint（浏览器端 CORS 已放行，无需密钥），
+// 每条译文按「语言 + 文本哈希」缓存到 localStorage，重复查看不再请求、离线也能读缓存。
+const TRANSLATE_ENDPOINT = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&dt=t';
+
+function strHash(s) {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = (((h << 5) + h) + s.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36);
+}
+function trCacheKey(text, lang) { return `wyc:tr:${lang}:${strHash(text)}`; }
+function trGet(text, lang) { try { return localStorage.getItem(trCacheKey(text, lang)); } catch { return null; } }
+function trSet(text, lang, val) { try { localStorage.setItem(trCacheKey(text, lang), val); } catch { /* 配额满则忽略 */ } }
+
+// 一条消息里所有可翻译的文本片段（正文 / 引用原话 / 卡片标题 / 描述）
+function trSegs(m) {
+  const segs = [];
+  if (m.text) segs.push({ label: '', text: m.text });
+  if (m.reply?.text) {
+    const who = m.reply.name ? `@${m.reply.name}：` : '';
+    segs.push({ label: '↩︎ ' + who, text: m.reply.text });
+  }
+  if (m.card?.title) segs.push({ label: '标题：', text: m.card.title });
+  if (m.card?.desc) segs.push({ label: '描述：', text: m.card.desc });
+  return segs;
+}
+function hasTranslatable(m) {
+  return !!(m.text || m.reply?.text || (m.card && (m.card.title || m.card.desc)));
+}
+// 稳定的消息 id（msgIdServer 可能缺失，兜底用 文本+时间 哈希）
+function msgKey(m) {
+  return m.msgIdServer || ('k' + strHash((m.text || '') + (m.reply?.text || '') + m.msgTime));
+}
+
+// 调接口翻译单段文本（失败抛错，由调用方决定如何展示）
+async function translateText(text, target) {
+  if (target === 'zh' || !text) return text;
+  const url = `${TRANSLATE_ENDPOINT}&tl=${encodeURIComponent(target)}&q=${encodeURIComponent(text)}`;
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const data = await res.json();
+  const out = (data[0] || []).map((seg) => seg[0]).join('');
+  return out || text;
+}
+
+// 从缓存生成译文块（已展开但缓存缺失时返回「翻译中…」占位）
+function trBlocksHtml(m, lang) {
+  return trSegs(m).map((s) => {
+    const t = trGet(s.text, lang);
+    const body = t != null
+      ? escapeHtml(t)
+      : '<span class="tr-loading">翻译中…</span>';
+    const lab = s.label ? `<span class="tr-label">${escapeHtml(s.label)}</span>` : '';
+    return `<div class="tr-item">${lab}<span class="tr-text">${body}</span></div>`;
+  }).join('');
+}
+
+// 翻译一条消息的全部片段，写入 #tr-<mid>；逐个请求并加微小间隔避免限流
+async function doTranslate(mid) {
+  const m = MSG_INDEX.get(mid);
+  if (!m) return;
+  const lang = state.lang;
+  if (lang === 'zh') return;
+  const segs = trSegs(m);
+  if (!segs.length) return;
+  for (const s of segs) {
+    let t = trGet(s.text, lang);
+    if (t == null) {
+      try {
+        t = await translateText(s.text, lang);
+        trSet(s.text, lang, t);
+      } catch {
+        t = '__ERR__';
+      }
+    }
+    s._t = t;
+    await new Promise((r) => setTimeout(r, 120));
+  }
+  const box = document.getElementById('tr-' + mid);
+  if (box) {
+    box.innerHTML = segs.map((s) =>
+      `<div class="tr-item">${s.label ? `<span class="tr-label">${escapeHtml(s.label)}</span>` : ''}` +
+      `<span class="tr-text">${s._t === '__ERR__' ? '<span class="tr-err">翻译失败，点「翻译」重试</span>' : escapeHtml(s._t)}</span></div>`
+    ).join('');
+  }
+}
+
+// 翻译当前可见的全部消息（带并发上限，避免一次性打爆接口）
+async function translateAllVisible() {
+  const boxes = [...panels.messages.querySelectorAll('.msg-tr')];
+  let i = 0;
+  const worker = async () => {
+    while (i < boxes.length) {
+      const box = boxes[i++];
+      const mid = box.id.replace(/^tr-/, '');
+      if (!MSG_INDEX.get(mid)) continue;
+      state.expanded.add(mid);
+      await doTranslate(mid);
+    }
+  };
+  panels.messages.querySelectorAll('.tr-btn').forEach((b) => { b.textContent = '🌐 隐藏翻译'; });
+  await Promise.all(Array.from({ length: 4 }, worker));
+}
+
 /* ---------------- 数据加载 ---------------- */
 // file:// 直接打开：fetch 被 CORS 拦截，只能靠注入 <script> 加载 archive.js。
 // HTTP 部署：每次都「强制不走缓存」拉最新的 archive.js，
@@ -208,9 +315,15 @@ async function init() {
   DATA.messages = data.messages || [];
   DATA.live = data.live || [];
   DATA.performances = data.performances || [];
+  rebuildIndex();
   renderMeta();
   bindEvents();
   renderAll();
+}
+
+function rebuildIndex() {
+  MSG_INDEX.clear();
+  for (const m of DATA.messages) MSG_INDEX.set(msgKey(m), m);
 }
 
 async function fetchJson(name) {
@@ -244,6 +357,7 @@ async function checkForUpdates() {
     DATA.messages = data.messages || [];
     DATA.live = data.live || [];
     DATA.performances = data.performances || [];
+    rebuildIndex();
     renderMeta();
     renderAll();
     const newCount = DATA.messages.length + DATA.live.length + DATA.performances.length;
@@ -272,6 +386,29 @@ function renderMeta() {
 function bindEvents() {
   const refreshBtn = document.getElementById('refreshBtn');
   if (refreshBtn) refreshBtn.addEventListener('click', checkForUpdates);
+
+  // 多语言：切换目标语言 → 清空展开态、显隐「翻译本页」、重渲染消息列表
+  const langSelect = document.getElementById('langSelect');
+  if (langSelect) {
+    langSelect.addEventListener('change', (e) => {
+      state.lang = e.target.value;
+      state.expanded.clear();
+      const trAll = document.getElementById('trAllBtn');
+      if (trAll) trAll.hidden = state.lang === 'zh';
+      if (state.tab === 'messages') renderMessages();
+    });
+  }
+  const trAllBtn = document.getElementById('trAllBtn');
+  if (trAllBtn) {
+    trAllBtn.addEventListener('click', async () => {
+      panels.messages.querySelectorAll('.msg-tr').forEach((box) => {
+        state.expanded.add(box.id.replace(/^tr-/, ''));
+      });
+      renderMessages();
+      await translateAllVisible();
+    });
+  }
+
   document.querySelectorAll('.tab').forEach((btn) => {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
   });
@@ -331,6 +468,24 @@ function bindEvents() {
 
   // 卡片「播放」按钮 + 新粉指南社交按钮（事件委托）
   document.querySelector('.content').addEventListener('click', (e) => {
+    // 翻译开关：点开才请求译文，再点收起
+    const trBtn = e.target.closest('.tr-btn');
+    if (trBtn) {
+      e.stopPropagation();
+      const mid = trBtn.dataset.mid;
+      const box = document.getElementById('tr-' + mid);
+      if (state.expanded.has(mid)) {
+        state.expanded.delete(mid);
+        trBtn.textContent = '🌐 翻译';
+        if (box) box.innerHTML = '';
+      } else {
+        state.expanded.add(mid);
+        trBtn.textContent = '🌐 隐藏翻译';
+        if (box) box.innerHTML = trBlocksHtml(MSG_INDEX.get(mid) || {}, state.lang);
+        doTranslate(mid);
+      }
+      return;
+    }
     const playBtn = e.target.closest('.play-btn');
     if (playBtn) {
       e.stopPropagation();
@@ -478,6 +633,16 @@ function renderMessages() {
       window.scrollTo(0, y);
     });
   }
+
+  // 已展开的消息：若译文块还停留在「翻译中…」占位（缓存缺失），异步补抓
+  if (state.lang !== 'zh' && state.expanded.size) {
+    shown.forEach((day) => groups[day].forEach((m) => {
+      const mid = msgKey(m);
+      if (!state.expanded.has(mid)) return;
+      const box = document.getElementById('tr-' + mid);
+      if (box && box.querySelector('.tr-loading')) doTranslate(mid);
+    }));
+  }
 }
 
 // 回复 / 礼物回复的引用块：她回复了谁、原话是什么
@@ -559,6 +724,17 @@ function renderMsg(m) {
     ? `<span class="msg-sender other">@${escapeHtml(m.sender.nickname)}</span>`
     : '';
 
+  // 多语言：选择非中文语言后，每条含文字的发言显示「翻译」开关（点开才请求，避免一次性打爆接口）
+  let footer = '';
+  if (state.lang !== 'zh' && hasTranslatable(m)) {
+    const mid = msgKey(m);
+    const expanded = state.expanded.has(mid);
+    footer = `<div class="msg-tr-row">
+      <button class="tr-btn" type="button" data-mid="${escapeHtml(mid)}">${expanded ? '🌐 隐藏翻译' : '🌐 翻译'}</button>
+      <div class="msg-tr" id="tr-${escapeHtml(mid)}">${expanded ? trBlocksHtml(m, state.lang) : ''}</div>
+    </div>`;
+  }
+
   return `<div class="msg${isSelf ? '' : ' from-other'}">
     <div class="msg-head">
       <span class="msg-time">${fmtTime(m.msgTime)}</span>
@@ -566,6 +742,7 @@ function renderMsg(m) {
       ${sender}
     </div>
     ${body}
+    ${footer}
   </div>`;
 }
 
