@@ -173,6 +173,7 @@ function escapeHtml(s) {
 // 翻译走 translate.googleapis.com 的公开 endpoint（浏览器端 CORS 已放行，无需密钥），
 // 每条译文按「语言 + 文本哈希」缓存到 localStorage，重复查看不再请求、离线也能读缓存。
 const TRANSLATE_ENDPOINT = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&dt=t';
+let proxyOk = null; // 同域代理是否可用：null=未探明 / true / false（首次探测后缓存，避免每次翻译都发无效请求）
 
 function strHash(s) {
   let h = 5381;
@@ -204,28 +205,44 @@ function msgKey(m) {
 }
 
 // 调接口翻译单段文本（失败抛错，由调用方决定如何展示）
-// 策略：① 先走同域代理 /translate（Cloudflare Pages Function，国内网络也能用）；
-//       ② 若代理不可用（GitHub Pages 镜像 / file:// 打开 / 代理未部署），兜底直连 Google 公开接口。
+// 多翻译源按顺序尝试，任一成功即用（覆盖国内/海外、镜像/file:// 各种网络环境）：
+//   1) /translate   ：本站 Cloudflare 边缘代理（国内可用、质量最佳；未部署时 404 自动跳过）
+//   2) google       ：直连 Google 公开接口（海外/镜像可用、质量最佳）
+//   3) mymemory     ：欧洲公共服务（国内可直连、CORS 已放行，作为兜底）
 async function translateText(text, target) {
   if (target === 'zh' || !text) return text;
   const q = encodeURIComponent(text);
   const tl = encodeURIComponent(target);
-  const parse = (data) => ((data && data[0]) || []).map((seg) => seg[0]).join('');
+  const gParse = (d) => ((d && d[0]) || []).map((s) => s[0]).join('');
 
-  // ① 同域代理
-  try {
-    const r = await fetch(`/translate?tl=${tl}&q=${q}`, { cache: 'no-store' });
-    if (r.ok) {
-      const out = parse(await r.json());
-      if (out) return out;
+  const sources = [];
+  if (proxyOk !== false) sources.push({ kind: 'proxy', url: `/translate?tl=${tl}&q=${q}`, parse: gParse });
+  sources.push({ kind: 'google', url: `${TRANSLATE_ENDPOINT}&tl=${tl}&q=${q}`, parse: gParse });
+  sources.push({
+    kind: 'mymemory',
+    url: `https://api.mymemory.translated.net/get?langpair=zh|${target}&q=${q}`,
+    parse: (d) => {
+      if (!d || d.responseStatus !== '200') return '';
+      const t = (d.responseData && d.responseData.translatedText) || '';
+      if (/MYMEMORY WARNING|QUOTA|YOU USED ALL/i.test(t)) return ''; // 额度耗尽 → 换下一个源
+      return t;
     }
-  } catch { /* 落到直连 */ }
+  });
 
-  // ② 直连 Google 公开接口
-  const res = await fetch(`${TRANSLATE_ENDPOINT}&tl=${tl}&q=${q}`, { cache: 'no-store' });
-  if (!res.ok) throw new Error('HTTP ' + res.status);
-  const out = parse(await res.json());
-  return out || text;
+  let lastErr;
+  for (const s of sources) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 3000); // 单个源超时，避免被墙的 Google 长时间挂起
+    try {
+      const r = await fetch(s.url, { cache: 'no-store', signal: ctrl.signal });
+      if (s.kind === 'proxy') proxyOk = r.ok; // 记录代理可用性（404 时后续跳过）
+      if (!r.ok) continue;
+      const out = s.parse(await r.json());
+      if (out && out !== text) return out; // 排除空或原样返回
+    } catch (e) { lastErr = e; if (s.kind === 'proxy') proxyOk = false; }
+    finally { clearTimeout(timer); }
+  }
+  throw lastErr || new Error('所有翻译源均失败');
 }
 
 // 从缓存生成译文块（已展开但缓存缺失时返回「翻译中…」占位）
