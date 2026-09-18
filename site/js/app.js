@@ -216,6 +216,7 @@ async function translateText(text, target) {
   const gParse = (d) => ((d && d[0]) || []).map((s) => s[0]).join('');
 
   const gUrl = `${TRANSLATE_ENDPOINT}&tl=${tl}&q=${q}`;
+  const pParse = (d) => (d && d.text) || ''; // 同域代理 /translate 返回 { text }（Workers AI 或 Google）
   const mmParse = (d) => {
     if (!d || d.responseStatus !== '200') return '';
     const t = (d.responseData && d.responseData.translatedText) || '';
@@ -225,7 +226,7 @@ async function translateText(text, target) {
 
   // 多个翻译源，**并行竞速**：谁先成功用谁（并行可避免被墙源拖慢整体；单源失败不影响其它）。
   const sources = [];
-  if (proxyOk !== false) sources.push({ kind: 'proxy', url: `/translate?tl=${tl}&q=${q}`, parse: gParse });
+  if (proxyOk !== false) sources.push({ kind: 'proxy', url: `/translate?tl=${tl}&q=${q}`, parse: pParse });
   sources.push({ kind: 'google', url: gUrl, parse: gParse });
   sources.push({ kind: 'mymemory', url: `https://api.mymemory.translated.net/get?langpair=zh|${target}&q=${q}`, parse: mmParse });
   sources.push({ kind: 'allorigins', url: `https://api.allorigins.win/raw?url=${encodeURIComponent(gUrl)}`, parse: gParse });
