@@ -87,8 +87,9 @@ for (const r of need.slice(0, MAX_DETAILS)) {
     const rec = store.shows[r.liveId];
     rec.subTitle = det.subTitle || rec.subTitle || '';
     rec.title = det.title || rec.title;
-    // fetchOpenLiveOne 已按「高清优先」给出 playStreamPath
-    rec.playUrl = det.playStreamPath || '';
+    // fetchOpenLiveOne 已按「高清优先」给出 playStreamPath。
+    // 官方部分场次给的是已失效的 ts.48.cn 域名，同样路径在 perform-vod.48.cn 上可用 → 直接改写。
+    rec.playUrl = (det.playStreamPath || '').replace('//ts.48.cn/', '//perform-vod.48.cn/');
     rec.streamCount = (det.streams || []).length;
     rec.fetchedAt = new Date().toISOString();
     done++;
