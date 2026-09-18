@@ -1,5 +1,10 @@
 {
-  "_说明": "手工维护。herPerformances=她参加的公演名称关键词（留空则不过滤、显示全部 TEAM NIII 公演）；bili=按名称模糊匹配的 B 站链接。构建时（scripts/build-archive.mjs）会据此筛选并挂上 B 站跳转。",
+  "_说明": "手工维护。rule=近似规则（无实拍名单时用）：stime>=fromDate、teamList 含 requireTeam、且 subTitle 不含 excludeSubtitleKeywords；herPerformances=显式名称关键词（命中即保留，优先于 rule）；bili=按名称模糊匹配的 B 站链接。site/data/rosters.json 为前瞻抓取的实拍名单，按日期优先。",
+  "rule": {
+    "fromDate": "2022-10-01",
+    "requireTeam": "TEAM NIII",
+    "excludeSubtitleKeywords": ["冷餐会"]
+  },
   "herPerformances": [],
   "bili": []
 }

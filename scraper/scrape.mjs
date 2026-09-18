@@ -96,17 +96,20 @@ async function scrapeMessages() {
 async function scrapeLiveByMember(record) {
   const all = new Map();
   let next = '0';
-  // 48tools 的修复逻辑：next=0 且指定 userId 时先用分组列表取最新 liveId 作为起点
-  if (!record) {
-    const first = await fetchLiveListPage({ groupId: MEMBER.groupId, userId: undefined, next: '0', record: false });
-    const top = first.list[0];
-    if (top) {
-      next = top.liveId;
-      if (String(top.userInfo?.userId) === String(MEMBER.userId)) all.set(top.liveId, top);
-    }
+  // 起点：next=0 时服务端会忽略 userId（返回全团），所以先取全团最新一条的 liveId 作为 next。
+  // 直播 / 录播两种模式都要播种（此前只对「直播」播种，导致录播退化成翻全团列表）。
+  const first = await fetchLiveListPage({ groupId: MEMBER.groupId, next: '0', record });
+  const top = first.list[0];
+  if (top) {
+    next = top.liveId;
+    // 起点那条若正好是她本人的，别漏掉
+    if (String(top.userInfo?.userId) === String(MEMBER.userId)) all.set(top.liveId, top);
   }
   let pages = 0;
+  let oldest = Infinity;   // 本页最早的时间（只返回她本人时，即她的回溯进度）
+  let scanned = 0;         // 已扫条目数
   while (pages < MAX_PAGES) {
+    // 注意：按成员查询时只传 userId、不带 groupId，服务端才会只返回她本人
     const { list, next: nx } = await fetchLiveListPage({
       groupId: MEMBER.groupId,
       userId: MEMBER.userId,
@@ -115,12 +118,18 @@ async function scrapeLiveByMember(record) {
     });
     if (!list.length) break;
     for (const it of list) {
+      const t = Number(it.ctime) || 0;
+      if (t && t < oldest) oldest = t;
+      scanned++;
       if (String(it.userInfo?.userId) === String(MEMBER.userId)) all.set(it.liveId, it);
     }
     if (!nx || nx === '0') break;
     next = nx;
     pages++;
-    if (pages % 20 === 0) console.log(`  [直播] record=${record} 第 ${pages} 页，已收集 ${all.size} 条`);
+    if (pages % 10 === 0) {
+      const d = Number.isFinite(oldest) ? new Date(oldest).toISOString().slice(0, 10) : '-';
+      console.log(`  [直播] record=${record} 第 ${pages} 页（共 ${scanned} 条，回溯至 ${d}），她本人 ${all.size} 条`);
+    }
     await sleep(300);
   }
   return [...all.values()];
@@ -222,7 +231,9 @@ async function safe(label, fn) {
 async function run() {
   await ensureDir(DATA_DIR);
 
-  const messages = await safe('口袋发言', scrapeMessages);
+  const skipMessages = process.env.SKIP_MESSAGES === '1';
+  const messages = skipMessages ? null : await safe('口袋发言', scrapeMessages);
+  if (skipMessages) console.log('[跳过] 口袋发言（SKIP_MESSAGES=1）');
 
   const skipLive = process.env.SKIP_LIVE === '1';
   let liveOk = false;
