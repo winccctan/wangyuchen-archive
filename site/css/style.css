@@ -73,7 +73,7 @@ body {
   display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
 }
 #searchInput {
-  flex: 1 1 220px; min-width: 0;
+  flex: 1 1 160px; min-width: 0;   /* flex-basis 仅作换行阈值：始终与「时间」按钮同排，实际宽度由剩余空间决定 */
   padding: 10px 14px; border: 1px solid var(--border);
   border-radius: 999px; font-size: 14px; outline: none;
   background: var(--card);
@@ -372,6 +372,13 @@ body {
   .updated { font-size: 11px; }
   .upd-full { display: none; }
   .upd-mini { display: inline; }
+}
+
+/* 极窄屏（≤380px）：更新时间独占一行，三个按钮整排靠右，避免任何单个按钮被挤到下一行 */
+@media (max-width: 380px) {
+  .toolbar { gap: 6px; }
+  .toolbar-actions { gap: 6px; }
+  .updated { flex: 1 1 100%; font-size: 11px; }
 }
 
 /* ---------------- 时间筛选弹窗 ---------------- */
