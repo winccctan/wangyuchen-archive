@@ -38,9 +38,20 @@ async function handleTranslate(url) {
   api.searchParams.set('q', q);
 
   try {
+    // 带浏览器 UA/Referer：Google 对数据中心 IP 的无头请求会返回 "Sorry..." 反滥用页，模拟浏览器可降低被拦概率
     // 边缘缓存：同样的文本 24h 内不再回源 Google，降低延迟与被限流风险
-    const r = await fetch(api.toString(), { cf: { cacheTtl: 86400, cacheEverything: true } });
+    const r = await fetch(api.toString(), {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept': 'application/json,text/plain,*/*',
+        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+        'Referer': 'https://translate.google.com/'
+      },
+      cf: { cacheTtl: 86400, cacheEverything: true }
+    });
     const body = await r.text();
+    // 被 Google 反滥用页拦截时（HTML），返回明确的错误 JSON，便于前端自动切换其它翻译源
+    if (/<html/i.test(body) || /\/sorry\//i.test(body)) return json({ error: 'google-blocked' }, 502);
     return new Response(body, {
       status: r.status,
       headers: {
