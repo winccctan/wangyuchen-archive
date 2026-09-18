@@ -103,12 +103,32 @@ function enrichPerformances(list, manual, rosters) {
 
 const manual = read('performances-manual.json') || {};
 const rosters = read('rosters.json') || { shows: {} };
+const schedule = read('schedule.json') || { shows: {} };
+
+// 「排期」累积（scripts/capture-schedule.mjs）：口袋 App 成员页「公演」标签展示的就是这些
+// 「即将开始」的场次，官方接口只保留很短窗口，必须定期抓取累积。
+// 这里把它们并进公演列表（若历史列表里已有同 liveId 则跳过，避免重复），同样走下面的筛选规则。
+const perfRaw = read('performances.json', 'performances');
+const knownIds = new Set(perfRaw.map((p) => String(p.liveId)));
+const scheduledExtra = Object.values(schedule.shows || {})
+  .filter((s) => s && s.liveId && !knownIds.has(String(s.liveId)))
+  .map((s) => ({
+    liveId: String(s.liveId),
+    title: 'GNZ48剧场公演',
+    subTitle: s.name || '',
+    coverPath: s.coverPath || '',
+    status: Number(s.status) || 0,
+    stime: String(s.stime || ''),
+    teamList: (s.teams || []).map((t) => ({ teamName: t })),
+    upcoming: true
+  }));
+if (scheduledExtra.length) console.log(`  公演：并入排期场次 ${scheduledExtra.length} 条`);
 
 const archive = {
   meta: read('meta.json'),
   messages: read('messages.json', 'messages').map(slimMessage),
   live: read('live.json', 'live'),
-  performances: enrichPerformances(read('performances.json', 'performances'), manual, rosters)
+  performances: enrichPerformances([...perfRaw, ...scheduledExtra], manual, rosters)
 };
 
 // 页头统计以「实际渲染的条数」为准：公演经过筛选、直播经过补档合并，

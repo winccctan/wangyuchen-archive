@@ -904,9 +904,10 @@ function renderCard(item, timeKey) {
   const time = fmtDate(item[timeKey]) + ' ' + fmtTime(item[timeKey]);
   const playNum = item.playNum || item.playCount || '';
   const canPlay = !!item.playUrl;
+  // 排期累积来的场次（尚未开演 / 尚无录播）标记为 upcoming
   const playBtn = canPlay
     ? `<button class="play-btn" data-play="${escapeHtml(item.playUrl)}" data-title="${escapeHtml(title + ' · ' + time)}">▶ 播放</button>`
-    : (item.biliUrl ? '' : `<span class="no-play">无视频</span>`);
+    : (item.biliUrl ? '' : `<span class="no-play">${item.upcoming ? '即将开演' : '无视频'}</span>`);
   // 无录播（或有）时的 B 站跳转（按名称手工匹配挂上）
   const biliBtn = item.biliUrl
     ? `<a class="bili-btn" href="${escapeHtml(item.biliUrl)}" target="_blank" rel="noopener">📺 B 站观看</a>`
@@ -917,7 +918,7 @@ function renderCard(item, timeKey) {
       <p class="card-title">${escapeHtml(title)}</p>
       ${sub ? `<p class="card-sub">${escapeHtml(sub)}</p>` : ''}
       <div class="card-meta">
-        ${liveStatusBadge(item.status)}
+        ${item.upcoming ? '<span class="badge soon">即将开始</span>' : liveStatusBadge(item.status)}
         <span>🕒 ${escapeHtml(time)}</span>
         ${playNum ? `<span>▶ ${escapeHtml(String(playNum))}</span>` : ''}
       </div>
