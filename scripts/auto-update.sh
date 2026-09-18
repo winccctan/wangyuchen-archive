@@ -71,28 +71,15 @@ run_once() {
         commit -q -m "auto: 增量补档 $(date '+%Y-%m-%d %H:%M')"
   fi
 
-  echo "[4/5] 推送到 GitHub (main) ..."
+  echo "[4/4] 推送到 GitHub (main) ..."
   if [ -n "${GH_TOKEN:-}" ]; then
     git push "https://${GH_TOKEN}@github.com/winccctan/wangyuchen-archive.git" main
   else
     git push origin main
   fi
 
-  echo "[5/5] 同步 GitHub Pages 镜像 (gh-pages) ..."
-  local TMP="$(mktemp -d)"
-  cp -R dist/. "$TMP/"
-  ( cd "$TMP" \
-    && git init -q && git add -A \
-    && git -c user.email=archive@local -c user.name=wangyuchen-archive \
-          commit -q -m "auto: site update $(date '+%Y-%m-%d %H:%M')" \
-    && git branch -M gh-pages \
-    && if [ -n "${GH_TOKEN:-}" ]; then \
-         git push -f "https://${GH_TOKEN}@github.com/winccctan/wangyuchen-archive.git" gh-pages; \
-       else \
-         git push -f origin gh-pages; \
-       fi )
-  rm -rf "$TMP"
-
+  # 注意：不再同步 gh-pages 镜像。Cloudflare Workers（Git 构建）会构建所有分支，
+  # 而 gh-pages 分支只有 dist/ 静态文件、没有 wrangler.jsonc，构建必然失败 —— 已弃用该镜像。
   echo "✓ 完成：GitHub 已更新，Cloudflare Workers（Git 构建）将自动部署最新版本"
 }
 

@@ -26,14 +26,11 @@
 
 ---
 
-## 方案 B：GitHub Pages（免费持久，国外稳、国内偶尔慢）
+## 方案 B：GitHub Pages 镜像 —— 已弃用 ⚠️
 
-1. 在 GitHub 新建仓库，把本仓库 push 上去。
-2. 仓库 **Settings → Pages**，Source 选 `main` 分支（或用 `gh-pages` 分支只放 `dist/` 内容）。
-3. 仓库根已放 `.nojekyll`（防止 GitHub 误当 Jekyll 处理）。
-4. 访问 `https://<用户名>.github.io/<仓库名>/`。
-
-> 若站点不在仓库根目录而在 `dist/`，可改用 `gh-pages` 分支或设置 `/dist` 路径；本项目默认把 `dist/` 内容作为站点根更省事（见下方"推送到 gh-pages"）。
+> 本项目**不再使用 `gh-pages` 镜像**。原因：Cloudflare Workers（Git 构建）会构建仓库的**所有分支**，
+> 而 `gh-pages` 分支里只有 `dist/` 静态文件、没有 `wrangler.jsonc`，构建必然失败（`Missing entry-point`）。
+> 如需恢复该镜像，请同时在 Cloudflare 项目里把构建分支限制为仅 `main`，再重新推送 `gh-pages`。
 
 ---
 
@@ -44,17 +41,6 @@
 - 更新内容：本地改完跑 `node scripts/build-dist.mjs`，再让我重新部署即可。
 
 ---
-
-## 推送到 gh-pages（仅放 dist 内容，GitHub Pages 用）
-
-```bash
-# 需先在 GitHub 建好空仓库并 git remote add origin <url>
-node scripts/build-dist.mjs
-git add -A && git commit -m "update archive"
-git push -u origin main
-# 或只发布 dist：
-npx gh-pages -d dist
-```
 
 ## 更新数据后重新发布
 
@@ -67,7 +53,7 @@ node scripts/build-dist.mjs
 ```
 
 自动化：`scripts/auto-update.sh` 已接入计划任务（每 5 分钟循环 + 每小时兜底触发），
-抓取 → 重解析 → 构建 → 提交 → 推送 main / gh-pages，Cloudflare Workers 随 push 自动部署。
+抓取 → 重解析 → 构建 → 提交 → 推送 main，Cloudflare Workers 随 push 自动部署（不再推送 gh-pages）。
 
 ## 消息解析规则（重要）
 
