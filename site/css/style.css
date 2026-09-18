@@ -390,10 +390,11 @@ body {
 .formula-year-source { font-size: 12px; color: var(--muted); margin: 10px 0 0; }
 /* 公式照画廊 */
 .formula-gallery { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
-.formula-item { margin: 0; background: #eef2f6; border-radius: 12px; overflow: hidden; }
+.formula-item { margin: 0; background: #eef2f6; border-radius: 12px; overflow: hidden; cursor: zoom-in; transition: transform .15s ease, box-shadow .15s ease; }
+.formula-item:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(20, 80, 120, .18); }
 .formula-item img {
   width: 100%; display: block; aspect-ratio: 3 / 4; object-fit: cover;
-  background: #eef2f6;
+  background: #eef2f6; cursor: zoom-in;
 }
 .formula-item.broken img { display: none; }
 .formula-item.broken::after {

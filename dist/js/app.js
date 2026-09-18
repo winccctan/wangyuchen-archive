@@ -597,13 +597,13 @@ function bindEvents() {
       showToast(state.dateFrom || state.dateTo ? '✅ 已按时间筛选' : '✅ 已显示全部时间');
     });
   }
-  // 图片放大预览：支持在新标签打开原图 / 下载，方便保存
+  // 图片放大预览：支持点击放大、在新标签打开原图、下载，方便保存
   const lb = document.createElement('div');
   lb.className = 'lightbox';
   lb.innerHTML = `
     <div class="lb-bar">
-      <a class="lb-btn" id="lbOpen" href="#" target="_blank" rel="noopener">⤢ 打开原图</a>
-      <a class="lb-btn" id="lbSave" href="#" download>⤓ 下载</a>
+      <button class="lb-btn" id="lbOpen" type="button">⤢ 打开原图</button>
+      <button class="lb-btn" id="lbSave" type="button">⤓ 下载</button>
       <button class="lb-btn" id="lbClose" type="button">✕ 关闭</button>
     </div>
     <div class="lb-stage">
@@ -619,14 +619,30 @@ function bindEvents() {
 
   window.__lightboxShow = (src) => {
     if (!src) return;
+    lb.dataset.src = src;
     lb.classList.add('show', 'loading');
     lb.classList.remove('broken');
     lbImg.src = src;
-    lb.querySelector('#lbOpen').href = src;
-    const save = lb.querySelector('#lbSave');
-    save.href = src;
-    save.setAttribute('download', (src.split('/').pop().split('?')[0] || 'image.jpg'));
   };
+  lb.querySelector('#lbOpen').addEventListener('click', () => {
+    const s = lb.dataset.src;
+    if (s) window.open(s, '_blank', 'noopener');
+  });
+  lb.querySelector('#lbSave').addEventListener('click', () => {
+    const s = lb.dataset.src;
+    if (!s) return;
+    const name = (s.split('/').pop().split('?')[0]) || 'image.jpg';
+    fetch(s, { referrerPolicy: 'no-referrer' })
+      .then((r) => { if (!r.ok) throw new Error('net'); return r.blob(); })
+      .then((blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = name;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+      })
+      .catch(() => { if (s) window.open(s, '_blank', 'noopener'); });
+  });
   lb.querySelector('#lbClose').addEventListener('click', () => lb.classList.remove('show'));
   lb.addEventListener('click', (e) => {
     // 点图片本体或工具栏时不关闭
@@ -810,7 +826,7 @@ function renderGuideMain() {
 function renderGallery() {
   const groups = (PROFILE.galleryByYear || []).map((g) => {
     const items = g.photos.map((src, i) =>
-      `<figure class="formula-item"><img src="${escapeHtml(src)}" alt="${escapeHtml(g.year)} 公式照 ${i + 1}" loading="lazy" referrerpolicy="no-referrer" onerror="this.closest('figure').classList.add('broken')" /><figcaption>${g.photos.length > 1 ? `${i + 1} / ${g.photos.length}` : '公式照'}</figcaption></figure>`
+      `<figure class="formula-item"><img src="${escapeHtml(src)}" alt="${escapeHtml(g.year)} 公式照 ${i + 1}" loading="lazy" referrerpolicy="no-referrer" onclick="window.__lightboxShow(this.src)" onerror="this.closest('figure').classList.add('broken')" /><figcaption>${g.photos.length > 1 ? `${i + 1} / ${g.photos.length}` : '公式照'}</figcaption></figure>`
     ).join('');
     return `
       <section class="formula-year">
