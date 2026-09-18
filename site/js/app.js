@@ -101,12 +101,38 @@ const PROFILE = {
       ]
     }
   ],
-  // 官网公式照（SNH48 官网 member-detail，共 4 张，无历史版本）
-  gallery: [
-    './assets/member-gs1.jpg',
-    './assets/member-gs2.jpg',
-    './assets/member-gs3.jpg',
-    './assets/member-gs4.jpg'
+  // 公式照（按年份分组）：2024/2025 来自微博，2026 来自 SNH48 官网成员资料
+  galleryByYear: [
+    {
+      year: '2024',
+      source: '微博',
+      photos: [
+        './assets/gs2024-1.jpg',
+        './assets/gs2024-2.jpg',
+        './assets/gs2024-3.jpg'
+      ]
+    },
+    {
+      year: '2025',
+      source: '微博',
+      photos: [
+        './assets/gs2025-1.jpg',
+        './assets/gs2025-2.jpg',
+        './assets/gs2025-3.jpg',
+        './assets/gs2025-4.jpg',
+        './assets/gs2025-5.jpg'
+      ]
+    },
+    {
+      year: '2026',
+      source: 'SNH48 官网成员资料',
+      photos: [
+        './assets/member-gs1.jpg',
+        './assets/member-gs2.jpg',
+        './assets/member-gs3.jpg',
+        './assets/member-gs4.jpg'
+      ]
+    }
   ],
   // 经历备注（SNH48 官网 member-detail，新→旧；tag: 高飞/梦想/新人）
   experience: [
@@ -781,16 +807,20 @@ function renderGuideMain() {
     <p class="guide-tip">在手机上点击会直接打开对应 App 并进入 TA 的主页；未安装 App 或唤起失败时，会自动跳转到网页版。</p>`;
 }
 
-// 子标签二：公式照（SNH48 官网，共 4 张）
+// 子标签二：公式照（按年份分组：2024 / 2025 / 2026）
 function renderGallery() {
-  const gallery = (PROFILE.gallery || []).map((src, i) =>
-    `<figure class="formula-item"><img src="${escapeHtml(src)}" alt="公式照 ${i + 1}" loading="lazy" referrerpolicy="no-referrer" onerror="this.closest('figure').classList.add('broken')" /><figcaption>公式照 ${i + 1}</figcaption></figure>`
-  ).join('');
-  return `
-    <section class="profile-block">
-      <div class="formula-gallery">${gallery}</div>
-      <p class="profile-note">来源：SNH48 官网成员资料</p>
-    </section>`;
+  const groups = (PROFILE.galleryByYear || []).map((g) => {
+    const items = g.photos.map((src, i) =>
+      `<figure class="formula-item"><img src="${escapeHtml(src)}" alt="${escapeHtml(g.year)} 公式照 ${i + 1}" loading="lazy" referrerpolicy="no-referrer" onerror="this.closest('figure').classList.add('broken')" /><figcaption>${g.photos.length > 1 ? `${i + 1} / ${g.photos.length}` : '公式照'}</figcaption></figure>`
+    ).join('');
+    return `
+      <section class="formula-year">
+        <h3 class="formula-year-title">${escapeHtml(g.year)} 年公式照<span class="formula-year-count">${g.photos.length} 张</span></h3>
+        <div class="formula-gallery">${items}</div>
+        <p class="formula-year-source">来源：${escapeHtml(g.source)}</p>
+      </section>`;
+  }).join('');
+  return `<section class="profile-block">${groups}</section>`;
 }
 
 // 子标签三：经历备注（SNH48 官网，新→旧）
