@@ -51,8 +51,10 @@ run_once() {
   echo "    抓取前条数: ${old_counts:-（无）}"
   echo "    抓取后条数: ${new_counts}"
 
+  # 注意：只比 messages.json 会漏掉「直播状态变化」（status 2→3 不改变条数），
+  # 导致直播结束后状态永远不更新。故改为比较全部三个数据文件。
   if [ -n "${old_counts}" ] && [ "$old_counts" = "$new_counts" ] \
-     && git diff --quiet -- site/data/messages.json; then
+     && git diff --quiet -- site/data/messages.json site/data/live.json site/data/performances.json; then
     echo "→ 数据条数与内容均未变化，跳过提交与部署（不触发空构建）"
     return 0
   fi
