@@ -90,6 +90,8 @@ async function handleTranslate(request, url, env, ctx) {
 // 手动触发抓取：调用 GitHub REST API 触发 scrape.yml 的 workflow_dispatch。
 // 需要 env.GH_TOKEN（具备 actions:write 的 PAT，由 wrangler secret put 配置）
 // 与 env.REPO（owner/repo，默认值见 wrangler.jsonc 的 vars）。
+// 自带服务端冷却：若 15 分钟内已跑过一次，直接返回「已有近期任务」，避免粉丝狂点把 GitHub 打爆。
+const SCRAPE_COOLDOWN_MIN = 15;
 async function handleScrape(env) {
   const repo = (env && env.REPO) || 'winccctan/wangyuchen-archive';
   const token = env && env.GH_TOKEN;
@@ -97,15 +99,34 @@ async function handleScrape(env) {
   if (!token) {
     return json({ error: 'worker-missing-gh-token', hint: '请在 Cloudflare 配置 GH_TOKEN（wrangler secret put GH_TOKEN）' }, 500);
   }
+  const headers = {
+    'Authorization': `Bearer ${token}`,
+    'Accept': 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+    'User-Agent': 'wyc-archive-worker'
+  };
+  // 1) 冷却检查：查最近一次运行，15 分钟内则跳过
+  try {
+    const runsApi = `https://api.github.com/repos/${repo}/actions/workflows/scrape.yml/runs?per_page=1`;
+    const runsRes = await fetch(runsApi, { headers });
+    if (runsRes.ok) {
+      const runs = await runsRes.json();
+      const last = runs.workflow_runs && runs.workflow_runs[0];
+      if (last && last.created_at) {
+        const elapsedMin = (Date.now() - new Date(last.created_at).getTime()) / 60000;
+        if (elapsedMin < SCRAPE_COOLDOWN_MIN) {
+          return json({ ok: true, skipped: true, message: '近期已抓取，稍候刷新即可' });
+        }
+      }
+    }
+  } catch (_) { /* 查冷却失败不阻断触发 */ }
+  // 2) 真正触发
   const api = `https://api.github.com/repos/${repo}/actions/workflows/scrape.yml/dispatches`;
   try {
     const r = await fetch(api, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28',
-        'User-Agent': 'wyc-archive-worker',
+        ...headers,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({ ref })
