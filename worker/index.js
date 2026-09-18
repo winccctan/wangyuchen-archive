@@ -21,6 +21,12 @@ export default {
       return handleTranslate(request, url, env, ctx);
     }
 
+    // 手动触发抓取：POST /scrape → 经 GitHub API 触发仓库的 scrape.yml 工作流。
+    // 这样前端的「刷新」按钮和「页面加载」都能真正去抓一次，而不是只重载旧静态数据。
+    if (url.pathname === '/scrape' && request.method === 'POST') {
+      return handleScrape(env);
+    }
+
     if (env && env.ASSETS) return env.ASSETS.fetch(request);
     return new Response('Not Found', { status: 404 });
   }
@@ -79,6 +85,39 @@ async function handleTranslate(request, url, env, ctx) {
   }
 
   return json({ error: 'translate-failed' }, 502);
+}
+
+// 手动触发抓取：调用 GitHub REST API 触发 scrape.yml 的 workflow_dispatch。
+// 需要 env.GH_TOKEN（具备 actions:write 的 PAT，由 wrangler secret put 配置）
+// 与 env.REPO（owner/repo，默认值见 wrangler.jsonc 的 vars）。
+async function handleScrape(env) {
+  const repo = (env && env.REPO) || 'winccctan/wangyuchen-archive';
+  const token = env && env.GH_TOKEN;
+  const ref = (env && env.SCRAPE_REF) || 'main';
+  if (!token) {
+    return json({ error: 'worker-missing-gh-token', hint: '请在 Cloudflare 配置 GH_TOKEN（wrangler secret put GH_TOKEN）' }, 500);
+  }
+  const api = `https://api.github.com/repos/${repo}/actions/workflows/scrape.yml/dispatches`;
+  try {
+    const r = await fetch(api, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+        'User-Agent': 'wyc-archive-worker',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ ref })
+    });
+    if (r.status === 204) {
+      return json({ ok: true, message: '已触发抓取，约 1~3 分钟后刷新即可看到最新' });
+    }
+    const t = await r.text();
+    return json({ ok: false, status: r.status, body: t.slice(0, 400) }, 502);
+  } catch (e) {
+    return json({ error: String((e && e.message) || e) }, 502);
+  }
 }
 
 // 成功结果：加长缓存并写入边缘缓存
