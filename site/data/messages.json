@@ -1,6 +1,58 @@
 {
   "messages": [
     {
+      "msgIdServer": "7400035020",
+      "msgTime": 1789735938001,
+      "msgType": "LIVEPUSH",
+      "text": "",
+      "reply": null,
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": {
+        "kind": "live",
+        "title": "1",
+        "desc": "",
+        "pic": "/2026/0918/89653517xgn0xxgqsu8wl4khp8i4tz7d.jpg",
+        "url": "live/playdetail?id=1307810563775860736"
+      },
+      "duration": 0,
+      "sender": {
+        "userId": 89653517,
+        "nickname": "GNZ48-王语晨",
+        "avatar": "/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif"
+      },
+      "raw": {
+        "bodys": "{\"livePushInfo\":{\"liveCover\":\"/2026/0918/89653517xgn0xxgqsu8wl4khp8i4tz7d.jpg\",\"liveTitle\":\"1\",\"liveId\":\"1307810563775860736\",\"shortPath\":\"live/playdetail?id\\u003d1307810563775860736\"},\"messageType\":\"LIVEPUSH\"}",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"GNZ48-王语晨\",\"teamLogo\":\"/mediasource/teamLogo2/all/gnz48_n3.png\",\"avatar\":\"/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif\",\"badge\":[],\"level\":4,\"roleId\":3,\"vip\":false,\"pfUrl\":\"\"},\"monthCardBadge\":{}}",
+        "msgType": "LIVEPUSH"
+      }
+    },
+    {
+      "msgIdServer": "7399920448",
+      "msgTime": 1789735915551,
+      "msgType": "TEXT",
+      "text": "我来啵一下！",
+      "reply": null,
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟",
+        "avatar": "/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif"
+      },
+      "raw": {
+        "bodys": "我来啵一下！",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\",\"teamLogo\":\"/mediasource/teamLogo2/all/gnz48_n3.png\",\"avatar\":\"/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif\",\"level\":4,\"roleId\":3,\"vip\":false,\"pfUrl\":\"/backstage/2025/0822/aiy8n5febvwm8b435ysn8nk.png\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "TEXT"
+      }
+    },
+    {
       "msgIdServer": "7399805209",
       "msgTime": 1789726915393,
       "msgType": "TEXT",
