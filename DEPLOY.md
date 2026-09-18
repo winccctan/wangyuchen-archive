@@ -26,11 +26,15 @@
 
 ---
 
-## 方案 B：GitHub Pages 镜像 —— 已弃用 ⚠️
+## 方案 B：GitHub Pages 分支镜像（`gh-pages`）
 
-> 本项目**不再使用 `gh-pages` 镜像**。原因：Cloudflare Workers（Git 构建）会构建仓库的**所有分支**，
-> 而 `gh-pages` 分支里只有 `dist/` 静态文件、没有 `wrangler.jsonc`，构建必然失败（`Missing entry-point`）。
-> 如需恢复该镜像，请同时在 Cloudflare 项目里把构建分支限制为仅 `main`，再重新推送 `gh-pages`。
+镜像地址：`https://winccctan.github.io/wangyuchen-archive/`（由 `gh-pages` 分支提供，`scripts/auto-update.sh` 每次自动更新）。
+
+> ⚠️ 关键点：Cloudflare Workers（Git 构建）会构建仓库的**所有分支**。若 `gh-pages` 分支只有 `dist/` 静态文件，
+> 会报 `Missing entry-point to Worker script or to assets directory` 构建失败。因此发布镜像时**额外放入
+> 一份 `wrangler.jsonc` + `worker/index.js`**（静态目录指向分支根 `./`，其余与 main 等价），让其能被 Wrangler 正常构建。
+>
+> 若想更干净，可在 Cloudflare 项目里把**构建分支限制为仅 `main`**（Branch control），这样镜像分支就无需这份额外配置。
 
 ---
 
