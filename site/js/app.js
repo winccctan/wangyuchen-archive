@@ -129,7 +129,6 @@ const PROFILE = {
       photos: [
         './assets/member-gs1.jpg',
         './assets/member-gs2.jpg',
-        './assets/member-gs3.jpg',
         './assets/member-gs4.jpg'
       ]
     }
