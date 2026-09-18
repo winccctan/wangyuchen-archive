@@ -28,6 +28,10 @@ const files = [
   'js/app.js',
   'vendor/hls.min.js',
   'assets/newfan-guide.jpg',
+  'assets/member-gs1.jpg',    // 官网公式照 1
+  'assets/member-gs2.jpg',    // 官网公式照 2
+  'assets/member-gs3.jpg',    // 官网公式照 3
+  'assets/member-gs4.jpg',    // 官网公式照 4
   'assets/avatar.png',        // 头部头像（透明底抠图）
   'assets/avatar-round.png',  // 网站图标 / apple-touch-icon
   'data/meta.json', // 仅 0.5KB：前端用它取数据版本号，决定是否复用缓存的大文件
