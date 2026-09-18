@@ -7,6 +7,16 @@
 - 文件锁 `/tmp/wyc-auto-update.lock` 生效，防止重叠实例。
 - 后台任务 id: DCVwp1，日志 `/tmp/wyc-loop.log`。
 
+## 2026-09-18 16:36 (GMT+9) 触发
+- 锁不存在（上一实例早已结束），正常启动 `LOOP=1 bash scripts/auto-update.sh`（后台任务 cMzawA，日志 /tmp/wyc-loop.log，约 55 分钟后自退）。
+- 抓取正常（JP 代理）：口袋发言 54657 / 直播 783 / 公演 383；本周期无新增，但 reparse 改动数据文件故仍重建 dist 并本地提交（5e9700e）。
+- **⚠️ 关键故障：`git push main` 被 GitHub 拒绝**：
+  `! [remote rejected] main -> main (refusing to allow a Personal Access Token to create or update workflow .github/workflows/scrape.yml without workflow scope)`
+  - 根因：提交 `2e2809f ci: 自动补档支持每5分钟循环…` 新增了 `.github/workflows/scrape.yml`（GitHub Actions 工作流）。scraper/.env 中的 GH_TOKEN 缺少 `workflow` scope，GitHub 拒绝任何含工作流文件变更的 push。
+  - 后果：remote/main 卡在 40c91cd，今日 25+ 个本地提交（含全部 auto 提交）均未推送 → Cloudflare Pages（Connect to Git 接 main）**未更新**，线上站点是旧的。gh-ubpages 镜像（强制 push，不含 .github）**正常更新**，数据在 gh-pages 上可用。
+  - 修复需用户操作：① 重新生成带 `workflow` scope 的 GH_TOKEN 并更新 scraper/.env（推荐，一次 push 即可回放全部提交）；或 ② 若工作流文件本就不需要（抓取由本地 loop 完成而非 Actions），移除该文件并强推 main（属改动配置，未执行）。
+- 未改动 scraper/.env 或任何配置。后台循环继续运行（每轮本地抓取 + gh-pages 更新；main push 在 token 修复前持续失败）。
+
 ## 注意（后续触发参考）
 - 该脚本循环模式此前可能从未成功运行过（历史 auto commit 来自非 LOOP 的单次调用）。本次已修正。
 - 每小时触发时若上一实例仍在（锁存在）会自动跳过；正常情况下 55 分钟运行会在整点前结束并释放锁。
