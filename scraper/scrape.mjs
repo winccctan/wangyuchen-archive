@@ -12,7 +12,9 @@ import { MEMBER, POCKET48_TOKEN, MAX_PAGES, API_BASE } from './lib/config.mjs';
 import {
   fetchMessagePage,
   fetchLiveListPage,
-  fetchOpenLivePage
+  fetchOpenLivePage,
+  fetchLiveOne,
+  fetchOpenLiveOne
 } from './lib/api.mjs';
 // 消息解析统一走 lib/message.mjs（按 msgType 精确提取正文 / 引用 / 媒体 / 卡片）
 import { parseMessage } from './lib/message.mjs';
@@ -135,6 +137,29 @@ async function scrapeLiveByMember(record) {
   return [...all.values()];
 }
 
+/* ----------------------- 当前「直播中」集合（用于直播结束判定） -----------------------
+ * 背景（已实测）：口袋48 的直播结束后，若官方未生成回放，该条目会从「直播中」和「录播」
+ * 两个列表同时消失，抓取端再也拿不到这个 liveId 的新状态 —— 本地 status 会永远停在
+ * 2（直播中），前端于是一直显示「直播中 / 无视频」。
+ * 这里改从「谁还在播」反推：record=false 的列表接口**不按 userId 过滤**（实测传了 userId
+ * 也返回全团正在直播），正好用来取当前全团直播中的 liveId 集合。 */
+async function fetchLiveNowIds() {
+  const ids = new Set();
+  let next = '0';
+  for (let p = 0; p < 5; p++) {
+    const r = await fetchLiveListPage({ groupId: MEMBER.groupId, next, record: false });
+    const list = r.list || [];
+    if (!list.length) break;
+    for (const it of list) {
+      if (Number(it.status) === 2) ids.add(String(it.liveId));
+    }
+    if (!r.next || r.next === '0') break;
+    next = r.next;
+    await sleep(200);
+  }
+  return ids;
+}
+
 /* ----------------------- 抓取：公演（只保留王语晨所在队伍 TEAM NIII） ----------------------- */
 function isHerTeam(item) {
   const teams = item.teamList || [];
@@ -173,46 +198,41 @@ function pickBestStream(streams) {
   return (hd || streams[0]).path || '';
 }
 
+// 官方回放 CDN 域名（VOD）。旧地址若是它，说明已经是「已结束后的回放地址」，可直接复用。
+// 注意：口袋48 的 VOD 域名有多个前缀（实测：idol-vod / cychengyuan-vod / perform-vod），
+// 统一按 `-vod.48.cn` 匹配，切勿只写死某几个前缀（曾因漏掉 cychengyuan-vod 导致 527 条被反复重抓）。
+const isVodUrl = (u) => /vod\.48\.cn/i.test(String(u || ''));
+
 async function attachPlayUrls(list, type, existingMap) {
   let n = 0;
   for (const it of list) {
     const prev = existingMap.get(it.liveId);
-    // 已结束的直播：旧的 playUrl 可能是「直播中」抓到的失效直播流（直播结束后该地址失效），
-    // 必须重新向 getLiveOne 请求回放 m3u8，否则前端会拿到一个播不了的死链。
-    if (it.status === 3) {
-      try {
-        if (type === 'live') {
-          const r = await fetchLiveOne(it.liveId);
-          it.playUrl = r.playStreamPath || '';
-        } else {
-          const r = await fetchOpenLiveOne(it.liveId, POCKET48_TOKEN || undefined);
-          it.playUrl = pickBestStream(r.streams) || '';
-        }
-        if (it.playUrl) n++;
-      } catch {
-        it.playUrl = prev?.playUrl || ''; // 获取失败则退回旧值，不破坏已有数据
-      }
-      await sleep(150);
-      continue;
-    }
-    // 直播中 / 其他状态：有旧地址则复用（直播流仍有效，避免每次重抓）；
-    // 无旧地址才去请求，拿到后保存到数据。
-    if (prev?.playUrl) {
+    const ended = Number(it.status) === 3;
+    // 复用策略（重要）：已结束的条目若旧值已是 VOD 回放地址，直接复用 ——
+    // 否则每轮都要对上百条已结束条目重新请求（700+ 次），既慢又容易被限流，
+    // 且个别条目偶发失败后永远补不上（表现为前端「无视频」）。
+    // 只有「缺地址」或「旧地址非 VOD（可能是失效的直播流）」时才重新请求。
+    if (prev?.playUrl && (isVodUrl(prev.playUrl) || !ended)) {
       it.playUrl = prev.playUrl;
       continue;
     }
-    try {
-      if (type === 'live') {
-        const r = await fetchLiveOne(it.liveId);
-        it.playUrl = r.playStreamPath || '';
-      } else {
-        const r = await fetchOpenLiveOne(it.liveId, POCKET48_TOKEN || undefined);
-        it.playUrl = pickBestStream(r.streams) || '';
-      }
-      if (it.playUrl) n++;
-    } catch {
-      it.playUrl = '';
+    // 请求回放 / 直播地址；空结果或异常都重试几次（偶发限流、网络抖动时常返回空）。
+    let got = '';
+    for (let attempt = 0; attempt < 3 && !got; attempt++) {
+      try {
+        if (type === 'live') {
+          const r = await fetchLiveOne(it.liveId);
+          got = r.playStreamPath || '';
+        } else {
+          const r = await fetchOpenLiveOne(it.liveId, POCKET48_TOKEN || undefined);
+          got = pickBestStream(r.streams) || '';
+        }
+      } catch { /* 下轮重试 */ }
+      if (!got) await sleep(500);
     }
+    // 拿不到则退回旧值（不破坏已有数据）；旧值也没有就留空（前端显示「无回放 / 无视频」）。
+    it.playUrl = got || prev?.playUrl || '';
+    if (got) n++;
     await sleep(150);
   }
   return n;
@@ -258,6 +278,26 @@ async function run() {
       liveMap.set(k, { ...(liveMap.get(k) || {}), ...it });
     }
     liveList = [...liveMap.values()].sort((a, b) => Number(b.ctime || 0) - Number(a.ctime || 0));
+
+    // ---- 直播「结束判定」：修「结束后状态不更新」的坑（见 fetchLiveNowIds 注释）----
+    // 本地标记为直播中、却已不在「当前全团直播中集合」、且开播已超过宽限期的条目，
+    // 判定为已结束（status=3）。宽限期用于避开「刚开播、列表尚未刷新」的误判。
+    const liveNowIds = await safe('直播中集合', fetchLiveNowIds);
+    // 集合为空说明当轮接口异常（正常情况下同时在线直播通常 >0），此时不做任何判定，避免误伤。
+    if (liveNowIds && liveNowIds.size > 0) {
+      const NOW = Date.now();
+      const GRACE = Number(process.env.LIVE_END_GRACE_MS || 20 * 60 * 1000);
+      let ended = 0;
+      for (const it of liveList) {
+        if (Number(it.status) !== 2) continue;              // 只处理「直播中」
+        if (liveNowIds.has(String(it.liveId))) continue;    // 仍在播 → 保持
+        if (NOW - Number(it.ctime || 0) < GRACE) continue;  // 开播未超宽限期 → 保持
+        it.status = 3;
+        it.endedInferred = true;                            // 标记：状态由「结束时不在列表」推断
+        ended++;
+      }
+      if (ended) console.log(`[直播] 推断已结束 ${ended} 条（不在当前直播中列表，且开播已超 ${Math.round(GRACE / 60000)} 分钟）`);
+    }
   }
 
   const skipPerf = process.env.SKIP_PERF === '1';
