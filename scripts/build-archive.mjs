@@ -151,7 +151,6 @@ function enrichPerformances(list, manual, rosters) {
 
 const manual = read('performances-manual.json') || {};
 const rosters = read('rosters.json') || { shows: {} };
-const schedule = read('schedule.json') || { shows: {} };
 
 // 「排期」累积（scripts/capture-schedule.mjs）：口袋 App 成员页「公演」标签展示的就是这些
 // 「即将开始」的场次，官方接口只保留很短窗口，必须定期抓取累积。
@@ -187,27 +186,17 @@ if (hersShows.length) {
   console.log(`  公演：使用「她的公演记录」${baseList.length} 场（${hersShows.filter((s) => s.fetchedAt).length} 场已补详情）`);
 }
 
-const knownIds = new Set(baseList.map((p) => String(p.liveId)));
-const scheduledExtra = Object.values(schedule.shows || {})
-  .filter((s) => s && s.liveId && !knownIds.has(String(s.liveId)))
-  .map((s) => ({
-    liveId: String(s.liveId),
-    title: 'GNZ48剧场公演',
-    subTitle: s.name || '',
-    coverPath: s.coverPath || '',
-    status: Number(s.status) || 0,
-    stime: String(s.stime || ''),
-    teamList: (s.teams || []).map((t) => ({ teamName: t })),
-    upcoming: true
-  }));
-if (scheduledExtra.length) console.log(`  公演：并入排期场次 ${scheduledExtra.length} 条`);
+// 注意：**不要再把「按队伍抓的公演排期」并进来**。
+// 排期（getOpenLiveList record=false）是按 teamList 过滤的——「队伍有场次」不等于「她参加」，
+// 例如 2026-09-19 拾忆·TEAM NIII·第二十七场 队伍在演但**她本人没参加**，并进来就是错数据。
+// 权威判断只能是「她的公演记录」(OPEN_LIVE)：有记录才说明她参加（见 performances-hers.json）。
 
 // 有「她的公演记录」时不再套规则近似（记录本身就是她参加过的），仅保留 B 站链接匹配。
 const manualForUse = usedHers ? { ...manual, rule: {}, herPerformances: [] } : manual;
 
-// 先按规则/权威源整理，再剔除失效官方流并按「日期+队伍」挂 B 站备用源
+// 先按规则/权威源整理，再修正失效官方流域名并按「日期+队伍」挂 B 站备用源
 const performances = attachBiliAndPruneDead(
-  enrichPerformances([...baseList, ...scheduledExtra], manualForUse, rosters)
+  enrichPerformances(baseList, manualForUse, rosters)
 );
 
 const archive = {
