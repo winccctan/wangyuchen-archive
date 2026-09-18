@@ -425,3 +425,18 @@ body {
 .tr-text { color: var(--text); }
 .tr-loading { color: var(--muted); font-style: italic; }
 .tr-err { color: #c0392b; font-size: 12px; }
+
+/* 时间筛选提示条（发言 / 直播录播 / 公演 共用） */
+.filter-note {
+  max-width: 960px; margin: 12px auto 0; padding: 8px 14px;
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+  background: rgba(43,196,224,.10); border: 1px solid rgba(43,196,224,.35);
+  border-radius: 10px; font-size: 13px; color: var(--text);
+}
+.filter-note b { color: var(--primary); font-weight: 600; }
+.filter-clear {
+  margin-left: auto; border: 1px solid var(--primary); background: transparent;
+  color: var(--primary); border-radius: 999px; padding: 3px 12px;
+  font-size: 12px; cursor: pointer; white-space: nowrap;
+}
+.filter-clear:hover { background: var(--primary); color: #fff; }

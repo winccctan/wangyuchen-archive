@@ -489,7 +489,7 @@ function bindEvents() {
       state.dateTo = t ? new Date(t + 'T00:00:00').getTime() + 86400000 : null; // 次日 0 点（含当天）
       closeDateModal();
       state.dayLimit = 3;
-      renderMessages();
+      renderAll(); // 发言 / 直播录播 / 公演 三个页都要按新时间范围刷新
       showToast(state.dateFrom || state.dateTo ? '✅ 已按时间筛选' : '✅ 已显示全部时间');
     });
   }
@@ -574,6 +574,19 @@ function bindEvents() {
     if (gotoBtn) {
       e.stopPropagation();
       switchTab(gotoBtn.dataset.goto);
+      return;
+    }
+    // 列表上方的「清除筛选」
+    if (e.target.closest('.filter-clear')) {
+      e.stopPropagation();
+      state.dateFrom = null;
+      state.dateTo = null;
+      state.dayLimit = 3;
+      const f = $('#dateFrom'), t = $('#dateTo');
+      if (f) f.value = '';
+      if (t) t.value = '';
+      renderAll();
+      showToast('✅ 已清除时间筛选');
     }
   });
 }
@@ -583,9 +596,28 @@ function switchTab(name) {
   state.tab = name;
   document.querySelectorAll('.tab').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
   Object.entries(panels).forEach(([k, el]) => el.classList.toggle('active', k === name));
+  // 「📅 时间」筛选对「发言 / 直播录播 / 公演」三个页都可用（新粉指南除外）
   const df = $('#dateToggleBtn');
-  if (df) df.hidden = name !== 'messages';
+  if (df) df.hidden = name === 'guide';
   renderAll();
+}
+
+/* ---------- 时间筛选（发言 / 直播录播 / 公演 共用 state.dateFrom/dateTo） ---------- */
+const dateFilterActive = () => !!(state.dateFrom || state.dateTo);
+function inDateRange(ts) {
+  const t = Number(ts);
+  if (!t) return false;
+  if (state.dateFrom && t < state.dateFrom) return false;
+  if (state.dateTo && t > state.dateTo) return false; // dateTo 存「次日 0 点」，故含当天
+  return true;
+}
+// 筛选生效时在列表上方显示一条提示 + 一键清除
+function filterNote(count) {
+  if (!dateFilterActive()) return '';
+  const f = state.dateFrom ? fmtDate(state.dateFrom) : '最早';
+  const t = state.dateTo ? fmtDate(state.dateTo - 86400000) : '最新';
+  return `<div class="filter-note">📅 <b>${escapeHtml(f)}</b> ~ <b>${escapeHtml(t)}</b> · 共 ${count} 条` +
+    `<button class="filter-clear" type="button">清除筛选</button></div>`;
 }
 
 function renderAll() {
@@ -658,7 +690,8 @@ function renderMessages() {
   if (state.query) list = list.filter((m) => matchQuery(m));
 
   if (!list.length) {
-    panel.innerHTML = `<div class="empty-state">暂无口袋发言数据。<br/>若尚未抓取，请设置 <code>POCKET48_TOKEN</code> 后运行 <code>node scrape.mjs</code>。</div>`;
+    panel.innerHTML = filterNote(0) +
+      `<div class="empty-state">${dateFilterActive() ? '该时间范围内没有发言，点上方「清除筛选」看全部。' : '暂无口袋发言数据。<br/>若尚未抓取，请设置 <code>POCKET48_TOKEN</code> 后运行 <code>node scrape.mjs</code>。'}</div>`;
     return;
   }
 
@@ -690,7 +723,8 @@ function renderMessages() {
       }).join('')}
     </div>`;
 
-  panel.innerHTML = shown.map(renderDay).join('')
+  const matchedCount = sortedDays.reduce((n, d) => n + groups[d].length, 0);
+  panel.innerHTML = filterNote(matchedCount) + shown.map(renderDay).join('')
     + (restDays > 0
       ? `<button class="load-more" id="loadMore" type="button">加载更早的消息（还有 ${restCount} 条 / ${restDays} 天）</button>`
       : '');
@@ -934,16 +968,28 @@ function renderLive() {
     (m.title || '').toLowerCase().includes(state.query) ||
     (m.userInfo?.nickname || '').toLowerCase().includes(state.query)
   );
-  if (!list.length) { panel.innerHTML = '<div class="empty-state">暂无直播 / 录播数据。</div>'; return; }
-  panel.innerHTML = `<div class="card-grid">${list.map((m) => renderCard(m, 'ctime')).join('')}</div>`;
+  if (dateFilterActive()) list = list.filter((m) => inDateRange(m.ctime));
+  if (!list.length) {
+    panel.innerHTML = filterNote(0) +
+      `<div class="empty-state">${dateFilterActive() ? '该时间范围内没有直播 / 录播，点上方「清除筛选」看全部。' : '暂无直播 / 录播数据。'}</div>`;
+    return;
+  }
+  panel.innerHTML = filterNote(list.length) +
+    `<div class="card-grid">${list.map((m) => renderCard(m, 'ctime')).join('')}</div>`;
 }
 
 function renderPerformances() {
   const panel = panels.performances;
   let list = DATA.performances;
   if (state.query) list = list.filter((m) => (m.title || '').toLowerCase().includes(state.query));
-  if (!list.length) { panel.innerHTML = '<div class="empty-state">暂无公演数据。</div>'; return; }
-  panel.innerHTML = `<div class="card-grid">${list.map((m) => renderCard(m, 'stime')).join('')}</div>`;
+  if (dateFilterActive()) list = list.filter((m) => inDateRange(m.stime));
+  if (!list.length) {
+    panel.innerHTML = filterNote(0) +
+      `<div class="empty-state">${dateFilterActive() ? '该时间范围内没有公演，点上方「清除筛选」看全部。' : '暂无公演数据。'}</div>`;
+    return;
+  }
+  panel.innerHTML = filterNote(list.length) +
+    `<div class="card-grid">${list.map((m) => renderCard(m, 'stime')).join('')}</div>`;
 }
 
 init();
