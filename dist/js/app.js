@@ -367,6 +367,9 @@ async function init() {
   renderMeta();
   bindEvents();
   switchTab(state.tab); // 走一遍 tab 切换逻辑：正确显示/隐藏「时间」按钮并渲染当前面板
+
+  // 页面加载即后台触发一次抓取（受 5 分钟冷却限制），保证信息及时
+  triggerScrape().then((r) => { if (r.ok) console.log('[auto] 已触发后台抓取'); });
 }
 
 function rebuildIndex() {
@@ -391,14 +394,39 @@ function showToast(msg, isError) {
   t._timer = setTimeout(() => t.classList.remove('show'), 2600);
 }
 
+/* ---------------- 手动触发抓取（经 Cloudflare Worker → GitHub Actions） ----------------
+ * 前端刷新按钮 / 页面加载都会调用 triggerScrape()：
+ *   它向同源的 POST /scrape 发请求，Worker 再用 GitHub API 触发 scrape.yml 工作流，
+ *   真正在后台跑一次抓取并推送最新数据。抓取约需 1~3 分钟，故触发后提示稍后刷新。
+ * 带 5 分钟本地冷却，避免频繁刷新页面把 GitHub API 打爆。 */
+const SCRAPE_COOLDOWN = 5 * 60 * 1000;
+function lastScrapeTs() { try { return Number(localStorage.getItem('wyc:lastScrape') || 0); } catch { return 0; } }
+function markScrape() { try { localStorage.setItem('wyc:lastScrape', String(Date.now())); } catch { /* ignore */ } }
+
+async function triggerScrape() {
+  if (Date.now() - lastScrapeTs() < SCRAPE_COOLDOWN) {
+    return { ok: false, skipped: true, reason: 'cooldown' };
+  }
+  try {
+    const r = await fetch('/scrape', { method: 'POST', cache: 'no-store' });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok && d.ok) { markScrape(); return { ok: true }; }
+    return { ok: false, status: r.status, error: d.error || d.body || d.hint || 'unknown' };
+  } catch (e) {
+    return { ok: false, error: e && e.message ? e.message : String(e) };
+  }
+}
+
 async function checkForUpdates() {
   const btn = document.getElementById('refreshBtn');
   if (!btn || btn.disabled) return;
-  const oldCount = DATA.messages.length + DATA.live.length + DATA.performances.length;
-  const oldUpdated = DATA.meta && DATA.meta.lastUpdated;
   const oldText = btn.textContent;
   btn.disabled = true;
-  btn.textContent = '检查中…';
+  btn.textContent = '触发中…';
+  // 1) 先真正触发一次后台抓取
+  const res = await triggerScrape();
+  // 2) 重新加载当前已部署的数据（若本小时 cron 已跑过则直接是最新）
+  btn.textContent = '刷新中…';
   try {
     const data = await loadArchive();
     DATA.meta = data.meta;
@@ -408,15 +436,16 @@ async function checkForUpdates() {
     rebuildIndex();
     renderMeta();
     renderAll();
-    const newCount = DATA.messages.length + DATA.live.length + DATA.performances.length;
-    const changed = newCount !== oldCount || (DATA.meta && DATA.meta.lastUpdated && oldUpdated && DATA.meta.lastUpdated !== oldUpdated);
-    showToast(changed ? '✅ 已更新到最新补档' : '✅ 已是最新');
   } catch (e) {
-    showToast('⚠️ 更新检查失败：' + e.message, true);
+    showToast('⚠️ 刷新失败：' + e.message, true);
+    return;
   } finally {
     btn.disabled = false;
     btn.textContent = oldText;
   }
+  if (res.ok) showToast('✅ 已触发抓取，约 1~3 分钟后刷新即可看到最新');
+  else if (res.skipped) showToast('⏳ 抓取刚触发过，请稍候再刷新');
+  else showToast('⚠️ 触发抓取失败：' + (res.error || '') + '（仍显示当前数据）', true);
 }
 
 function renderMeta() {
