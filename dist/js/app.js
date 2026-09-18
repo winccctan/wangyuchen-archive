@@ -2,7 +2,7 @@
 const DATA = { meta: null, messages: [], live: [], performances: [] };
 // msgKey → message，便于翻译时按 id 取到原文（重新渲染后 DOM 里只剩 mid）
 const MSG_INDEX = new Map();
-const state = { tab: 'messages', query: '', dateFrom: null, dateTo: null, dayLimit: 3, lang: 'zh', expanded: new Set() };
+const state = { tab: 'messages', query: '', dateFrom: null, dateTo: null, dayLimit: 3, lang: 'zh', expanded: new Set(), guideSub: 'guide' };
 
 const $ = (sel) => document.querySelector(sel);
 const panels = {
@@ -100,6 +100,22 @@ const PROFILE = {
         { handle: 'GNZ48-王语晨的甜橙小铺', web: 'https://weibo.com/n/GNZ48-王语晨的甜橙小铺' }
       ]
     }
+  ],
+  // 官网公式照（SNH48 官网 member-detail，共 4 张，无历史版本）
+  gallery: [
+    './assets/member-gs1.jpg',
+    './assets/member-gs2.jpg',
+    './assets/member-gs3.jpg',
+    './assets/member-gs4.jpg'
+  ],
+  // 经历备注（SNH48 官网 member-detail，新→旧；tag: 高飞/梦想/新人）
+  experience: [
+    { date: '2026.08.08', tag: '高飞', text: 'SNH48 GROUP 年度青春盛典 NO.22 年度高飞成员奖' },
+    { date: '2025.08.02', tag: '梦想', text: 'SNH48 GROUP 年度青春盛典 NO45 年度梦想成员奖' },
+    { date: '2024.08.03', tag: '高飞', text: 'SNH48 GROUP 年度青春盛典 NO27 年度高飞成员奖' },
+    { date: '2023.08.05', tag: '新人', text: 'SNH48 GROUP 年度青春盛典 年度潜力新人' },
+    { date: '2023.01.15', tag: '', text: '升格加入 GNZ48 Team NIII 队（Team NIII）' },
+    { date: '2022.10.02', tag: '', text: '加入 GNZ48 十三期生' }
   ]
 };
 
@@ -632,6 +648,16 @@ function bindEvents() {
       openSocial(socialBtn.dataset.web, socialBtn.dataset.scheme);
       return;
     }
+    // 新粉指南子标签切换
+    const subBtn = e.target.closest('.subtab');
+    if (subBtn) {
+      e.stopPropagation();
+      state.guideSub = subBtn.dataset.sub;
+      panels.guide.querySelectorAll('.subtab').forEach((b) =>
+        b.classList.toggle('active', b.dataset.sub === state.guideSub));
+      renderGuideSub();
+      return;
+    }
     // 开播推送卡片 → 站内「直播 / 录播」页
     const gotoBtn = e.target.closest('[data-goto]');
     if (gotoBtn) {
@@ -659,9 +685,12 @@ function switchTab(name) {
   state.tab = name;
   document.querySelectorAll('.tab').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
   Object.entries(panels).forEach(([k, el]) => el.classList.toggle('active', k === name));
-  // 「📅 时间」筛选对「发言 / 直播录播 / 公演」三个页都可用（新粉指南除外）
+  // 「📅 时间」筛选与「搜索」仅对「发言 / 直播录播 / 公演」有意义；新粉指南页自带内容，隐藏这两项
+  const isGuide = name === 'guide';
   const df = $('#dateToggleBtn');
-  if (df) df.hidden = name === 'guide';
+  if (df) df.hidden = isGuide;
+  const si = $('#searchInput');
+  if (si) si.hidden = isGuide;
   renderAll();
 }
 
@@ -690,9 +719,37 @@ function renderAll() {
   else renderPerformances();
 }
 
-/* ---------------- 新粉指南 ---------------- */
+/* ---------------- 新粉指南（含子标签：新粉指南 / 公式照 / 经历备注） ---------------- */
+const GUIDE_SUBS = [
+  ['guide', '新粉指南'],
+  ['gallery', '公式照'],
+  ['exp', '经历备注']
+];
+
 function renderGuide() {
   const panel = panels.guide;
+  const subtabs = GUIDE_SUBS.map(([k, label]) =>
+    `<button class="subtab${state.guideSub === k ? ' active' : ''}" data-sub="${k}">${escapeHtml(label)}</button>`
+  ).join('');
+  panel.innerHTML = `
+    <div class="guide">
+      <div class="subtabs">${subtabs}</div>
+      <div class="guide-sub" id="guideSub"></div>
+    </div>`;
+  renderGuideSub();
+}
+
+// 仅刷新子标签内容，不重建整块（切换更快，且保留滚动位置）
+function renderGuideSub() {
+  const box = $('#guideSub');
+  if (!box) return;
+  if (state.guideSub === 'gallery') box.innerHTML = renderGallery();
+  else if (state.guideSub === 'exp') box.innerHTML = renderExperience();
+  else box.innerHTML = renderGuideMain();
+}
+
+// 子标签一：新粉指南（资料卡 + 社交账号）
+function renderGuideMain() {
   const facts = PROFILE.facts
     .map(([k, v]) => `<div class="fact"><span class="fact-k">${escapeHtml(k)}</span><span class="fact-v">${escapeHtml(v)}</span></div>`)
     .join('');
@@ -711,19 +768,46 @@ function renderGuide() {
     </div>`;
   }).join('');
 
-  panel.innerHTML = `
-    <div class="guide">
-      <div class="guide-card">
-        <div class="guide-facts">
-          <div class="guide-aliases">昵称：${escapeHtml(PROFILE.aliases)}</div>
-          <div class="facts-grid">${facts}</div>
-          <div class="guide-code">神秘代码：<strong>${escapeHtml(PROFILE.secretCode)}</strong></div>
-        </div>
-        <img class="guide-poster" src="./assets/newfan-guide.jpg" alt="王语晨 新粉指南" loading="lazy" />
+  return `
+    <div class="guide-card">
+      <div class="guide-facts">
+        <div class="guide-aliases">昵称：${escapeHtml(PROFILE.aliases)}</div>
+        <div class="facts-grid">${facts}</div>
+        <div class="guide-code">神秘代码：<strong>${escapeHtml(PROFILE.secretCode)}</strong></div>
       </div>
-      <div class="guide-socials">${groups}</div>
-      <p class="guide-tip">在手机上点击会直接打开对应 App 并进入 TA 的主页；未安装 App 或唤起失败时，会自动跳转到网页版。</p>
-    </div>`;
+      <img class="guide-poster" src="./assets/newfan-guide.jpg" alt="王语晨 新粉指南" loading="lazy" />
+    </div>
+    <div class="guide-socials">${groups}</div>
+    <p class="guide-tip">在手机上点击会直接打开对应 App 并进入 TA 的主页；未安装 App 或唤起失败时，会自动跳转到网页版。</p>`;
+}
+
+// 子标签二：公式照（SNH48 官网，共 4 张）
+function renderGallery() {
+  const gallery = (PROFILE.gallery || []).map((src, i) =>
+    `<figure class="formula-item"><img src="${escapeHtml(src)}" alt="公式照 ${i + 1}" loading="lazy" referrerpolicy="no-referrer" onerror="this.closest('figure').classList.add('broken')" /><figcaption>公式照 ${i + 1}</figcaption></figure>`
+  ).join('');
+  return `
+    <section class="profile-block">
+      <div class="formula-gallery">${gallery}</div>
+      <p class="profile-note">来源：SNH48 官网成员资料（共 4 张，官网不保留历史版本）</p>
+    </section>`;
+}
+
+// 子标签三：经历备注（SNH48 官网，新→旧）
+function renderExperience() {
+  const exp = (PROFILE.experience || []).map((e) => {
+    const tag = e.tag
+      ? `<span class="exp-tag exp-tag-${escapeHtml(e.tag)}">${escapeHtml(e.tag)}</span>`
+      : '';
+    return `<li class="exp-item">
+      <div class="exp-dot"></div>
+      <div class="exp-body">
+        <div class="exp-date">${escapeHtml(e.date)}</div>
+        <div class="exp-text">${tag}${escapeHtml(e.text)}</div>
+      </div>
+    </li>`;
+  }).join('');
+  return `<section class="profile-block"><ul class="exp-timeline">${exp}</ul></section>`;
 }
 
 // 一条消息可用于搜索的全部文字
