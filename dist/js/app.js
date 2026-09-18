@@ -789,7 +789,7 @@ function renderGallery() {
   return `
     <section class="profile-block">
       <div class="formula-gallery">${gallery}</div>
-      <p class="profile-note">来源：SNH48 官网成员资料（共 4 张，官网不保留历史版本）</p>
+      <p class="profile-note">来源：SNH48 官网成员资料</p>
     </section>`;
 }
 
