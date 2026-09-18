@@ -1,18 +1,4 @@
 # 王语晨补档站 · 每小时自动抓取工作流
-#
-# 触发方式：
-#   1) 定时：每小时整点（UTC）自动跑一次（东九区约为每小时 :00）
-#   2) 手动：GitHub Actions 页面「Run workflow」
-#   3) 外部：Cloudflare Worker 的 POST /scrape 接口（前端刷新按钮 / 页面加载触发）
-#
-# 流程：安装抓取依赖 → 抓取口袋发言/直播/公演 → 重解析/累积名单/抓 B站 → 构建 dist/
-#       → 提交并推送 main（若数据有变化）→ 镜像 gh-pages 分支
-#
-# 需要的仓库 Secrets（Settings → Secrets and variables → Actions）：
-#   POCKET48_TOKEN  口袋48 登录 token（抓口袋发言用；留空则跳过发言）
-#   SCRAPE_PROXY    国内出口代理（境外 runner 经此访问口袋48；留空则直连）
-# 推送用 GITHUB_TOKEN（默认即有 contents:write，无需额外配置）。
-
 name: 每小时自动补档
 
 on:
@@ -20,11 +6,9 @@ on:
     - cron: '0 * * * *'          # 每小时整点（UTC）
   workflow_dispatch: {}          # 允许手动 / Cloudflare Worker 触发
 
-# 推送 main + 镜像 gh-pages 都需要写权限
 permissions:
   contents: write
 
-# 串行执行：同一时刻只跑一个抓取，避免并发写坏数据；后续触发排队等待
 concurrency:
   group: scrape
   cancel-in-progress: false
@@ -34,10 +18,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      # 抓取凭据（来自仓库 Secrets；CI 无 .env，config.mjs 自动回退到这些环境变量）
       POCKET48_TOKEN: ${{ secrets.POCKET48_TOKEN }}
       SCRAPE_PROXY: ${{ secrets.SCRAPE_PROXY }}
-      # 抓取参数（与 auto-update.sh 对齐）
       MAX_PAGES: "3"
       MAX_DETAILS: "40"
       BILI_PAGE_BUDGET: "6"
@@ -48,35 +30,26 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
-
       - name: Setup Node 22
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-
       - name: Install scraper deps
         working-directory: scraper
         run: npm ci
-
       - name: 抓取口袋发言 / 直播 / 公演
         working-directory: scraper
         run: node scrape.mjs
-
       - name: 重解析历史消息（幂等）
         run: node scripts/reparse-messages.mjs || true
-
       - name: 累积当前场次参演名单（前瞻）
         run: node scripts/capture-roster.mjs || true
-
       - name: 抓取她的公演记录
         run: MAX_DETAILS=40 node scripts/scrape-hers-performances.mjs || true
-
       - name: 抓取 B站 公演录像备用源
         run: BILI_PAGE_BUDGET=6 PAGE_SLEEP=1500 BILI_SPACE_BAN_TRIES=0 node scripts/fetch-bili-videos.mjs || true
-
       - name: 构建发布目录 dist/
         run: node scripts/build-dist.mjs
-
       - name: 提交并推送 main
         run: |
           git config user.email "archive@local"
@@ -88,7 +61,6 @@ jobs:
             git commit -m "auto: 增量补档 $(date '+%Y-%m-%d %H:%M UTC')"
             git push origin main
           fi
-
       - name: 镜像 gh-pages 分支
         if: success()
         env:
