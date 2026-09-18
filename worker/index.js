@@ -27,10 +27,28 @@ export default {
       return handleScrape(env);
     }
 
-    if (env && env.ASSETS) return env.ASSETS.fetch(request);
+    if (env && env.ASSETS) {
+      const res = await env.ASSETS.fetch(request);
+      return applyFreshPolicy(res, url);
+    }
     return new Response('Not Found', { status: 404 });
   }
 };
+
+// 静态资源缓存策略：
+//   HTML 与 /data/ 下的数据文件 → 强制「每次都向服务器校验」（no-cache + must-revalidate），
+//   避免手机浏览器、CDN 长期缓存旧页面/旧数据（否则刷新后仍看到几小时前的内容）。
+//   其余资源（css/js/图片）由构建注入 ?v=<时间戳> 做版本控制，可放心长缓存。
+function applyFreshPolicy(res, url) {
+  if (!res || !res.headers) return res;
+  const p = url.pathname;
+  const isHtml = p === '/' || p.endsWith('/') || p.endsWith('.html');
+  const isData = p.startsWith('/data/');
+  if (!isHtml && !isData) return res;
+  const headers = new Headers(res.headers);
+  headers.set('Cache-Control', 'no-cache, must-revalidate');
+  return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
+}
 
 // m2m100 需明确源语言；本站发言以中文为主
 const SRC_LANG = 'zh';

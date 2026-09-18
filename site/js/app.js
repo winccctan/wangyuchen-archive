@@ -444,7 +444,19 @@ function renderMeta() {
   $('#statMsg').textContent = m.counts.messages ?? DATA.messages.length;
   $('#statLive').textContent = m.counts.live ?? DATA.live.length;
   $('#statPerf').textContent = m.counts.performances ?? DATA.performances.length;
-  $('#updatedAt').textContent = m.lastUpdated ? '更新于 ' + new Date(m.lastUpdated).toLocaleString('zh-CN') : '';
+  // 更新时间：宽屏显示完整时间，窄屏（≤560px）自动切换成「HH:MM 更新」，避免挤到右侧按钮
+  const upEl = $('#updatedAt');
+  if (upEl) {
+    if (!m.lastUpdated) {
+      upEl.textContent = '';
+    } else {
+      const d = new Date(m.lastUpdated);
+      const pad = (n) => String(n).padStart(2, '0');
+      upEl.innerHTML =
+        `<span class="upd-full">更新于 ${d.toLocaleString('zh-CN')}</span>` +
+        `<span class="upd-mini">${pad(d.getHours())}:${pad(d.getMinutes())} 更新</span>`;
+    }
+  }
 }
 
 /* ---------------- 事件 ---------------- */
