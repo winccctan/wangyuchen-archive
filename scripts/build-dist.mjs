@@ -28,10 +28,18 @@ const files = [
   'js/app.js',
   'vendor/hls.min.js',
   'assets/newfan-guide.jpg',
-  'assets/member-gs1.jpg',    // 官网公式照 1
-  'assets/member-gs2.jpg',    // 官网公式照 2
-  'assets/member-gs3.jpg',    // 官网公式照 3
-  'assets/member-gs4.jpg',    // 官网公式照 4
+  'assets/gs2024-1.jpg',      // 2024 公式照（微博）
+  'assets/gs2024-2.jpg',
+  'assets/gs2024-3.jpg',
+  'assets/gs2025-1.jpg',      // 2025 公式照（微博）
+  'assets/gs2025-2.jpg',
+  'assets/gs2025-3.jpg',
+  'assets/gs2025-4.jpg',
+  'assets/gs2025-5.jpg',
+  'assets/member-gs1.jpg',    // 2026 官网公式照 1
+  'assets/member-gs2.jpg',    // 2026 官网公式照 2
+  'assets/member-gs3.jpg',    // 2026 官网公式照 3
+  'assets/member-gs4.jpg',    // 2026 官网公式照 4
   'assets/avatar.png',        // 头部头像（透明底抠图）
   'assets/avatar-round.png',  // 网站图标 / apple-touch-icon
   'data/meta.json', // 仅 0.5KB：前端用它取数据版本号，决定是否复用缓存的大文件
