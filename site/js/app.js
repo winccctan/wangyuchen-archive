@@ -141,6 +141,12 @@ const PROFILE = {
     { date: '2023.08.05', tag: '新人', text: 'SNH48 GROUP 年度青春盛典 年度潜力新人' },
     { date: '2023.01.15', tag: '', text: '升格加入 GNZ48 Team NIII 队（Team NIII）' },
     { date: '2022.10.02', tag: '', text: '加入 GNZ48 十三期生' }
+  ],
+  // 官方微博提及（@SNH48 官微提到王语晨的微博，手动抓取补入；带官微深链）
+  officialMentions: [
+    { date: '2026.09.05', text: 'SNH48 GROUP 首支电竞女子战队正式集结，王语晨入选大名单', url: 'https://weibo.com/2689280541/RgGEXi2k8' },
+    { date: '2026.08.30', text: '2026 年度青春盛典 TOP22 领奖图：恭喜 @GNZ48-王语晨 获得年度高飞成员奖', url: 'https://weibo.com/2689280541/RfKUUz5gN' },
+    { date: '2026.08.26', text: '2026 年度青春盛典 TOP21-24 发言时刻', url: 'https://weibo.com/2689280541/Rf9Binm0n' }
   ]
 };
 
@@ -852,7 +858,25 @@ function renderExperience() {
       </div>
     </li>`;
   }).join('');
-  return `<section class="profile-block"><ul class="exp-timeline">${exp}</ul></section>`;
+  return `<section class="profile-block">
+    <ul class="exp-timeline">${exp}</ul>
+    ${renderOfficialMentions()}
+  </section>`;
+}
+
+// 经历备注下方：官微提及王语晨的微博（带官微深链）
+function renderOfficialMentions() {
+  const list = PROFILE.officialMentions || [];
+  if (!list.length) return '';
+  const items = list.map((m) => `
+    <li class="exp-item exp-mention">
+      <div class="exp-dot exp-dot-mention"></div>
+      <div class="exp-body">
+        <div class="exp-date">${escapeHtml(m.date)}</div>
+        <div class="exp-text"><a class="exp-link" href="${escapeHtml(m.url)}" target="_blank" rel="noopener">${escapeHtml(m.text)}</a></div>
+      </div>
+    </li>`).join('');
+  return `<h4 class="exp-subtitle">官方微博提及 · @SNH48</h4><ul class="exp-timeline exp-mention-list">${items}</ul>`;
 }
 
 // 一条消息可用于搜索的全部文字

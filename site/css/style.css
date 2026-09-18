@@ -418,6 +418,14 @@ body {
 }
 .exp-date { font-size: 13px; font-weight: 600; color: var(--primary-dark); }
 .exp-text { font-size: 14px; color: var(--text); margin-top: 2px; line-height: 1.5; }
+/* 经历备注下方：官微提及 */
+.exp-subtitle {
+  font-size: 13px; font-weight: 700; color: var(--muted);
+  margin: 24px 0 12px; padding-left: 10px; border-left: 4px solid var(--border);
+}
+.exp-dot-mention { background: var(--muted); box-shadow: 0 0 0 2px var(--muted); }
+.exp-link { color: var(--primary-dark); text-decoration: none; border-bottom: 1px dashed var(--primary); }
+.exp-link:hover { color: var(--primary); }
 .exp-tag {
   display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 8px;
   border-radius: 999px; margin-right: 6px; vertical-align: middle;
