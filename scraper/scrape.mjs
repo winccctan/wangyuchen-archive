@@ -154,8 +154,29 @@ function pickBestStream(streams) {
 async function attachPlayUrls(list, type, existingMap) {
   let n = 0;
   for (const it of list) {
-    if (existingMap.get(it.liveId)?.playUrl) {
-      it.playUrl = existingMap.get(it.liveId).playUrl;
+    const prev = existingMap.get(it.liveId);
+    // 已结束的直播：旧的 playUrl 可能是「直播中」抓到的失效直播流（直播结束后该地址失效），
+    // 必须重新向 getLiveOne 请求回放 m3u8，否则前端会拿到一个播不了的死链。
+    if (it.status === 3) {
+      try {
+        if (type === 'live') {
+          const r = await fetchLiveOne(it.liveId);
+          it.playUrl = r.playStreamPath || '';
+        } else {
+          const r = await fetchOpenLiveOne(it.liveId, POCKET48_TOKEN || undefined);
+          it.playUrl = pickBestStream(r.streams) || '';
+        }
+        if (it.playUrl) n++;
+      } catch {
+        it.playUrl = prev?.playUrl || ''; // 获取失败则退回旧值，不破坏已有数据
+      }
+      await sleep(150);
+      continue;
+    }
+    // 直播中 / 其他状态：有旧地址则复用（直播流仍有效，避免每次重抓）；
+    // 无旧地址才去请求，拿到后保存到数据。
+    if (prev?.playUrl) {
+      it.playUrl = prev.playUrl;
       continue;
     }
     try {
@@ -167,8 +188,7 @@ async function attachPlayUrls(list, type, existingMap) {
         it.playUrl = pickBestStream(r.streams) || '';
       }
       if (it.playUrl) n++;
-    } catch (e) {
-      // 个别条目拿不到播放地址不影响整体
+    } catch {
       it.playUrl = '';
     }
     await sleep(150);
