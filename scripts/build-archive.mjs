@@ -54,6 +54,54 @@ function matchName(p, keyword) {
 
 const shDate = (ms) => (Number.isFinite(Number(ms)) ? new Date(Number(ms) + 8 * 3600 * 1000).toISOString().slice(0, 10) : '');
 
+/* ---------------- 官方流域名修正 + B 站备用源 ----------------
+ * ① 域名修正：官方公演回放里 `ts.48.cn` 已失效（分片 404），但**同样的路径在 `perform-vod.48.cn` 上完全可用**
+ *    （实测 2022-10-02 / 2023-10-29 / 2025-05-02 三条换域名后 m3u8 与分片均 200）。
+ *    177 条播放地址里有 156 条属 ts.48.cn —— 这就是「2025 播放不了」的根因，改域名即可救回。
+ * ② B 站备用源（scripts/fetch-bili-videos.mjs）：UP 主上传的完整公演录像，标题形如
+ *    「【GNZ48】20260913 Team NIII 《拾忆：TEAM NIII》公演」，含**日期 + 队伍**，按此精确匹配挂 `biliUrl`。 */
+const STREAM_HOST_FIX = { 'ts.48.cn': 'perform-vod.48.cn' };
+const biliData = read('bili-videos.json') || { videos: [] };
+const biliByDate = new Map();
+for (const v of biliData.videos || []) {
+  const m = String(v.title || '').match(/(20\d{2})(\d{2})(\d{2})/);
+  if (!m) continue;
+  const key = m[1] + m[2] + m[3];
+  if (!biliByDate.has(key)) biliByDate.set(key, []);
+  biliByDate.get(key).push(v);
+}
+
+function attachBiliAndPruneDead(list) {
+  let biliHit = 0, pruned = 0;
+  for (const p of list) {
+    // 1) 修正失效的官方流域名（ts.48.cn → perform-vod.48.cn，路径一致）
+    if (p.playUrl) {
+      for (const [from, to] of Object.entries(STREAM_HOST_FIX)) {
+        if (p.playUrl.includes(`//${from}/`)) {
+          p.playUrlFixed = p.playUrl;
+          p.playUrl = p.playUrl.replace(`//${from}/`, `//${to}/`);
+          pruned++;
+        }
+      }
+    }
+    // 2) 按「日期 + 队伍」匹配 B 站录像
+    if (!p.biliUrl && p.stime) {
+      const key = shDate(p.stime).replace(/-/g, '');
+      const cands = biliByDate.get(key) || [];
+      const teams = (p.teamList || []).map((t) => t.teamName).filter(Boolean);
+      const hit = cands.find((v) => /niii/i.test(v.title))
+        || (teams.length > 1 ? cands.find((v) => /gnz48/i.test(v.title)) : null);
+      if (hit) {
+        p.biliUrl = `https://www.bilibili.com/video/${hit.bvid}`;
+        p.biliTitle = hit.title;
+        biliHit++;
+      }
+    }
+  }
+  console.log(`  公演：修正失效官方流域名 ${pruned} 条；挂 B 站源 ${biliHit} 条（B 站库 ${(biliData.videos || []).length} 个视频）`);
+  return list;
+}
+
 function enrichPerformances(list, manual, rosters) {
   const rule = manual?.rule || {};
   const from = rule.fromDate ? Date.parse(rule.fromDate + 'T00:00:00+08:00') : null;
@@ -157,11 +205,16 @@ if (scheduledExtra.length) console.log(`  公演：并入排期场次 ${schedule
 // 有「她的公演记录」时不再套规则近似（记录本身就是她参加过的），仅保留 B 站链接匹配。
 const manualForUse = usedHers ? { ...manual, rule: {}, herPerformances: [] } : manual;
 
+// 先按规则/权威源整理，再剔除失效官方流并按「日期+队伍」挂 B 站备用源
+const performances = attachBiliAndPruneDead(
+  enrichPerformances([...baseList, ...scheduledExtra], manualForUse, rosters)
+);
+
 const archive = {
   meta: read('meta.json'),
   messages: read('messages.json', 'messages').map(slimMessage),
   live: read('live.json', 'live'),
-  performances: enrichPerformances([...baseList, ...scheduledExtra], manualForUse, rosters)
+  performances
 };
 
 // 页头统计以「实际渲染的条数」为准：公演经过筛选、直播经过补档合并，

@@ -1,0 +1,5208 @@
+{
+  "mid": "2086351451",
+  "sids": [
+    "4158846",
+    "4158274"
+  ],
+  "updatedAt": "2026-09-18T06:53:41.946Z",
+  "count": 577,
+  "progress": {
+    "4158274": 3,
+    "4158846": 19
+  },
+  "videos": [
+    {
+      "bvid": "BV1ZLeG6JE9a",
+      "aid": 117286413275444,
+      "title": "【GNZ48】20260917 偶像研究计划H-I组《代号I》首演",
+      "created": 1789648834,
+      "duration": 10524,
+      "play": 6275,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1ZGYB6WE2z",
+      "aid": 117265089435883,
+      "title": "【GNZ48】20260913 Team G《拾忆：TEAM G》成都巡演",
+      "created": 1789323858,
+      "duration": 11713,
+      "play": 3788,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1AAYB6hEiD",
+      "aid": 117264988772304,
+      "title": "【GNZ48】20260913 Team NIII 《拾忆：TEAM NIII》公演",
+      "created": 1789322289,
+      "duration": 11210,
+      "play": 3882,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1K7Yq6AEVy",
+      "aid": 117263546060966,
+      "title": "【GNZ48】20260913 Team Z《Zenith ·穹顶之上》马昕玥生日公演",
+      "created": 1789300224,
+      "duration": 13328,
+      "play": 5527,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1r7YY61Ezy",
+      "aid": 117261868275212,
+      "title": "【GNZ48】20260912 Team NIII 《拾忆：TEAM NIII》公演（石竹君季度MVP）",
+      "created": 1789274331,
+      "duration": 11842,
+      "play": 2890,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV12MYY6QEF9",
+      "aid": 117261767612291,
+      "title": "【GNZ48】20260912 Team G《拾忆：TEAM G》成都巡演",
+      "created": 1789273029,
+      "duration": 12575,
+      "play": 3067,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1UAYd6WECJ",
+      "aid": 117258059783136,
+      "title": "【GNZ48】20260912 Team Z《Zenith ·穹顶之上》公演",
+      "created": 1789216458,
+      "duration": 11465,
+      "play": 5102,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1KuYd6nEYD",
+      "aid": 117257992738530,
+      "title": "【SNH48】20260912 Team NII《十一》青钰雯生日公演",
+      "created": 1789215519,
+      "duration": 15118,
+      "play": 1920,
+      "sid": "4158274"
+    },
+    {
+      "bvid": "BV1DQYD6LECc",
+      "aid": 117256784713434,
+      "title": "【CGT48×CKG48】20260912 《偶像进阶计划》启动仪式",
+      "created": 1789196944,
+      "duration": 4889,
+      "play": 6560,
+      "sid": "4158274"
+    },
+    {
+      "bvid": "BV1QCY26NEnb",
+      "aid": 117253127278959,
+      "title": "【GNZ48】20260911 偶像研究计划H组《心的旅程》公演千秋乐",
+      "created": 1789141159,
+      "duration": 9442,
+      "play": 2374,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1cabx6EEUF",
+      "aid": 117225042220657,
+      "title": "【GNZ48】20260906 Team Z《Zenith ·穹顶之上》公演",
+      "created": 1788712705,
+      "duration": 9040,
+      "play": 4076,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1Xtbs6wEVa",
+      "aid": 117223666555750,
+      "title": "【GNZ48】20260906 Team G《拾忆：TEAM G》公演",
+      "created": 1788691559,
+      "duration": 11204,
+      "play": 5937,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1TFbL68E3h",
+      "aid": 117219069532379,
+      "title": "【GNZ48】20260905 Team Z《Zenith ·穹顶之上》公演",
+      "created": 1788621685,
+      "duration": 10280,
+      "play": 4037,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1Wet26CEfq",
+      "aid": 117217811241617,
+      "title": "【GNZ48】20260905 Team NIII 《拾忆：TEAM NIII》公演",
+      "created": 1788602256,
+      "duration": 10917,
+      "play": 5466,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1b5t66AEqJ",
+      "aid": 117213650489848,
+      "title": "【GNZ48】20260904 Team G《拾忆：TEAM G》公演",
+      "created": 1788539011,
+      "duration": 10834,
+      "play": 4686,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1F3tz67Ehj",
+      "aid": 117211922633199,
+      "title": "【GNZ48】20260903 偶像研究计划H组《心的旅程》公演",
+      "created": 1788512550,
+      "duration": 8773,
+      "play": 1864,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1aEtW6xE86",
+      "aid": 117185380946022,
+      "title": "【GNZ48】20260830 Team NIII 《拾忆：TEAM NIII》公演",
+      "created": 1788107521,
+      "duration": 10404,
+      "play": 5026,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1mAtp62E8m",
+      "aid": 117184122593195,
+      "title": "【GNZ48】20260830 Team Z《Zenith ·穹顶之上》公演",
+      "created": 1788088209,
+      "duration": 10406,
+      "play": 4203,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1Fk4Q6SEXN",
+      "aid": 117181908000056,
+      "title": "【GNZ48】20260829 Team G《拾忆：TEAM G》公演（张琼予季度MVP）",
+      "created": 1788054334,
+      "duration": 12913,
+      "play": 4570,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1fv416FEsk",
+      "aid": 117179492079846,
+      "title": "【GNZ48】20260829 Team NIII 《拾忆：TEAM NIII》公演",
+      "created": 1788017794,
+      "duration": 11124,
+      "play": 4402,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1HHtP6QEJi",
+      "aid": 117173989154206,
+      "title": "【GNZ48】20260828 Team Z《Zenith ·穹顶之上》公演",
+      "created": 1787933805,
+      "duration": 11136,
+      "play": 7825,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1iE4d6QE74",
+      "aid": 117168737949771,
+      "title": "【GNZ48】20260827 Team G《拾忆：TEAM G》公演",
+      "created": 1787854284,
+      "duration": 11114,
+      "play": 5952,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1G44d6jEUr",
+      "aid": 117168385560709,
+      "title": "【GNZ48】20260826 偶像研究计划H组《心的旅程》公演（李想千秋乐）",
+      "created": 1787848001,
+      "duration": 8591,
+      "play": 2055,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1nbhP6ZERQ",
+      "aid": 117149897137119,
+      "title": "【GNZ48】20260823 Team G《拾忆：TEAM G》公演",
+      "created": 1787566099,
+      "duration": 11218,
+      "play": 4597,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1ov886RE1U",
+      "aid": 117145920871408,
+      "title": "【GNZ48】20260823 Team NIII 《拾忆：TEAM NIII》公演",
+      "created": 1787505407,
+      "duration": 10744,
+      "play": 5479,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1kZ8x6WEej",
+      "aid": 117144075376669,
+      "title": "【GNZ48】20260822 Team G《拾忆：TEAM G》公演",
+      "created": 1787477538,
+      "duration": 10970,
+      "play": 3720,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1Tk8y67EuT",
+      "aid": 117138538895422,
+      "title": "【GNZ48】20260822 Team Z《Zenith ·穹顶之上》公演",
+      "created": 1787392569,
+      "duration": 10549,
+      "play": 6885,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1LT816cEsd",
+      "aid": 117138270524481,
+      "title": "【GNZ48】20260821 Team NIII 《拾忆：TEAM NIII》公演",
+      "created": 1787388446,
+      "duration": 10134,
+      "play": 3896,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV17a8z6SEpx",
+      "aid": 117133673634738,
+      "title": "【GNZ48】20260820 偶像研究计划H组《心的旅程》公演",
+      "created": 1787318383,
+      "duration": 9728,
+      "play": 2375,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV13pba6UEJ5",
+      "aid": 117109531088475,
+      "title": "【GNZ48】20260816 偶像研究计划H组《心的旅程》公演",
+      "created": 1786949888,
+      "duration": 8824,
+      "play": 3227,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV123b96iEt3",
+      "aid": 117104531610494,
+      "title": "【GNZ48】20260816 Team Z《Zenith ·穹顶之上》公演",
+      "created": 1786874328,
+      "duration": 10611,
+      "play": 10382,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV15Cb26hEJV",
+      "aid": 117100186178968,
+      "title": "【GNZ48】20260815 Team NIII 《拾忆：TEAM NIII》公演",
+      "created": 1786807619,
+      "duration": 10638,
+      "play": 5661,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1vqby6oELW",
+      "aid": 117099347386278,
+      "title": "【GNZ48】20260815 Team G《拾忆：TEAM G》公演",
+      "created": 1786794622,
+      "duration": 11199,
+      "play": 6934,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1Ubug6iEfA",
+      "aid": 117058763366170,
+      "title": "【SNH48 GROUP】20260808 第十三届年度青春盛典全程回放（歌舞表演+报名次）",
+      "created": 1786175095,
+      "duration": 19411,
+      "play": 284997,
+      "sid": "4158274"
+    },
+    {
+      "bvid": "BV14q3m6kEU1",
+      "aid": 117021182269177,
+      "title": "【GNZ48】20260801 Team Z《Zenith ·穹顶之上》上海巡演",
+      "created": 1785602448,
+      "duration": 11651,
+      "play": 10837,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1s4Gw62Ero",
+      "aid": 117014186303444,
+      "title": "【GNZ48】20260731 Team NIII 《拾忆：TEAM NIII》上海巡演",
+      "created": 1785495267,
+      "duration": 11057,
+      "play": 4628,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1wa3t6LEBG",
+      "aid": 117009757050053,
+      "title": "【GNZ48】20260730 Team G《拾忆：TEAM G》上海巡演",
+      "created": 1785427856,
+      "duration": 12593,
+      "play": 6001,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1uvgX6xEjM",
+      "aid": 116986939969551,
+      "title": "【GNZ48】20260726 偶像研究计划H组《心的旅程》公演（青春时刻：王紫萱 王紫媛）",
+      "created": 1785079251,
+      "duration": 11168,
+      "play": 3318,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1GL3E6NETx",
+      "aid": 116985782343500,
+      "title": "【GNZ48】20260726 Team G《拾忆：TEAM G》公演（6月乐曜曲首演）",
+      "created": 1785061673,
+      "duration": 11374,
+      "play": 7024,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV15f336QEuj",
+      "aid": 116981302825033,
+      "title": "【GNZ48】20260725 Team Z《Zenith ·穹顶之上》公演（青春时刻：叶舒淇）",
+      "created": 1784993677,
+      "duration": 12414,
+      "play": 15539,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1Co3g6PER7",
+      "aid": 116979910319952,
+      "title": "【GNZ48】20260725 Team NIII 《拾忆：TEAM NIII》公演",
+      "created": 1784972120,
+      "duration": 10207,
+      "play": 5970,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1ySge6AEiv",
+      "aid": 116975246253807,
+      "title": "【GNZ48】20260724 《豪歌2026》巅峰争夺战总决赛",
+      "created": 1784900990,
+      "duration": 11853,
+      "play": 11624,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1eFgb6wE7Y",
+      "aid": 116970213088693,
+      "title": "【GNZ48】20260723 Team Z《Zenith ·穹顶之上》公演",
+      "created": 1784824393,
+      "duration": 11133,
+      "play": 14852,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1QBKC6oEq3",
+      "aid": 116947849057464,
+      "title": "【GNZ48】20260719 Team Z 叶舒淇《淇·迹》主题生日minilive成都巡演",
+      "created": 1784483010,
+      "duration": 15449,
+      "play": 27189,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV13XK66DE2y",
+      "aid": 116947245080570,
+      "title": "【GNZ48】20260719 Team G《拾忆：TEAM G》公演",
+      "created": 1784473850,
+      "duration": 10801,
+      "play": 7638,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1kQKz6aE5n",
+      "aid": 116946037117031,
+      "title": "【GNZ48】20260719 Team NIII 《拾忆：TEAM NIII》公演（青春时刻：徐郑子滢）",
+      "created": 1784455272,
+      "duration": 11207,
+      "play": 5052,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1PPKN6qEyF",
+      "aid": 116942111248789,
+      "title": "【GNZ48】20260718 Team Z《Zenith ·穹顶之上》公演（青春时刻：朱怡欣）",
+      "created": 1784395408,
+      "duration": 12619,
+      "play": 12884,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1BoKN6cEWq",
+      "aid": 116941607935389,
+      "title": "【GNZ48】20260718 Team G《拾忆：TEAM G》公演（青春时刻：王秭歆）",
+      "created": 1784387522,
+      "duration": 12112,
+      "play": 4977,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV177Kj6tE1v",
+      "aid": 116930518325277,
+      "title": "【GNZ48】20260716 偶像研究计划H组《心的旅程》公演",
+      "created": 1784218416,
+      "duration": 8710,
+      "play": 2044,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1mFNy6UEKq",
+      "aid": 116910519753515,
+      "title": "【GNZ48】20260712 偶像研究计划H组《心的旅程》公演（青春时刻：韩鑫缘 韩梓轩）",
+      "created": 1783913189,
+      "duration": 12919,
+      "play": 2746,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1d2N36uEuL",
+      "aid": 116907332279122,
+      "title": "【SNH48 GROUP】第十三届年度青春盛典 第二阶段入围作品中报 20260712",
+      "created": 1783864692,
+      "duration": 1797,
+      "play": 3652,
+      "sid": "4158274"
+    },
+    {
+      "bvid": "BV1K7Nu6nEdC",
+      "aid": 116906811989269,
+      "title": "【GNZ48】20260712 Team Z《Zenith ·穹顶之上》公演",
+      "created": 1783856649,
+      "duration": 11563,
+      "play": 20476,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1BCNw6JEKt",
+      "aid": 116902332538776,
+      "title": "【GNZ48】20260711 Team G《拾忆：TEAM G》公演（青春时刻：张琼予）",
+      "created": 1783789312,
+      "duration": 12417,
+      "play": 7032,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV14MNA6AEMR",
+      "aid": 116902064101022,
+      "title": "【GNZ48】20260711 Team Z 朱怡欣《以心为注》个人定制生日会",
+      "created": 1783784919,
+      "duration": 12514,
+      "play": 25064,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV15tNc6rErz",
+      "aid": 116901007135909,
+      "title": "【GNZ48】20260711 Team NIII 《拾忆：TEAM NIII》公演（青春时刻：王思予）",
+      "created": 1783771167,
+      "duration": 11885,
+      "play": 5789,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1s1NH6SEbM",
+      "aid": 116896208852027,
+      "title": "【GNZ48】20260710 偶像研究计划H组《心的旅程》公演（青春时刻：赵子涵 万芳源）",
+      "created": 1783695512,
+      "duration": 11019,
+      "play": 2532,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1QKT96WET6",
+      "aid": 116873442237094,
+      "title": "【GNZ48】20260705 Team NIII 《拾忆：TEAM NIII》公演（青春时刻：许涵婧 吕思琪）",
+      "created": 1783347598,
+      "duration": 12226,
+      "play": 5422,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1MuTQ6CEK4",
+      "aid": 116872301254637,
+      "title": "【GNZ48】20260705 Team G《拾忆：TEAM G》公演（青春时刻：黄楚茵）",
+      "created": 1783330241,
+      "duration": 12440,
+      "play": 6591,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1akMA6SENf",
+      "aid": 116862570470140,
+      "title": "【GNZ48】20260704 Team Z《Zenith ·穹顶之上》公演（青春时刻：徐楚雯）",
+      "created": 1783182289,
+      "duration": 11677,
+      "play": 21316,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1WFMP6MExw",
+      "aid": 116862385919475,
+      "title": "【GNZ48】20260704 Team NIII 《拾忆：TEAM NIII》公演（青春时刻：王语晨）",
+      "created": 1783179032,
+      "duration": 12569,
+      "play": 5024,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1crTt6eEPW",
+      "aid": 116857050765872,
+      "title": "【GNZ48】20260703 偶像研究计划H组《心的旅程》公演（青春时刻：刘柳茜 李想）",
+      "created": 1783097392,
+      "duration": 10815,
+      "play": 2715,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1AjTb66EfX",
+      "aid": 116856866282170,
+      "title": "【GNZ48】20260702《豪歌2026》破阵突围晋级赛",
+      "created": 1783094705,
+      "duration": 10719,
+      "play": 2973,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1maTu6oEoV",
+      "aid": 116828361726648,
+      "title": "【GNZ48】20260628 Team G《拾忆：TEAM G》公演（青春时刻：方琪）",
+      "created": 1782659936,
+      "duration": 11844,
+      "play": 8186,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV15u7W6KEWt",
+      "aid": 116822942685746,
+      "title": "【GNZ48】20260627 Team NIII 《拾忆：TEAM NIII》公演（青春时刻：石竹君）",
+      "created": 1782577620,
+      "duration": 11899,
+      "play": 7224,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1dr7H6vEda",
+      "aid": 116822019939704,
+      "title": "【GNZ48】20260627 Team Z《Zenith ·穹顶之上》公演（青春时刻：许泳怡 陈珊玲）",
+      "created": 1782562918,
+      "duration": 12439,
+      "play": 19762,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1Vi7L61EZ3",
+      "aid": 116817355937124,
+      "title": "【GNZ48】20260626 Team G《拾忆：TEAM G》公演（青春时刻：黄宣绮）",
+      "created": 1782492525,
+      "duration": 12480,
+      "play": 8252,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1eg7v6NEeQ",
+      "aid": 116811416870755,
+      "title": "【GNZ48】20260625 偶像研究计划H组《心的旅程》公演",
+      "created": 1782401310,
+      "duration": 9094,
+      "play": 2651,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1Qj7v6FE8R",
+      "aid": 116811349627156,
+      "title": "【GNZ48】20260624 《豪歌2026》战队争锋赛.",
+      "created": 1782400243,
+      "duration": 10529,
+      "play": 4044,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1Lj7T64EqE",
+      "aid": 116794706698077,
+      "title": "【GNZ48】20260621 Team Z《Zenith ·穹顶之上》首演第二场（青春时刻：叶溁语）",
+      "created": 1782146254,
+      "duration": 13841,
+      "play": 14497,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV17R7T6hEgx",
+      "aid": 116794555768634,
+      "title": "【GNZ48】20260621 Team NIII 《拾忆：TEAM NIII》公演（青春时刻：曾雨思 赵文凤）",
+      "created": 1782143893,
+      "duration": 12367,
+      "play": 4783,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1pLj86aEFa",
+      "aid": 116788213849668,
+      "title": "【SNH48 GROUP】第十三届年度青春盛典 第一阶段入围作品速报 20260621",
+      "created": 1782047068,
+      "duration": 2006,
+      "play": 5303,
+      "sid": "4158274"
+    },
+    {
+      "bvid": "BV18fj46iEuX",
+      "aid": 116785680683458,
+      "title": "【GNZ48】20260620 Team G 张琼予《What's love》主题生日公演",
+      "created": 1782008445,
+      "duration": 13964,
+      "play": 7563,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1jDjJ6ZET2",
+      "aid": 116781503028200,
+      "title": "【GNZ48】20260620 Team G 张琼予《love loading...》生日冷餐会",
+      "created": 1781944957,
+      "duration": 4400,
+      "play": 3415,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1rojz6sETA",
+      "aid": 116777560316530,
+      "title": "【GNZ48】20260619 Team Z《Zenith ·穹顶之上》首演第一场",
+      "created": 1781884598,
+      "duration": 12133,
+      "play": 46720,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1iTj66mEPC",
+      "aid": 116777509984933,
+      "title": "【GNZ48】20260619 Team G《拾忆：TEAM G》公演（青春时刻：唐果 林家谊）",
+      "created": 1781883851,
+      "duration": 13283,
+      "play": 7242,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1umja6EEEg",
+      "aid": 116771788954409,
+      "title": "【GNZ48】20260618 偶像研究计划H组《心的旅程》公演（青春时刻：魏诗绮 孔美迪）",
+      "created": 1781796351,
+      "duration": 10976,
+      "play": 2922,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1fEjN6pETS",
+      "aid": 116754810411041,
+      "title": "【GNZ48】20260614 Team G《拾忆：TEAM G》公演（青春时刻：雷瑞妍 陈淑钰）",
+      "created": 1781537856,
+      "duration": 12253,
+      "play": 6331,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1hjJP62Eku",
+      "aid": 116748720347784,
+      "title": "【GNZ48】20260614 Team Z《斗宿之诀》2.0公演千秋乐（青春时刻：马昕玥 丁嘉欣）",
+      "created": 1781444739,
+      "duration": 13385,
+      "play": 11990,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1s4Js68Ekv",
+      "aid": 116743737447663,
+      "title": "【GNZ48】20260613 Team G 王秭歆《一万亿的喜爱》主题生日公演",
+      "created": 1781368720,
+      "duration": 17539,
+      "play": 28252,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV12jJn6DEsM",
+      "aid": 116742445668079,
+      "title": "【GNZ48】20260613 Team G 王秭歆生日冷餐会",
+      "created": 1781348770,
+      "duration": 1976,
+      "play": 1841,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1ewJn6cEFr",
+      "aid": 116742412047375,
+      "title": "【GNZ48】20260613 Team NIII 《拾忆：TEAM NIII》公演（青春时刻：白佳媛 项宇婧）",
+      "created": 1781348328,
+      "duration": 12123,
+      "play": 5990,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1gZJV66Euo",
+      "aid": 116737798444154,
+      "title": "【GNZ48】20260612 偶像研究计划H组《心的旅程》公演（青春时刻：张臻 谢林容）",
+      "created": 1781278005,
+      "duration": 10650,
+      "play": 2628,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1AQJ56YE2V",
+      "aid": 116737412438032,
+      "title": "【GNZ48】20260611 Team NIII 《拾忆：TEAM NIII》公演",
+      "created": 1781272101,
+      "duration": 9865,
+      "play": 4127,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1bMEG6cExd",
+      "aid": 116714729642787,
+      "title": "【GNZ48】20260607 Team Z《斗宿之诀》2.0公演",
+      "created": 1780925870,
+      "duration": 9488,
+      "play": 7728,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1gZE86DEm5",
+      "aid": 116709797205745,
+      "title": "【GNZ48】20260607 Team NIII 《拾忆：TEAM NIII》公演（青春时刻：张佳仪 谢晓倩）",
+      "created": 1780851124,
+      "duration": 12687,
+      "play": 6230,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1p8Et6wEyt",
+      "aid": 116709277110570,
+      "title": "【GNZ48】20260606 Team G《拾忆：TEAM G》公演（青春时刻：鲍雨欣 林奕希）",
+      "created": 1780843068,
+      "duration": 12796,
+      "play": 5298,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV16LEb68EkN",
+      "aid": 116708706619672,
+      "title": "【GNZ48】20260606 Team Z《斗宿之诀》2.0公演（青春时刻：焦玥 程戈）",
+      "created": 1780834135,
+      "duration": 12278,
+      "play": 5996,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1kS7C6zEg7",
+      "aid": 116698287970514,
+      "title": "【GNZ48】20260605 Team NIII 《拾忆：TEAM NIII》公演（青春时刻：李咏薇 王珺）",
+      "created": 1780675267,
+      "duration": 11908,
+      "play": 6796,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1m9EA6BEUX",
+      "aid": 116692550229986,
+      "title": "【GNZ48】20260604 Team G《拾忆：TEAM G》公演",
+      "created": 1780588055,
+      "duration": 10418,
+      "play": 4455,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1ah7R6HEnT",
+      "aid": 116687047234600,
+      "title": "【GNZ48】20260603 偶像研究计划H组《心的旅程》公演",
+      "created": 1780503573,
+      "duration": 9720,
+      "play": 2569,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1qFVQ63Eaf",
+      "aid": 116670035139292,
+      "title": "【GNZ48】20260531 Team NIII 《拾忆：TEAM NIII》公演",
+      "created": 1780244322,
+      "duration": 10994,
+      "play": 6659,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1XsVU64EpH",
+      "aid": 116669313717558,
+      "title": "【GNZ48】20260531 Team G《拾忆：TEAM G》公演（青春时刻：朱丽娜 杨可璐）",
+      "created": 1780232732,
+      "duration": 13384,
+      "play": 9743,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1DAVV6REdG",
+      "aid": 116663945075551,
+      "title": "【GNZ48】20260530 Team Z 徐楚雯《楚门的世界》主题生日公演",
+      "created": 1780151174,
+      "duration": 21423,
+      "play": 160883,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1ccVG6MEUy",
+      "aid": 116662820936286,
+      "title": "【GNZ48】20260530 Team Z 徐楚雯生日冷餐会",
+      "created": 1780133794,
+      "duration": 3334,
+      "play": 2801,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1tyVa6zEG9",
+      "aid": 116658458859683,
+      "title": "【GNZ48】20260529 Team Z《斗宿之诀》2.0公演",
+      "created": 1780068020,
+      "duration": 10128,
+      "play": 12016,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV19jVW6dE2c",
+      "aid": 116652939220424,
+      "title": "【GNZ48】20260528 偶像研究计划H组《心的旅程》公演",
+      "created": 1779983272,
+      "duration": 8730,
+      "play": 2722,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1jzGn6nEnz",
+      "aid": 116630457750965,
+      "title": "【GNZ48】20260524 Team NIII 《拾忆：TEAM NIII》公演",
+      "created": 1779640200,
+      "duration": 11246,
+      "play": 6723,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1BVGJ6EEVn",
+      "aid": 116629518161889,
+      "title": "【GNZ48】20260524 Team G《拾忆：TEAM G》雷瑞妍生日公演",
+      "created": 1779625862,
+      "duration": 13854,
+      "play": 7989,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1PXGq61E9n",
+      "aid": 116624434665127,
+      "title": "【GNZ48】20260523 Team Z《斗宿之诀》2.0公演",
+      "created": 1779548483,
+      "duration": 11027,
+      "play": 18105,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1G5Gi6XEgj",
+      "aid": 116623360988391,
+      "title": "【SNH48 GROUP】20260523 2025年度潜力新人TOP16答谢公演广州站",
+      "created": 1779532093,
+      "duration": 10408,
+      "play": 4702,
+      "sid": "4158274"
+    },
+    {
+      "bvid": "BV1mJGe66E2Q",
+      "aid": 116622136186783,
+      "title": "【GNZ48】20260522 Team G《拾忆：TEAM G》公演",
+      "created": 1779513336,
+      "duration": 10732,
+      "play": 6043,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV189L86kE2i",
+      "aid": 116613261105066,
+      "title": "【GNZ48】20260521 Team Z《斗宿之诀》2.0公演",
+      "created": 1779378078,
+      "duration": 9886,
+      "play": 10203,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1ZRLS6kENi",
+      "aid": 116607489675718,
+      "title": "【GNZ48】20260520 偶像研究计划H组《心的旅程》公演",
+      "created": 1779289722,
+      "duration": 9895,
+      "play": 2956,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1jGLm6vErQ",
+      "aid": 116607187882313,
+      "title": "【CGT48×CKG48】20260520 《新星闪耀计划》川渝联合公演",
+      "created": 1779285033,
+      "duration": 4093,
+      "play": 2063,
+      "sid": "4158274"
+    },
+    {
+      "bvid": "BV1SVLr6zEfZ",
+      "aid": 116602188207417,
+      "title": "【GNZ48】20260519 偶像研究计划H组《新星闪耀计划》第三阶段云公演",
+      "created": 1779208621,
+      "duration": 7423,
+      "play": 2579,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV15gLp6fEPM",
+      "aid": 116590477647787,
+      "title": "【GNZ48】20260517 Team Z《斗宿之诀》2.0公演",
+      "created": 1779030255,
+      "duration": 10494,
+      "play": 10960,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV14HLn6CEp3",
+      "aid": 116589722738068,
+      "title": "【GNZ48】20260517 Team NIII 《拾忆：TEAM NIII》王语晨生日公演",
+      "created": 1779018595,
+      "duration": 15008,
+      "play": 10143,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1QMLE6CE1T",
+      "aid": 116588766302284,
+      "title": "【GNZ48】20260517 Team NIII 王语晨生日冷餐会",
+      "created": 1779003677,
+      "duration": 2176,
+      "play": 1684,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1f6L36BEQz",
+      "aid": 116584689440781,
+      "title": "【GNZ48】20260516 Team Z 叶舒淇《淇·迹》主题生日公演",
+      "created": 1778941599,
+      "duration": 19134,
+      "play": 82700,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1xDLG6DEKR",
+      "aid": 116583716361302,
+      "title": "【GNZ48】20260516 Team Z 叶舒淇生日冷餐会",
+      "created": 1778926759,
+      "duration": 2951,
+      "play": 5557,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1GV5q6FE4F",
+      "aid": 116578800637503,
+      "title": "【GNZ48】20260515 Team G《拾忆：TEAM G》公演",
+      "created": 1778851849,
+      "duration": 11341,
+      "play": 11435,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1f95R6RENE",
+      "aid": 116573633318971,
+      "title": "【GNZ48】20260514 偶像研究计划H组《心的旅程》公演",
+      "created": 1778772888,
+      "duration": 9186,
+      "play": 2486,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1Zh5J69EpW",
+      "aid": 116551101584904,
+      "title": "【GNZ48】20260510 Team NIII 《拾忆：TEAM NIII》公演",
+      "created": 1778429175,
+      "duration": 10851,
+      "play": 7217,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1955E61Evu",
+      "aid": 116549725724118,
+      "title": "【GNZ48】20260510 Team G《拾忆：TEAM G》首演",
+      "created": 1778408205,
+      "duration": 10848,
+      "play": 14201,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1PCRZBrEqw",
+      "aid": 116548131952769,
+      "title": "【GNZ48】20260509 Team Z《斗宿之诀》2.0公演",
+      "created": 1778383997,
+      "duration": 10732,
+      "play": 6358,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV19bd3BtE3J",
+      "aid": 116539491688290,
+      "title": "【GNZ48】20260508 偶像研究计划H组《心的旅程》公演",
+      "created": 1778252387,
+      "duration": 9173,
+      "play": 3526,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1MhRyBGEZp",
+      "aid": 116522445969309,
+      "title": "【GNZ48】20260505 Team NIII 《拾忆：TEAM NIII》公演",
+      "created": 1777992353,
+      "duration": 10300,
+      "play": 9732,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1SDR1B7EUy",
+      "aid": 116521573620562,
+      "title": "【CKG48×CGT48】20260505 《新星闪耀计划》川渝联合公演",
+      "created": 1777979028,
+      "duration": 12217,
+      "play": 3431,
+      "sid": "4158274"
+    },
+    {
+      "bvid": "BV1dXRkBEExp",
+      "aid": 116521372227683,
+      "title": "【GNZ48】20260505 Team Z《斗宿之诀》2.0公演",
+      "created": 1777975639,
+      "duration": 11147,
+      "play": 11684,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV191RiBfEwN",
+      "aid": 116516792047818,
+      "title": "【GNZ48】20260504 《拾忆·珍藏》十周年纪念公演",
+      "created": 1777905846,
+      "duration": 12429,
+      "play": 25567,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1YpRcBZEGx",
+      "aid": 116511440116234,
+      "title": "【GNZ48】20260503 Team NIII 《拾忆：TEAM NIII》首演",
+      "created": 1777823930,
+      "duration": 11327,
+      "play": 14177,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1Np9XBoEdc",
+      "aid": 116505618553490,
+      "title": "【GNZ48】20260502 《拾忆·回响》十周年纪念歌会公演",
+      "created": 1777735288,
+      "duration": 15932,
+      "play": 21910,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1fpREBQEB5",
+      "aid": 116504309930879,
+      "title": "【GNZ48】20260502 偶像研究计划H组《心的旅程》新星闪耀计划公演",
+      "created": 1777715246,
+      "duration": 10051,
+      "play": 4227,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1zsRuBbErg",
+      "aid": 116499394075241,
+      "title": "【GNZ48】20260501 Team Z《下次一定发布会》罗寒月毕业公演",
+      "created": 1777640195,
+      "duration": 16117,
+      "play": 35842,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV13qRTBCE9Y",
+      "aid": 116498756672191,
+      "title": "【GNZ48】20260501 Team G《瑶光之迹》2.0公演千秋乐",
+      "created": 1777630541,
+      "duration": 11234,
+      "play": 8128,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1acovBZEkm",
+      "aid": 116471527119103,
+      "title": "【GNZ48】20260426 Team NIII 《没有我的世界(uN_v3rse)》公演千秋乐",
+      "created": 1777215169,
+      "duration": 10599,
+      "play": 8145,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1WcoiBmEWe",
+      "aid": 116471141308968,
+      "title": "【GNZ48】20260426 Team Z《斗宿之诀》2.0程戈生日公演（罗寒月普通公演千秋乐）",
+      "created": 1777209153,
+      "duration": 12854,
+      "play": 9909,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1ayoZBoEw3",
+      "aid": 116469832621496,
+      "title": "【GNZ48】20260426 Team Z 程戈生日冷餐会",
+      "created": 1777189234,
+      "duration": 3389,
+      "play": 1495,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1DFo9B3EWs",
+      "aid": 116466175186801,
+      "title": "【GNZ48】20260425 Team NIII 《没有我的世界(uN_v3rse)》公演（王语晨季度MVP）",
+      "created": 1777133734,
+      "duration": 12601,
+      "play": 7329,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1hjoXBrEzc",
+      "aid": 116464497531886,
+      "title": "【GNZ48】20260425 《3652》刘力菲荣誉毕业生MVP公演",
+      "created": 1777107805,
+      "duration": 11651,
+      "play": 19557,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1DYoSBAEbp",
+      "aid": 116464413645777,
+      "title": "【GNZ48】20260424 Team G《瑶光之迹》2.0公演",
+      "created": 1777106688,
+      "duration": 10035,
+      "play": 4683,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1NtoEBKE2H",
+      "aid": 116460269605312,
+      "title": "【GNZ48】20260423 偶像研究计划H组《心的旅程》公演",
+      "created": 1777043212,
+      "duration": 9153,
+      "play": 3103,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1W9dfB2E2X",
+      "aid": 116431983287634,
+      "title": "【GNZ48】20260419 Team Z《斗宿之诀》2.0公演",
+      "created": 1776611815,
+      "duration": 11196,
+      "play": 14481,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1yvoFBmEz5",
+      "aid": 116431194691485,
+      "title": "【GNZ48】20260419 Team NIII 《没有我的世界(uN_v3rse)》公演",
+      "created": 1776599654,
+      "duration": 11214,
+      "play": 6041,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1jtdsBiE8w",
+      "aid": 116426010531623,
+      "title": "【GNZ48】20260418 《Zephyr》黄楚茵主题生日公演",
+      "created": 1776520605,
+      "duration": 18784,
+      "play": 15076,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1WGdsB2EiR",
+      "aid": 116425842759676,
+      "title": "【GNZ48】20260418 Team G 黄楚茵生日冷餐会",
+      "created": 1776517921,
+      "duration": 1925,
+      "play": 1570,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1R1dHB4EXT",
+      "aid": 116425305953314,
+      "title": "【GNZ48】20260418 Team Z《斗宿之诀》2.0公演（杨媛媛季度MVP）",
+      "created": 1776509578,
+      "duration": 13333,
+      "play": 19520,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1q3djBLEN4",
+      "aid": 116420708997263,
+      "title": "【GNZ48】20260417 Team G《瑶光之迹》2.0公演",
+      "created": 1776439987,
+      "duration": 8841,
+      "play": 6245,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1pddVBmEbC",
+      "aid": 116419769405841,
+      "title": "【GNZ48】20260416 偶像研究计划H组《心的旅程》公演",
+      "created": 1776425210,
+      "duration": 9596,
+      "play": 3412,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1jHDdBVEFC",
+      "aid": 116392724536729,
+      "title": "【GNZ48】20260412 Team G《瑶光之迹》2.0公演",
+      "created": 1776012754,
+      "duration": 10599,
+      "play": 5882,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1PTDdB9E5S",
+      "aid": 116392540116775,
+      "title": "【GNZ48】20260412 Team Z《斗宿之诀》2.0公演",
+      "created": 1776009815,
+      "duration": 11262,
+      "play": 20026,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV15ND1B5Eyk",
+      "aid": 116386516966724,
+      "title": "【GNZ48】20260411 Team G《瑶光之迹》2.0公演",
+      "created": 1775917862,
+      "duration": 9498,
+      "play": 5136,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1feDCB1ENa",
+      "aid": 116385090903534,
+      "title": "【GNZ48】20260411 Team NIII 《没有我的世界(uN_v3rse)》上海巡演",
+      "created": 1775896606,
+      "duration": 11218,
+      "play": 5857,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV14jQPBUE7v",
+      "aid": 116380745601447,
+      "title": "【SNH48 GROUP】20260410 2025年度潜力新人TOP16答谢公演上海站",
+      "created": 1775830282,
+      "duration": 11464,
+      "play": 5958,
+      "sid": "4158274"
+    },
+    {
+      "bvid": "BV1w6QcBiEhg",
+      "aid": 116380645005949,
+      "title": "【GNZ48】20260410 Team Z《斗宿之诀》2.0公演",
+      "created": 1775828237,
+      "duration": 11207,
+      "play": 25297,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1nnDxBaEPp",
+      "aid": 116375259451805,
+      "title": "【GNZ48】20260409 偶像研究计划H组《心的旅程》公演",
+      "created": 1775746176,
+      "duration": 8473,
+      "play": 4480,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1zZDcBFESo",
+      "aid": 116358331241620,
+      "title": "【GNZ48】20260406 Team G《瑶光之迹》2.0公演（林恩同千秋乐）",
+      "created": 1775487933,
+      "duration": 10449,
+      "play": 7387,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1qfSfBDEgc",
+      "aid": 116357542712438,
+      "title": "【GNZ48】20260406 Team NIII 《没有我的世界(uN_v3rse)》王珺生日公演",
+      "created": 1775475799,
+      "duration": 12931,
+      "play": 9025,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1mrSSBGEvu",
+      "aid": 116352643896782,
+      "title": "【GNZ48】20260405 偶像研究计划H组《心的旅程》首演",
+      "created": 1775401466,
+      "duration": 11116,
+      "play": 9737,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1raSUBbEMx",
+      "aid": 116351251257186,
+      "title": "【GNZ48】20260405 《POP\"拾\"陆》特殊公演",
+      "created": 1775379669,
+      "duration": 10226,
+      "play": 21760,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV15wDuB6EMB",
+      "aid": 116346973067102,
+      "title": "【GNZ48】20260404 Team G《瑶光之迹》2.0公演（孔渊千秋乐）",
+      "created": 1775314406,
+      "duration": 10281,
+      "play": 8758,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV17aDTBGEQq",
+      "aid": 116345882613015,
+      "title": "【GNZ48】20260404 Team Z《斗宿之诀》2.0公演",
+      "created": 1775297678,
+      "duration": 11171,
+      "play": 17900,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1R9DKBKEyU",
+      "aid": 116344356085194,
+      "title": "【GNZ48】20260403 Team NIII 《没有我的世界(uN_v3rse)》公演",
+      "created": 1775274724,
+      "duration": 10202,
+      "play": 5174,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1ziXvBFEW8",
+      "aid": 116318552464000,
+      "title": "【GNZ48】20260329 Team NIII 《没有我的世界(uN_v3rse)》公演",
+      "created": 1774880769,
+      "duration": 10619,
+      "play": 6016,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1rjXSBgEfE",
+      "aid": 116311992703159,
+      "title": "【GNZ48】20260329 Team Z《斗宿之诀》2.0公演",
+      "created": 1774780725,
+      "duration": 10702,
+      "play": 10288,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1kdXLByEcS",
+      "aid": 116307378837053,
+      "title": "【GNZ48】20260328 Team NIII 《没有我的世界(uN_v3rse)》公演",
+      "created": 1774710194,
+      "duration": 10876,
+      "play": 6974,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1bJX5BHEwb",
+      "aid": 116306355625251,
+      "title": "【GNZ48】20260328 Team G《瑶光之迹》2.0朱丽娜生日公演",
+      "created": 1774694519,
+      "duration": 14166,
+      "play": 10234,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1WxXGBBEYU",
+      "aid": 116305113911320,
+      "title": "【GNZ48】20260328 Team G 朱丽娜生日冷餐会",
+      "created": 1774675346,
+      "duration": 1161,
+      "play": 1553,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1kEXMBoEU1",
+      "aid": 116301708205397,
+      "title": "【GNZ48】20260327 Team Z《斗宿之诀》2.0公演",
+      "created": 1774623786,
+      "duration": 9766,
+      "play": 8067,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1GuQQBfE1T",
+      "aid": 116273388197052,
+      "title": "【GNZ48】20260322 Team Z《斗宿之诀》2.0公演",
+      "created": 1774191839,
+      "duration": 10837,
+      "play": 22025,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1eMAGzjE5W",
+      "aid": 116272582892540,
+      "title": "【GNZ48】20260322 Team G《瑶光之迹》2.0公演",
+      "created": 1774179556,
+      "duration": 10858,
+      "play": 8318,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1dKAAzdEa9",
+      "aid": 116267767830681,
+      "title": "【GNZ48】20260321 Team NIII 《没有我的世界(uN_v3rse)》公演",
+      "created": 1774106324,
+      "duration": 11078,
+      "play": 7122,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1AeAAzBEKb",
+      "aid": 116267667232903,
+      "title": "【CKG48×CGT48】20260321 《舞力全开》联合公演",
+      "created": 1774104740,
+      "duration": 9912,
+      "play": 5346,
+      "sid": "4158274"
+    },
+    {
+      "bvid": "BV1HbAHz9Exn",
+      "aid": 116262080421289,
+      "title": "【GNZ48】20260320 Team G《瑶光之迹》2.0公演",
+      "created": 1774019214,
+      "duration": 10057,
+      "play": 7256,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1BPA5zoETq",
+      "aid": 116256275435933,
+      "title": "【GNZ48】20260319 Team NIII 《没有我的世界(uN_v3rse)》公演",
+      "created": 1773930640,
+      "duration": 10058,
+      "play": 7372,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1wLwTzVEJH",
+      "aid": 116232518899544,
+      "title": "【GNZ48】20260315 Team Z《斗宿之诀》2.0公演",
+      "created": 1773568194,
+      "duration": 11264,
+      "play": 17534,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1jJwxzpEer",
+      "aid": 116227099858809,
+      "title": "【GNZ48】20260314 Team Z《斗宿之诀》2.0公演",
+      "created": 1773485334,
+      "duration": 10685,
+      "play": 12781,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV13vcyzwEUj",
+      "aid": 116216681338889,
+      "title": "【GNZ48】20260312 Team G《瑶光之迹》2.0上海巡演",
+      "created": 1773326424,
+      "duration": 10511,
+      "play": 6314,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1VsNGzpEfo",
+      "aid": 116194317179006,
+      "title": "【GNZ48】20260308 Team G《瑶光之迹》2.0公演（梁娇千秋乐）",
+      "created": 1772985108,
+      "duration": 11536,
+      "play": 13265,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV11zNgzNEpX",
+      "aid": 116193126129628,
+      "title": "【GNZ48】20260308 Team NIII 《没有我的世界(uN_v3rse)》公演",
+      "created": 1772966988,
+      "duration": 10638,
+      "play": 7844,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1FBNPzrEt3",
+      "aid": 116188680034978,
+      "title": "【SNH48 GROUP】20260307 2025年度潜力新人TOP16答谢公演北京站",
+      "created": 1772899149,
+      "duration": 11906,
+      "play": 6422,
+      "sid": "4158274"
+    },
+    {
+      "bvid": "BV1KsNPznERx",
+      "aid": 116188629703304,
+      "title": "【GNZ48】20260307 Team Z《斗宿之诀》2.0公演（梁乔千秋乐）",
+      "created": 1772898468,
+      "duration": 12321,
+      "play": 35102,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1qkNwzcEEb",
+      "aid": 116187539314339,
+      "title": "【GNZ48】20260307 Team G《瑶光之迹》2.0公演",
+      "created": 1772881947,
+      "duration": 11413,
+      "play": 8344,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1faPxzcEe6",
+      "aid": 116182707345030,
+      "title": "【GNZ48】20260306 Team NIII 《没有我的世界(uN_v3rse)》公演",
+      "created": 1772807928,
+      "duration": 10468,
+      "play": 7181,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1aRPuz3ERR",
+      "aid": 116154571954400,
+      "title": "【GNZ48】20260301 青春盛典“以世界之名”答谢特殊公演",
+      "created": 1772378789,
+      "duration": 12598,
+      "play": 24416,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1HnABzPE59",
+      "aid": 116152894232015,
+      "title": "【GNZ48】20260301 Team G《瑶光之迹》2.0公演",
+      "created": 1772353570,
+      "duration": 11383,
+      "play": 8616,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1VsAazTEJz",
+      "aid": 116148465049307,
+      "title": "【GNZ48】20260228 Team NIII 《没有我的世界(uN_v3rse)》公演",
+      "created": 1772285778,
+      "duration": 10204,
+      "play": 8315,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1EgADz8EAk",
+      "aid": 116142979027260,
+      "title": "【GNZ48】20260227 Team Z《斗宿之诀》2.0公演",
+      "created": 1772201771,
+      "duration": 11264,
+      "play": 19725,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1Tncuz9EPc",
+      "aid": 116041241858302,
+      "title": "【CKG48&CGT48】20260209 《舞力全开》云公演成都场",
+      "created": 1770649647,
+      "duration": 8890,
+      "play": 7424,
+      "sid": "4158274"
+    },
+    {
+      "bvid": "BV1A4cuzSEak",
+      "aid": 116041174753088,
+      "title": "【CKG48&CGT48】20260209 《舞力全开》云公演重庆场",
+      "created": 1770648709,
+      "duration": 9463,
+      "play": 6942,
+      "sid": "4158274"
+    },
+    {
+      "bvid": "BV1occFz1EXe",
+      "aid": 116034547817792,
+      "title": "【GNZ48】20260208《马上放假》春节全团联合公演",
+      "created": 1770547113,
+      "duration": 20099,
+      "play": 34754,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1spFWzREbJ",
+      "aid": 116029564915976,
+      "title": "【GNZ48】20260207 Team NIII《今天也请穗穗念～》特殊公演",
+      "created": 1770471051,
+      "duration": 13607,
+      "play": 25727,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV19xFszrETr",
+      "aid": 116028608617733,
+      "title": "【GNZ48】20260207 Team G《瑶光之迹》2.0公演",
+      "created": 1770456597,
+      "duration": 11002,
+      "play": 7328,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1HpFkzBE1Y",
+      "aid": 116024196337679,
+      "title": "【GNZ48】20260206 Team Z《斗宿之诀》2.0公演",
+      "created": 1770389100,
+      "duration": 11781,
+      "play": 20022,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1qaFkzhEJ5",
+      "aid": 116024162653815,
+      "title": "【CGT48×CKG48】20260206 《我的初见时刻》川渝预备生联合公演成都巡演",
+      "created": 1770388726,
+      "duration": 10702,
+      "play": 4477,
+      "sid": "4158274"
+    },
+    {
+      "bvid": "BV1yv6bBpExj",
+      "aid": 115995758826189,
+      "title": "【GNZ48】20260201 Team NIII 《没有我的世界(uN_v3rse)》公演",
+      "created": 1769955697,
+      "duration": 9742,
+      "play": 7617,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1qy64BBEvd",
+      "aid": 115994550868521,
+      "title": "【GNZ48】20260201 Team Z《斗宿之诀》2.0公演",
+      "created": 1769936824,
+      "duration": 11102,
+      "play": 17940,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1Yr6nBjEor",
+      "aid": 115989937132549,
+      "title": "【GNZ48】20260131 Team G《瑶光之迹》2.0黄宣绮生日公演",
+      "created": 1769866469,
+      "duration": 13813,
+      "play": 16987,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1oz61B9EH8",
+      "aid": 115989165380864,
+      "title": "【GNZ48】20260131 Team NIII 《没有我的世界(uN_v3rse)》公演",
+      "created": 1769854837,
+      "duration": 10261,
+      "play": 6883,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1oz61B9EEB",
+      "aid": 115989165381102,
+      "title": "【GNZ48】20260131 Team G 黄宣绮生日冷餐会",
+      "created": 1769854598,
+      "duration": 1416,
+      "play": 1356,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1Mc6qBUEsE",
+      "aid": 115984434204945,
+      "title": "【GNZ48】20260130 Team G《瑶光之迹》2.0公演",
+      "created": 1769782394,
+      "duration": 9511,
+      "play": 5793,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1r4zxBMECJ",
+      "aid": 115956164661356,
+      "title": "【GNZ48】20260125 Team G《瑶光之迹》2.0公演",
+      "created": 1769351482,
+      "duration": 9627,
+      "play": 9069,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1n5zQBGE6v",
+      "aid": 115955124408595,
+      "title": "【GNZ48】20260125 Team Z《斗宿之诀》2.0公演",
+      "created": 1769335694,
+      "duration": 11191,
+      "play": 18945,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV11HzDBmE5N",
+      "aid": 115953614462554,
+      "title": "【GNZ48】20260124 Team G《瑶光之迹》2.0鲍雨欣生日公演",
+      "created": 1769312622,
+      "duration": 13248,
+      "play": 6199,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1gnzCBKEFo",
+      "aid": 115949571152596,
+      "title": "【GNZ48】20260124 Team G 鲍雨欣生日冷餐会",
+      "created": 1769250794,
+      "duration": 2166,
+      "play": 1611,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1V9zCBCEeZ",
+      "aid": 115949269227597,
+      "title": "【GNZ48】20260124 Team NIII 《没有我的世界(uN_v3rse)》公演",
+      "created": 1769246298,
+      "duration": 10647,
+      "play": 7102,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1dSzuB7EMM",
+      "aid": 115944873529699,
+      "title": "【GNZ48】20260123 Team Z《斗宿之诀》2.0公演",
+      "created": 1769179001,
+      "duration": 11018,
+      "play": 21807,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1Qak4BeEH6",
+      "aid": 115916335554514,
+      "title": "【GNZ48】20260118 Team Z《斗宿之诀》2.0公演",
+      "created": 1768743696,
+      "duration": 11312,
+      "play": 38796,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1fdksBgEyU",
+      "aid": 115915312207738,
+      "title": "【GNZ48】20260118 Team NIII 《没有我的世界(uN_v3rse)》公演",
+      "created": 1768727985,
+      "duration": 11194,
+      "play": 8099,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1FarQBmESL",
+      "aid": 115910799003668,
+      "title": "【GNZ48】20260117 Team Z《Next Station》龙亦瑞毕业公演",
+      "created": 1768659092,
+      "duration": 26904,
+      "play": 76631,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1Z4rmBeER6",
+      "aid": 115909188394698,
+      "title": "【GNZ48】20260117 Team G《瑶光之迹》2.0公演",
+      "created": 1768634469,
+      "duration": 11500,
+      "play": 10590,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1Mdr6BaEpC",
+      "aid": 115904809540229,
+      "title": "【GNZ48】20260116 Team NIII 《没有我的世界(uN_v3rse)》公演",
+      "created": 1768576990,
+      "duration": 10225,
+      "play": 7133,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV17E6ZBoEBZ",
+      "aid": 115876556708397,
+      "title": "【GNZ48】20260111 Team Z《斗宿之诀》2.0公演",
+      "created": 1768137078,
+      "duration": 11235,
+      "play": 26050,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1pN6dBZExi",
+      "aid": 115875600406062,
+      "title": "【SNH48 GROUP】20260111 2025年度潜力新人TOP16答谢公演重庆站",
+      "created": 1768121772,
+      "duration": 10785,
+      "play": 23010,
+      "sid": "4158274"
+    },
+    {
+      "bvid": "BV1T46SBJE4x",
+      "aid": 115870718235146,
+      "title": "【GNZ48】20260110 Team NIII 《没有我的世界(uN_v3rse)》石竹君生日公演",
+      "created": 1768047156,
+      "duration": 13859,
+      "play": 24401,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1LN6mBdEcx",
+      "aid": 115870382691572,
+      "title": "【GNZ48】20260110 Team NIII 石竹君生日冷餐会",
+      "created": 1768042286,
+      "duration": 2733,
+      "play": 2456,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1Q7rGB9EBM",
+      "aid": 115869594228601,
+      "title": "【GNZ48】20260110 Team Z《斗宿之诀》2.0公演（龙亦瑞普通公演千秋乐）",
+      "created": 1768030063,
+      "duration": 11657,
+      "play": 27633,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV14nrMBKEq3",
+      "aid": 115865416634704,
+      "title": "【GNZ48】20260109 Team G《瑶光之迹》2.0公演",
+      "created": 1767966515,
+      "duration": 10430,
+      "play": 7451,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1jhiqBWEU3",
+      "aid": 115831375664882,
+      "title": "【GNZ48】20260103 Team NIII 《没有我的世界(uN_v3rse)》公演",
+      "created": 1767447215,
+      "duration": 10855,
+      "play": 8557,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1oMiiBJEbZ",
+      "aid": 115829932823615,
+      "title": "【GNZ48】20260103 Team G《瑶光之迹》2.0公演",
+      "created": 1767424826,
+      "duration": 11514,
+      "play": 7446,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1N1vfB8EXt",
+      "aid": 115825503638174,
+      "title": "【GNZ48】20260102 Team Z《斗宿之诀》2.0公演（朱怡欣季度MVP展演环节）",
+      "created": 1767357324,
+      "duration": 12872,
+      "play": 29078,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1YQiFB5EmK",
+      "aid": 115824782219097,
+      "title": "【GNZ48】20260102 Team NIII 《没有我的世界(uN_v3rse)》公演",
+      "created": 1767346381,
+      "duration": 11055,
+      "play": 6338,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1wivDBeEYz",
+      "aid": 115819782607997,
+      "title": "【GNZ48】20260101 Team G《瑶光之迹》2.0公演",
+      "created": 1767269985,
+      "duration": 10866,
+      "play": 6597,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1MZiuBwEfR",
+      "aid": 115814514562356,
+      "title": "【GNZ48】20251231 《捌765肆321》全团联合公演",
+      "created": 1767189609,
+      "duration": 12733,
+      "play": 29285,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1RivkBhEyr",
+      "aid": 115797183697153,
+      "title": "【GNZ48】20251228 Team Z《斗宿之诀》2.0公演",
+      "created": 1766925104,
+      "duration": 12263,
+      "play": 27494,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1t1v6BmEZd",
+      "aid": 115796512740569,
+      "title": "【GNZ48】20251228 Team G《瑶光之迹》2.0公演",
+      "created": 1766915220,
+      "duration": 10764,
+      "play": 7585,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1caByB9ED3",
+      "aid": 115791496286242,
+      "title": "【GNZ48】20251227 Team Z《斗宿之诀》2.0公演",
+      "created": 1766838400,
+      "duration": 11110,
+      "play": 14013,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1ctBkBUE3j",
+      "aid": 115790640651969,
+      "title": "【GNZ48】20251227 Team NIII 《没有我的世界(uN_v3rse)》公演",
+      "created": 1766825611,
+      "duration": 10575,
+      "play": 7902,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1fJBiBfE2L",
+      "aid": 115786077247526,
+      "title": "【GNZ48】20251226 Team G《瑶光之迹》2.0公演",
+      "created": 1766756309,
+      "duration": 11111,
+      "play": 6432,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1vPqSBWECf",
+      "aid": 115757874681606,
+      "title": "【GNZ48】20251221 Team G《瑶光之迹》2.0公演",
+      "created": 1766325386,
+      "duration": 11034,
+      "play": 8909,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1KPqDBVEHz",
+      "aid": 115756884827123,
+      "title": "【GNZ48】20251221 Team NIII 《没有我的世界(uN_v3rse)》公演",
+      "created": 1766310494,
+      "duration": 11208,
+      "play": 8433,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1rZqrBLEd1",
+      "aid": 115751734352571,
+      "title": "【GNZ48】20251220 Team G 张琼予《Viva la vida》2024年度MVP定制公演",
+      "created": 1766231680,
+      "duration": 13082,
+      "play": 28957,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1KyqzBjE6D",
+      "aid": 115750777918868,
+      "title": "【GNZ48】20251220 Team Z《斗宿之诀》2.0公演（杨媛媛季度MVP展演环节）",
+      "created": 1766217167,
+      "duration": 13913,
+      "play": 27243,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1YtBFBmELx",
+      "aid": 115746415842628,
+      "title": "【GNZ48】20251219 Team NIII 《没有我的世界(uN_v3rse)》公演",
+      "created": 1766150636,
+      "duration": 10734,
+      "play": 11618,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV17DqHBEEbg",
+      "aid": 115740661257885,
+      "title": "【GNZ48】20251218 Team Z《斗宿之诀》2.0公演",
+      "created": 1766062769,
+      "duration": 11050,
+      "play": 25630,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV18fmBBVEzc",
+      "aid": 115718548886706,
+      "title": "【GNZ48】20251214 Team NIII 《没有我的世界(uN_v3rse)》公演",
+      "created": 1765725900,
+      "duration": 11572,
+      "play": 11546,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1bRmeB8EHx",
+      "aid": 115716921496472,
+      "title": "【GNZ48】20251214 Team Z《斗宿之诀》2.0焦玥生日公演",
+      "created": 1765700498,
+      "duration": 13244,
+      "play": 12130,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV184m9BnEFg",
+      "aid": 115711401794181,
+      "title": "【GNZ48】20251213 Team G《瑶光之迹》2.0公演",
+      "created": 1765616327,
+      "duration": 10577,
+      "play": 6771,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1F9m2BSEHM",
+      "aid": 115707106892401,
+      "title": "【GNZ48】20251212 Team Z《斗宿之诀》2.0公演",
+      "created": 1765550876,
+      "duration": 11876,
+      "play": 16507,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1ypmwBwEqg",
+      "aid": 115677427932917,
+      "title": "【GNZ48】20251207 Team NIII 《没有我的世界(uN_v3rse)》公演（黄汝彤千秋乐）",
+      "created": 1765097991,
+      "duration": 10313,
+      "play": 8357,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1DR2XBEEpY",
+      "aid": 115672579317275,
+      "title": "【GNZ48】20251206 Team G《瑶光之迹》2.0方琪生日公演",
+      "created": 1765023887,
+      "duration": 14448,
+      "play": 12827,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1Fs2WB7EJ7",
+      "aid": 115671958624124,
+      "title": "【GNZ48】20251206 Team G 方琪生日冷餐会",
+      "created": 1765014286,
+      "duration": 1554,
+      "play": 1595,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1ET2sBmExv",
+      "aid": 115671488797551,
+      "title": "【GNZ48】20251206 Team NIII 《没有我的世界(uN_v3rse)》公演",
+      "created": 1765007269,
+      "duration": 9106,
+      "play": 6625,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1Eu2sBjEML",
+      "aid": 115671404909036,
+      "title": "【SNH48 GROUP】 20251206 第六届偶像运动会",
+      "created": 1765005972,
+      "duration": 24953,
+      "play": 120672,
+      "sid": "4158274"
+    },
+    {
+      "bvid": "BV1To2jBGEz5",
+      "aid": 115667344890477,
+      "title": "【GNZ48】20251205 Team G《瑶光之迹》2.0公演",
+      "created": 1764944415,
+      "duration": 9844,
+      "play": 6633,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1KjSvBAENn",
+      "aid": 115638672563613,
+      "title": "【GNZ48】20251130 Team G《瑶光之迹》2.0公演",
+      "created": 1764506577,
+      "duration": 11321,
+      "play": 10777,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1etSKBwED6",
+      "aid": 115637598821118,
+      "title": "【SNH48 GROUP】20251130 第十一届年度金曲大赏TOP8~16曜阳组答谢巡演广州站",
+      "created": 1764490166,
+      "duration": 8881,
+      "play": 9224,
+      "sid": "4158274"
+    },
+    {
+      "bvid": "BV1TDUfBPEto",
+      "aid": 115633287142202,
+      "title": "【GNZ48】20251129 Team NIII《在破晓前出发》唐莉佳毕业公演",
+      "created": 1764424704,
+      "duration": 24996,
+      "play": 96455,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1fAUZBjEyg",
+      "aid": 115632112737127,
+      "title": "【GNZ48】20251129 Team Z《斗宿之诀》2.0公演",
+      "created": 1764406401,
+      "duration": 12113,
+      "play": 35206,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1B1UZBmELM",
+      "aid": 115631642975753,
+      "title": "【SNH48 GROUP】20251129 第十一届年度金曲大赏TOP8~16曜阳组答谢巡演上海站",
+      "created": 1764399342,
+      "duration": 9550,
+      "play": 7729,
+      "sid": "4158274"
+    },
+    {
+      "bvid": "BV1ZCSEBzE8L",
+      "aid": 115627398338570,
+      "title": "【GNZ48】20251128 Team NIII 《没有我的世界(uN_v3rse)》公演",
+      "created": 1764334344,
+      "duration": 11017,
+      "play": 9139,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1SVUMBxEFw",
+      "aid": 115599078333281,
+      "title": "【GNZ48】20251123 Team NIII 《没有我的世界(uN_v3rse)》公演",
+      "created": 1763902277,
+      "duration": 12295,
+      "play": 11733,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1DgUMBtEAX",
+      "aid": 115599044779526,
+      "title": "SNH48 GROUP 第十二届年度金曲大赏BEST30 次轮点歌计分统计结果（中报）20251123",
+      "created": 1763901676,
+      "duration": 1298,
+      "play": 7506,
+      "sid": "4158274"
+    },
+    {
+      "bvid": "BV1saUWBbET1",
+      "aid": 115593592180937,
+      "title": "【GNZ48】20251122 Team NIII《Windborne Wings》刘力菲毕业公演",
+      "created": 1763818670,
+      "duration": 19484,
+      "play": 90808,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1q1UWBSEmn",
+      "aid": 115593172818859,
+      "title": "【GNZ48】20251122 Team NIII 刘力菲生日冷餐会",
+      "created": 1763812383,
+      "duration": 4301,
+      "play": 2709,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV17rUHByExg",
+      "aid": 115592384223851,
+      "title": "【GNZ48】20251122 Team G《瑶光之迹》2.0刘欣媛生日公演",
+      "created": 1763800378,
+      "duration": 13018,
+      "play": 11062,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV16oUpBpEo6",
+      "aid": 115591562141218,
+      "title": "【GNZ48】20251122 Team G 刘欣媛生日冷餐会",
+      "created": 1763787450,
+      "duration": 1079,
+      "play": 1462,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1iYULBdEjg",
+      "aid": 115587820886653,
+      "title": "【GNZ48】20251121 Team Z《斗宿之诀》2.0公演",
+      "created": 1763730565,
+      "duration": 11247,
+      "play": 22626,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV198CdBHEbk",
+      "aid": 115559534432882,
+      "title": "【GNZ48】20251116 Team Z《斗宿之诀》2.0公演",
+      "created": 1763298977,
+      "duration": 11686,
+      "play": 21072,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1uvC9B3EBh",
+      "aid": 115558645305543,
+      "title": "【GNZ48】20251116 Team G《瑶光之迹》2.0公演",
+      "created": 1763285608,
+      "duration": 10608,
+      "play": 13982,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1Q7CmBtE95",
+      "aid": 115553981173821,
+      "title": "【GNZ48】20251115 Team Z 罗寒月《Gratitude Elf》2024年度MVP定制公演",
+      "created": 1763214294,
+      "duration": 12701,
+      "play": 31575,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1kYC1BzEQ8",
+      "aid": 115552974541438,
+      "title": "【GNZ48】20251115 Team NIII 《没有我的世界(uN_v3rse)》公演（刘力菲季度MVP展演环节）",
+      "created": 1763198995,
+      "duration": 13597,
+      "play": 17110,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1SVCuB2EwZ",
+      "aid": 115548444693823,
+      "title": "【GNZ48】20251114 Team G《瑶光之迹》2.0公演",
+      "created": 1763129690,
+      "duration": 10847,
+      "play": 8241,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1xhkXBcENz",
+      "aid": 115519906651567,
+      "title": "【GNZ48】20251109 Team Z《斗宿之诀》2.0公演",
+      "created": 1762694375,
+      "duration": 11888,
+      "play": 14024,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1ttkXBAEpC",
+      "aid": 115519873093729,
+      "title": "SNH48 GROUP 第十二届年度金曲大赏BEST30 首轮点歌计分统计结果（速报）20251109",
+      "created": 1762693719,
+      "duration": 1160,
+      "play": 5905,
+      "sid": "4158274"
+    },
+    {
+      "bvid": "BV1jtkQB5EeM",
+      "aid": 115518648423545,
+      "title": "【GNZ48】20251109 Team NIII 《没有我的世界(uN_v3rse)》许涵婧生日公演（唐莉佳普通公演千秋乐）",
+      "created": 1762675119,
+      "duration": 15162,
+      "play": 15924,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV11L1QBAE7L",
+      "aid": 115514101733274,
+      "title": "【GNZ48】20251108 Team NIII《Blooming Tomorrow》张昕毕业公演广州场",
+      "created": 1762605894,
+      "duration": 13713,
+      "play": 27841,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV12R1QBiEpn",
+      "aid": 115513464263223,
+      "title": "【GNZ48】20251108 Team Z《斗宿之诀》2.0公演",
+      "created": 1762595978,
+      "duration": 11687,
+      "play": 27022,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1hd2uBfEVJ",
+      "aid": 115508665982782,
+      "title": "【GNZ48】20251107 Team G《瑶光之迹》2.0公演",
+      "created": 1762522651,
+      "duration": 10895,
+      "play": 7584,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1FG1FB5E1E",
+      "aid": 115480178201249,
+      "title": "【GNZ48】20251102 Team NIII 《没有我的世界(uN_v3rse)》公演",
+      "created": 1762088226,
+      "duration": 10035,
+      "play": 8823,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1bbyZBREXy",
+      "aid": 115479154924842,
+      "title": "【GNZ48】20251102 Team G《瑶光之迹》2.0公演",
+      "created": 1762072430,
+      "duration": 11420,
+      "play": 8554,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1gvyDBqE2X",
+      "aid": 115475027595958,
+      "title": "【GNZ48】20251101 Team NIII 《没有我的世界(uN_v3rse)》公演",
+      "created": 1762009794,
+      "duration": 11013,
+      "play": 7548,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1Jc1jBdEjM",
+      "aid": 115474020966031,
+      "title": "【GNZ48】20251101 Team G《瑶光之迹》2.0公演",
+      "created": 1761994276,
+      "duration": 11780,
+      "play": 7207,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV12a1TBCEKP",
+      "aid": 115468853648847,
+      "title": "【GNZ48】20251031“燃烧吧团魂”第二季亚军NaVI上海巡演",
+      "created": 1761915340,
+      "duration": 10722,
+      "play": 25388,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1XqyaBpEr2",
+      "aid": 115463266767458,
+      "title": "【GNZ48】20251030 Team Z《斗宿之诀》2.0上海巡演",
+      "created": 1761830168,
+      "duration": 13010,
+      "play": 40210,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV18ws6z6EsX",
+      "aid": 115440449755028,
+      "title": "【GNZ48】20251026 Team Z《斗宿之诀》2.0公演",
+      "created": 1761481877,
+      "duration": 10919,
+      "play": 18319,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1Zts6zXELD",
+      "aid": 115440164671652,
+      "title": "【SNH48 GROUP】20251026 第十一届年度金曲大赏TOP3~7答谢巡演上海站",
+      "created": 1761477687,
+      "duration": 9566,
+      "play": 19512,
+      "sid": "4158274"
+    },
+    {
+      "bvid": "BV1YkxNzJELJ",
+      "aid": 115439560561978,
+      "title": "【GNZ48】20251026 Team NIII 《没有我的世界(uN_v3rse)》黄汝彤生日公演",
+      "created": 1761468301,
+      "duration": 13044,
+      "play": 9323,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1qnsfzgEfh",
+      "aid": 115434879718483,
+      "title": "【GNZ48】20251025 Team Z《斗宿之诀》2.0公演",
+      "created": 1761396801,
+      "duration": 11590,
+      "play": 20738,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1kcsRzqEZx",
+      "aid": 115433621430150,
+      "title": "【GNZ48】20251025 Team NIII 《没有我的世界(uN_v3rse)》谢晓倩生日公演",
+      "created": 1761377664,
+      "duration": 12851,
+      "play": 10287,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV12JsGzsE6h",
+      "aid": 115423555162723,
+      "title": "【GNZ48】20251023 Team G《瑶光之迹》2.0上海巡演",
+      "created": 1761224072,
+      "duration": 10981,
+      "play": 10624,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1HVsPz4EBa",
+      "aid": 115400956188430,
+      "title": "【GNZ48】20251019 Team G《瑶光之迹》2.0公演",
+      "created": 1760879107,
+      "duration": 10702,
+      "play": 8434,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1MqswzAEGd",
+      "aid": 115399865671645,
+      "title": "【GNZ48】20251019 Team Z《斗宿之诀》2.0公演",
+      "created": 1760862706,
+      "duration": 11072,
+      "play": 23083,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1QuWbzGEZS",
+      "aid": 115395738474307,
+      "title": "【GNZ48】20251018 Team NIII 《没有我的世界(uN_v3rse)》公演",
+      "created": 1760799577,
+      "duration": 11766,
+      "play": 11240,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV11FWtz8EAc",
+      "aid": 115394077597404,
+      "title": "【GNZ48】20251018 Team G《瑶光之迹》2.0公演",
+      "created": 1760774454,
+      "duration": 10252,
+      "play": 6942,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1hiWnzQELh",
+      "aid": 115389883227943,
+      "title": "【GNZ48】20251017 Team Z《斗宿之诀》2.0公演",
+      "created": 1760710214,
+      "duration": 10743,
+      "play": 19848,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1Za43z5EaB",
+      "aid": 115361093588816,
+      "title": "【GNZ48】20251012 Team NIII 《没有我的世界(uN_v3rse)》公演",
+      "created": 1760270892,
+      "duration": 11264,
+      "play": 11746,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV18m43zPEw2",
+      "aid": 115360724425806,
+      "title": "【GNZ48】20251012 Team Z《斗宿之诀》2.0公演",
+      "created": 1760265342,
+      "duration": 11255,
+      "play": 16602,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1B54Az9EDT",
+      "aid": 115355791921262,
+      "title": "【GNZ48】20251011 Team G《瑶光之迹》2.0公演",
+      "created": 1760190249,
+      "duration": 10776,
+      "play": 8956,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1paxezSE9q",
+      "aid": 115337471270031,
+      "title": "【GNZ48】20251008《CALL爆你3007》全团联合公演",
+      "created": 1759910522,
+      "duration": 12939,
+      "play": 54680,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV11xxRz5Efk",
+      "aid": 115332807202744,
+      "title": "【GNZ48】20251007 Team Z《编号：3271》周年庆特别公演",
+      "created": 1759839422,
+      "duration": 15473,
+      "play": 88571,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1azx5zVEoS",
+      "aid": 115326247311537,
+      "title": "【GNZ48】20251006 Team NIII 《没有我的世界(uN_v3rse)》陆靖婷生日公演",
+      "created": 1759739379,
+      "duration": 13633,
+      "play": 12293,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1oAx3zgEtf",
+      "aid": 115322170383400,
+      "title": "【GNZ48】20251005 Team Z《斗宿之诀》2.0公演（龙亦瑞季度MVP展演环节）",
+      "created": 1759676990,
+      "duration": 15305,
+      "play": 21573,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1fXxKzhEF9",
+      "aid": 115320610102211,
+      "title": "【GNZ48】20251005 Team NIII 《没有我的世界(uN_v3rse)》项宇婧生日公演",
+      "created": 1759653305,
+      "duration": 13318,
+      "play": 10907,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV17cxazPEQ6",
+      "aid": 115319804989684,
+      "title": "【GNZ48】20251005 Team NIII 项宇婧生日会",
+      "created": 1759641096,
+      "duration": 2302,
+      "play": 1518,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1LRx4zDEaL",
+      "aid": 115316046699890,
+      "title": "【GNZ48】20251004 Team G《瑶光之迹》2.0公演",
+      "created": 1759583752,
+      "duration": 11094,
+      "play": 8411,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1MSxxzKEAZ",
+      "aid": 115314687811341,
+      "title": "【GNZ48】20251004 Team Z《幸运柠》张幼柠毕业公演",
+      "created": 1759562770,
+      "duration": 12756,
+      "play": 19664,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1Y4HLziE5N",
+      "aid": 115310225071026,
+      "title": "【GNZ48】20251003 偶像研究计划G组《剧场女神》千秋乐公演",
+      "created": 1759494885,
+      "duration": 11271,
+      "play": 7803,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1H1HVz1Ejz",
+      "aid": 115309251993185,
+      "title": "【GNZ48】20251003 Team G《瑶光之迹》2.0公演",
+      "created": 1759479975,
+      "duration": 10543,
+      "play": 7846,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1iFHNz5EyM",
+      "aid": 115304537594009,
+      "title": "【GNZ48】20251002 Team NIII《万穗万穗万万穗》周年庆特别公演",
+      "created": 1759408040,
+      "duration": 16118,
+      "play": 33575,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1n4HWzBEFu",
+      "aid": 115298799721274,
+      "title": "【GNZ48】20251001 Team G《Gogogo出发咯》周年庆特别公演",
+      "created": 1759320264,
+      "duration": 12536,
+      "play": 28576,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1qZnnzdEde",
+      "aid": 115276284698374,
+      "title": "【GNZ48】20250927 Team Z《斗宿之诀》2.0公演（张幼柠普通公演千秋乐）",
+      "created": 1758976809,
+      "duration": 11378,
+      "play": 30920,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV18GnJzBENQ",
+      "aid": 115275294840587,
+      "title": "【GNZ48】20250927 Team G《瑶光之迹》2.0公演",
+      "created": 1758961820,
+      "duration": 10539,
+      "play": 10377,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1tPnVzSEku",
+      "aid": 115270731436580,
+      "title": "【GNZ48】20250926 Team NIII 《没有我的世界(uN_v3rse)》重庆巡演",
+      "created": 1758892042,
+      "duration": 12459,
+      "play": 10007,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1htJdzgEwG",
+      "aid": 115242646377635,
+      "title": "【GNZ48】20250921 Team NIII 《没有我的世界(uN_v3rse)》公演",
+      "created": 1758463626,
+      "duration": 11787,
+      "play": 13337,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1mbWczREwh",
+      "aid": 115241371309993,
+      "title": "【GNZ48】20250921 Team G《瑶光之迹》2.0公演",
+      "created": 1758444305,
+      "duration": 10930,
+      "play": 9355,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1FDp9ztEsa",
+      "aid": 115237143452172,
+      "title": "【GNZ48】20250920 Team NIII 《没有我的世界(uN_v3rse)》公演（唐莉佳季度MVP展演环节）",
+      "created": 1758380223,
+      "duration": 13280,
+      "play": 11926,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1yJpXzfEG1",
+      "aid": 115235985821875,
+      "title": "【GNZ48】20250920 Team NIII 刘力菲《X8 Carnival》showcase成都巡演",
+      "created": 1758362284,
+      "duration": 13584,
+      "play": 11297,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1uupXzqE7b",
+      "aid": 115235902003729,
+      "title": "【GNZ48】20250920 Team Z《斗宿之诀》2.0公演",
+      "created": 1758360646,
+      "duration": 10966,
+      "play": 27250,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1N5WVz9E7M",
+      "aid": 115231506307757,
+      "title": "【GNZ48】20250919 Team G《瑶光之迹》2.0公演",
+      "created": 1758293945,
+      "duration": 10545,
+      "play": 7702,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1NKpAzxESa",
+      "aid": 115203287029888,
+      "title": "【GNZ48】20250914 Team NIII 《没有我的世界(uN_v3rse)》公演",
+      "created": 1757863269,
+      "duration": 11241,
+      "play": 9225,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1uqpcz4Ejv",
+      "aid": 115201777145005,
+      "title": "【GNZ48】20250914 Team Z《斗宿之诀》2.0陈珊玲生日公演",
+      "created": 1757840158,
+      "duration": 13497,
+      "play": 31369,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1hupFzdECi",
+      "aid": 115200921441412,
+      "title": "【GNZ48】20250914 Team Z 陈珊玲生日会",
+      "created": 1757826910,
+      "duration": 2336,
+      "play": 2242,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1ZapEzXELJ",
+      "aid": 115197448622810,
+      "title": "【GNZ48】20250913 Team G《瑶光之迹》2.0公演",
+      "created": 1757774918,
+      "duration": 11266,
+      "play": 8970,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1JNp7zpEyR",
+      "aid": 115195921830564,
+      "title": "【GNZ48】20250913 Team NIII 《没有我的世界(uN_v3rse)》公演",
+      "created": 1757750837,
+      "duration": 11538,
+      "play": 9511,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1mqpgz7EKJ",
+      "aid": 115191576600404,
+      "title": "【GNZ48】20250912 Team Z《斗宿之诀》2.0公演",
+      "created": 1757684392,
+      "duration": 11046,
+      "play": 30727,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1JTY7z7Ev5",
+      "aid": 115163105599229,
+      "title": "【GNZ48】20250907 Team Z《斗宿之诀》2.0公演",
+      "created": 1757250185,
+      "duration": 11020,
+      "play": 14653,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1pXYGz3E1x",
+      "aid": 115161931193674,
+      "title": "【GNZ48】20250907 Team G《瑶光之迹》2.0公演",
+      "created": 1757232057,
+      "duration": 10691,
+      "play": 8115,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV19JYKzzEPn",
+      "aid": 115157636292087,
+      "title": "【GNZ48】20250906 Team NIII 《没有我的世界(uN_v3rse)》公演",
+      "created": 1757166730,
+      "duration": 11614,
+      "play": 11485,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1XSaqzxEty",
+      "aid": 115156361158214,
+      "title": "【GNZ48】20250906 Team Z《斗宿之诀》2.0公演",
+      "created": 1757147027,
+      "duration": 11009,
+      "play": 13824,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1aFahziExS",
+      "aid": 115151915258101,
+      "title": "【GNZ48】20250905 Team G《瑶光之迹》2.0公演",
+      "created": 1757079491,
+      "duration": 10995,
+      "play": 7687,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1i6a5zPEfT",
+      "aid": 115123595254966,
+      "title": "【GNZ48】20250831 Team G《瑶光之迹》2.0公演",
+      "created": 1756647213,
+      "duration": 10312,
+      "play": 10076,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1YCaGzWEqT",
+      "aid": 115122722840060,
+      "title": "【GNZ48】20250831 Team NIII 《没有我的世界(uN_v3rse)》公演",
+      "created": 1756634137,
+      "duration": 11804,
+      "play": 11767,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1q8hiz4Eq7",
+      "aid": 115117991663954,
+      "title": "【GNZ48】20250830 Team Z《斗宿之诀》2.0公演",
+      "created": 1756561726,
+      "duration": 11071,
+      "play": 18139,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1t1hezBEbt",
+      "aid": 115116716595516,
+      "title": "【GNZ48】20250830 Team G《瑶光之迹》2.0唐果生日公演",
+      "created": 1756542294,
+      "duration": 13185,
+      "play": 14370,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1fwhdz7Ear",
+      "aid": 115112270699489,
+      "title": "【GNZ48】20250829 Team NIII 《没有我的世界(uN_v3rse)》公演",
+      "created": 1756474410,
+      "duration": 11308,
+      "play": 10383,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1f2h2zxENj",
+      "aid": 115106885213525,
+      "title": "【GNZ48】20250828 偶像研究计划G组《剧场女神》公演",
+      "created": 1756392259,
+      "duration": 9004,
+      "play": 4500,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1U2enz3EEZ",
+      "aid": 115083984311787,
+      "title": "【GNZ48】20250824 Team NIII 《没有我的世界(uN_v3rse)》公演",
+      "created": 1756043096,
+      "duration": 11359,
+      "play": 12965,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1wqeJzbEWp",
+      "aid": 115082591735951,
+      "title": "【GNZ48】20250824 Team Z《斗宿之诀》2.0公演",
+      "created": 1756021561,
+      "duration": 11396,
+      "play": 41741,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1Mveqz9E1M",
+      "aid": 115078162617851,
+      "title": "【GNZ48】20250823 Team NIII 《没有我的世界(uN_v3rse)》公演（刘力菲季度MVP表演环节）",
+      "created": 1755954213,
+      "duration": 13454,
+      "play": 16203,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1idevzhEXn",
+      "aid": 115077172696261,
+      "title": "【GNZ48】20250823 Team G《瑶光之迹》2.0公演",
+      "created": 1755938963,
+      "duration": 11296,
+      "play": 16082,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV19Debz6Enf",
+      "aid": 115072508695586,
+      "title": "【GNZ48】20250822 Team Z《斗宿之诀》2.0公演",
+      "created": 1755867576,
+      "duration": 11129,
+      "play": 33953,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1bRYXzwE64",
+      "aid": 115067324470715,
+      "title": "【GNZ48】20250821 偶像研究计划G组《剧场女神》公演",
+      "created": 1755788688,
+      "duration": 9526,
+      "play": 5966,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV19XY1zJEpm",
+      "aid": 115044020916473,
+      "title": "【GNZ48】20250817 Team Z《斗宿之诀》2.0公演",
+      "created": 1755433096,
+      "duration": 11232,
+      "play": 44774,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1fYYrz2EYg",
+      "aid": 115042829735309,
+      "title": "【GNZ48】20250817 Team NIII 《没有我的世界(uN_v3rse)》成都巡演",
+      "created": 1755414814,
+      "duration": 12806,
+      "play": 17320,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1kfYqzVE1H",
+      "aid": 115038736095282,
+      "title": "【GNZ48】20250816 Team NIII 唐莉佳《Dr.Olivia》showcase成都巡演",
+      "created": 1755352161,
+      "duration": 16051,
+      "play": 29839,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1SyYqzXEb8",
+      "aid": 115038551544966,
+      "title": "【GNZ48】20250816 Team G《瑶光之迹》2.0公演",
+      "created": 1755349910,
+      "duration": 10271,
+      "play": 12135,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1iuYizZEM3",
+      "aid": 115037511357740,
+      "title": "【GNZ48】20250816 Team Z《斗宿之诀》2.0公演",
+      "created": 1755333529,
+      "duration": 11378,
+      "play": 40688,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1FCbpzWE16",
+      "aid": 115032796960972,
+      "title": "【GNZ48】20250815 Team G《瑶光之迹》2.0公演",
+      "created": 1755261833,
+      "duration": 9116,
+      "play": 9657,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1UqbKzpEgK",
+      "aid": 115004510576525,
+      "title": "【GNZ48】20250810 偶像研究计划G组《剧场女神》公演",
+      "created": 1754830755,
+      "duration": 9023,
+      "play": 5202,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV17ibNzNE9x",
+      "aid": 115003302616966,
+      "title": "【GNZ48】20250810 Team NIII 《没有我的世界(uN_v3rse)》公演",
+      "created": 1754811654,
+      "duration": 11529,
+      "play": 13932,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1jRttztEg7",
+      "aid": 114998806450278,
+      "title": "【GNZ48】20250809 Team Z《斗宿之诀》2.0公演",
+      "created": 1754743062,
+      "duration": 11546,
+      "play": 23645,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1ZVt8zPE3y",
+      "aid": 114997883772162,
+      "title": "【GNZ48】20250809 Team G《瑶光之迹》2.0公演",
+      "created": 1754729166,
+      "duration": 10340,
+      "play": 11627,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1ojhtzPEYx",
+      "aid": 114957970642126,
+      "title": "【SNH48 GROUP】20250802 第十二届年度青春盛典全程回放（歌舞表演+报名次）",
+      "created": 1754122458,
+      "duration": 21372,
+      "play": 491873,
+      "sid": "4158274"
+    },
+    {
+      "bvid": "BV1JZ8vzxEJs",
+      "aid": 114924416208929,
+      "title": "【GNZ48】20250727 Team NIII 《没有我的世界(uN_v3rse)》公演",
+      "created": 1753607975,
+      "duration": 10924,
+      "play": 15787,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1ox8xzxEJE",
+      "aid": 114917587882671,
+      "title": "【GNZ48】20250726 Team G《瑶光之迹》2.0公演",
+      "created": 1753504015,
+      "duration": 11028,
+      "play": 12353,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1QjbCzaEib",
+      "aid": 114908293307889,
+      "title": "【GNZ48】20250724 Team Z《斗宿之诀》2.0公演",
+      "created": 1753362098,
+      "duration": 11931,
+      "play": 30158,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1qognzcEDu",
+      "aid": 114896784068624,
+      "title": "【GNZ48】20250722 《豪歌 2025》巅峰争夺战（决赛）",
+      "created": 1753186008,
+      "duration": 10477,
+      "play": 51445,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV16ggazwErk",
+      "aid": 114885778215518,
+      "title": "【GNZ48】20250720 Team NIII 《没有我的世界(uN_v3rse)》公演",
+      "created": 1753018437,
+      "duration": 10216,
+      "play": 12041,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1Ccg8z8EFE",
+      "aid": 114884771582697,
+      "title": "【GNZ48】20250720 Team Z《斗宿之诀》2.0公演（叶溁语 杨媛媛 马昕玥作品展演）",
+      "created": 1753003152,
+      "duration": 12226,
+      "play": 11640,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1Njuoz3EMZ",
+      "aid": 114880040411087,
+      "title": "【GNZ48】20250719 Team G《瑶光之迹》2.0公演（王秭歆作品展演）",
+      "created": 1752931013,
+      "duration": 10924,
+      "play": 11853,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1RauRzHE2w",
+      "aid": 114879033777307,
+      "title": "【GNZ48】20250719 Team NIII 《没有我的世界(uN_v3rse)》公演（徐郑子滢 陆靖婷作品展演）",
+      "created": 1752915582,
+      "duration": 9859,
+      "play": 6362,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV17hu1zwEtF",
+      "aid": 114874218716841,
+      "title": "【GNZ48】20250718 Team Z《斗宿之诀》2.0公演（朱怡欣作品展演）",
+      "created": 1752841952,
+      "duration": 12114,
+      "play": 27213,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1eagPzVEVP",
+      "aid": 114868833230665,
+      "title": "【GNZ48】20250717 偶像研究计划G组《剧场女神》公演",
+      "created": 1752760031,
+      "duration": 8945,
+      "play": 4182,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1RyuPz3EpP",
+      "aid": 114846368600647,
+      "title": "【SNH48 GROUP】第十二届年度青春盛典 第二阶段入围作品中报 20250713",
+      "created": 1752416902,
+      "duration": 1320,
+      "play": 6759,
+      "sid": "4158274"
+    },
+    {
+      "bvid": "BV1RouczvErT",
+      "aid": 114846116877552,
+      "title": "【GNZ48】20250713 Team Z《斗宿之诀》2.0公演（罗寒月 朱丽娜作品展演）",
+      "created": 1752413376,
+      "duration": 12393,
+      "play": 16482,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1hruFzoEtu",
+      "aid": 114844791479916,
+      "title": "【GNZ48】20250713 《豪歌 2025》闪耀公演赛（半决赛）",
+      "created": 1752392758,
+      "duration": 18564,
+      "play": 42123,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1X2MXzgEU3",
+      "aid": 114840748167366,
+      "title": "【GNZ48】20250712 Team G 曾艾佳《亿万光年》毕业公演（符冰冰千秋乐）",
+      "created": 1752331381,
+      "duration": 13271,
+      "play": 22746,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1YWMQzTEyR",
+      "aid": 114839439545056,
+      "title": "【GNZ48】20250712 Team Z《斗宿之诀》2.0公演（梁乔作品展演）",
+      "created": 1752311371,
+      "duration": 12894,
+      "play": 19666,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1mauGzHEFj",
+      "aid": 114834809036635,
+      "title": "【GNZ48】20250711 Team G《瑶光之迹》2.0公演（方琪作品展演）",
+      "created": 1752240647,
+      "duration": 10974,
+      "play": 8825,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1cYGVzHEWK",
+      "aid": 114829457101331,
+      "title": "【GNZ48】20250710 偶像研究计划G组《剧场女神》公演",
+      "created": 1752159312,
+      "duration": 9992,
+      "play": 7728,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1CKG5zZE6Z",
+      "aid": 114829423549965,
+      "title": "【GNZ48】20250710 Team NIII 《没有我的世界（uN_v3rse）》上海巡演",
+      "created": 1752158630,
+      "duration": 12904,
+      "play": 10117,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1sz3Bz8EZV",
+      "aid": 114806673643582,
+      "title": "【GNZ48】20250706 Team G《瑶光之迹》2.0公演（杨可璐 张琼予作品展演）",
+      "created": 1751811803,
+      "duration": 9091,
+      "play": 8186,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV18H3ezxEok",
+      "aid": 114805465683344,
+      "title": "【GNZ48】20250706 Team NIII 《没有我的世界（uN_v3rse）》公演（许涵婧 谢晓倩 项宇婧作品展演）",
+      "created": 1751792942,
+      "duration": 11761,
+      "play": 7464,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1nZ39zYEy7",
+      "aid": 114801120450436,
+      "title": "【GNZ48】20250705 Team Z《斗宿之诀》2.0公演（叶舒淇作品展演）",
+      "created": 1751727459,
+      "duration": 12230,
+      "play": 28699,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1em3XznEm1",
+      "aid": 114799811762183,
+      "title": "【GNZ48】20250705 Team G《瑶光之迹》2.0公演（梁娇作品展演）",
+      "created": 1751706603,
+      "duration": 11161,
+      "play": 17859,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1TJ3EzkEky",
+      "aid": 114795734963666,
+      "title": "【GNZ48】20250704 Team NIII 《没有我的世界（uN_v3rse）》公演（王语晨作品展演）",
+      "created": 1751644679,
+      "duration": 12218,
+      "play": 14936,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1nF33zGE4Q",
+      "aid": 114789812541117,
+      "title": "【GNZ48】20250703 偶像研究计划G组《剧场女神》公演",
+      "created": 1751554098,
+      "duration": 9873,
+      "play": 3934,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1gP3AzqEin",
+      "aid": 114767297519409,
+      "title": "【GNZ48】20250629 Team G《瑶光之迹》2.0公演（孔渊 林家谊 林恩同作品展演）",
+      "created": 1751210515,
+      "duration": 9895,
+      "play": 7267,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1VQgZzFE58",
+      "aid": 114765770791270,
+      "title": "【GNZ48】20250629 Team Z《斗宿之诀》2.0公演（徐楚雯作品展演）",
+      "created": 1751187133,
+      "duration": 12476,
+      "play": 35330,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1jTK2zdE98",
+      "aid": 114760385305982,
+      "title": "【GNZ48】20250628 Team G《瑶光之迹》2.0公演（黄楚茵作品展演）",
+      "created": 1751105480,
+      "duration": 10539,
+      "play": 13539,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1M5K6zoEgG",
+      "aid": 114755452804627,
+      "title": "【GNZ48】20250627 Team Z《斗宿之诀》2.0公演（陈珊玲 张佳仪作品展演）",
+      "created": 1751029573,
+      "duration": 9889,
+      "play": 13848,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1VqKfz9ESZ",
+      "aid": 114749832437687,
+      "title": "【GNZ48】20250626 Team NIII 《没有我的世界（uN_v3rse）》公演（吕思琪 王阙蝶舞 赵文凤作品展演）",
+      "created": 1750944421,
+      "duration": 10973,
+      "play": 8016,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1cFKWzAErb",
+      "aid": 114727468404851,
+      "title": "SNH48 GROUP 十二选速报直播弹幕版",
+      "created": 1750602682,
+      "duration": 1303,
+      "play": 10053,
+      "sid": "4158274"
+    },
+    {
+      "bvid": "BV1WRKpziEKg",
+      "aid": 114727451694449,
+      "title": "【SNH48 GROUP】第十二届年度青春盛典 第一阶段入围作品速报 20250622",
+      "created": 1750602522,
+      "duration": 1237,
+      "play": 2622,
+      "sid": "4158274"
+    },
+    {
+      "bvid": "BV1yYKWzzEeM",
+      "aid": 114727300633733,
+      "title": "【GNZ48】20250622 Team Z《斗宿之诀》2.0公演（程戈 谢林容作品展演）",
+      "created": 1750600416,
+      "duration": 12445,
+      "play": 18389,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV13mNRzqETB",
+      "aid": 114726260449276,
+      "title": "【GNZ48】20250622 Team NIII 《没有我的世界（uN_v3rse）》公演（王珺 李咏薇 白佳媛作品展演）",
+      "created": 1750584684,
+      "duration": 10497,
+      "play": 8988,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1XMN1zGENN",
+      "aid": 114721529271720,
+      "title": "【GNZ48】20250621 Team Z 《冕礼》朱怡欣主题生日公演",
+      "created": 1750512748,
+      "duration": 19073,
+      "play": 57443,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1EjN2zdE2s",
+      "aid": 114720841405817,
+      "title": "【GNZ48】20250621 Team Z 朱怡欣生日会",
+      "created": 1750501698,
+      "duration": 2284,
+      "play": 5270,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1kPKNz2EjU",
+      "aid": 114715875349152,
+      "title": "【GNZ48】20250620 Team G《瑶光之迹》2.0公演（黄宣绮作品展演）",
+      "created": 1750426166,
+      "duration": 9780,
+      "play": 11466,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1K6NdzwEi3",
+      "aid": 114710322156618,
+      "title": "【GNZ48】20250619 偶像研究计划G组《剧场女神》公演",
+      "created": 1750341182,
+      "duration": 9348,
+      "play": 5007,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV13KNnzBEM9",
+      "aid": 114705356166563,
+      "title": "【GNZ48】20250618 《豪歌 2025》趣味晋级赛第六场",
+      "created": 1750265607,
+      "duration": 8026,
+      "play": 5021,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1aANnzzECw",
+      "aid": 114705188263449,
+      "title": "【GNZ48】20250618 《豪歌 2025》趣味晋级赛第五场",
+      "created": 1750262704,
+      "duration": 7903,
+      "play": 7301,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1poNzzLES6",
+      "aid": 114699500786748,
+      "title": "【GNZ48】20250617 《豪歌 2025》趣味晋级赛第四场",
+      "created": 1750176055,
+      "duration": 7429,
+      "play": 9982,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1QvNqzQEt9",
+      "aid": 114698896873169,
+      "title": "【Meet 48】20250617 人气总决选偶像直播 第六期（武博涵 王睿琦 杨冰怡 陈琳）",
+      "created": 1750167322,
+      "duration": 4396,
+      "play": 5265,
+      "sid": "4158274"
+    },
+    {
+      "bvid": "BV16FNBzvEJW",
+      "aid": 114698628436554,
+      "title": "【GNZ48】20250617 《豪歌 2025》趣味晋级赛第三场",
+      "created": 1750162995,
+      "duration": 10896,
+      "play": 9979,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1dDMizYENL",
+      "aid": 114692487978850,
+      "title": "【GNZ48】20250615 Team NIII 《没有我的世界（uN_v3rse）》公演（黄汝彤 石竹君作品展演）",
+      "created": 1750069610,
+      "duration": 9861,
+      "play": 7426,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1bhMbzPEwo",
+      "aid": 114686565621056,
+      "title": "【GNZ48】20250615 Team Z《斗宿之诀》2.0公演（丁嘉欣 邓惠恩 许泳怡作品展演）",
+      "created": 1749978907,
+      "duration": 12142,
+      "play": 14846,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1suM2zGEmW",
+      "aid": 114681817668008,
+      "title": "【GNZ48】20250614 Team NIII 唐莉佳《Dr.Olivia》主题生日公演",
+      "created": 1749906285,
+      "duration": 23485,
+      "play": 145470,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1czMmzrEop",
+      "aid": 114681163422411,
+      "title": "【GNZ48】20250614 Team NIII 唐莉佳生日会",
+      "created": 1749896685,
+      "duration": 4132,
+      "play": 3526,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV19jMBzeEx3",
+      "aid": 114676247566486,
+      "title": "【GNZ48】20250613 Team G《瑶光之迹》2.0公演（刘欣媛 万芳源作品展演）",
+      "created": 1749821457,
+      "duration": 8714,
+      "play": 6450,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1VvMAzvE7F",
+      "aid": 114670778194725,
+      "title": "【GNZ48】20250612 偶像研究计划G组《剧场女神》公演",
+      "created": 1749746328,
+      "duration": 9178,
+      "play": 4463,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1UoMnzVEhK",
+      "aid": 114665493371581,
+      "title": "【GNZ48】20250611 《豪歌 2025》趣味晋级赛第二场",
+      "created": 1749657229,
+      "duration": 8052,
+      "play": 27502,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1vPM3zZEbK",
+      "aid": 114659420020701,
+      "title": "【GNZ48】20250610 《豪歌 2025》趣味晋级赛第一场",
+      "created": 1749564790,
+      "duration": 8007,
+      "play": 9736,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1dRTRzUExP",
+      "aid": 114647894073109,
+      "title": "【GNZ48】20250608 《HIT SONG RETRO》主题公演第二场",
+      "created": 1749388492,
+      "duration": 7229,
+      "play": 10995,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1N7TyzNEBW",
+      "aid": 114641988490622,
+      "title": "【GNZ48】20250607 《HIT SONG RETRO》主题公演第一场",
+      "created": 1749298488,
+      "duration": 9115,
+      "play": 15670,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1wsTyz8Exq",
+      "aid": 114641636168293,
+      "title": "【SNH48 GROUP】20250607 第六届年度风尚嘉年华",
+      "created": 1749293093,
+      "duration": 12860,
+      "play": 29027,
+      "sid": "4158274"
+    },
+    {
+      "bvid": "BV1gHT8zKEeZ",
+      "aid": 114631737677537,
+      "title": "【SNH48 GROUP】20250605 京川渝三团联合公演",
+      "created": 1749142356,
+      "duration": 11905,
+      "play": 9527,
+      "sid": "4158274"
+    },
+    {
+      "bvid": "BV1537DzfEhf",
+      "aid": 114613836324014,
+      "title": "【GNZ48】20250602 Team Z《斗宿之诀》2.0首演（焦玥 陈诗莹作品展演）",
+      "created": 1748869024,
+      "duration": 13768,
+      "play": 35317,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1pv7UzvEGL",
+      "aid": 114612745867316,
+      "title": "【GNZ48】20250602 Team G《瑶光之迹》2.0公演（雷瑞妍 符冰冰 唐果作品展演）",
+      "created": 1748852466,
+      "duration": 11059,
+      "play": 8923,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1vZ7rziEGk",
+      "aid": 114608299905082,
+      "title": "【GNZ48】20250601 Team NIII 《没有我的世界（uN_v3rse）》首演第二场",
+      "created": 1748784575,
+      "duration": 10358,
+      "play": 20903,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1mD76zHEjp",
+      "aid": 114607158989053,
+      "title": "【GNZ48】20250601 Team Z《斗宿之诀》公演（林芝作品展演）",
+      "created": 1748767332,
+      "duration": 12586,
+      "play": 43598,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1MA7PzUEwe",
+      "aid": 114602461369126,
+      "title": "【GNZ48】20250531 Team NIII 《没有我的世界（uN_v3rse）》首演第一场",
+      "created": 1748695310,
+      "duration": 10542,
+      "play": 49248,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1YM7AzxEZF",
+      "aid": 114601186303843,
+      "title": "【GNZ48】20250531 Team G《瑶光之迹》2.0公演（鲍雨欣 陈淑钰 林奕希作品展演）",
+      "created": 1748675770,
+      "duration": 9992,
+      "play": 6424,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1Yij3zLErp",
+      "aid": 114569208930005,
+      "title": "【GNZ48】20250525 Team Z《斗宿之诀》公演",
+      "created": 1748188227,
+      "duration": 10972,
+      "play": 32663,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1tWjgzvER3",
+      "aid": 114567850040578,
+      "title": "【GNZ48】20250525 Team NIII《天枢之弈》千秋乐公演",
+      "created": 1748167137,
+      "duration": 11883,
+      "play": 20446,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1pGj8zyEKu",
+      "aid": 114561944457422,
+      "title": "【GNZ48】20250524 Team Z 徐楚雯《初吻ING》主题生日公演",
+      "created": 1748076833,
+      "duration": 21479,
+      "play": 149266,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1NPjtzGEKQ",
+      "aid": 114561206194841,
+      "title": "【GNZ48】20250524 Team Z 徐楚雯生日会",
+      "created": 1748065983,
+      "duration": 5463,
+      "play": 7773,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1kYjJzJEn6",
+      "aid": 114557347438224,
+      "title": "【GNZ48】20250523 Team G《瑶光之迹》2.0首演",
+      "created": 1748007468,
+      "duration": 10954,
+      "play": 13065,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1LWJqzcExZ",
+      "aid": 114543959219981,
+      "title": "【GNZ48】20250518 Team Z《斗宿之诀》公演",
+      "created": 1747802642,
+      "duration": 10659,
+      "play": 14020,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1zSJgztEth",
+      "aid": 114528255742487,
+      "title": "【GNZ48】20250518 Team NIII《天枢之弈》王阙蝶舞生日公演",
+      "created": 1747566552,
+      "duration": 12771,
+      "play": 12216,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1G6Juz1EsB",
+      "aid": 114527131669806,
+      "title": "【GNZ48】20250518 Team NIII 王阙蝶舞生日会",
+      "created": 1747546041,
+      "duration": 3519,
+      "play": 2079,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1YSJPzPEfQ",
+      "aid": 114523943999399,
+      "title": "【SNH48 GROUP】20250517 “致明天”2024年度MVP重庆巡演",
+      "created": 1747496974,
+      "duration": 11572,
+      "play": 11331,
+      "sid": "4158274"
+    },
+    {
+      "bvid": "BV1emJPzvEy4",
+      "aid": 114523893667639,
+      "title": "【GNZ48】20250517 Team NIII 张润《Rainy Day》主题生日公演",
+      "created": 1747496708,
+      "duration": 20635,
+      "play": 10424,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV15bJNzqEJx",
+      "aid": 114523172247364,
+      "title": "【GNZ48】20250517 Team NIII 张润生日会",
+      "created": 1747485936,
+      "duration": 2782,
+      "play": 1910,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV16GJAz6EtF",
+      "aid": 114522853545161,
+      "title": "【GNZ48】20250517 Team Z《斗宿之诀》公演",
+      "created": 1747481796,
+      "duration": 10941,
+      "play": 16600,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1fdEbzGEeU",
+      "aid": 114518206190134,
+      "title": "【GNZ48】20250516 Team G《瑶光之迹》公演",
+      "created": 1747410548,
+      "duration": 10341,
+      "play": 9230,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1KPEgzKEvV",
+      "aid": 114489852697938,
+      "title": "【GNZ48】20250511 Team NIII《天枢之弈》公演",
+      "created": 1746977447,
+      "duration": 10226,
+      "play": 10198,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1NyEMzcE4a",
+      "aid": 114488309259988,
+      "title": "【GNZ48】20250511 Team Z《斗宿之诀》焦玥生日公演",
+      "created": 1746953329,
+      "duration": 13029,
+      "play": 12527,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1mvEKztEue",
+      "aid": 114487570996448,
+      "title": "【GNZ48】20250511 Team Z焦玥生日会",
+      "created": 1746942072,
+      "duration": 2696,
+      "play": 1636,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1AqVZznEqF",
+      "aid": 114484014224111,
+      "title": "【GNZ48】20250510 Team G《瑶光之迹》黄楚茵生日公演",
+      "created": 1746888086,
+      "duration": 13680,
+      "play": 15862,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1ZkVdzMEzL",
+      "aid": 114483393470336,
+      "title": "【GNZ48】20250510 Team G 黄楚茵生日会",
+      "created": 1746878446,
+      "duration": 2196,
+      "play": 1456,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV16EVozCEgE",
+      "aid": 114482722381049,
+      "title": "【SNH48 GROUP】20250510 “新的序章”新人TOP16巡演广州站（收官场）",
+      "created": 1746868636,
+      "duration": 11754,
+      "play": 13525,
+      "sid": "4158274"
+    },
+    {
+      "bvid": "BV1ZbVSzXEd7",
+      "aid": 114478813289726,
+      "title": "【GNZ48】20250509 偶像研究计划G组《剧场女神》公演",
+      "created": 1746808980,
+      "duration": 9535,
+      "play": 6225,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1hjVyz4E8M",
+      "aid": 114458613519065,
+      "title": "【GNZ48】20250505 Team G&Team Z 《Zee u aGain》联合特殊公演第二场",
+      "created": 1746500587,
+      "duration": 14051,
+      "play": 32265,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1kzVqztEZZ",
+      "aid": 114454368885727,
+      "title": "【GNZ48】20250505 Team Z《斗宿之诀》公演",
+      "created": 1746435664,
+      "duration": 11604,
+      "play": 27159,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1edVAzUELd",
+      "aid": 114450073918403,
+      "title": "【GNZ48】20250504 Team NIII 刘力菲生日会",
+      "created": 1746370473,
+      "duration": 4470,
+      "play": 2955,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1EWVwzQEKk",
+      "aid": 114448933068566,
+      "title": "【GNZ48】20250504 Team NIII 刘力菲《X8 Carnival》主题生日公演",
+      "created": 1746352816,
+      "duration": 18115,
+      "play": 48348,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1VWGdztEei",
+      "aid": 114444084449282,
+      "title": "【GNZ48】20250503 Team G《瑶光之迹》公演（张琼予季度MVP展演环节）",
+      "created": 1746279407,
+      "duration": 12380,
+      "play": 11452,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1xtVGzfEZd",
+      "aid": 114437826548249,
+      "title": "【GNZ48】20250502 Team NIII《天枢之弈》李咏薇生日公演",
+      "created": 1746183398,
+      "duration": 13875,
+      "play": 12745,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1qrVgzGE2p",
+      "aid": 114436786429667,
+      "title": "【GNZ48】20250502 Team NIII 李咏薇生日会",
+      "created": 1746167408,
+      "duration": 1702,
+      "play": 1053,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1gRGizvESG",
+      "aid": 114432860491791,
+      "title": "【GNZ48】20250501“认识你好久”九周年嘉年华第三场",
+      "created": 1746107809,
+      "duration": 7548,
+      "play": 15221,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1uoGizPEu4",
+      "aid": 114432508173443,
+      "title": "【GNZ48】20250501“认识你好久”九周年嘉年华第二场",
+      "created": 1746101773,
+      "duration": 8685,
+      "play": 16411,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1QtGvzPEZK",
+      "aid": 114431400877717,
+      "title": "【GNZ48】20250501 “认识你好久”九周年嘉年华第一场",
+      "created": 1746085765,
+      "duration": 7984,
+      "play": 16550,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1FcGbzbEp3",
+      "aid": 114427307236140,
+      "title": "【GNZ48】20250430 偶像研究计划G组《剧场女神》公演",
+      "created": 1746022770,
+      "duration": 9006,
+      "play": 4145,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1jCLoz5E9e",
+      "aid": 114404372781506,
+      "title": "【GNZ48】20250426 Team NIII《天枢之弈》公演",
+      "created": 1745672892,
+      "duration": 10766,
+      "play": 18179,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV19ULRzAEAf",
+      "aid": 114403282392484,
+      "title": "【GNZ48】20250426 Team G《瑶光之迹》公演",
+      "created": 1745656491,
+      "duration": 9912,
+      "play": 9517,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1MdLnz8Esb",
+      "aid": 114399289284879,
+      "title": "【SNH48 GROUP】20250425 “新的序章”新人TOP16巡演北京站",
+      "created": 1745595426,
+      "duration": 11797,
+      "play": 9350,
+      "sid": "4158274"
+    },
+    {
+      "bvid": "BV11rLHzZEdh",
+      "aid": 114398853077617,
+      "title": "【GNZ48】20250425 Team Z《斗宿之诀》公演",
+      "created": 1745588509,
+      "duration": 11038,
+      "play": 35091,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1vtLGz2EJe",
+      "aid": 114393836753908,
+      "title": "【GNZ48】20250424 偶像研究计划G组《剧场女神》公演",
+      "created": 1745512161,
+      "duration": 8852,
+      "play": 3760,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV19SLwzDECR",
+      "aid": 114370365366122,
+      "title": "【GNZ48】20250420 Team NIII 卢静《无尽夏》毕业公演",
+      "created": 1745153879,
+      "duration": 15934,
+      "play": 30928,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1ZzLFzSEp9",
+      "aid": 114369442617195,
+      "title": "【GNZ48】20250420 Team NIII《天枢之弈》公演（洪静雯季度MVP展演环节）",
+      "created": 1745139766,
+      "duration": 12766,
+      "play": 20649,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1pR5bzuE4h",
+      "aid": 114365348974601,
+      "title": "【GNZ48】20250419 Team Z《斗宿之诀》叶舒淇生日公演",
+      "created": 1745076964,
+      "duration": 18717,
+      "play": 102362,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV18j5tzjEU3",
+      "aid": 114364275300222,
+      "title": "【GNZ48】20250419 Team Z 叶舒淇生日会",
+      "created": 1745061083,
+      "duration": 2324,
+      "play": 10529,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1E95szWEZQ",
+      "aid": 114363956466969,
+      "title": "【GNZ48】20250419 Team G《瑶光之迹》陈淑钰生日公演",
+      "created": 1745056148,
+      "duration": 12495,
+      "play": 10787,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1vD5EzwEzM",
+      "aid": 114359275689303,
+      "title": "【GNZ48】20250418 Team Z《斗宿之诀》公演",
+      "created": 1744984885,
+      "duration": 11262,
+      "play": 59841,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1WM5BzaEK3",
+      "aid": 114353705588544,
+      "title": "【GNZ48】20250417 Team G《瑶光之迹》公演",
+      "created": 1744900772,
+      "duration": 9160,
+      "play": 7950,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1tzoTYUE19",
+      "aid": 114347833562891,
+      "title": "【GNZ48】20250416 偶像研究计划G组《剧场女神》公演",
+      "created": 1744810105,
+      "duration": 9025,
+      "play": 3685,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1YWdkYXEy5",
+      "aid": 114331274515983,
+      "title": "【GNZ48】20250413 Team G《瑶光之迹》公演",
+      "created": 1744557214,
+      "duration": 10159,
+      "play": 9330,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1yHdrYNEPZ",
+      "aid": 114330016158495,
+      "title": "【GNZ48】20250413 Team Z“新的序章”北京巡演minishow case",
+      "created": 1744539403,
+      "duration": 8954,
+      "play": 13824,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1judBY2EAM",
+      "aid": 114329697393141,
+      "title": "【GNZ48】20250412 Team G 曾艾佳生日会",
+      "created": 1744533495,
+      "duration": 3476,
+      "play": 1980,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1A8deY2E8e",
+      "aid": 114325654082508,
+      "title": "【GNZ48】20250411 Team Z《斗宿之诀》北京巡演",
+      "created": 1744471920,
+      "duration": 14528,
+      "play": 18070,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1spdaYCE5G",
+      "aid": 114325234718387,
+      "title": "【GNZ48】20250412 《YES I DO》曾艾佳主题生日公演",
+      "created": 1744464921,
+      "duration": 16853,
+      "play": 14946,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1UsdLYTEY3",
+      "aid": 114314178467204,
+      "title": "【GNZ48】20250410 Team NIII《天枢之弈》公演",
+      "created": 1744296515,
+      "duration": 10494,
+      "play": 15781,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1yEdTYuE3i",
+      "aid": 114308490991054,
+      "title": "【GNZ48】20250409 偶像研究计划G组《剧场女神》公演",
+      "created": 1744209851,
+      "duration": 9422,
+      "play": 3753,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1HVdWYmE68",
+      "aid": 114302669361692,
+      "title": "【GNZ48】20250406 Team Z《斗宿之诀》公演",
+      "created": 1744121139,
+      "duration": 10614,
+      "play": 24001,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV15sRBYkEDA",
+      "aid": 114290556147334,
+      "title": "【GNZ48】20250406 Team NIII《天枢之弈》公演（卢静普通公演千秋乐公演）",
+      "created": 1743936745,
+      "duration": 9859,
+      "play": 24589,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1prRoYCEQ4",
+      "aid": 114285002889453,
+      "title": "【GNZ48】20250405 Team G《瑶光之迹》公演",
+      "created": 1743851651,
+      "duration": 10829,
+      "play": 11809,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1MiZoYZEep",
+      "aid": 114280372376795,
+      "title": "【GNZ48】20250404 Team Z《斗宿之诀》公演",
+      "created": 1743780846,
+      "duration": 9846,
+      "play": 18198,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1UcZSYBERD",
+      "aid": 114274416465020,
+      "title": "【GNZ48】20250403 Team NIII《天枢之弈》公演",
+      "created": 1743689890,
+      "duration": 10474,
+      "play": 13803,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV18UfNYQEvN",
+      "aid": 114268544504886,
+      "title": "【GNZ48】20250402 偶像研究计划G组《剧场女神》公演",
+      "created": 1743600028,
+      "duration": 9060,
+      "play": 4348,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1UYZCYpEp5",
+      "aid": 114254585860237,
+      "title": "【GNZ48】20250330 Team NIII《天枢之弈》公演",
+      "created": 1743387445,
+      "duration": 9829,
+      "play": 10274,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV16rZzYhEg5",
+      "aid": 114250475446117,
+      "title": "【GNZ48】20250330 Team Z《斗宿之诀》公演",
+      "created": 1743324870,
+      "duration": 11451,
+      "play": 21304,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1REZaYAEB3",
+      "aid": 114246666949634,
+      "title": "【GNZ48】20250329 Team G《瑶光之迹》王秭歆生日公演",
+      "created": 1743266976,
+      "duration": 13955,
+      "play": 23496,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV18oZAYyEqu",
+      "aid": 114245358392726,
+      "title": "【GNZ48】20250329 Team G 王秭歆生日会",
+      "created": 1743246860,
+      "duration": 1812,
+      "play": 1794,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1snZcYhEZC",
+      "aid": 114244855013137,
+      "title": "【GNZ48】20250329 Team NIII《天枢之弈》公演（谢晓倩生日公演）",
+      "created": 1743238839,
+      "duration": 12831,
+      "play": 14420,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1XtZwYyEkg",
+      "aid": 114244385248499,
+      "title": "【GNZ48】20250329 Team NIII 谢晓倩生日会",
+      "created": 1743231576,
+      "duration": 1671,
+      "play": 1587,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV181ooYZER6",
+      "aid": 114240761434886,
+      "title": "【GNZ48】20250328 Team G《瑶光之迹》公演",
+      "created": 1743176311,
+      "duration": 10112,
+      "play": 8808,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV152ZGYVE7s",
+      "aid": 114235208176537,
+      "title": "【GNZ48】20250327 偶像研究计划G组《剧场女神》公演",
+      "created": 1743091511,
+      "duration": 9188,
+      "play": 3510,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1cboBYoEAU",
+      "aid": 114212290435298,
+      "title": "【GNZ48】20250323 Team G《瑶光之迹》公演",
+      "created": 1742742227,
+      "duration": 9597,
+      "play": 12394,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1y7XaYKEvF",
+      "aid": 114211602635323,
+      "title": "【GNZ48】20250323 Team NIII《天枢之弈》公演",
+      "created": 1742731526,
+      "duration": 9877,
+      "play": 22927,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV17LXWYvELR",
+      "aid": 114206334525060,
+      "title": "【GNZ48】20250322 Team G《瑶光之迹》&Team Z《斗宿之诀》联合公演（梁娇、梁乔生日环节）",
+      "created": 1742651213,
+      "duration": 22049,
+      "play": 49973,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1rMXWYgE8h",
+      "aid": 114206150039643,
+      "title": "【GNZ48】20250322 Team G&Team Z 梁娇、梁乔生日会",
+      "created": 1742649758,
+      "duration": 4785,
+      "play": 3834,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1W6XHY6EXf",
+      "aid": 114205294401200,
+      "title": "【GNZ48】20250322 Team NIII 王珺生日会",
+      "created": 1742635717,
+      "duration": 4655,
+      "play": 1751,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1QNXpYpEBT",
+      "aid": 114205025901162,
+      "title": "【GNZ48】20250322 Team NIII《天枢之弈》公演（王珺生日公演）",
+      "created": 1742631691,
+      "duration": 12289,
+      "play": 17758,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1BKXkYWEXU",
+      "aid": 114200865152402,
+      "title": "【GNZ48】20250321 Team Z《斗宿之诀》公演",
+      "created": 1742568090,
+      "duration": 9932,
+      "play": 20660,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1M9XeYJEah",
+      "aid": 114195060235783,
+      "title": "【GNZ48】20250320 偶像研究计划G组《剧场女神》公演",
+      "created": 1742478772,
+      "duration": 9053,
+      "play": 5746,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV119XuYGE9w",
+      "aid": 114178668895905,
+      "title": "【SNH48 GROUP】20250316 “新的序章”新人TOP16巡演重庆站",
+      "created": 1742229239,
+      "duration": 11739,
+      "play": 10142,
+      "sid": "4158274"
+    },
+    {
+      "bvid": "BV1dWQhYEEJV",
+      "aid": 114172947864744,
+      "title": "【GNZ48】20250316 Team Z《斗宿之诀》公演",
+      "created": 1742141663,
+      "duration": 10584,
+      "play": 29981,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1TcQhYNEDN",
+      "aid": 114170984929000,
+      "title": "【GNZ48】20250316 Team G《瑶光之迹》公演",
+      "created": 1742111702,
+      "duration": 9996,
+      "play": 9906,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1bRQDYfEMg",
+      "aid": 114166840957945,
+      "title": "【GNZ48】20250315 Team NIII《天枢之弈》公演（刘力菲季度MVP展演环节）",
+      "created": 1742048929,
+      "duration": 11647,
+      "play": 20679,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1B5QSYMEwn",
+      "aid": 114165733727111,
+      "title": "【GNZ48】20250315 Team Z《斗宿之诀》公演",
+      "created": 1742033121,
+      "duration": 11033,
+      "play": 33682,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1Q2QzYvE1o",
+      "aid": 114161270922316,
+      "title": "【SNH48 GROUP】20250314 “新的序章”新人TOP16巡演成都站",
+      "created": 1741964436,
+      "duration": 11862,
+      "play": 18813,
+      "sid": "4158274"
+    },
+    {
+      "bvid": "BV1DSQzYYE8z",
+      "aid": 114161170259463,
+      "title": "【GNZ48】20250314 Team G《瑶光之迹》公演",
+      "created": 1741962058,
+      "duration": 10202,
+      "play": 9848,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1XZRaYRELt",
+      "aid": 114133068423118,
+      "title": "【GNZ48】20250309 Team Z《斗宿之诀》公演",
+      "created": 1741533644,
+      "duration": 10718,
+      "play": 50105,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1byRhY1EKW",
+      "aid": 114131726244648,
+      "title": "【GNZ48】20250309 Team NIII《天枢之弈》公演",
+      "created": 1741513178,
+      "duration": 10389,
+      "play": 16257,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1yFRsYHEMv",
+      "aid": 114127297059933,
+      "title": "【GNZ48】20250308 Team Z《斗宿之诀》林芝生日公演",
+      "created": 1741445435,
+      "duration": 21284,
+      "play": 98980,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1ReRHYhEXM",
+      "aid": 114126743411697,
+      "title": "【GNZ48】20250308 Team Z 林芝生日会",
+      "created": 1741437315,
+      "duration": 2545,
+      "play": 3342,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1Cm9XYFEKU",
+      "aid": 114125720065256,
+      "title": "【GNZ48】20250308 Team G《瑶光之迹》公演",
+      "created": 1741421530,
+      "duration": 11418,
+      "play": 11644,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1bn92YWEfd",
+      "aid": 114121357925587,
+      "title": "【GNZ48】20250307 Team NIII《天枢之弈》公演",
+      "created": 1741355723,
+      "duration": 10200,
+      "play": 13326,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1FD9TYhEpK",
+      "aid": 114079666608377,
+      "title": "【GNZ48】20250227 Team Z《斗宿之诀》上海巡演",
+      "created": 1740718757,
+      "duration": 11369,
+      "play": 42476,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1mKPeerE6d",
+      "aid": 114064650999199,
+      "title": "【GNZ48】20250222 Team G《瑶光之迹》公演",
+      "created": 1740494482,
+      "duration": 9337,
+      "play": 7247,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1wzASe3En6",
+      "aid": 114053796073620,
+      "title": "【GNZ48】20250223 Team NIII《天枢之弈》公演",
+      "created": 1740323919,
+      "duration": 10446,
+      "play": 19246,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1ScAUe7E4x",
+      "aid": 114052722332366,
+      "title": "【GNZ48】20250222 Team NIII《天枢之弈》公演",
+      "created": 1740307708,
+      "duration": 10473,
+      "play": 11851,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1r7AUeiExq",
+      "aid": 114052537782349,
+      "title": "【GNZ48】20250223 Team Z《斗宿之诀》公演",
+      "created": 1740304711,
+      "duration": 10650,
+      "play": 37071,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1AoPFezE3p",
+      "aid": 114042471453499,
+      "title": "【GNZ48】20250221 Team Z《斗宿之诀》公演",
+      "created": 1740151048,
+      "duration": 10438,
+      "play": 36852,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV12nApeBEA4",
+      "aid": 114036700091647,
+      "title": "【GNZ48】20250220 Team G《瑶光之迹》公演",
+      "created": 1740063194,
+      "duration": 10305,
+      "play": 13157,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1KNA5emExC",
+      "aid": 114013933476855,
+      "title": "【GNZ48】20250216 Team Z《斗宿之诀》公演",
+      "created": 1739715804,
+      "duration": 10814,
+      "play": 23828,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1MHALeRESm",
+      "aid": 114013161658557,
+      "title": "【GNZ48】20250216 Team NIII《天枢之弈》公演",
+      "created": 1739703959,
+      "duration": 10353,
+      "play": 20648,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1v3AKe6E65",
+      "aid": 114008380151983,
+      "title": "【GNZ48】20250215 “红红火火”新春联合公演",
+      "created": 1739630885,
+      "duration": 17594,
+      "play": 151450,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1WAKMevEGH",
+      "aid": 114002474572882,
+      "title": "【GNZ48】20250214 Team G《瑶光之迹》公演",
+      "created": 1739540798,
+      "duration": 10598,
+      "play": 14184,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1EHKWeBEBX",
+      "aid": 113996787162702,
+      "title": "【GNZ48】20250213 偶像研究计划G组《剧场女神》公演（升格成员纪念舞台）",
+      "created": 1739453858,
+      "duration": 11829,
+      "play": 9911,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1RLKLezEiU",
+      "aid": 113991636488202,
+      "title": "【GNZ48】20241103 Team G《瑶光之迹》公演暨“燃烧吧团魂”复活赛",
+      "created": 1739375684,
+      "duration": 12384,
+      "play": 6891,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1ddNaepEZn",
+      "aid": 113980043432343,
+      "title": "【GNZ48】20241103 Team Z《斗宿之诀》公演",
+      "created": 1739268000,
+      "duration": 10873,
+      "play": 19370,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV13WNaeLEd6",
+      "aid": 113980127319820,
+      "title": "【GNZ48】20241102 Team G《瑶光之迹》处女座、天蝎座生日公演（林家谊 刘欣媛）",
+      "created": 1739260800,
+      "duration": 9852,
+      "play": 4564,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1c2Nae8EV3",
+      "aid": 113979942768706,
+      "title": "【GNZ48】20241102 处女座、天蝎座生日会（林家谊 刘欣媛）",
+      "created": 1739253600,
+      "duration": 2209,
+      "play": 2114,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1PqNaeiEDM",
+      "aid": 113980244762449,
+      "title": "【GNZ48】20241101 Team NIII《天枢之弈》公演",
+      "created": 1739246400,
+      "duration": 10868,
+      "play": 13050,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1pkNaeAEow",
+      "aid": 113979926057315,
+      "title": "【GNZ48】20241031 偶像研究计划G组《剧场女神》公演",
+      "created": 1739196566,
+      "duration": 9167,
+      "play": 16069,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1stNUe2EpR",
+      "aid": 113974137852594,
+      "title": "【GNZ48】20250209 Team NIII《天枢之弈》公演",
+      "created": 1739108371,
+      "duration": 11258,
+      "play": 41678,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1DRN2enEGS",
+      "aid": 113973013910471,
+      "title": "【GNZ48】20250209 Team G《瑶光之迹》公演",
+      "created": 1739091281,
+      "duration": 10594,
+      "play": 19091,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1TdNGeQEQ5",
+      "aid": 113968685260565,
+      "title": "【GNZ48】20250208 Team Z《斗宿之诀》公演",
+      "created": 1739025146,
+      "duration": 11024,
+      "play": 54177,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1shwaefEmb",
+      "aid": 113866679784651,
+      "title": "【GNZ48】20250121 “蛇不得你”春节全团联合公演",
+      "created": 1737468787,
+      "duration": 18568,
+      "play": 18763,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV15hwke6Ebu",
+      "aid": 113856026385706,
+      "title": "【GNZ48】20250119 Team G《瑶光之迹》公演",
+      "created": 1737306170,
+      "duration": 10473,
+      "play": 6066,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1LTwreTE2Y",
+      "aid": 113854600189741,
+      "title": "【GNZ48】20250119 Team NIII《天枢之弈》公演",
+      "created": 1737284351,
+      "duration": 10183,
+      "play": 6485,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1wYwTeHEsP",
+      "aid": 113850405886911,
+      "title": "【GNZ48】20250118 Team Z《斗宿之诀》公演",
+      "created": 1737221465,
+      "duration": 10932,
+      "play": 17307,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1cTwPekERP",
+      "aid": 113848157804633,
+      "title": "【GNZ48】20250118 Team G《瑶光之迹》公演",
+      "created": 1737186101,
+      "duration": 10657,
+      "play": 5234,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV18CcfekEa9",
+      "aid": 113844601098349,
+      "title": "【GNZ48】20250117 Team NIII《天枢之弈》公演",
+      "created": 1737131782,
+      "duration": 10939,
+      "play": 6746,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1P1wLeLEGw",
+      "aid": 113838577948441,
+      "title": "【GNZ48】20250116 偶像研究计划G组《剧场女神》公演",
+      "created": 1737039878,
+      "duration": 8909,
+      "play": 3166,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV14PcVerEpe",
+      "aid": 113815928708606,
+      "title": "【GNZ48】20250112 Team G《瑶光之迹》张琼予季度MVP公演",
+      "created": 1736694779,
+      "duration": 11030,
+      "play": 4752,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1EWcVeZETm",
+      "aid": 113815643493255,
+      "title": "【GNZ48】20250112 Team NIII《天枢之弈》公演（唐莉佳前座曲）",
+      "created": 1736690075,
+      "duration": 11097,
+      "play": 6611,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV18QcMePE1o",
+      "aid": 113812522930200,
+      "title": "【GNZ48】20250111 Team Z《斗宿之诀》公演",
+      "created": 1736644582,
+      "duration": 10104,
+      "play": 12951,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1zbcKe3E6B",
+      "aid": 113811600183952,
+      "title": "【GNZ48】20250111 Team NIII《天枢之弈》公演",
+      "created": 1736630216,
+      "duration": 9698,
+      "play": 4850,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1eMcWeUEsy",
+      "aid": 113805224844780,
+      "title": "【GNZ48】20250110 Team Z《斗宿之诀》公演",
+      "created": 1736531133,
+      "duration": 10734,
+      "play": 18770,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1aVcWeLEWF",
+      "aid": 113804906077697,
+      "title": "【GNZ48】20250109 偶像研究计划G组《剧场女神》公演",
+      "created": 1736525917,
+      "duration": 8667,
+      "play": 1936,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1ePcHeCEr4",
+      "aid": 113804436315813,
+      "title": "【GNZ48】20250105 Team G《瑶光之迹》公演",
+      "created": 1736519726,
+      "duration": 10509,
+      "play": 5879,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1gurTYLESA",
+      "aid": 113776468693832,
+      "title": "【GNZ48】20250105 Team Z《斗宿之诀》公演",
+      "created": 1736092108,
+      "duration": 11008,
+      "play": 26098,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV13qrWYcEij",
+      "aid": 113769959135881,
+      "title": "【GNZ48】20250104 Team G《瑶光之迹》公演",
+      "created": 1735992832,
+      "duration": 10315,
+      "play": 6883,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1GvrWYaE3F",
+      "aid": 113769975912541,
+      "title": "【GNZ48】20250104 Team NIII《天枢之弈》北京巡演第二场",
+      "created": 1735992570,
+      "duration": 11718,
+      "play": 6431,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV14rrHYSEDQ",
+      "aid": 113769271335375,
+      "title": "【GNZ48】20250104 Team Z《斗宿之诀》公演",
+      "created": 1735982490,
+      "duration": 10430,
+      "play": 15063,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1ZF6UYBE5U",
+      "aid": 113764959524344,
+      "title": "【GNZ48】20250103 Team NIII《天枢之弈》北京巡演第一场",
+      "created": 1735916920,
+      "duration": 11218,
+      "play": 7322,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1wK6oYqEkx",
+      "aid": 113753265804816,
+      "title": "【GNZ48】20250101 偶像研究计划G组《剧场女神》公演",
+      "created": 1735738141,
+      "duration": 11663,
+      "play": 3693,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV12x6DYbEvG",
+      "aid": 113748333305791,
+      "title": "【GNZ48】20241231 《启程》全团联合跨年公演",
+      "created": 1735663893,
+      "duration": 15412,
+      "play": 24232,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1626aYAEJL",
+      "aid": 113736304107418,
+      "title": "【GNZ48】20241229 Team G《瑶光之迹》公演",
+      "created": 1735479529,
+      "duration": 9471,
+      "play": 7340,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1CR6bYFECc",
+      "aid": 113736035603494,
+      "title": "【GNZ48】20241229 TEAM Z 《新的序章》MINI SHOWCASE",
+      "created": 1735475325,
+      "duration": 9654,
+      "play": 11550,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1Wi68YwEms",
+      "aid": 113735314183163,
+      "title": "【GNZ48】20241229 Team NIII《天枢之弈》洪静雯季度MVP公演",
+      "created": 1735464361,
+      "duration": 12032,
+      "play": 9434,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1NJChYCEpB",
+      "aid": 113730415302158,
+      "title": "【GNZ48】20241228 Team NIII 刘力菲《Paracosm》MVP主题公演",
+      "created": 1735389165,
+      "duration": 12962,
+      "play": 7346,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1rWCbYwEUi",
+      "aid": 113729542820850,
+      "title": "【GNZ48】20241228 Team G《瑶光之迹》方琪季度MVP公演",
+      "created": 1735376516,
+      "duration": 11865,
+      "play": 5300,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1cGCpYjE66",
+      "aid": 113725080147322,
+      "title": "【GNZ48】20241227 Team Z《斗宿之诀》成都巡演",
+      "created": 1735307414,
+      "duration": 12463,
+      "play": 21839,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1zjCpYkEJ9",
+      "aid": 113724962640217,
+      "title": "【GNZ48】20241227 偶像研究计划G组《剧场女神》公演",
+      "created": 1735305744,
+      "duration": 10700,
+      "play": 1938,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1eRCNYXE3E",
+      "aid": 113697045356487,
+      "title": "【GNZ48】20241222 Team NIII《天枢之弈》团魂巅峰赛C组NAVI竞演",
+      "created": 1734880954,
+      "duration": 11987,
+      "play": 13207,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1qokqYmE9s",
+      "aid": 113695485075339,
+      "title": "【GNZ48】20241222 Team Z《斗宿之诀》公演",
+      "created": 1734856128,
+      "duration": 10918,
+      "play": 13187,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1ENkhYFELn",
+      "aid": 113691072729225,
+      "title": "【GNZ48】20241221 Team G《瑶光之迹》杨可璐生日公演",
+      "created": 1734790330,
+      "duration": 12732,
+      "play": 11693,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1FdktYtERb",
+      "aid": 113690602902797,
+      "title": "【GNZ48】20241221 Team G 杨可璐生日会",
+      "created": 1734782670,
+      "duration": 1350,
+      "play": 1208,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1gYkxYvETC",
+      "aid": 113689747264387,
+      "title": "【GNZ48】20241221 Team NIII《天枢之弈》唐莉佳季度MVP公演",
+      "created": 1734770476,
+      "duration": 12854,
+      "play": 8662,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV13gkSYBEiT",
+      "aid": 113685636849650,
+      "title": "【GNZ48】20241220 Team G《瑶光之迹》公演",
+      "created": 1734706715,
+      "duration": 10768,
+      "play": 6256,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1xHkBYhEq5",
+      "aid": 113680184253121,
+      "title": "【GNZ48】20241219 偶像研究计划G组《剧场女神》公演",
+      "created": 1734623149,
+      "duration": 9035,
+      "play": 1694,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1dZqfYZEpy",
+      "aid": 113657014918724,
+      "title": "【GNZ48】20241215 Team NIII《天枢之弈》公演",
+      "created": 1734269743,
+      "duration": 11367,
+      "play": 6097,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV11EBFY5EZW",
+      "aid": 113656729705820,
+      "title": "【GNZ48】20241215 Team G《瑶光之迹》公演",
+      "created": 1734264709,
+      "duration": 9995,
+      "play": 4751,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV16BBLY2Ezo",
+      "aid": 113651226845084,
+      "title": "【GNZ48】20241214 Team G 张琼予《休眠火山》2023年度MVP主题公演",
+      "created": 1734181414,
+      "duration": 11018,
+      "play": 6619,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV11DBjY4E3d",
+      "aid": 113650236923039,
+      "title": "【GNZ48】20241214 Team Z《斗宿之诀》杨媛媛生日公演",
+      "created": 1734166190,
+      "duration": 15922,
+      "play": 19854,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1kdB5YLEV2",
+      "aid": 113649549054784,
+      "title": "【GNZ48】20241214 Team Z 杨媛媛生日会",
+      "created": 1734155409,
+      "duration": 2735,
+      "play": 1755,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV17bBTYDEoq",
+      "aid": 113645841289437,
+      "title": "【GNZ48】20241213 Team NIII《天枢之弈》公演",
+      "created": 1734099624,
+      "duration": 9788,
+      "play": 7339,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1cfqhYsEzx",
+      "aid": 113640371917106,
+      "title": "【GNZ48】20241212 偶像研究计划G组《剧场女神》公演",
+      "created": 1734020038,
+      "duration": 9847,
+      "play": 2430,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1MuqWY1Ep9",
+      "aid": 113617521417211,
+      "title": "【GNZ48】20241208 Team G《瑶光之迹》公演",
+      "created": 1733667445,
+      "duration": 10588,
+      "play": 6125,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1EKqpYZEMh",
+      "aid": 113616330168461,
+      "title": "【GNZ48】20241208 Team Z《斗宿之诀》公演",
+      "created": 1733648924,
+      "duration": 10898,
+      "play": 14711,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV156q5YYEfn",
+      "aid": 113612354033149,
+      "title": "【GNZ48】20241207 Team G《瑶光之迹》方琪生日公演",
+      "created": 1733588343,
+      "duration": 14439,
+      "play": 5835,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1hsqVY9EYb",
+      "aid": 113611028568975,
+      "title": "【GNZ48】20241207 Team G 方琪生日会",
+      "created": 1733567797,
+      "duration": 1526,
+      "play": 773,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1AbiyYbEqP",
+      "aid": 113610374255747,
+      "title": "【GNZ48】20241207 Team NIII《天枢之弈》公演",
+      "created": 1733558065,
+      "duration": 11051,
+      "play": 8535,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1Q1i6YcEv3",
+      "aid": 113606314169620,
+      "title": "【GNZ48】20241206 Team Z《斗宿之诀》公演",
+      "created": 1733496190,
+      "duration": 10540,
+      "play": 11804,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1MyifYyEQ3",
+      "aid": 113600945460380,
+      "title": "【GNZ48】20241205 偶像研究计划G组《剧场女神》公演",
+      "created": 1733413562,
+      "duration": 9442,
+      "play": 2509,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1dU6TY9Efm",
+      "aid": 113584252131643,
+      "title": "【GNZ48】20241201 Team Z《斗宿之诀》公演",
+      "created": 1733159343,
+      "duration": 10762,
+      "play": 12393,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1ER6wYLEUH",
+      "aid": 113581030905904,
+      "title": "【GNZ48】20241201 Team NIII《天枢之弈》公演",
+      "created": 1733109740,
+      "duration": 10860,
+      "play": 6237,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1h7zdYjEQc",
+      "aid": 113577054706054,
+      "title": "【GNZ48】20241130 Team G《瑶光之迹》梁娇生日公演",
+      "created": 1733049208,
+      "duration": 15467,
+      "play": 7301,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1fEznYZELJ",
+      "aid": 113571434338438,
+      "title": "【GNZ48】20241130 Team G 梁娇生日冷餐会",
+      "created": 1732963337,
+      "duration": 1969,
+      "play": 1948,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1yUznYMEra",
+      "aid": 113571182680496,
+      "title": "【GNZ48】20241130 Team Z《斗宿之诀》公演",
+      "created": 1732960125,
+      "duration": 11545,
+      "play": 22387,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1NyzrYaE4Z",
+      "aid": 113566686386179,
+      "title": "【GNZ48】20241129 “燃烧吧团魂”社团晋级赛第一场",
+      "created": 1732890763,
+      "duration": 14918,
+      "play": 17507,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1PhzYYuEmX",
+      "aid": 113561284122924,
+      "title": "【GNZ48】20241128 偶像研究计划G组《剧场女神》公演",
+      "created": 1732808565,
+      "duration": 9761,
+      "play": 2541,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1dXBbYCEpN",
+      "aid": 113539524074178,
+      "title": "【GNZ48】20241124 Team G《瑶光之迹》公演",
+      "created": 1732476276,
+      "duration": 12137,
+      "play": 6352,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1hrBtYPEeC",
+      "aid": 113538165316295,
+      "title": "SNH48 GROUP 第十一届年度金曲大赏BEST50 次轮点歌计分统计结果（中报）20241124",
+      "created": 1732455432,
+      "duration": 1343,
+      "play": 5070,
+      "sid": "4158274"
+    },
+    {
+      "bvid": "BV1kQBxY2E1y",
+      "aid": 113537142103092,
+      "title": "【GNZ48】20241124 Team NIII《天枢之弈》公演",
+      "created": 1732440402,
+      "duration": 12080,
+      "play": 13620,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1DYB2YnEzF",
+      "aid": 113532880297179,
+      "title": "【GNZ48】20241123 刘倩倩《Redamancy》毕业公演",
+      "created": 1732375000,
+      "duration": 18024,
+      "play": 30322,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1eZBkY2E1N",
+      "aid": 113530934467794,
+      "title": "【GNZ48】20241123 陈珂《寻梦录·K》MVP主题公演暨毕业仪式",
+      "created": 1732345346,
+      "duration": 20603,
+      "play": 66944,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1SQUXYZE7Z",
+      "aid": 113521371126665,
+      "title": "【GNZ48】20241121 偶像研究计划G组《剧场女神》公演",
+      "created": 1732199511,
+      "duration": 10061,
+      "play": 4327,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV186UZYrEPc",
+      "aid": 113507479591094,
+      "title": "【SNH48 GROUP】20241117 2024年度青春盛典“新的序章”新人TOP16巡演上海站",
+      "created": 1731987624,
+      "duration": 11325,
+      "play": 6813,
+      "sid": "4158274"
+    },
+    {
+      "bvid": "BV1vtUWYQEA1",
+      "aid": 113503771826585,
+      "title": "【GNZ48】20241117 Team NIII《天枢之弈》公演",
+      "created": 1731931837,
+      "duration": 11347,
+      "play": 10625,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1cjUWYcE1f",
+      "aid": 113503637673798,
+      "title": "【GNZ48】20241117 Team G“新的序章”mini showcase",
+      "created": 1731929854,
+      "duration": 8191,
+      "play": 4441,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1u2UjY4EZn",
+      "aid": 113499376260211,
+      "title": "【GNZ48】20241117 Team Z《斗宿之诀》天蝎座&射手座生日公演（杨媛媛 叶溁语）",
+      "created": 1731864821,
+      "duration": 15391,
+      "play": 7479,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV12eU7YpEGD",
+      "aid": 113498856494278,
+      "title": "【GNZ48】20241116 Team G《瑶光之迹》重庆巡演",
+      "created": 1731857647,
+      "duration": 11043,
+      "play": 4278,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1zYUrYGEuL",
+      "aid": 113496859678410,
+      "title": "【GNZ48】20241116 偶像研究计划G组《剧场女神》公演",
+      "created": 1731831392,
+      "duration": 9017,
+      "play": 1656,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1snUrYnEWj",
+      "aid": 113496725394717,
+      "title": "【GNZ48】20241117 Team Z 天蝎座&射手座生日冷餐会（杨媛媛 叶溁语）",
+      "created": 1731823084,
+      "duration": 1698,
+      "play": 1350,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1XcUzYxEMT",
+      "aid": 113496171812000,
+      "title": "【GNZ48】20241116 Team Z《斗宿之诀》天秤座&天蝎座生日公演（龙亦瑞 程戈 张幼柠）",
+      "created": 1731815097,
+      "duration": 15541,
+      "play": 8420,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1wxU8YEEaX",
+      "aid": 113491071538458,
+      "title": "【GNZ48】20241116 Team Z 天秤座&天蝎座生日冷餐会（龙亦瑞 程戈 张幼柠）",
+      "created": 1731737143,
+      "duration": 3971,
+      "play": 2448,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1LkmZY7EE2",
+      "aid": 113487548389070,
+      "title": "【GNZ48】20241115 偶像研究计划G组《剧场女神》公演",
+      "created": 1731683896,
+      "duration": 9773,
+      "play": 2099,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV13ZmzYWEAJ",
+      "aid": 113458724999550,
+      "title": "SNH48 GROUP 第十一届年度金曲大赏BEST50 首轮点歌计分统计结果（速报）20241110",
+      "created": 1731243174,
+      "duration": 1149,
+      "play": 3518,
+      "sid": "4158274"
+    },
+    {
+      "bvid": "BV1KymBY5EGh",
+      "aid": 113457382891509,
+      "title": "【GNZ48】20241110 偶像研究计划G组《剧场女神》公演",
+      "created": 1731223017,
+      "duration": 10877,
+      "play": 3320,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV14oDkYaE5Y",
+      "aid": 113454228705735,
+      "title": "【GNZ48】20241109 第五届幼稚园联合运动会特殊公演·广州校区",
+      "created": 1731174937,
+      "duration": 11757,
+      "play": 11274,
+      "sid": "4158846"
+    },
+    {
+      "bvid": "BV1ztD6YCEwQ",
+      "aid": 113453641503237,
+      "title": "【下架重传】SNH48 GROUP 20241109 “我们能赢”第五届偶像运动会",
+      "created": 1731167385,
+      "duration": 18007,
+      "play": 6466,
+      "sid": "4158274"
+    }
+  ]
+}
