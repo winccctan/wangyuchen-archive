@@ -50,8 +50,9 @@ run_once() {
   "$NODE" scripts/reparse-messages.mjs >/dev/null 2>&1 || true
   # 前瞻累积「当前场次」的参演名单（官方只公开当前场次名单，历史场次靠日积月累）
   "$NODE" scripts/capture-roster.mjs >/dev/null 2>&1 || true
-  # 前瞻累积「公演排期 / 即将开始」（口袋 App 成员页「公演」标签的内容，窗口很短，必须定期累积）
-  "$NODE" scripts/capture-schedule.mjs >/dev/null 2>&1 || true
+  # 注意：**不再跑 capture-schedule**。「按队伍的公演排期」不等于「她参加」
+  # （例：2026-09-19 第27场 队伍在演但她没参加），并进列表会造出假数据。
+  # 权威来源是 scrape-hers-performances.mjs（她的公演记录 OPEN_LIVE）。
   # ★ 抓「她参加的公演记录」（口袋成员页「公演」标签的权威数据源；只补缺详情的场次，增量很快）
   MAX_DETAILS=40 "$NODE" scripts/scrape-hers-performances.mjs >/dev/null 2>&1 || true
   # B 站公演录像备用源（UP 主投稿列表；接口有风控，脚本可断点续传，每轮只翻几页慢慢补全）
@@ -62,7 +63,7 @@ run_once() {
   # 注意：只比 messages.json 会漏掉「直播状态变化」（status 2→3 不改变条数），
   # 导致直播结束后状态永远不更新。故改为比较全部三个数据文件。
   if [ -n "${old_counts}" ] && [ "$old_counts" = "$new_counts" ] \
-     && git diff --quiet -- site/data/messages.json site/data/live.json site/data/performances.json site/data/rosters.json site/data/schedule.json site/data/performances-hers.json site/data/bili-videos.json; then
+     && git diff --quiet -- site/data/messages.json site/data/live.json site/data/performances.json site/data/rosters.json site/data/performances-hers.json site/data/bili-videos.json; then
     echo "→ 数据条数与内容均未变化，跳过提交与部署（不触发空构建）"
     return 0
   fi
