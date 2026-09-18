@@ -37,8 +37,8 @@ const PROFILE = {
       scheme: 'sinaweibo://',
       color: '#e6162d',
       accounts: [
-        { handle: 'GNZ48-王语晨', web: 'https://weibo.com/n/GNZ48-王语晨' },
-        { handle: '忘记自己是鱼_', web: 'https://weibo.com/n/忘记自己是鱼_' }
+        { handle: 'GNZ48-王语晨', web: 'https://weibo.com/u/7791377245' },
+        { handle: '忘记自己是鱼_', web: 'https://weibo.com/u/7648263890' }
       ]
     },
     {
