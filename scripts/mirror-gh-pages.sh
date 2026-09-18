@@ -18,7 +18,10 @@ touch "$TMP/.nojekyll"
 
 REMOTE="https://github.com/winccctan/wangyuchen-archive.git"
 if [ -n "${GH_TOKEN:-}" ]; then
-  REMOTE="https://${GH_TOKEN}@github.com/winccctan/wangyuchen-archive.git"
+  # 必须用 x-access-token:<token> 形式，把 token 放在「密码」位。
+  # 若写成 https://<token>@github.com，git 会把 token 当用户名、再去索要密码，
+  # 非交互的 CI 环境会直接失败：could not read Password。
+  REMOTE="https://x-access-token:${GH_TOKEN}@github.com/winccctan/wangyuchen-archive.git"
 fi
 
 ( cd "$TMP" \
