@@ -94,10 +94,14 @@ async function handleTranslate(request, url, env, ctx) {
 const SCRAPE_COOLDOWN_MIN = 15;
 async function handleScrape(env) {
   const repo = (env && env.REPO) || 'winccctan/wangyuchen-archive';
-  const token = env && env.GH_TOKEN;
+  // token 来源：优先 KV（运行时读取，Git 构建也能用），否则退回 dashboard Secret(env.GH_TOKEN)
+  let token = env && env.GH_TOKEN;
+  if (!token && env && env.SECRETS && typeof env.SECRETS.get === 'function') {
+    token = await env.SECRETS.get('GH_TOKEN');
+  }
   const ref = (env && env.SCRAPE_REF) || 'main';
   if (!token) {
-    return json({ error: 'worker-missing-gh-token', hint: '请在 Cloudflare 配置 GH_TOKEN（wrangler secret put GH_TOKEN）' }, 500);
+    return json({ error: 'worker-missing-gh-token', hint: '请在 Cloudflare KV 命名空间 SECRETS 中存入键 GH_TOKEN' }, 500);
   }
   const headers = {
     'Authorization': `Bearer ${token}`,
