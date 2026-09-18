@@ -55,8 +55,8 @@ run_once() {
   # 权威来源是 scrape-hers-performances.mjs（她的公演记录 OPEN_LIVE）。
   # ★ 抓「她参加的公演记录」（口袋成员页「公演」标签的权威数据源；只补缺详情的场次，增量很快）
   MAX_DETAILS=40 "$NODE" scripts/scrape-hers-performances.mjs >/dev/null 2>&1 || true
-  # B 站公演录像备用源（UP 主投稿列表；接口有风控，脚本可断点续传，每轮只翻几页慢慢补全）
-  MAX_PAGES=3 PAGE_SLEEP=6000 "$NODE" scripts/fetch-bili-videos.mjs >/dev/null 2>&1 || true
+  # B 站公演录像备用源（多 UP：合集/系列/空间列表三通道；接口有风控，可断点续传，每轮限额几页慢慢补全）
+  BILI_PAGE_BUDGET=4 PAGE_SLEEP=3000 "$NODE" scripts/fetch-bili-videos.mjs >/dev/null 2>&1 || true
   echo "    抓取前条数: ${old_counts:-（无）}"
   echo "    抓取后条数: ${new_counts}"
 

@@ -1,14 +1,23 @@
 {
-  "mid": "2086351451",
-  "sids": [
-    "4158846",
-    "4158274"
+  "updatedAt": "2026-09-18T07:05:02.498Z",
+  "count": 650,
+  "targets": [
+    {
+      "mid": "2086351451",
+      "label": "企理鹅大帝"
+    },
+    {
+      "mid": "1315101",
+      "label": "寒影AkiNa"
+    }
   ],
-  "updatedAt": "2026-09-18T06:53:41.946Z",
-  "count": 577,
   "progress": {
     "4158274": 3,
-    "4158846": 19
+    "4158846": 19,
+    "2086351451:season:4158846": 19,
+    "2086351451:season:4158274": 3,
+    "1315101:series:967578": 4,
+    "1315101:space": 1
   },
   "videos": [
     {
@@ -5203,6 +5212,663 @@
       "duration": 18007,
       "play": 6466,
       "sid": "4158274"
+    },
+    {
+      "bvid": "BV12x411g7Vd",
+      "aid": 14965575,
+      "title": "【SNH48】20171001 国庆节特别公演",
+      "created": 1506860991,
+      "duration": 8868,
+      "play": 152352,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1xx41147g1",
+      "aid": 14351951,
+      "title": "【SNH48】20170910 Team NII 剧场四周年特别公演",
+      "created": 1505046332,
+      "duration": 11559,
+      "play": 67062,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV15x41147bq",
+      "aid": 14314191,
+      "title": "【SNH48】20170909 Team SII 剧场四周年特别公演",
+      "created": 1504957512,
+      "duration": 10165,
+      "play": 167501,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1Px41147mF",
+      "aid": 14281287,
+      "title": "【SNH48】20170908 Team HII 剧场四周年特别公演",
+      "created": 1504872240,
+      "duration": 9137,
+      "play": 74714,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1fx411x7Kk",
+      "aid": 14225626,
+      "title": "【SNH48】20170906 Team XII 剧场四周年特别公演",
+      "created": 1504699736,
+      "duration": 10766,
+      "play": 52993,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1xx41187LH",
+      "aid": 13889228,
+      "title": "【SNH48】20170827 七夕情人节特别公演",
+      "created": 1503874409,
+      "duration": 13636,
+      "play": 181563,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1ax411879E",
+      "aid": 13874581,
+      "title": "【BEJ48】20170827 Team B+E+J《乱点鸳鸯谱》三队联合七夕情人节特殊公演",
+      "created": 1503832284,
+      "duration": 6676,
+      "play": 193137,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1fx411n73y",
+      "aid": 13252230,
+      "title": "【GNZ48】20170811 Team G《双面偶像》原创公演首演",
+      "created": 1502483108,
+      "duration": 9966,
+      "play": 325254,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1Bx411e7ED",
+      "aid": 10511850,
+      "title": "【GNZ48+BEJ48】20170512 Team G+B《剧场女神》联合公演",
+      "created": 1494605575,
+      "duration": 12769,
+      "play": 75345,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1Sx41127aJ",
+      "aid": 10238634,
+      "title": "【SNH48】20170501《青春正好》5.1劳动节特别公演",
+      "created": 1493633548,
+      "duration": 10038,
+      "play": 58404,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV17x411S7k4",
+      "aid": 10191619,
+      "title": "【GNZ48】20170429 Team G&NIII&Z《出道一周年》联合特别公演",
+      "created": 1493505659,
+      "duration": 17316,
+      "play": 72827,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1Hx411U7wT",
+      "aid": 10046860,
+      "title": "【BEJ48+GNZ48】20170423 Team B+G《十八个闪耀瞬间》联合公演",
+      "created": 1492943863,
+      "duration": 12712,
+      "play": 68110,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1bx411S7y5",
+      "aid": 9710615,
+      "title": "【GNZ48】20170408 Team G&NIII&Z“丝芭偶像节”联合特别公演（下）",
+      "created": 1491678275,
+      "duration": 16874,
+      "play": 55521,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV14x411S7SQ",
+      "aid": 9702161,
+      "title": "【GNZ48】20170408 Team G&NIII&Z“丝芭偶像节”联合特别公演（上）",
+      "created": 1491666104,
+      "duration": 14797,
+      "play": 61291,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1bx411S7az",
+      "aid": 9704183,
+      "title": "【SNH48】20170408 Team HII《美丽世界》新公演首演",
+      "created": 1491662216,
+      "duration": 9613,
+      "play": 108036,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1bx411S78v",
+      "aid": 9703791,
+      "title": "【BEJ48】20170408 Team E&J《48偶像节》联合特殊公演",
+      "created": 1491661797,
+      "duration": 12243,
+      "play": 33269,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1Zx411Q7PF",
+      "aid": 9695475,
+      "title": "【SNH48】20170408 “丝芭偶像节”特别公演",
+      "created": 1491649213,
+      "duration": 11681,
+      "play": 233581,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1cx411X755",
+      "aid": 9677117,
+      "title": "SNH48 7SENSES 出道演出 20170407",
+      "created": 1491570984,
+      "duration": 6003,
+      "play": 30098,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV17x411Q7Ta",
+      "aid": 9564322,
+      "title": "【BEJ48】20170402 Team B《心的旅程》牛聪聪生日主题公演",
+      "created": 1491152500,
+      "duration": 14438,
+      "play": 52056,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1Lx411Q7Zy",
+      "aid": 9560460,
+      "title": "【SNH48】20170402 Team X《梦想的旗帜》X队成立两周年特别公演",
+      "created": 1491148195,
+      "duration": 10528,
+      "play": 64704,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1Ex411Q7AA",
+      "aid": 9536578,
+      "title": "【GNZ48】20170401 Team NIII《第1人称》公演（愚人节倒序版）",
+      "created": 1491091465,
+      "duration": 11226,
+      "play": 20248,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV17x411Q76B",
+      "aid": 9539428,
+      "title": "【BEJ48】20170401 Team E《奇幻加冕礼》愚人节特殊公演",
+      "created": 1491068725,
+      "duration": 11301,
+      "play": 40046,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV17x411Q7mg",
+      "aid": 9538017,
+      "title": "【SHY48】20170401 Team HIII《梦想的旗帜》公演（愚人节版）",
+      "created": 1491066662,
+      "duration": 10248,
+      "play": 6309,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1bx411C7Bu",
+      "aid": 9096864,
+      "title": "【SNH48】20170311下午场 白色情人节特别公演",
+      "created": 1489228956,
+      "duration": 8411,
+      "play": 76954,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1Wx411C7dr",
+      "aid": 9046043,
+      "title": "【SNH48】20170308 Team SII《心的旅程》男装特别公演",
+      "created": 1488991314,
+      "duration": 10583,
+      "play": 156842,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1jx411C72R",
+      "aid": 9021980,
+      "title": "SNH48出道四周年纪念公演《大家好，我们是SNH48》全场完整版 20170112",
+      "created": 1488880408,
+      "duration": 9584,
+      "play": 48856,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1Sx411y7v4",
+      "aid": 8834573,
+      "title": "【SNH48】20170225 Team NII《专属派对》李艺彤生日主题公演",
+      "created": 1488037303,
+      "duration": 11523,
+      "play": 71057,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1Kx411y742",
+      "aid": 8656362,
+      "title": "【SNH48】20170216 Team HII《十八个闪耀瞬间》公演",
+      "created": 1487258140,
+      "duration": 9607,
+      "play": 41296,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV17x411273B",
+      "aid": 8558148,
+      "title": "【BEJ48】20170211 Team B+E+J《元宵喜乐会》暨辞旧迎新联欢会我最喜爱的节目颁奖典礼",
+      "created": 1486823502,
+      "duration": 10333,
+      "play": 44795,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV17x41127JG",
+      "aid": 8556685,
+      "title": "【GNZ48】20170211 Team NIII+Z《闹元宵》联合特殊公演",
+      "created": 1486819926,
+      "duration": 9414,
+      "play": 73154,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1Lx41127Vg",
+      "aid": 8555627,
+      "title": "【SNH48】20170211 Team NII《专属派对》陆婷生日主题公演、元宵节特殊公演",
+      "created": 1486817473,
+      "duration": 11305,
+      "play": 78193,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1Qx41117P5",
+      "aid": 8510645,
+      "title": "【SNH48】20170209 Team X《梦想的旗帜》公演",
+      "created": 1486645478,
+      "duration": 9887,
+      "play": 35690,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1Wx411178e",
+      "aid": 8421252,
+      "title": "【BEJ48】20170205 Team E+J《奇幻派对》联合公演",
+      "created": 1486296910,
+      "duration": 8445,
+      "play": 18818,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1px41117XQ",
+      "aid": 8415123,
+      "title": "【SHY48】20170205 Team SIII《心的旅程》开年贺岁特殊公演",
+      "created": 1486280066,
+      "duration": 11815,
+      "play": 35035,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV14x41117o4",
+      "aid": 8399987,
+      "title": "SNH48出道四周年公演《大家好，我们是SNH48》前四首（未消MIX版）",
+      "created": 1486210572,
+      "duration": 986,
+      "play": 37379,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1es411b7S3",
+      "aid": 8136628,
+      "title": "【GNZ48】20170121《2017.迎春联合公演》",
+      "created": 1484991071,
+      "duration": 13155,
+      "play": 29983,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1as411b7fF",
+      "aid": 8134653,
+      "title": "【BEJ48】20170121 Team B+E+J《辞旧迎新联欢会》",
+      "created": 1484984806,
+      "duration": 9496,
+      "play": 78126,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1Ys411b7A3",
+      "aid": 8132802,
+      "title": "【SNH48】20170121 辞旧迎新主题公演",
+      "created": 1484978511,
+      "duration": 8574,
+      "play": 228098,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1as411b7aw",
+      "aid": 8126879,
+      "title": "【BEJ48】20170120 Team E《奇幻加冕礼》公演",
+      "created": 1484935300,
+      "duration": 8357,
+      "play": 44954,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1xs411h7m9",
+      "aid": 7977615,
+      "title": "【SHY48】20170112 Team SIII《心的旅程》首演",
+      "created": 1484231376,
+      "duration": 9267,
+      "play": 49074,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1cs411Y7kr",
+      "aid": 7791309,
+      "title": "【BEJ48】20161231《跨年晚会》三队联合跨年公演",
+      "created": 1483200110,
+      "duration": 12729,
+      "play": 56156,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1fs411a7kz",
+      "aid": 7790359,
+      "title": "【SNH48】20161231 2017跨年特别公演",
+      "created": 1483197797,
+      "duration": 11310,
+      "play": 57613,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1Ss411a71d",
+      "aid": 7754397,
+      "title": "【SNH48】20161229 Team NII《专属派对》公演",
+      "created": 1483019818,
+      "duration": 10661,
+      "play": 31898,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1vs411a7vs",
+      "aid": 7679799,
+      "title": "【GNZ48】20161224 Team G/Team NIII《圣诞节联合特别公演》",
+      "created": 1482587482,
+      "duration": 10838,
+      "play": 30917,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1vs411a7nc",
+      "aid": 7679090,
+      "title": "【SNH48】20161224 Team HII《十八个闪耀瞬间》圣诞主题公演",
+      "created": 1482585336,
+      "duration": 9654,
+      "play": 48658,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1vs411a7Qi",
+      "aid": 7678796,
+      "title": "【BEJ48】20161224 Team E《奇幻加冕礼》新公演首演",
+      "created": 1482584440,
+      "duration": 8984,
+      "play": 47836,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1ns411a7HM",
+      "aid": 7660585,
+      "title": "【SNH48】20161223 Team XII《代号XII》新公演首演",
+      "created": 1482495422,
+      "duration": 8986,
+      "play": 73163,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1bs411e7yT",
+      "aid": 7554950,
+      "title": "【SNH48】20161216 Team HII《十八个闪耀瞬间》新公演首演",
+      "created": 1481892733,
+      "duration": 10073,
+      "play": 51481,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV12s411Y7rE",
+      "aid": 7381805,
+      "title": "【SNH48】20161204 Team XII《剧场女神》陈音生日主题公演，XII队成立一周年纪念公演",
+      "created": 1480842153,
+      "duration": 12612,
+      "play": 36636,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1gs411s71j",
+      "aid": 7282539,
+      "title": "【SNH48】20161127 Team HII《偶像的黎明》公演",
+      "created": 1480246101,
+      "duration": 9771,
+      "play": 59323,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1Bs411x7Lv",
+      "aid": 7071487,
+      "title": "【SNH48】20161112 Team SII《心的旅程》东芝特别公演",
+      "created": 1478958478,
+      "duration": 11282,
+      "play": 57225,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV11s411s7jY",
+      "aid": 6897899,
+      "title": "【GNZ48】20161030 Team G/Team NIII《万圣节联合公演》",
+      "created": 1477846842,
+      "duration": 10911,
+      "play": 57271,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1is411s7F3",
+      "aid": 6872812,
+      "title": "【BEJ48】20161029 Team B《据说会有点恐怖的心旅》万圣节特殊公演",
+      "created": 1477730736,
+      "duration": 9652,
+      "play": 33691,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1ks411s7K4",
+      "aid": 6860449,
+      "title": "【SNH48】20161028 Team X《梦想的旗帜》新公演首演（BEST50中报）",
+      "created": 1477657483,
+      "duration": 10457,
+      "play": 82471,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1Ss41147Mx",
+      "aid": 6782946,
+      "title": "【SNH48】20161022 Team NII《专属派对》万丽娜生日主题公演",
+      "created": 1477141084,
+      "duration": 11232,
+      "play": 62069,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV14s41147GD",
+      "aid": 6709242,
+      "title": "【GNZ48】20161016 Team G《心的旅程》公演",
+      "created": 1476636325,
+      "duration": 11261,
+      "play": 257236,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV19s411x7Xi",
+      "aid": 6568882,
+      "title": "【SNH48】20161006 TOP16答谢巡回公演上海站",
+      "created": 1475752683,
+      "duration": 6652,
+      "play": 144133,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1Es411b78h",
+      "aid": 6549187,
+      "title": "【SNH48】20161005 TOP16广州巡演",
+      "created": 1475656324,
+      "duration": 7352,
+      "play": 130667,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1ss411b7Tn",
+      "aid": 6530865,
+      "title": "【SNH48】20161004 TOP16北京巡演",
+      "created": 1475564162,
+      "duration": 8452,
+      "play": 230467,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1gs411t72F",
+      "aid": 6295177,
+      "title": "【BEJ48】20160915 Team B/Team E《赏花 赏月 赏秋香》中秋节联合特别公演",
+      "created": 1473954297,
+      "duration": 13638,
+      "play": 94771,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV13s411t7WD",
+      "aid": 6293104,
+      "title": "【SNH48】20160915 Team NII/Team X《中秋节特别公演》",
+      "created": 1473946948,
+      "duration": 8917,
+      "play": 81238,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1Ws411r7dq",
+      "aid": 6287239,
+      "title": "【SNH48】20160915 Team SII/Team HII《中秋节特别公演》",
+      "created": 1473925289,
+      "duration": 11067,
+      "play": 102644,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1ms41167ch",
+      "aid": 6129587,
+      "title": "【SNH48】20160902 五队联合男装特别公演 第二场",
+      "created": 1472820014,
+      "duration": 8684,
+      "play": 52361,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1Ys41167jL",
+      "aid": 6117916,
+      "title": "【SNH48】20160901 五队联合男装特别公演",
+      "created": 1472736872,
+      "duration": 7373,
+      "play": 113710,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1Ls411k7Lz",
+      "aid": 5924683,
+      "title": "【BEJ48】20160820 Team B《剧场女神》男装环节特别公演",
+      "created": 1471705285,
+      "duration": 11256,
+      "play": 57146,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1Gs411q7WM",
+      "aid": 4943829,
+      "title": "【SNH48】20160611 Team NII《十八个闪耀瞬间》易嘉爱生日主题公演、总决选拉票公演",
+      "created": 1465652921,
+      "duration": 11912,
+      "play": 33904,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1is411B7hp",
+      "aid": 4653517,
+      "title": "【SNH48】20160514 Team SII《十八个闪耀瞬间》千秋乐主题公演",
+      "created": 1463230880,
+      "duration": 10389,
+      "play": 61800,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1fs411q767",
+      "aid": 4537040,
+      "title": "【SNH48】20160502 Team NII《十八个闪耀瞬间》林思意生日主题公演",
+      "created": 1462177743,
+      "duration": 11543,
+      "play": 194571,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1ks411q7ft",
+      "aid": 4516658,
+      "title": "【GNZ48】20160430 Team NIII《我的太阳》公演首演",
+      "created": 1462027069,
+      "duration": 9938,
+      "play": 62393,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1Cs411z74C",
+      "aid": 4386493,
+      "title": "【SNH48】20160416 Team NII《十八个闪耀瞬间》东芝特别公演",
+      "created": 1460818688,
+      "duration": 10890,
+      "play": 76030,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1es411z7Qy",
+      "aid": 4357448,
+      "title": "【SNH48】20160413 Team NII/Team X《逆流而上》联合公演",
+      "created": 1460555063,
+      "duration": 8033,
+      "play": 90249,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1as411Q7iq",
+      "aid": 4030821,
+      "title": "【SNH48】20160306 Team NII《十八个闪耀瞬间》女性专场特别公演",
+      "created": 1457249641,
+      "duration": 7890,
+      "play": 241193,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1Js411X7LR",
+      "aid": 3696996,
+      "title": "SNH48《我的剧场女神》DVD 生日主题公演特别环节全纪录（62P）",
+      "created": 1454060222,
+      "duration": 59412,
+      "play": 56907,
+      "mid": "1315101"
     }
   ]
 }
