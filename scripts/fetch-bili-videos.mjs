@@ -41,7 +41,7 @@ const UP_TARGETS = [
   { mid: '1315101', label: '寒影AkiNa', series: ['967578'], space: { keep: /GNZ48/i, maxPages: 400 } },
 ];
 
-function getJson(url, referer, tries = 4) {
+function getJson(url, referer, tries = 4, banTries = Number(process.env.BILI_BAN_TRIES ?? 2)) {
   return new Promise((resolveP, rejectP) => {
     const attempt = (n) => {
       const req = httpsGet(url, {
@@ -58,7 +58,7 @@ function getJson(url, referer, tries = 4) {
           const msg = d ? `code=${d.code} ${d.message || ''}` : '非 JSON（被风控）';
           const ban = /-412|-799/.test(msg);
           // 空间投稿列表的限流窗口较长（-799 常持续数十分钟），故等得久一点
-          if (n < (ban ? 2 : tries)) {
+          if (n < (ban ? banTries : tries)) {
             const wait = ban ? 60000 * (n + 1) : 1500 * (n + 1);
             console.warn(`  [重试] ${msg} → 等 ${Math.round(wait / 1000)}s`);
             await sleep(wait);
@@ -193,7 +193,7 @@ async function crawlSpace(mid, keep, maxPages) {
     pagesUsed++;
     let d;
     try {
-      d = await getJson(`https://api.bilibili.com/x/space/arc/search?mid=${mid}&ps=50&pn=${pn}&order=pubdate`, referer);
+      d = await getJson(`https://api.bilibili.com/x/space/arc/search?mid=${mid}&ps=50&pn=${pn}&order=pubdate`, referer, 2, Number(process.env.BILI_SPACE_BAN_TRIES ?? 2));
     } catch (e) {
       console.warn(`   [空间 ${mid}] 第 ${pn} 页失败：${e.message} → 保存进度，下次续跑`);
       progress[key] = pn;
