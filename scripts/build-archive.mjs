@@ -109,7 +109,37 @@ const schedule = read('schedule.json') || { shows: {} };
 // 「即将开始」的场次，官方接口只保留很短窗口，必须定期抓取累积。
 // 这里把它们并进公演列表（若历史列表里已有同 liveId 则跳过，避免重复），同样走下面的筛选规则。
 const perfRaw = read('performances.json', 'performances');
-const knownIds = new Set(perfRaw.map((p) => String(p.liveId)));
+
+// ★ 权威数据源：「她参加的公演记录」（scripts/scrape-hers-performances.mjs）
+// 来自口袋 App 成员个人页「公演」标签的同一接口（/im/.../chatroom/msg/list/aim/type, OPEN_LIVE）。
+// 这是官方按成员给的记录，直接就是「她参加过的公演」，无需再用规则近似。
+const hersStore = read('performances-hers.json') || { shows: {} };
+const hersShows = Object.values(hersStore.shows || {}).filter((s) => s && s.liveId);
+const oldById = new Map(perfRaw.map((p) => [String(p.liveId), p]));
+
+let baseList = perfRaw;
+let usedHers = false;
+if (hersShows.length) {
+  usedHers = true;
+  baseList = hersShows.map((s) => {
+    const old = oldById.get(String(s.liveId)) || {};
+    const teams = (s.teams && s.teams.length) ? s.teams : (old.teamList || []).map((t) => t.teamName).filter(Boolean);
+    return {
+      liveId: String(s.liveId),
+      title: s.title || old.title || 'GNZ48剧场公演',
+      subTitle: s.subTitle || old.subTitle || '',
+      coverPath: s.coverUrl || old.coverPath || '',
+      stime: String(s.startTime || old.stime || ''),
+      teamList: teams.map((t) => ({ teamName: t })),
+      status: old.status != null ? old.status : 3,
+      playUrl: s.playUrl || old.playUrl || '',
+      hers: true
+    };
+  });
+  console.log(`  公演：使用「她的公演记录」${baseList.length} 场（${hersShows.filter((s) => s.fetchedAt).length} 场已补详情）`);
+}
+
+const knownIds = new Set(baseList.map((p) => String(p.liveId)));
 const scheduledExtra = Object.values(schedule.shows || {})
   .filter((s) => s && s.liveId && !knownIds.has(String(s.liveId)))
   .map((s) => ({
@@ -124,11 +154,14 @@ const scheduledExtra = Object.values(schedule.shows || {})
   }));
 if (scheduledExtra.length) console.log(`  公演：并入排期场次 ${scheduledExtra.length} 条`);
 
+// 有「她的公演记录」时不再套规则近似（记录本身就是她参加过的），仅保留 B 站链接匹配。
+const manualForUse = usedHers ? { ...manual, rule: {}, herPerformances: [] } : manual;
+
 const archive = {
   meta: read('meta.json'),
   messages: read('messages.json', 'messages').map(slimMessage),
   live: read('live.json', 'live'),
-  performances: enrichPerformances([...perfRaw, ...scheduledExtra], manual, rosters)
+  performances: enrichPerformances([...baseList, ...scheduledExtra], manualForUse, rosters)
 };
 
 // 页头统计以「实际渲染的条数」为准：公演经过筛选、直播经过补档合并，
