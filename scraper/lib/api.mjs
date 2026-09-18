@@ -245,12 +245,15 @@ export async function fetchOpenLiveOne(liveId, token) {
   const data = await postJson('/live/api/v1/live/getOpenLiveOne', { liveId }, { token });
   const content = data?.content || {};
   const streams = Array.isArray(content.playStreams) ? content.playStreams : [];
+  const mapped = streams
+    .map((s) => ({ name: s.streamName, path: s.streamPath || '' }))
+    .filter((s) => s.path);
+  // 取「高清」优先，其次任意可用流。
+  // 注意：raw 流对象的字段是 `streamPath`（不是 `path`），过去这里写成 `.path` 恒为空 —— 已修。
+  const best = mapped.find((s) => /高清|hd|fhd|蓝光|超清/i.test(s.name || '')) || mapped[0];
   return {
-    streams: streams
-      .map((s) => ({ name: s.streamName, path: s.streamPath || '' }))
-      .filter((s) => s.path),
-    // 取第一个可用流作为默认
-    playStreamPath: (streams.find((s) => s.streamPath) || {}).path || '',
+    streams: mapped,
+    playStreamPath: best ? best.path : '',
     title: content.title || '',
     subTitle: content.subTitle || ''
   };
