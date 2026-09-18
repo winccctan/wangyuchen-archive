@@ -1,6 +1,6 @@
 {
-  "updatedAt": "2026-09-18T08:17:45.261Z",
-  "count": 650,
+  "updatedAt": "2026-09-18T08:22:45.499Z",
+  "count": 666,
   "targets": [
     {
       "mid": "2086351451",
@@ -17,7 +17,7 @@
     "2086351451:season:4158846": 19,
     "2086351451:season:4158274": 3,
     "1315101:series:967578": 4,
-    "1315101:space": 1
+    "1315101:space": 2
   },
   "videos": [
     {
@@ -5212,6 +5212,134 @@
       "duration": 18007,
       "play": 6466,
       "sid": "4158274"
+    },
+    {
+      "bvid": "BV19Z1MYNETT",
+      "aid": 113380610277870,
+      "title": "【GNZ48】20241027《燃烧吧团魂》第三阶段专场（公布社团+社员名单）",
+      "created": 1730052992,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1HA1gYDEwH",
+      "aid": 113379821749838,
+      "title": "【GNZ48】20241027 Team NIII 天秤座&摩羯座生日冷餐会（洪静雯 石竹君）",
+      "created": 1730040196,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1Wo1uYRERf",
+      "aid": 113379620423188,
+      "title": "【GNZ48】20241027 Team NIII《天枢之弈》天秤座&摩羯座生日公演（洪静雯 石竹君）",
+      "created": 1730038029,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1dv1aYME6j",
+      "aid": 113378378908645,
+      "title": "【GNZ48】20241026 Team G 杨若惜生日冷餐会",
+      "created": 1730018033,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1Xr1aYPEs2",
+      "aid": 113378311800466,
+      "title": "【GNZ48】20241026 Team G《瑶光之迹》杨若惜生日公演",
+      "created": 1730017845,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1T61xYrEgm",
+      "aid": 113373865906021,
+      "title": "【GNZ48】20241026 Team NIII《天枢之弈》王语晨生日公演",
+      "created": 1729950611,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1Mv1WYTE4r",
+      "aid": 113373161260063,
+      "title": "【GNZ48】20241026 Team NIII 王语晨生日冷餐会",
+      "created": 1729938347,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1Kz1WYeEmL",
+      "aid": 113373043819488,
+      "title": "【GNZ48】20241025 Team Z《斗宿之诀》公演",
+      "created": 1729938264,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1QM1sYCEf5",
+      "aid": 113372456616395,
+      "title": "【GNZ48】20241024 偶像研究计划G组《剧场女神》公演",
+      "created": 1729928021,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1v5yiYLECJ",
+      "aid": 113340965783532,
+      "title": "【GNZ48】20241020 Team G《瑶光之迹》公演",
+      "created": 1729448186,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1N8yeY4ESW",
+      "aid": 113339959085872,
+      "title": "【GNZ48】20241020 Team NIII《天枢之弈》公演",
+      "created": 1729432753,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1Guy8YsEbq",
+      "aid": 113338583352199,
+      "title": "【GNZ48】20241019 Team Z《斗宿之诀》公演",
+      "created": 1729411803,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1chCdYGEqd",
+      "aid": 113334506488665,
+      "title": "【GNZ48】20241019 Team NIII《天枢之弈》天蝎座&射手座生日公演（卢静 刘倩倩）",
+      "created": 1729350412,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV19sCoYNER5",
+      "aid": 113333852245331,
+      "title": "【GNZ48】20241019 Team NIII 天蝎座&射手座生日冷餐会（卢静 刘倩倩）",
+      "created": 1729339055,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1dBC9YZEPN",
+      "aid": 113333248197454,
+      "title": "【GNZ48】20241018 Team Z《斗宿之诀》公演",
+      "created": 1729330604,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1D5yuY8E6A",
+      "aid": 113323936843614,
+      "title": "【GNZ48】20241017 偶像研究计划G组《剧场女神》公演",
+      "created": 1729187802,
+      "duration": 0,
+      "mid": "1315101"
     },
     {
       "bvid": "BV12x411g7Vd",
