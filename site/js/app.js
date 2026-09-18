@@ -142,11 +142,25 @@ const PROFILE = {
     { date: '2023.01.15', tag: '', text: '升格加入 GNZ48 Team NIII 队（Team NIII）' },
     { date: '2022.10.02', tag: '', text: '加入 GNZ48 十三期生' }
   ],
-  // 官方微博提及（@SNH48 官微提到王语晨的微博，手动抓取补入；带官微深链）
+  // 官方微博提及（各官微提到王语晨的微博，手动抓取补入；带官微深链）
+  // source = 提及来源账号；渲染时按 date 倒序合并成一条时间线
   officialMentions: [
-    { date: '2026.09.05', text: 'SNH48 GROUP 首支电竞女子战队正式集结，王语晨入选大名单', url: 'https://weibo.com/2689280541/RgGEXi2k8' },
-    { date: '2026.08.30', text: '2026 年度青春盛典 TOP22 领奖图：恭喜 @GNZ48-王语晨 获得年度高飞成员奖', url: 'https://weibo.com/2689280541/RfKUUz5gN' },
-    { date: '2026.08.26', text: '2026 年度青春盛典 TOP21-24 发言时刻', url: 'https://weibo.com/2689280541/Rf9Binm0n' }
+    { date: '2026.09.05', source: '@SNH48', text: 'SNH48 GROUP 首支电竞女子战队正式集结，王语晨入选大名单', url: 'https://weibo.com/2689280541/RgGEXi2k8' },
+    { date: '2026.08.30', source: '@SNH48', text: '2026 年度青春盛典 TOP22 领奖图：恭喜 @GNZ48-王语晨 获得年度高飞成员奖', url: 'https://weibo.com/2689280541/RfKUUz5gN' },
+    { date: '2026.08.26', source: '@SNH48', text: '2026 年度青春盛典 TOP21-24 发言时刻', url: 'https://weibo.com/2689280541/Rf9Binm0n' },
+    { date: '2026.09.05', source: '@GNZ48', text: 'SNH48 GROUP 首支电竞女子战队大名单发布，@GNZ48-王语晨 入选', url: 'https://weibo.com/5675361083/RgGHryW4G' },
+    { date: '2026.08.25', source: '@GNZ48', text: '团内荣誉兼任官宣：@GNZ48-王语晨 兼任 GNZ48 TEAM Z（与黄楚茵、吕思琪、林家谊四位解锁）', url: 'https://weibo.com/5675361083/Rf1KcqcCe' },
+    { date: '2026.08.12', source: '@GNZ48', text: '2026 青春盛典 · @GNZ48-王语晨 个人作品《过去完成时》荣获「年度高飞成员奖」🏆', url: 'https://weibo.com/5675361083/Rd1dYrlHJ' },
+    { date: '2026.08.08', source: '@GNZ48', text: '2026 青春盛典颁奖典礼 · GNZ48 获奖作品成员名单发布，@GNZ48-王语晨 作为年度高飞成员奖得主在列', url: 'https://weibo.com/5675361083/RcuSsCdck' },
+    { date: '2026.08.08', source: '@GNZ48', text: '2026 青春盛典颁奖典礼 · 人气类作品奖项揭晓，@GNZ48-王语晨 在列', url: 'https://weibo.com/5675361083/RctVG2x7G' },
+    { date: '2026.08.08', source: '@GNZ48', text: '2026 青春盛典 · 年度高飞成员奖作品正式揭晓，@GNZ48-王语晨 等获奖成员', url: 'https://weibo.com/5675361083/Rctgln61L' },
+    { date: '2026.08.03', source: '@GNZ48', text: '青春盛典倒计时 1 周 · 即时周报：@GNZ48-王语晨 入围「年度高飞成员奖项」提名', url: 'https://weibo.com/5675361083/RbEAzwLZa' },
+    { date: '2026.07.28', source: '@GNZ48', text: 'GNZ48 歌唱企划《豪歌 2026》巅峰之夜收官，@GNZ48-王语晨 参与演出', url: 'https://weibo.com/5675361083/RaKBg2DvE' },
+    { date: '2026.07.27', source: '@GNZ48', text: '青春盛典倒计时 2 周 · 即时周报：@GNZ48-王语晨 入围「年度高飞成员奖项」提名', url: 'https://weibo.com/5675361083/RaAgNvoO4' },
+    { date: '2026.07.12', source: '@GNZ48', text: '青春盛典第二阶段 · @GNZ48-王语晨 入围「年度星光成员奖项」提名', url: 'https://weibo.com/5675361083/R8nDHA3dz' },
+    { date: '2026.07.09', source: '@GNZ48', text: '青春盛典个人作品《过去完成时》计分通道开启 · @GNZ48-王语晨 青春宣言「过往不恋，未来不忧，当下不负」', url: 'https://weibo.com/5675361083/R7R5HxpNg' },
+    { date: '2026.07.04', source: '@GNZ48', text: '青春盛典作品计分通道开启 · @GNZ48-王语晨 发布个人作品《过去完成时》', url: 'https://weibo.com/5675361083/R78vpyzVV' },
+    { date: '2026.06.21', source: '@GNZ48', text: '青春盛典第一阶段 · @GNZ48-王语晨 @GNZ48-陈珊玲 入围「年度高飞成员奖项」', url: 'https://weibo.com/5675361083/R5bFPej9k' }
   ]
 };
 
@@ -864,19 +878,25 @@ function renderExperience() {
   </section>`;
 }
 
-// 经历备注下方：官微提及王语晨的微博（带官微深链）
+// 经历备注下方：各官微提到王语晨的微博（按时间线倒序合并，带官微深链）
 function renderOfficialMentions() {
-  const list = PROFILE.officialMentions || [];
+  const list = (PROFILE.officialMentions || []).slice();
   if (!list.length) return '';
+  // 按 date（YYYY.MM.DD）倒序排成一条时间线
+  const keyOf = (d) => { const p = String(d).split('.').map(Number); return (p[0] || 0) * 10000 + (p[1] || 0) * 100 + (p[2] || 0); };
+  list.sort((a, b) => keyOf(b.date) - keyOf(a.date));
+  // 标题：列出所有出现过的来源账号
+  const sources = [...new Set(list.map((m) => m.source).filter(Boolean))];
+  const title = sources.length ? sources.join(' / ') : '@SNH48';
   const items = list.map((m) => `
     <li class="exp-item exp-mention">
       <div class="exp-dot exp-dot-mention"></div>
       <div class="exp-body">
-        <div class="exp-date">${escapeHtml(m.date)}</div>
+        <div class="exp-date">${escapeHtml(m.date)}${m.source ? `<span class="exp-src">${escapeHtml(m.source)}</span>` : ''}</div>
         <div class="exp-text"><a class="exp-link" href="${escapeHtml(m.url)}" target="_blank" rel="noopener">${escapeHtml(m.text)}</a></div>
       </div>
     </li>`).join('');
-  return `<h4 class="exp-subtitle">官方微博提及 · @SNH48</h4><ul class="exp-timeline exp-mention-list">${items}</ul>`;
+  return `<h4 class="exp-subtitle">官方微博提及 · ${escapeHtml(title)}</h4><ul class="exp-timeline exp-mention-list">${items}</ul>`;
 }
 
 // 一条消息可用于搜索的全部文字
