@@ -357,6 +357,71 @@ body {
 .social-btn:hover .social-go { color: var(--social, var(--primary-dark)); }
 .guide-tip { color: var(--muted); font-size: 12px; text-align: center; margin: 0; }
 
+/* ---------------- 新粉指南子标签 ---------------- */
+.subtabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.subtab {
+  flex: 1 1 0; min-width: 84px; padding: 10px 12px;
+  border: 1px solid var(--border); background: var(--card); color: var(--muted);
+  border-radius: 999px; font-size: 14px; font-weight: 600; cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.subtab:hover { color: var(--text); border-color: var(--primary); }
+.subtab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.guide-sub { animation: fadeIn .2s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+/* ---------------- 成员资料（公式照 + 经历备注） ---------------- */
+.profile-wrap { display: flex; flex-direction: column; gap: 22px; }
+.profile-block {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 14px; padding: 18px;
+}
+.profile-h {
+  font-size: 16px; font-weight: 600; color: var(--text);
+  margin: 0 0 14px; padding-left: 10px; border-left: 4px solid var(--primary);
+}
+/* 公式照画廊 */
+.formula-gallery { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.formula-item { margin: 0; background: #eef2f6; border-radius: 12px; overflow: hidden; }
+.formula-item img {
+  width: 100%; display: block; aspect-ratio: 3 / 4; object-fit: cover;
+  background: #eef2f6;
+}
+.formula-item.broken img { display: none; }
+.formula-item.broken::after {
+  content: "公式照加载失败"; display: block; padding: 40px 0; text-align: center;
+  color: var(--muted); font-size: 13px;
+}
+.formula-item figcaption { font-size: 12px; color: var(--muted); text-align: center; padding: 6px 0; }
+.profile-note { font-size: 12px; color: var(--muted); margin: 12px 0 0; }
+/* 经历时间线 */
+.exp-timeline { list-style: none; margin: 0; padding: 0 0 0 4px; position: relative; }
+.exp-timeline::before {
+  content: ""; position: absolute; left: 5px; top: 6px; bottom: 6px;
+  width: 2px; background: var(--border);
+}
+.exp-item { position: relative; padding: 0 0 16px 22px; }
+.exp-item:last-child { padding-bottom: 0; }
+.exp-dot {
+  position: absolute; left: 0; top: 5px; width: 12px; height: 12px;
+  border-radius: 50%; background: var(--primary); border: 2px solid var(--card);
+  box-shadow: 0 0 0 2px var(--primary);
+}
+.exp-date { font-size: 13px; font-weight: 600; color: var(--primary-dark); }
+.exp-text { font-size: 14px; color: var(--text); margin-top: 2px; line-height: 1.5; }
+.exp-tag {
+  display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 8px;
+  border-radius: 999px; margin-right: 6px; vertical-align: middle;
+}
+.exp-tag-高飞 { background: #fbf3df; color: #c79a2e; }
+.exp-tag-梦想 { background: #eef6e2; color: #3b6d11; }
+.exp-tag-新人 { background: var(--primary-soft); color: var(--primary-dark); }
+
+@media (min-width: 720px) {
+  .formula-gallery { grid-template-columns: repeat(4, 1fr); }
+  .formula-item img { max-height: 420px; }
+}
+
 @media (max-width: 720px) {
   .guide-card { grid-template-columns: 1fr; }
   .facts-grid { grid-template-columns: 1fr 1fr; }
@@ -373,7 +438,8 @@ body {
   .card-grid { grid-template-columns: 1fr; }
   .toolbar { gap: 8px; }
   .toolbar-actions { gap: 6px; }
-  .tab { padding: 9px 12px; font-size: 14px; }
+  .tabs { gap: 4px; }
+  .tab { padding: 9px 11px; font-size: 14px; }
   .refresh-btn, .tr-all-btn, .lang-select, .date-toggle-btn { padding: 6px 10px; font-size: 12px; }
   .updated { font-size: 11px; }
   .upd-full { display: none; }
