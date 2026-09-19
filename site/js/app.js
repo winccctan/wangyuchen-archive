@@ -13,7 +13,7 @@ const panels = {
 };
 
 /* ---------------- 新粉指南数据 ---------------- */
-// 说明：微博用昵称路由（weibo.com/n/昵称）直达主页；
+// 说明：微博统一用 uid 直链（weibo.com/u/<uid>）直达主页（比中文昵称路由稳定，改名也不失效）；
 // 抖音 / 小红书 / B站 已通过短链解析出内部 ID，这里用「平台 scheme + ID」实现 App 内直达主页。
 // accounts[].scheme 可覆盖 groups[].scheme（用于精确到某个账号的主页）。
 const PROFILE = {
@@ -89,7 +89,7 @@ const PROFILE = {
       color: '#e6162d',
       accounts: [
         { handle: '初昼·王语晨', web: 'https://weibo.com/u/7807274718' },
-        { handle: '爱在黎明前_王语晨', web: 'https://weibo.com/n/爱在黎明前_王语晨' }
+        { handle: '爱在黎明前_王语晨', web: 'https://weibo.com/u/7730075207' }
       ]
     },
     {
@@ -97,7 +97,7 @@ const PROFILE = {
       scheme: 'sinaweibo://',
       color: '#e6162d',
       accounts: [
-        { handle: 'GNZ48-王语晨的甜橙小铺', web: 'https://weibo.com/n/GNZ48-王语晨的甜橙小铺' }
+        { handle: 'GNZ48-王语晨的甜橙小铺', web: 'https://weibo.com/u/7794095795' }
       ]
     }
   ],
