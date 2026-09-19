@@ -5,7 +5,7 @@
       "title": "GNZ48剧场公演",
       "subTitle": "拾忆：TEAM NIII·第二十七场",
       "coverPath": "/backstage/2026/0916/y7mp3w9ghh2l36ckrqllcxt.jpg",
-      "status": 1,
+      "status": 2,
       "stime": "1789796700000",
       "endTime": "1789812900000",
       "teamList": [
@@ -24,7 +24,7 @@
       "liveType": 0,
       "isCollection": 0,
       "playNum": "0",
-      "playUrl": ""
+      "playUrl": "rtmp://cyflv.48.cn/gaoqing/3001?wsSecret=187f251a3f0a79f851fec75c93d99d77&wsTime=6aae38f1&keeptime=60"
     },
     {
       "liveId": "1255546090143158272",
