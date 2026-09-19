@@ -239,26 +239,22 @@ function pad(n) { return String(n).padStart(2, '0'); }
 
 // 全站时间统一按北京时间（UTC+8）显示/筛选：访客机器时区各不相同（UTC+9、UTC 等），
 // 若直接用本地时区，同一条发言在不同人手机上会显示不同时刻，且日期筛选会差一天。
+// 中国全境无夏令时，固定 +8 偏移即可；刻意不依赖 Intl（各浏览器实现差异大，易在老 Safari 上取不到值）。
 const TZ = 'Asia/Shanghai';
-const TZ_FMT = new Intl.DateTimeFormat('en-CA', {
-  timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit',
-  hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
-});
-function tzParts(ts) {
-  const d = new Date(Number(ts));
-  if (isNaN(d)) return null;
-  const p = {};
-  for (const part of TZ_FMT.formatToParts(d)) p[part.type] = part.value;
-  if (p.hour === '24') p.hour = '00'; // 部分浏览器把午夜输出成 24 点
-  return p;
+const TZ_OFFSET_MS = 8 * 60 * 60 * 1000;
+function tzDate(ts) {
+  // 时间戳既可能是毫秒数字，也可能是 ISO 字符串（meta.lastUpdated 就是 "2026-09-19T09:21:28.376Z"），两种都要支持
+  let t = Number(ts);
+  if (!isFinite(t)) { const p = Date.parse(ts); if (isNaN(p)) return null; t = p; }
+  return new Date(t + TZ_OFFSET_MS); // 平移后再用 UTC getter 读，得到的就是北京时间
 }
 function fmtDate(ts) {
-  const p = tzParts(ts);
-  return p ? `${p.year}-${p.month}-${p.day}` : '';
+  const d = tzDate(ts);
+  return d ? `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}` : '';
 }
 function fmtTime(ts) {
-  const p = tzParts(ts);
-  return p ? `${p.hour}:${p.minute}:${p.second}` : '';
+  const d = tzDate(ts);
+  return d ? `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}` : '';
 }
 // 时间戳 → <input type="date"> 需要的 YYYY-MM-DD（北京时间）
 function toDateInput(ts) { return fmtDate(ts); }
@@ -613,10 +609,10 @@ function renderMeta() {
     if (!m.lastUpdated) {
       upEl.textContent = '';
     } else {
-      const d = new Date(m.lastUpdated);
-      const hhmm = fmtTime(m.lastUpdated).slice(0, 5); // 北京时间 HH:MM
+      // 北京时间（UTC+8）：宽屏「更新于 YYYY-MM-DD HH:MM」，窄屏「HH:MM 更新」
+      const hhmm = fmtTime(m.lastUpdated).slice(0, 5);
       upEl.innerHTML =
-        `<span class="upd-full">更新于 ${d.toLocaleString('zh-CN', { timeZone: TZ })}</span>` +
+        `<span class="upd-full">更新于 ${fmtDate(m.lastUpdated)} ${hhmm}</span>` +
         `<span class="upd-mini">${hhmm} 更新</span>`;
     }
   }
