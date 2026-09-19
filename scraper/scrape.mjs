@@ -212,8 +212,12 @@ async function attachPlayUrls(list, type, existingMap) {
     // 否则每轮都要对上百条已结束条目重新请求（700+ 次），既慢又容易被限流，
     // 且个别条目偶发失败后永远补不上（表现为前端「无视频」）。
     // 只有「缺地址」或「旧地址非 VOD（可能是失效的直播流）」时才重新请求。
-    if (prev?.playUrl && (isVodUrl(prev.playUrl) || !ended)) {
-      it.playUrl = prev.playUrl;
+    // ⚠️ 旧值是 rtmp:// 时必须重取：那是「直播进行中」抓到的拉流地址，浏览器播不了。
+    // 只要该条 status 一直停在 2（直播中），下面 !ended 分支就会一直复用它 → 回放永远补不上
+    // （2026-09-19 那场就是如此：官方回放早已生成，站点却仍存着 rtmp，点开必「播放失败」）。
+    const prevUrl = prev?.playUrl || '';
+    if (/^https?:/i.test(prevUrl) && (isVodUrl(prevUrl) || !ended)) {
+      it.playUrl = prevUrl;
       continue;
     }
     // 请求回放 / 直播地址；空结果或异常都重试几次（偶发限流、网络抖动时常返回空）。
