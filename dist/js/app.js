@@ -2,7 +2,7 @@
 const DATA = { meta: null, messages: [], live: [], performances: [] };
 // msgKey → message，便于翻译时按 id 取到原文（重新渲染后 DOM 里只剩 mid）
 const MSG_INDEX = new Map();
-const state = { tab: 'messages', query: '', dateFrom: null, dateTo: null, dayLimit: 3, lang: 'zh', expanded: new Set(), guideSub: 'guide' };
+const state = { tab: 'messages', query: '', dateFrom: null, dateTo: null, dayLimit: 3, lang: 'zh', expanded: new Set(), guideSub: 'guide', perfSub: 'perf' };
 
 const $ = (sel) => document.querySelector(sel);
 const panels = {
@@ -768,14 +768,21 @@ function bindEvents() {
       openSocial(socialBtn.dataset.web, socialBtn.dataset.scheme);
       return;
     }
-    // 新粉指南子标签切换
+    // 子标签切换（公演 / 新粉指南 共用 .subtab）
     const subBtn = e.target.closest('.subtab');
     if (subBtn) {
       e.stopPropagation();
-      state.guideSub = subBtn.dataset.sub;
-      panels.guide.querySelectorAll('.subtab').forEach((b) =>
-        b.classList.toggle('active', b.dataset.sub === state.guideSub));
-      renderGuideSub();
+      if (state.tab === 'performances') {
+        state.perfSub = subBtn.dataset.sub;
+        panels.performances.querySelectorAll('.subtab').forEach((b) =>
+          b.classList.toggle('active', b.dataset.sub === state.perfSub));
+        renderPerfSub();
+      } else {
+        state.guideSub = subBtn.dataset.sub;
+        panels.guide.querySelectorAll('.subtab').forEach((b) =>
+          b.classList.toggle('active', b.dataset.sub === state.guideSub));
+        renderGuideSub();
+      }
       return;
     }
     // 开播推送卡片 → 站内「直播 / 录播」页
@@ -837,6 +844,89 @@ function renderAll() {
   else if (state.tab === 'live') renderLive();
   else if (state.tab === 'guide') renderGuide();
   else renderPerformances();
+}
+
+/* ---------------- 公演（含子标签：公演回放 / 公演cut） ---------------- */
+const PERF_SUBS = [
+  ['perf', '公演回放'],
+  ['cuts', '公演cut']
+];
+
+function renderPerformances() {
+  const panel = panels.performances;
+  const subtabs = PERF_SUBS.map(([k, label]) =>
+    `<button class="subtab${state.perfSub === k ? ' active' : ''}" data-sub="${k}">${escapeHtml(label)}</button>`
+  ).join('');
+  panel.innerHTML = `
+    <div class="perf">
+      <div class="subtabs">${subtabs}</div>
+      <div class="perf-sub" id="perfSub"></div>
+    </div>`;
+  renderPerfSub();
+}
+
+function renderPerfSub() {
+  const box = $('#perfSub');
+  if (!box) return;
+  if (state.perfSub === 'cuts') { box.innerHTML = renderPerfCuts(); return; }
+  // 公演回放（原 renderPerformances 内容）
+  let list = DATA.performances;
+  if (state.query) list = list.filter((m) => (m.title || '').toLowerCase().includes(state.query));
+  if (dateFilterActive()) list = list.filter((m) => inDateRange(m.stime));
+  // 挂上该场对应的 cut 数量 / 日期（用于卡片角标跳转）
+  const cutByLive = {};
+  (window.PERF_CUTS ? window.PERF_CUTS.cuts : []).forEach(c => {
+    if (c.liveId) { if (!cutByLive[c.liveId]) cutByLive[c.liveId] = { n: 0, date: c.date }; cutByLive[c.liveId].n++; }
+  });
+  list = list.map(p => {
+    const c = cutByLive[p.liveId];
+    return c ? { ...p, _cutCount: c.n, _cutDate: c.date } : p;
+  });
+  if (!list.length) {
+    box.innerHTML = filterNote(0) +
+      `<div class="empty-state">${dateFilterActive() ? '该时间范围内没有公演，点上方「清除筛选」看全部。' : '暂无公演数据。'}</div>`;
+    return;
+  }
+  box.innerHTML = filterNote(list.length) +
+    `<div class="card-grid">${list.map((m) => renderCard(m, 'stime')).join('')}</div>`;
+}
+
+function renderPerfCuts() {
+  const data = window.PERF_CUTS ? window.PERF_CUTS.cuts : [];
+  if (!data.length) return '<div class="empty">暂无公演 cut。</div>';
+  const groups = {}, order = [];
+  data.forEach(c => { if (!groups[c.date]) { groups[c.date] = []; order.push(c.date); } groups[c.date].push(c); });
+  order.sort((a, b) => b.localeCompare(a));
+  const total = data.length;
+  let html = `<p class="pc-count">共 <b>${total}</b> 条 cut（来自 @GNZ48王语晨的甜橙小铺 的微博切片，点击跳原帖观看）</p>`;
+  order.forEach(date => {
+    const arr = groups[date];
+    const perf = arr[0].perf || '';
+    html += `<section class="pc-group" id="pc-group-${escapeHtml(date)}">`
+      + `<h2 class="pc-group-h"><span class="ym">${escapeHtml(date)}</span>`
+      + `<span class="perf">${escapeHtml(perf)}</span><span class="n">${arr.length} 条</span></h2>`
+      + '<div class="pc-grid">';
+    arr.forEach(c => {
+      const cover = c.cover ? `<img src="${escapeHtml(proxyImg(c.cover))}" loading="lazy" alt="">` : '<div class="pc-void">▶</div>';
+      html += `<a class="pc-card" href="${escapeHtml(c.url)}" target="_blank" rel="noopener">${cover}`
+        + '<div class="pc-scrim"></div>'
+        + (c.song ? `<span class="pc-ov song">${escapeHtml(c.song)}</span>` : '')
+        + `<span class="pc-ov date">${escapeHtml(c.date)}</span>`
+        + '<span class="pc-ov go">跳转原帖 ↗</span>'
+        + '</a>';
+    });
+    html += '</div></section>';
+  });
+  return html;
+}
+
+function gotoPerfCuts(date) {
+  state.perfSub = 'cuts';
+  switchTab('performances');
+  setTimeout(() => {
+    const el = document.getElementById('pc-group-' + date);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 60);
 }
 
 /* ---------------- 新粉指南（含子标签：新粉指南 / 公式照 / 经历备注） ---------------- */
@@ -1262,6 +1352,10 @@ function renderCard(item, timeKey) {
   const biliBtn = item.biliUrl
     ? `<a class="bili-btn" href="${escapeHtml(item.biliUrl)}" target="_blank" rel="noopener">📺 B 站观看</a>`
     : '';
+  // 该场对应的公演 cut（来自微博切片）：角标跳转到「公演cut」分组
+  const cutBtn = (item._cutCount)
+    ? `<button class="cut-btn" type="button" onclick="gotoPerfCuts('${escapeHtml(item._cutDate)}')">🎬 ${item._cutCount} cut</button>`
+    : '';
   return `<div class="card">
     ${cover ? `<img class="card-img" loading="lazy" referrerpolicy="no-referrer" src="${escapeHtml(cover)}" alt="" onclick="window.__lightboxShow(this.src)" onerror="this.classList.add('failed')" />` : ''}
     <div class="card-body">
@@ -1272,7 +1366,7 @@ function renderCard(item, timeKey) {
         <span>🕒 ${escapeHtml(time)}</span>
         ${playNum ? `<span>▶ ${escapeHtml(String(playNum))}</span>` : ''}
       </div>
-      <div class="card-actions">${playBtn}${biliBtn}</div>
+      <div class="card-actions">${playBtn}${biliBtn}${cutBtn}</div>
     </div>
   </div>`;
 }
@@ -1292,20 +1386,6 @@ function renderLive() {
   }
   panel.innerHTML = filterNote(list.length) +
     `<div class="card-grid">${list.map((m) => renderCard(m, 'ctime')).join('')}</div>`;
-}
-
-function renderPerformances() {
-  const panel = panels.performances;
-  let list = DATA.performances;
-  if (state.query) list = list.filter((m) => (m.title || '').toLowerCase().includes(state.query));
-  if (dateFilterActive()) list = list.filter((m) => inDateRange(m.stime));
-  if (!list.length) {
-    panel.innerHTML = filterNote(0) +
-      `<div class="empty-state">${dateFilterActive() ? '该时间范围内没有公演，点上方「清除筛选」看全部。' : '暂无公演数据。'}</div>`;
-    return;
-  }
-  panel.innerHTML = filterNote(list.length) +
-    `<div class="card-grid">${list.map((m) => renderCard(m, 'stime')).join('')}</div>`;
 }
 
 init();
