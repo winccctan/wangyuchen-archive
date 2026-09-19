@@ -27,6 +27,12 @@ export default {
       return handleScrape(env);
     }
 
+    // 图片代理：社媒美图墙的微博图床图片（sinaimg.cn / weibocdn.com）。
+    // 新浪 Tengine 对「浏览器 UA + 非微博来源」请求返回 403，故 Worker 以非浏览器 UA 取图并边缘缓存。
+    if (url.pathname === '/img' || url.pathname === '/img/') {
+      return handleImageProxy(url, ctx);
+    }
+
     if (env && env.ASSETS) {
       const res = await env.ASSETS.fetch(request);
       return applyFreshPolicy(res, url);
@@ -170,6 +176,44 @@ async function handleScrape(env) {
   } catch (e) {
     return json({ error: String((e && e.message) || e) }, 502);
   }
+}
+
+// 图片代理：把微博图床（sinaimg.cn / weibocdn.com）图片转发给浏览器。
+// 关键：用非浏览器 UA（如 curl）取图，绕过新浪 Tengine 对浏览器 UA 的 403；
+// 仅放行这两个图床域名，避免变成开放代理；边缘缓存 1 年（图片 URL 含尺寸后缀，内容不可变）。
+async function handleImageProxy(url, ctx) {
+  const target = url.searchParams.get('u');
+  if (!target) return new Response('missing u', { status: 400 });
+  let t;
+  try { t = new URL(target); } catch (e) { return new Response('bad url', { status: 400 }); }
+  if (!/^https?:$/i.test(t.protocol)) return new Response('bad protocol', { status: 400 });
+  if (!/(^|\.)sinaimg\.cn$|(^|\.)weibocdn\.com$/.test(t.hostname)) {
+    return new Response('forbidden host', { status: 403 });
+  }
+
+  const cache = caches.default;
+  const cacheKey = new Request(url.toString(), { method: 'GET' });
+  const hit = await cache.match(cacheKey);
+  if (hit) return hit;
+
+  const upstream = await fetch(t.toString(), {
+    headers: {
+      // 非浏览器 UA：新浪 Tengine 据此放行（浏览器 UA 一律 403）
+      'User-Agent': 'curl/8.7.1',
+      'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8'
+    }
+  });
+  if (!upstream.ok) {
+    return new Response('upstream ' + upstream.status, { status: 502 });
+  }
+  const headers = new Headers(upstream.headers);
+  const ct = headers.get('content-type') || 'image/jpeg';
+  headers.set('content-type', ct);
+  headers.set('cache-control', 'public, max-age=31536000, immutable');
+  headers.set('access-control-allow-origin', '*');
+  const res = new Response(upstream.body, { status: upstream.status, statusText: upstream.statusText, headers });
+  if (ctx && ctx.waitUntil) ctx.waitUntil(cache.put(cacheKey, res.clone()));
+  return res;
 }
 
 // 成功结果：加长缓存并写入边缘缓存
