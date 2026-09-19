@@ -43,7 +43,8 @@ const files = [
   'assets/avatar-round.png',  // 网站图标 / apple-touch-icon
   'data/meta.json', // 仅 0.5KB：前端用它取数据版本号，决定是否复用缓存的大文件
   'data/archive.js',
-  'data/social-media.js' // 社媒美图（小号 @忘记自己是鱼_ 本人媒体帖），前端经 Worker 图片代理取图
+  'data/social-media.js', // 社媒美图（小号 @忘记自己是鱼_ 本人媒体帖），前端经 Worker 图片代理取图
+  'data/performance-cuts.js' // 公演 cut（微博 7794095795 切片），由 app.js 渲染到「公演cut」子标签
 ];
 
 let total = 0;
