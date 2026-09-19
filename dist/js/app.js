@@ -1316,9 +1316,12 @@ function setPlayerStatus(text, isError) {
 function openPlayer(playUrl, title) {
   const modal = $('#playerModal');
   const video = $('#playerVideo');
-  if (!playUrl) {
+  // rtmp:// 是直播拉流地址（浏览器无法直接播），只有 http(s) 的 m3u8 才能用 hls.js 播放
+  if (!playUrl || !/^https?:/i.test(playUrl)) {
     $('#playerTitle').textContent = title || '视频回放';
-    setPlayerStatus('该条目暂无可用播放地址（可能是尚未生成录播的旧公演）。', true);
+    setPlayerStatus(playUrl
+      ? '回放尚未生成（官方通常在直播结束后一段时间才生成），请稍后再来看看。'
+      : '该条目暂无可用播放地址（可能是尚未生成录播的旧公演）。', true);
     modal.hidden = false;
     return;
   }
@@ -1383,13 +1386,15 @@ function renderCard(item, timeKey) {
   const sub = item.subTitle && item.subTitle !== title ? item.subTitle : '';
   const time = fmtDate(item[timeKey]) + ' ' + fmtTime(item[timeKey]);
   const playNum = item.playNum || item.playCount || '';
-  const canPlay = !!item.playUrl;
+  // 只有 http(s) 的 m3u8 能播；rtmp:// 是直播拉流地址（浏览器播不了），不能给「▶ 播放」按钮
+  const canPlay = !!item.playUrl && /^https?:/i.test(item.playUrl);
   const st = displayStatus(item);
   // 排期累积来的场次（尚未开演 / 尚无录播）标记为 upcoming；
   // playUrlDead = 官方回放流已失效（ts.48.cn），此时若挂了 B 站备用源就只显示 B 站按钮
   const noPlayText = item.upcoming ? '即将开演'
     : (item.playUrlDead ? '官方回放已失效'
-    : (timeKey === 'ctime' && st === 3 ? '无回放' : '无视频'));
+    : (item.playUrl && !canPlay ? (st === 2 ? '直播中' : '回放生成中')
+    : (timeKey === 'ctime' && st === 3 ? '无回放' : '无视频')));
   const playBtn = canPlay
     ? `<button class="play-btn" data-play="${escapeHtml(item.playUrl)}" data-title="${escapeHtml(title + ' · ' + time)}">▶ 播放</button>`
     : (item.biliUrl ? '' : `<span class="no-play">${noPlayText}</span>`);
