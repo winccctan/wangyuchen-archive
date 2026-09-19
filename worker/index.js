@@ -123,8 +123,9 @@ async function handleTranslate(request, url, env, ctx) {
 // 手动触发抓取：调用 GitHub REST API 触发 scrape.yml 的 workflow_dispatch。
 // 需要 env.GH_TOKEN（具备 actions:write 的 PAT，由 wrangler secret put 配置）
 // 与 env.REPO（owner/repo，默认值见 wrangler.jsonc 的 vars）。
-// 自带服务端冷却：若 15 分钟内已跑过一次，直接返回「已有近期任务」，避免粉丝狂点把 GitHub 打爆。
-const SCRAPE_COOLDOWN_MIN = 15;
+// 自带很短的服务端冷却（1 分钟，只用于防止同一秒被重复点击打爆 GitHub Actions）：
+// 粉丝点「刷新」应当**立即**真的触发抓取，不再像以前那样被 15 分钟冷却挡住。
+const SCRAPE_COOLDOWN_MIN = 1;
 async function handleScrape(env) {
   const repo = (env && env.REPO) || 'winccctan/wangyuchen-archive';
   // token 来源：优先 KV（运行时读取，Git 构建也能用），否则退回 dashboard Secret(env.GH_TOKEN)
