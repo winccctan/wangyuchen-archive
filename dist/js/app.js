@@ -574,12 +574,12 @@ async function checkForUpdates() {
   const btn = document.getElementById('refreshBtn');
   if (!btn || btn.disabled) return;
   const oldText = btn.textContent;
+  const beforeTs = String((DATA.meta && DATA.meta.lastUpdated) || '');
   btn.disabled = true;
   btn.textContent = '刷新中…';
-  // 1) 静默触发一次后台抓取（失败也不提示）
-  fetch('/scrape', { method: 'POST', cache: 'no-store' }).catch(() => {});
-  // 2) 重新加载当前已部署的最新数据（?t= 绕过缓存，粉丝点一下即见最新快照）
-  try {
+
+  // 先用 500 字节的 meta.json 看版本号：数据没变就完全不用重下十几 MB 的 archive.js（接近「秒响应」）
+  const applyLatest = async () => {
     const data = await loadArchive();
     DATA.meta = data.meta;
     DATA.messages = data.messages || [];
@@ -588,11 +588,49 @@ async function checkForUpdates() {
     rebuildIndex();
     renderMeta();
     renderAll();
-  } catch (e) {
-    /* 静默失败，对外不暴露错误 */
+  };
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const release = () => { btn.disabled = false; btn.textContent = oldText; };
+
+  let triggered = false;
+  try {
+    // 1) 先用 500 字节的 meta.json 看版本号，并重载一次：
+    //    版本号变了 → 拿到最新快照（提示已同步）；没变 → URL 不变，浏览器缓存直接命中，几乎秒回。
+    const ver = await dataVersion();
+    await applyLatest();
+    if (ver && ver !== beforeTs) {
+      showToast('✅ 已同步到最新补档');
+      return; // ← finally 会负责恢复按钮
+    }
+
+    // 2) 数据没变化 → 静默触发一次后台抓取（GitHub Actions），失败也不提示
+    try {
+      const r = await fetch('/scrape', { method: 'POST', cache: 'no-store' });
+      if (r.ok) { const j = await r.json().catch(() => ({})); triggered = !j.skipped; }
+    } catch (_) { /* 忽略 */ }
+
+    // 3) 抓取 → 提交 → Cloudflare 部署这一条链路通常 1~3 分钟。这里最多自动等 3 分钟，
+    //    期间粉丝只需点一次；超时或已是最新就释放按钮，不把刷新键锁死。
+    const deadline = Date.now() + 180 * 1000;
+    let waited = 0, updated = false;
+    while (Date.now() < deadline) {
+      await sleep(10000); waited += 10;
+      btn.textContent = `同步中 ${waited}s…`;
+      try {
+        const v = await dataVersion();
+        if (v && v !== beforeTs) {
+          await applyLatest();
+          updated = true;
+          showToast('✅ 已同步到最新补档');
+          break;
+        }
+        // 等满 60 秒还没变化就先把按钮还给粉丝（继续在后台静默轮询），不让刷新键被锁死
+        if (waited >= 60) release();
+      } catch (_) { /* 继续等 */ }
+    }
+    if (!updated && triggered) showToast('抓取已触发，稍后再点一次刷新即可看到最新');
   } finally {
-    btn.disabled = false;
-    btn.textContent = oldText;
+    release();
   }
 }
 
