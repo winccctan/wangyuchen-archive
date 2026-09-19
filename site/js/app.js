@@ -145,7 +145,6 @@ const PROFILE = {
   // 官方微博提及（各官微提到王语晨的微博，手动抓取补入；带官微深链）
   // source = 提及来源账号；渲染时按 date 倒序合并成一条时间线
   officialMentions: [
-    { date: '2026.09.05', source: '@GNZ48', text: "#SNH48[超话]# GROUP首支电竞女子战队正式集结📣 【大名单发布】 @SNH48-王睿琦 @BEJ48-黄宣绮- @BEJ48-朱虹蓉 @SNH48-由淼 @GNZ48-石竹君 @GNZ48-王语晨 @BEJ48-王佳琪 @SNH48-温若其@SNH48-钟亚男 @SNH48-叶凡 【首发战队】 @SNH48-王睿琦 @BEJ48-黄宣绮- @SNH48-由淼 @SNH48-温若其", url: 'https://weibo.com/5675361083/RgGHryW4G' },
     { date: '2026.09.05', source: '@SNH48', text: "#SNH48[超话]# GROUP首支电竞女子战队正式集结📣 【大名单发布】 @SNH48-王睿琦 @BEJ48-黄宣绮- @BEJ48-朱虹蓉 @SNH48-由淼 @GNZ48-石竹君 @GNZ48-王语晨 @BEJ48-王佳琪 @SNH48-温若其@SNH48-钟亚男 @SNH48-叶凡 【首发战队】 @SNH48-王睿琦 @BEJ48-黄宣绮- @SNH48-由淼 @SNH48-温若其 ​​​", url: 'https://weibo.com/2689280541/RgGEXi2k8' },
     { date: '2026.08.30', source: '@SNH48', text: "#SNH48[超话]#2026#SNH48GROUP年度青春盛典# ——TOP 22 领奖图—— “让你们的努力，都成为日后「值得」的回忆。” 恭喜@GNZ48-王语晨 获得年度高飞成员奖！你做到了！更远的山海，我们一起奔赴！ ​​​", url: 'https://weibo.com/2689280541/RfKUUz5gN' },
     { date: '2026.08.26', source: '@SNH48', text: "#SNH48[超话]# 2026#SNH48GROUP年度青春盛典# ——TOP 21-24 发言时刻—— @BEJ48-周湘 “这个夏天因你们而饱满，这份成绩因你们而有重量！” @GNZ48-王语晨 “我的心中还有更远的山海，并做好了全力以赴的准备，希望大家都能在生活中拥有奔赴理想的勇气，做到眼里有光，脚下有路。” @SNH48-禹佳蔚 ​​​", url: 'https://weibo.com/2689280541/Rf9Binm0n' },
