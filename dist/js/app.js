@@ -827,6 +827,7 @@ function renderAll() {
 /* ---------------- 新粉指南（含子标签：新粉指南 / 公式照 / 经历备注） ---------------- */
 const GUIDE_SUBS = [
   ['guide', '新粉指南'],
+  ['social', '社媒美图'],
   ['gallery', '公式照'],
   ['exp', '经历备注']
 ];
@@ -848,7 +849,8 @@ function renderGuide() {
 function renderGuideSub() {
   const box = $('#guideSub');
   if (!box) return;
-  if (state.guideSub === 'gallery') box.innerHTML = renderGallery();
+  if (state.guideSub === 'social') { box.innerHTML = renderSocialGallery(); renderSocialWall(); }
+  else if (state.guideSub === 'gallery') box.innerHTML = renderGallery();
   else if (state.guideSub === 'exp') box.innerHTML = renderExperience();
   else box.innerHTML = renderGuideMain();
 }
@@ -1292,3 +1294,126 @@ function renderPerformances() {
 }
 
 init();
+
+/* ---------------- 新粉指南子标签：社媒美图（@忘记自己是鱼_ 本人发的照片/视频） ----------------
+   数据来自 window.SOCIAL_MEDIA（site/data/social-media.js，自动生成）。
+   图片为微博图床原始 URL，经站点图片代理 /img/?u=<encoded> 获取（直链会被 403 拦截）。
+   已剔除：① mymblog 混入的「她赞过的微博」卡片（非本人发布）；② 本人发的表情包/文字图/截图。 */
+let socialFilter = 'all';
+
+function proxyImg(url) {
+  try { return '/img?u=' + encodeURIComponent(url); } catch (e) { return url; }
+}
+
+function ensureSocialModal() {
+  if (document.getElementById('sgModal')) return;
+  const d = document.createElement('div');
+  d.className = 'sg-modal';
+  d.id = 'sgModal';
+  d.setAttribute('onclick', "if(event.target===this)closeSocialModal()");
+  d.innerHTML =
+    '<div class="sg-mbox"><div class="sg-mhead">'
+    + '<span class="who">忘记自己是鱼_</span><span class="plat">微博</span>'
+    + '<span class="date" id="sgMDate"></span>'
+    + '<button class="x" onclick="closeSocialModal()">✕</button></div>'
+    + '<div class="sg-mbody"><p class="sg-mtext" id="sgMText"></p><div id="sgMMedia"></div></div>'
+    + '<div class="sg-mfoot"><a class="sg-btn" id="sgMLink" target="_blank" rel="noopener">查看原帖 ↗</a></div></div>';
+  document.body.appendChild(d);
+}
+
+function renderSocialGallery() {
+  ensureSocialModal();
+  const data = window.SOCIAL_MEDIA || [];
+  const total = data.length;
+  const photo = data.filter(i => i.k === 'photo').length;
+  const video = data.filter(i => i.k === 'video').length;
+  return ''
+    + '<div class="sg-toolbar"><input id="sgSearch" type="text" placeholder="搜索文字内容…" oninput="renderSocialWall()">'
+    + '<div class="sg-filters">'
+    + '<button class="sg-fbtn' + (socialFilter === 'all' ? ' active' : '') + '" data-f="all" onclick="setSocialFilter(\'all\')">全部</button>'
+    + '<button class="sg-fbtn' + (socialFilter === 'photo' ? ' active' : '') + '" data-f="photo" onclick="setSocialFilter(\'photo\')">照片</button>'
+    + '<button class="sg-fbtn' + (socialFilter === 'video' ? ' active' : '') + '" data-f="video" onclick="setSocialFilter(\'video\')">视频</button>'
+    + '</div></div>'
+    + '<div class="sg-count" id="sgCount"></div><div id="sgGallery"></div>'
+    + '<p class="sg-hint">共 <b>' + total + '</b> 条（' + photo + ' 照片 / ' + video + ' 视频），数据来自小号 @忘记自己是鱼_ 本人发布的媒体（已剔除点赞收藏与表情包/截图）。点击卡片可看原文并跳转原帖。</p>';
+}
+
+function setSocialFilter(f) {
+  socialFilter = f;
+  document.querySelectorAll('.sg-fbtn').forEach(b => b.classList.toggle('active', b.dataset.f === f));
+  renderSocialWall();
+}
+
+function socialVisible() {
+  const data = window.SOCIAL_MEDIA || [];
+  const q = (document.getElementById('sgSearch').value || '').trim().toLowerCase();
+  return data.filter(it => {
+    if (socialFilter !== 'all' && it.k !== socialFilter) return false;
+    if (q && (it.t || '').toLowerCase().indexOf(q) < 0) return false;
+    return true;
+  });
+}
+
+function renderSocialWall() {
+  const data = window.SOCIAL_MEDIA || [];
+  const sel = socialVisible();
+  const count = document.getElementById('sgCount');
+  if (count) count.innerHTML = '显示 <b>' + sel.length + '</b> / ' + data.length + ' 条' + (socialFilter === 'all' ? '' : '（' + (socialFilter === 'photo' ? '照片' : '视频') + '）');
+  const g = document.getElementById('sgGallery');
+  if (!g) return;
+  if (!sel.length) { g.innerHTML = '<div class="empty">没有匹配的内容</div>'; return; }
+  const months = [], map = {};
+  sel.forEach(it => { if (!map[it.m]) { map[it.m] = []; months.push(it.m); } map[it.m].push(it); });
+  months.sort((a, b) => b.localeCompare(a));
+  let html = '';
+  months.forEach(m => {
+    const arr = map[m];
+    html += '<section class="sg-month"><h2 class="sg-month-h"><span class="ym">' + escapeHtml(m) + '</span><span class="n">' + arr.length + ' 条</span></h2><div class="sg-grid">';
+    arr.forEach(it => {
+      const idx = data.indexOf(it);
+      const cnt = it.k === 'video'
+        ? '<span class="sg-ov cnt v">▶ 视频</span>'
+        : (it.n > 1 ? '<span class="sg-ov cnt">×' + it.n + '</span>' : '');
+      // 照片取首图作封面；视频取视频封面（多数拿不到 → 占位）
+      const cover = it.k === 'video' ? it.cover : (it.p && it.p[0]);
+      const media = cover
+        ? '<img src="' + escapeHtml(proxyImg(cover)) + '" loading="lazy" alt="">'
+        : '<div class="sg-void">▶<span class="t">' + escapeHtml((it.t || '').slice(0, 22)) + '</span></div>';
+      html += '<div class="sg-card" onclick="openSocialModal(' + idx + ')">' + media
+        + '<div class="sg-scrim"></div>'
+        + '<span class="sg-ov who">忘记自己是鱼_</span>' + cnt
+        + '<span class="sg-ov plat">微博</span>'
+        + '<span class="sg-ov date">' + escapeHtml(it.d) + '</span>'
+        + '</div>';
+    });
+    html += '</div></section>';
+  });
+  g.innerHTML = html;
+}
+
+function openSocialModal(i) {
+  const it = (window.SOCIAL_MEDIA || [])[i];
+  if (!it) return;
+  document.getElementById('sgMDate').textContent = it.d;
+  document.getElementById('sgMText').textContent = it.t || '';
+  document.getElementById('sgMLink').href = it.u;
+  const mm = document.getElementById('sgMMedia');
+  if (it.k === 'video') {
+    mm.innerHTML = '<div class="sg-mvid"><div class="big">▶</div><div>视频内容 · 请到原帖观看</div>'
+      + (it.cover ? '<img src="' + escapeHtml(proxyImg(it.cover)) + '" style="width:100%;max-width:420px;border-radius:10px;" alt="">' : '') + '</div>';
+  } else if (it.p && it.p.length) {
+    mm.innerHTML = '<div class="sg-mmedia">' + it.p.map(u =>
+      '<img src="' + escapeHtml(proxyImg(u)) + '" loading="lazy" onclick="window.open(\'' + escapeHtml(proxyImg(u)) + '\',\'_blank\')" alt="">'
+    ).join('') + '</div>';
+  } else { mm.innerHTML = ''; }
+  document.getElementById('sgModal').classList.add('on');
+}
+
+function closeSocialModal() {
+  const m = document.getElementById('sgModal');
+  if (m) m.classList.remove('on');
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { const m = document.getElementById('sgModal'); if (m && m.classList.contains('on')) closeSocialModal(); }
+});
