@@ -897,8 +897,7 @@ function renderPerfCuts() {
   const groups = {}, order = [];
   data.forEach(c => { if (!groups[c.date]) { groups[c.date] = []; order.push(c.date); } groups[c.date].push(c); });
   order.sort((a, b) => b.localeCompare(a));
-  const total = data.length;
-  let html = `<p class="pc-count">共 <b>${total}</b> 条 cut（来自 @GNZ48王语晨的甜橙小铺 的微博切片，点击跳原帖观看）</p>`;
+  let html = '';
   order.forEach(date => {
     const arr = groups[date];
     const perf = arr[0].perf || '';

@@ -617,8 +617,6 @@ body {
 /* 公演 tab 子标签容器（与 .guide-sub 同款淡入） */
 .perf-sub { animation: fadeIn .2s ease; }
 /* 公演 cut 画廊 */
-.pc-count { font-size: 13px; color: var(--muted); margin: 4px 0 14px; }
-.pc-count b { color: var(--primary-dark); }
 .pc-group { margin-bottom: 22px; }
 .pc-group-h { display: flex; align-items: baseline; gap: 10px; margin: 0 0 10px; border-bottom: 1px dashed var(--border); padding-bottom: 6px; }
 .pc-group-h .ym { font-size: 15px; font-weight: 700; color: var(--primary-dark); }
