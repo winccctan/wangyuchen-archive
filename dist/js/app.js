@@ -236,22 +236,32 @@ function toUrl(path) {
 }
 
 function pad(n) { return String(n).padStart(2, '0'); }
-function fmtDate(ts) {
+
+// 全站时间统一按北京时间（UTC+8）显示/筛选：访客机器时区各不相同（UTC+9、UTC 等），
+// 若直接用本地时区，同一条发言在不同人手机上会显示不同时刻，且日期筛选会差一天。
+const TZ = 'Asia/Shanghai';
+const TZ_FMT = new Intl.DateTimeFormat('en-CA', {
+  timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit',
+  hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+});
+function tzParts(ts) {
   const d = new Date(Number(ts));
-  if (isNaN(d)) return '';
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  if (isNaN(d)) return null;
+  const p = {};
+  for (const part of TZ_FMT.formatToParts(d)) p[part.type] = part.value;
+  if (p.hour === '24') p.hour = '00'; // 部分浏览器把午夜输出成 24 点
+  return p;
+}
+function fmtDate(ts) {
+  const p = tzParts(ts);
+  return p ? `${p.year}-${p.month}-${p.day}` : '';
 }
 function fmtTime(ts) {
-  const d = new Date(Number(ts));
-  if (isNaN(d)) return '';
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  const p = tzParts(ts);
+  return p ? `${p.hour}:${p.minute}:${p.second}` : '';
 }
-// 时间戳 → <input type="date"> 需要的 YYYY-MM-DD（本地时区）
-function toDateInput(ts) {
-  const d = new Date(Number(ts));
-  if (isNaN(d)) return '';
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
+// 时间戳 → <input type="date"> 需要的 YYYY-MM-DD（北京时间）
+function toDateInput(ts) { return fmtDate(ts); }
 
 const TYPE_LABEL = {
   TEXT: '文字', IMAGE: '图片', REPLY: '回复', GIFTREPLY: '礼物回复',
@@ -604,10 +614,10 @@ function renderMeta() {
       upEl.textContent = '';
     } else {
       const d = new Date(m.lastUpdated);
-      const pad = (n) => String(n).padStart(2, '0');
+      const hhmm = fmtTime(m.lastUpdated).slice(0, 5); // 北京时间 HH:MM
       upEl.innerHTML =
-        `<span class="upd-full">更新于 ${d.toLocaleString('zh-CN')}</span>` +
-        `<span class="upd-mini">${pad(d.getHours())}:${pad(d.getMinutes())} 更新</span>`;
+        `<span class="upd-full">更新于 ${d.toLocaleString('zh-CN', { timeZone: TZ })}</span>` +
+        `<span class="upd-mini">${hhmm} 更新</span>`;
     }
   }
 }
@@ -668,8 +678,9 @@ function bindEvents() {
     });
     document.getElementById('dateConfirm').addEventListener('click', () => {
       const f = $('#dateFrom').value, t = $('#dateTo').value;
-      state.dateFrom = f ? new Date(f + 'T00:00:00').getTime() : null;          // 本地 0 点
-      state.dateTo = t ? new Date(t + 'T00:00:00').getTime() + 86400000 : null; // 次日 0 点（含当天）
+      // 固定按北京时间 0 点（+08:00）取边界，避免访客本地时区导致前后差一天
+      state.dateFrom = f ? new Date(f + 'T00:00:00+08:00').getTime() : null;          // 当天 0 点
+      state.dateTo = t ? new Date(t + 'T00:00:00+08:00').getTime() + 86400000 : null; // 次日 0 点（含当天）
       closeDateModal();
       state.dayLimit = 3;
       renderAll(); // 发言 / 直播录播 / 公演 三个页都要按新时间范围刷新
