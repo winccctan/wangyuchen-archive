@@ -286,6 +286,30 @@ function escapeHtml(s) {
 const TRANSLATE_ENDPOINT = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&dt=t';
 let proxyOk = null; // 同域代理是否可用：null=未探明 / true / false（首次探测后缓存，避免每次翻译都发无效请求）
 
+// 翻译相关 UI 文案：随目标语言（state.lang）本地化，否则外国粉丝看不懂「翻译 / 查看原帖」等按钮
+const TR_UI = {
+  zh: { translate: '🌐 翻译', hide: '🌐 隐藏翻译', page: '🌐 翻译本页', loading: '翻译中…', fail: '翻译失败', viewOriginal: '查看原帖', viewRaw: '查看原始数据', videoGoOriginal: '视频内容 · 请到原帖观看',
+    galleryHint: '共 <b>{total}</b> 条（{photo} 照片 / {video} 视频），数据来自小号 @忘记自己是鱼_ 本人发布的媒体（已剔除点赞收藏与表情包/截图）。点击卡片可看原文并跳转原帖。' },
+  en: { translate: '🌐 Translate', hide: '🌐 Hide translation', page: '🌐 Translate page', loading: 'Translating…', fail: 'Translation failed', viewOriginal: 'View original post', viewRaw: 'View raw data', videoGoOriginal: 'Video · open the source post to watch',
+    galleryHint: '<b>{total}</b> posts ({photo} photos / {video} videos) from @忘记自己是鱼_’s own posts (likes, reposts, memes & screenshots excluded). Tap a card to read the original text and open the source post.' },
+  es: { translate: '🌐 Traducir', hide: '🌐 Ocultar traducción', page: '🌐 Traducir página', loading: 'Traduciendo…', fail: 'Error de traducción', viewOriginal: 'Ver publicación original', viewRaw: 'Ver datos originales', videoGoOriginal: 'Vídeo · abre la publicación fuente para verlo',
+    galleryHint: '<b>{total}</b> publicaciones ({photo} fotos / {video} vídeos) de las publicaciones propias de @忘记自己是鱼_ (excluidos likes, reposts, memes y capturas). Toca una tarjeta para ver el texto original y abrir la publicación fuente.' },
+  ja: { translate: '🌐 翻訳', hide: '🌐 翻訳を隠す', page: '🌐 このページを翻訳', loading: '翻訳中…', fail: '翻訳失敗', viewOriginal: '元の投稿を見る', viewRaw: '元のデータを見る', videoGoOriginal: '動画 · 元の投稿で視聴できます',
+    galleryHint: '<b>{total}</b> 件（写真 {photo} / 動画 {video}）は @忘记自己是鱼_ 本人の投稿です（いいね・転載・ミーム・スクショは除外）。カードをタップで原文を読み、元投稿を開けます。' },
+  vi: { translate: '🌐 Dịch', hide: '🌐 Ẩn bản dịch', page: '🌐 Dịch trang này', loading: 'Đang dịch…', fail: 'Lỗi dịch', viewOriginal: 'Xem bài gốc', viewRaw: 'Xem dữ liệu gốc', videoGoOriginal: 'Video · mở bài gốc để xem',
+    galleryHint: '<b>{total}</b> bài ({photo} ảnh / {video} video) từ chính bài đăng của @忘记自己是鱼_ (đã loại bỏ like, repost, meme & ảnh chụp màn hình). Nhấn vào thẻ để đọc bản gốc và mở bài gốc.' },
+  ko: { translate: '🌐 번역', hide: '🌐 번역 숨기기', page: '🌐 이 페이지 번역', loading: '번역 중…', fail: '번역 실패', viewOriginal: '원본 게시물 보기', viewRaw: '원본 데이터 보기', videoGoOriginal: '동영상 · 원본 게시물에서 시청하세요',
+    galleryHint: '<b>{total}</b> 개（사진 {photo} / 동영상 {video}）는 @忘记自己是鱼_ 본인 게시물입니다（좋아요·리포스트·밈·캡처 제외）. 카드를 탭하면 원문을 보고 원본 게시물을 열 수 있습니다.' },
+};
+function trUI(key, lang) {
+  const set = TR_UI[lang] || TR_UI.zh;
+  return set[key] != null ? set[key] : (TR_UI.zh[key] != null ? TR_UI.zh[key] : key);
+}
+function trGalleryHint(lang, total, photo, video) {
+  return trUI('galleryHint', lang)
+    .split('{total}').join(total).split('{photo}').join(photo).split('{video}').join(video);
+}
+
 function strHash(s) {
   let h = 5381;
   for (let i = 0; i < s.length; i++) h = (((h << 5) + h) + s.charCodeAt(i)) | 0;
@@ -369,7 +393,7 @@ function trBlocksHtml(m, lang) {
     const t = trGet(s.text, lang);
     const body = t != null
       ? escapeHtml(t)
-      : '<span class="tr-loading">翻译中…</span>';
+      : '<span class="tr-loading">' + trUI('loading', lang) + '</span>';
     const lab = s.label ? `<span class="tr-label">${escapeHtml(s.label)}</span>` : '';
     return `<div class="tr-item">${lab}<span class="tr-text">${body}</span></div>`;
   }).join('');
@@ -401,7 +425,7 @@ async function doTranslate(mid) {
     box.innerHTML = segs.map((s) => {
       const isErr = typeof s._t === 'string' && s._t.startsWith('__ERR__');
       const body = isErr
-        ? `<span class="tr-err">翻译失败（${escapeHtml(s._t.slice(7))}）</span>`
+        ? `<span class="tr-err">${trUI('fail', lang)}（${escapeHtml(s._t.slice(7))}）</span>`
         : escapeHtml(s._t);
       return `<div class="tr-item">${s.label ? `<span class="tr-label">${escapeHtml(s.label)}</span>` : ''}` +
         `<span class="tr-text">${body}</span></div>`;
@@ -422,7 +446,7 @@ async function translateAllVisible() {
       await doTranslate(mid);
     }
   };
-  panels.messages.querySelectorAll('.tr-btn').forEach((b) => { b.textContent = '🌐 隐藏翻译'; });
+  panels.messages.querySelectorAll('.tr-btn').forEach((b) => { b.textContent = trUI('hide', state.lang); });
   await Promise.all(Array.from({ length: 4 }, worker));
 }
 
@@ -610,12 +634,13 @@ function bindEvents() {
       state.lang = e.target.value;
       state.expanded.clear();
       const trAll = document.getElementById('trAllBtn');
-      if (trAll) trAll.hidden = state.lang === 'zh';
+      if (trAll) { trAll.hidden = state.lang === 'zh'; trAll.textContent = trUI('page', state.lang); }
       if (state.tab === 'messages') renderMessages();
     });
   }
   const trAllBtn = document.getElementById('trAllBtn');
   if (trAllBtn) {
+    trAllBtn.textContent = trUI('page', state.lang);
     trAllBtn.addEventListener('click', async () => {
       panels.messages.querySelectorAll('.msg-tr').forEach((box) => {
         state.expanded.add(box.id.replace(/^tr-/, ''));
@@ -731,11 +756,11 @@ function bindEvents() {
       const box = document.getElementById('tr-' + mid);
       if (state.expanded.has(mid)) {
         state.expanded.delete(mid);
-        trBtn.textContent = '🌐 翻译';
+        trBtn.textContent = trUI('translate', state.lang);
         if (box) box.innerHTML = '';
       } else {
         state.expanded.add(mid);
-        trBtn.textContent = '🌐 隐藏翻译';
+        trBtn.textContent = trUI('hide', state.lang);
         if (box) box.innerHTML = trBlocksHtml(MSG_INDEX.get(mid) || {}, state.lang);
         doTranslate(mid);
       }
@@ -1102,7 +1127,7 @@ function renderMsg(m) {
 
   if (!body) {
     body = `<div class="msg-body empty">［${typeLabel}］无文本内容</div>
-      <div class="msg-raw"><details><summary>查看原始数据</summary><pre>${escapeHtml(JSON.stringify(m.raw, null, 2))}</pre></details></div>`;
+      <div class="msg-raw"><details><summary>${trUI('viewRaw', state.lang)}</summary><pre>${escapeHtml(JSON.stringify(m.raw, null, 2))}</pre></details></div>`;
   }
 
   // 她本人的消息不重复标注昵称；房间里其他人的消息（粉丝 / 袋王 / 队友）标注出来
@@ -1117,7 +1142,7 @@ function renderMsg(m) {
     const mid = msgKey(m);
     const expanded = state.expanded.has(mid);
     footer = `<div class="msg-tr-row">
-      <button class="tr-btn" type="button" data-mid="${escapeHtml(mid)}">${expanded ? '🌐 隐藏翻译' : '🌐 翻译'}</button>
+      <button class="tr-btn" type="button" data-mid="${escapeHtml(mid)}">${expanded ? trUI('hide', state.lang) : trUI('translate', state.lang)}</button>
       <div class="msg-tr" id="tr-${escapeHtml(mid)}">${expanded ? trBlocksHtml(m, state.lang) : ''}</div>
     </div>`;
   }
@@ -1317,7 +1342,7 @@ function ensureSocialModal() {
     + '<span class="date" id="sgMDate"></span>'
     + '<button class="x" onclick="closeSocialModal()">✕</button></div>'
     + '<div class="sg-mbody"><p class="sg-mtext" id="sgMText"></p><div id="sgMMedia"></div></div>'
-    + '<div class="sg-mfoot"><a class="sg-btn" id="sgMLink" target="_blank" rel="noopener">查看原帖 ↗</a></div></div>';
+    + '<div class="sg-mfoot"><a class="sg-btn" id="sgMLink" target="_blank" rel="noopener">' + trUI('viewOriginal', state.lang) + ' ↗</a></div></div>';
   document.body.appendChild(d);
 }
 
@@ -1335,7 +1360,7 @@ function renderSocialGallery() {
     + '<button class="sg-fbtn' + (socialFilter === 'video' ? ' active' : '') + '" data-f="video" onclick="setSocialFilter(\'video\')">视频</button>'
     + '</div></div>'
     + '<div class="sg-count" id="sgCount"></div><div id="sgGallery"></div>'
-    + '<p class="sg-hint">共 <b>' + total + '</b> 条（' + photo + ' 照片 / ' + video + ' 视频），数据来自小号 @忘记自己是鱼_ 本人发布的媒体（已剔除点赞收藏与表情包/截图）。点击卡片可看原文并跳转原帖。</p>';
+    + '<p class="sg-hint">' + trGalleryHint(state.lang, total, photo, video) + '</p>';
 }
 
 function setSocialFilter(f) {
@@ -1399,7 +1424,7 @@ function openSocialModal(i) {
   document.getElementById('sgMLink').href = it.u;
   const mm = document.getElementById('sgMMedia');
   if (it.k === 'video') {
-    mm.innerHTML = '<div class="sg-mvid"><div class="big">▶</div><div>视频内容 · 请到原帖观看</div>'
+    mm.innerHTML = '<div class="sg-mvid"><div class="big">▶</div><div>' + trUI('videoGoOriginal', state.lang) + '</div>'
       + (it.cover ? '<img src="' + escapeHtml(proxyImg(it.cover)) + '" style="width:100%;max-width:420px;border-radius:10px;" alt="">' : '') + '</div>';
   } else if (it.p && it.p.length) {
     mm.innerHTML = '<div class="sg-mmedia">' + it.p.map(u =>
