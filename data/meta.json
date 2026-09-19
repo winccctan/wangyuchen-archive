@@ -1,0 +1,22 @@
+{
+  "member": {
+    "name": "王语晨",
+    "starId": 89653517,
+    "userId": 89653517,
+    "serverId": 2278592,
+    "channelId": 2541547,
+    "liveRoomId": 2466022879,
+    "groupId": 12,
+    "team": "TEAM NIII",
+    "teamId": 1202,
+    "period": "GNZ48 十三期生"
+  },
+  "apiBase": "https://pocketapi.48.cn",
+  "lastUpdated": "2026-09-19T17:09:15.969Z",
+  "counts": {
+    "messages": 54693,
+    "live": 785,
+    "performances": 383
+  },
+  "note": "由 48tools 接口逆向抓取，仅供个人补档 / 学习用途。"
+}

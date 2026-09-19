@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>王语晨 · 补档站</title>
+  <meta name="description" content="王语晨（GNZ48 TEAM NIII）口袋发言 / 直播录播 / 公演补档存档站。" />
+  <link rel="stylesheet" href="./css/style.css?v=1789837764666" />
+  <link rel="icon" type="image/png" href="./assets/avatar-round.png?v=1789837764666" />
+  <link rel="apple-touch-icon" href="./assets/avatar-round.png?v=1789837764666" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <img class="avatar" id="memberAvatar" src="./assets/avatar.png?v=1789837764666" alt="王语晨" width="201" height="304" decoding="async" />
+      <div class="member-meta">
+        <h1 id="memberName">王语晨</h1>
+        <p id="memberSub">GNZ48 TEAM NIII · 十三期生</p>
+      </div>
+      <div class="stat" id="statBox">
+        <div class="stat-item"><span class="num" id="statMsg">0</span><span class="lbl">口袋发言</span></div>
+        <div class="stat-item"><span class="num" id="statLive">0</span><span class="lbl">直播/录播</span></div>
+        <div class="stat-item"><span class="num" id="statPerf">0</span><span class="lbl">公演</span></div>
+      </div>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="messages">口袋发言</button>
+    <button class="tab" data-tab="live">直播 / 录播</button>
+    <button class="tab" data-tab="performances">公演</button>
+    <button class="tab" data-tab="guide">新粉指南</button>
+  </nav>
+
+  <div class="toolbar">
+    <input type="search" id="searchInput" placeholder="搜索发言内容 / 标题…" />
+    <button id="dateToggleBtn" class="date-toggle-btn" type="button" title="按时间筛选" hidden>📅 时间</button>
+    <div class="toolbar-actions">
+      <span class="updated" id="updatedAt"></span>
+      <button id="trAllBtn" class="tr-all-btn" type="button" hidden>🌐 翻译本页</button>
+      <select id="langSelect" class="lang-select" title="选择翻译语言">
+        <option value="zh">中文</option>
+        <option value="en">English</option>
+        <option value="es">Español</option>
+        <option value="pt">Português</option>
+        <option value="ja">日本語</option>
+        <option value="vi">Tiếng Việt</option>
+        <option value="ko">한국어</option>
+      </select>
+      <button id="refreshBtn" class="refresh-btn" type="button" title="刷新最新补档（会触发一次后台抓取，每小时也会自动更新）">🔄 刷新</button>
+    </div>
+  </div>
+
+  <main class="content">
+    <section id="panel-messages" class="panel active"></section>
+    <section id="panel-live" class="panel"></section>
+    <section id="panel-performances" class="panel"></section>
+    <section id="panel-guide" class="panel"></section>
+  </main>
+
+  <!-- 视频播放器（hls.js 支持 m3u8 直播/录播播放） -->
+  <div class="player-modal" id="playerModal" hidden>
+    <div class="player-box">
+      <button class="player-close" id="playerClose" aria-label="关闭">×</button>
+      <div class="player-title" id="playerTitle"></div>
+      <video id="playerVideo" controls autoplay playsinline></video>
+      <div class="player-hint" id="playerHint"></div>
+    </div>
+  </div>
+
+  <!-- 时间筛选弹窗（点确认才刷新） -->
+  <div class="date-modal" id="dateModal" hidden>
+    <div class="date-box">
+      <div class="date-title">按时间筛选</div>
+      <label class="date-field"><span class="date-label">从（年月日）</span><input type="date" id="dateFrom" /></label>
+      <label class="date-field"><span class="date-label">至（年月日）</span><input type="date" id="dateTo" /></label>
+      <div class="date-quick">
+        <button type="button" data-quick="all">全部</button>
+        <button type="button" data-quick="7">近 7 天</button>
+        <button type="button" data-quick="30">近 30 天</button>
+        <button type="button" data-quick="90">近 90 天</button>
+      </div>
+      <div class="date-actions">
+        <button type="button" id="dateCancel">取消</button>
+        <button type="button" id="dateConfirm" class="primary">确认</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="./vendor/hls.min.js?v=1789837764666"></script>
+  <script src="./data/social-media.js?v=1789837764666"></script>
+  <script src="./data/performance-cuts.js?v=1789837764666"></script>
+  <script src="./js/app.js?v=1789837764666"></script>
+</body>
+</html>

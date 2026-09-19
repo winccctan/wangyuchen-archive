@@ -1,0 +1,27 @@
+{
+  // 王语晨补档站：Cloudflare Worker（静态资源 + Workers AI 翻译代理）
+  // name 必须与 Cloudflare 仪表板中的 Worker 名称一致
+  "name": "wangyuchen-archive",
+  "compatibility_date": "2026-09-17",
+  // Worker 入口脚本（/translate 翻译代理、/ping 健康检查，其余透传静态资源）
+  "main": "worker/index.js",
+  // 静态站点资源目录（构建产物）。Worker 内通过 env.ASSETS 访问。
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "run_worker_first": true
+  },
+  // Workers AI 绑定：env.AI.run() 在 Cloudflare 边缘做翻译推理（不经过外部 IP，稳定、无需密钥）
+  "ai": {
+    "binding": "AI"
+  },
+  // KV：存放 GitHub PAT（GH_TOKEN），运行时读取，不进公开仓库、也不依赖 Git 构建注入 Secret。
+  // 键名填 GH_TOKEN（值 = 你的 PAT）。Git 构建不会注入 dashboard Secret，故用 KV 保证生效。
+  "kv_namespaces": [
+    { "binding": "SECRETS", "id": "ef32273095ad4a86953aa1222a11843b" }
+  ],
+  // /scrape 手动触发抓取用（非敏感，可明文）：GitHub 仓库名。
+  "vars": {
+    "REPO": "winccctan/wangyuchen-archive"
+  }
+}
