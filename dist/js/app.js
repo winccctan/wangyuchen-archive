@@ -88,7 +88,7 @@ const PROFILE = {
       scheme: 'sinaweibo://',
       color: '#e6162d',
       accounts: [
-        { handle: '初星·王语晨', web: 'https://weibo.com/n/初星·王语晨' },
+        { handle: '初昼·王语晨', web: 'https://weibo.com/u/7807274718' },
         { handle: '爱在黎明前_王语晨', web: 'https://weibo.com/n/爱在黎明前_王语晨' }
       ]
     },
