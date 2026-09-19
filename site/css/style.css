@@ -359,11 +359,12 @@ body {
 .guide-tip { color: var(--muted); font-size: 12px; text-align: center; margin: 0; }
 
 /* ---------------- 新粉指南子标签 ---------------- */
-.subtabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.subtabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: nowrap; }
 .subtab {
-  flex: 1 1 0; min-width: 84px; padding: 10px 12px;
+  flex: 1 1 0; min-width: 0; padding: 9px 6px;
   border: 1px solid var(--border); background: var(--card); color: var(--muted);
-  border-radius: 999px; font-size: 14px; font-weight: 600; cursor: pointer;
+  border-radius: 999px; font-size: 13px; font-weight: 600; cursor: pointer;
+  white-space: nowrap; text-align: center;
   transition: background .15s, color .15s, border-color .15s;
 }
 .subtab:hover { color: var(--text); border-color: var(--primary); }
@@ -468,6 +469,8 @@ body {
   .updated { font-size: 11px; }
   .upd-full { display: none; }
   .upd-mini { display: inline; }
+  .subtabs { gap: 6px; }
+  .subtab { padding: 8px 4px; font-size: 12px; }
 }
 
 /* 极窄屏（≤380px）：更新时间独占一行，三个按钮整排靠右，避免任何单个按钮被挤到下一行 */
@@ -476,6 +479,8 @@ body {
   .toolbar { gap: 6px; }
   .toolbar-actions { gap: 6px; }
   .updated { flex: 1 1 100%; font-size: 11px; }
+  .subtabs { gap: 4px; }
+  .subtab { padding: 7px 3px; font-size: 11px; }
 }
 
 /* ---------------- 时间筛选弹窗 ---------------- */
