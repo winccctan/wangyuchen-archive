@@ -288,26 +288,16 @@ let proxyOk = null; // 同域代理是否可用：null=未探明 / true / false�
 
 // 翻译相关 UI 文案：随目标语言（state.lang）本地化，否则外国粉丝看不懂「翻译 / 查看原帖」等按钮
 const TR_UI = {
-  zh: { translate: '🌐 翻译', hide: '🌐 隐藏翻译', page: '🌐 翻译本页', loading: '翻译中…', fail: '翻译失败', viewOriginal: '查看原帖', viewRaw: '查看原始数据', videoGoOriginal: '视频内容 · 请到原帖观看',
-    galleryHint: '共 <b>{total}</b> 条（{photo} 照片 / {video} 视频），数据来自小号 @忘记自己是鱼_ 本人发布的媒体（已剔除点赞收藏与表情包/截图）。点击卡片可看原文并跳转原帖。' },
-  en: { translate: '🌐 Translate', hide: '🌐 Hide translation', page: '🌐 Translate page', loading: 'Translating…', fail: 'Translation failed', viewOriginal: 'View original post', viewRaw: 'View raw data', videoGoOriginal: 'Video · open the source post to watch',
-    galleryHint: '<b>{total}</b> posts ({photo} photos / {video} videos) from @忘记自己是鱼_’s own posts (likes, reposts, memes & screenshots excluded). Tap a card to read the original text and open the source post.' },
-  es: { translate: '🌐 Traducir', hide: '🌐 Ocultar traducción', page: '🌐 Traducir página', loading: 'Traduciendo…', fail: 'Error de traducción', viewOriginal: 'Ver publicación original', viewRaw: 'Ver datos originales', videoGoOriginal: 'Vídeo · abre la publicación fuente para verlo',
-    galleryHint: '<b>{total}</b> publicaciones ({photo} fotos / {video} vídeos) de las publicaciones propias de @忘记自己是鱼_ (excluidos likes, reposts, memes y capturas). Toca una tarjeta para ver el texto original y abrir la publicación fuente.' },
-  ja: { translate: '🌐 翻訳', hide: '🌐 翻訳を隠す', page: '🌐 このページを翻訳', loading: '翻訳中…', fail: '翻訳失敗', viewOriginal: '元の投稿を見る', viewRaw: '元のデータを見る', videoGoOriginal: '動画 · 元の投稿で視聴できます',
-    galleryHint: '<b>{total}</b> 件（写真 {photo} / 動画 {video}）は @忘记自己是鱼_ 本人の投稿です（いいね・転載・ミーム・スクショは除外）。カードをタップで原文を読み、元投稿を開けます。' },
-  vi: { translate: '🌐 Dịch', hide: '🌐 Ẩn bản dịch', page: '🌐 Dịch trang này', loading: 'Đang dịch…', fail: 'Lỗi dịch', viewOriginal: 'Xem bài gốc', viewRaw: 'Xem dữ liệu gốc', videoGoOriginal: 'Video · mở bài gốc để xem',
-    galleryHint: '<b>{total}</b> bài ({photo} ảnh / {video} video) từ chính bài đăng của @忘记自己是鱼_ (đã loại bỏ like, repost, meme & ảnh chụp màn hình). Nhấn vào thẻ để đọc bản gốc và mở bài gốc.' },
-  ko: { translate: '🌐 번역', hide: '🌐 번역 숨기기', page: '🌐 이 페이지 번역', loading: '번역 중…', fail: '번역 실패', viewOriginal: '원본 게시물 보기', viewRaw: '원본 데이터 보기', videoGoOriginal: '동영상 · 원본 게시물에서 시청하세요',
-    galleryHint: '<b>{total}</b> 개（사진 {photo} / 동영상 {video}）는 @忘记自己是鱼_ 본인 게시물입니다（좋아요·리포스트·밈·캡처 제외）. 카드를 탭하면 원문을 보고 원본 게시물을 열 수 있습니다.' },
+  zh: { translate: '🌐 翻译', hide: '🌐 隐藏翻译', page: '🌐 翻译本页', loading: '翻译中…', fail: '翻译失败', viewOriginal: '查看原帖', viewRaw: '查看原始数据', videoGoOriginal: '视频内容 · 请到原帖观看' },
+  en: { translate: '🌐 Translate', hide: '🌐 Hide translation', page: '🌐 Translate page', loading: 'Translating…', fail: 'Translation failed', viewOriginal: 'View original post', viewRaw: 'View raw data', videoGoOriginal: 'Video · open the source post to watch' },
+  es: { translate: '🌐 Traducir', hide: '🌐 Ocultar traducción', page: '🌐 Traducir página', loading: 'Traduciendo…', fail: 'Error de traducción', viewOriginal: 'Ver publicación original', viewRaw: 'Ver datos originales', videoGoOriginal: 'Vídeo · abre la publicación fuente para verlo' },
+  ja: { translate: '🌐 翻訳', hide: '🌐 翻訳を隠す', page: '🌐 このページを翻訳', loading: '翻訳中…', fail: '翻訳失敗', viewOriginal: '元の投稿を見る', viewRaw: '元のデータを見る', videoGoOriginal: '動画 · 元の投稿で視聴できます' },
+  vi: { translate: '🌐 Dịch', hide: '🌐 Ẩn bản dịch', page: '🌐 Dịch trang này', loading: 'Đang dịch…', fail: 'Lỗi dịch', viewOriginal: 'Xem bài gốc', viewRaw: 'Xem dữ liệu gốc', videoGoOriginal: 'Video · mở bài gốc để xem' },
+  ko: { translate: '🌐 번역', hide: '🌐 번역 숨기기', page: '🌐 이 페이지 번역', loading: '번역 중…', fail: '번역 실패', viewOriginal: '원본 게시물 보기', viewRaw: '원본 데이터 보기', videoGoOriginal: '동영상 · 원본 게시물에서 시청하세요' },
 };
 function trUI(key, lang) {
   const set = TR_UI[lang] || TR_UI.zh;
   return set[key] != null ? set[key] : (TR_UI.zh[key] != null ? TR_UI.zh[key] : key);
-}
-function trGalleryHint(lang, total, photo, video) {
-  return trUI('galleryHint', lang)
-    .split('{total}').join(total).split('{photo}').join(photo).split('{video}').join(video);
 }
 
 function strHash(s) {
@@ -1348,10 +1338,6 @@ function ensureSocialModal() {
 
 function renderSocialGallery() {
   ensureSocialModal();
-  const data = window.SOCIAL_MEDIA || [];
-  const total = data.length;
-  const photo = data.filter(i => i.k === 'photo').length;
-  const video = data.filter(i => i.k === 'video').length;
   return ''
     + '<div class="sg-toolbar"><input id="sgSearch" type="text" placeholder="搜索文字内容…" oninput="renderSocialWall()">'
     + '<div class="sg-filters">'
@@ -1359,8 +1345,7 @@ function renderSocialGallery() {
     + '<button class="sg-fbtn' + (socialFilter === 'photo' ? ' active' : '') + '" data-f="photo" onclick="setSocialFilter(\'photo\')">照片</button>'
     + '<button class="sg-fbtn' + (socialFilter === 'video' ? ' active' : '') + '" data-f="video" onclick="setSocialFilter(\'video\')">视频</button>'
     + '</div></div>'
-    + '<div class="sg-count" id="sgCount"></div><div id="sgGallery"></div>'
-    + '<p class="sg-hint">' + trGalleryHint(state.lang, total, photo, video) + '</p>';
+    + '<div class="sg-count" id="sgCount"></div><div id="sgGallery"></div>';
 }
 
 function setSocialFilter(f) {
