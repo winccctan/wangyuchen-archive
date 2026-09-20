@@ -1,6 +1,159 @@
 {
   "messages": [
     {
+      "msgIdServer": "7403557410",
+      "msgTime": 1789928450273,
+      "msgType": "TEXT",
+      "text": "晚安啦～",
+      "reply": null,
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟",
+        "avatar": "/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif"
+      },
+      "raw": {
+        "bodys": "晚安啦～",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\",\"teamLogo\":\"/mediasource/teamLogo2/all/gnz48_n3.png\",\"avatar\":\"/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif\",\"level\":4,\"roleId\":3,\"vip\":false,\"pfUrl\":\"/backstage/2025/0822/aiy8n5febvwm8b435ysn8nk.png\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "TEXT"
+      }
+    },
+    {
+      "msgIdServer": "7403704514",
+      "msgTime": 1789928442471,
+      "msgType": "GIFTREPLY",
+      "text": "谢谢",
+      "reply": {
+        "name": "cc.春晓",
+        "text": "送给 王语晨 1个玫瑰花"
+      },
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟",
+        "avatar": "/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif"
+      },
+      "raw": {
+        "bodys": "{\"giftReplyInfo\":{\"replyText\":\"送给 王语晨 1个玫瑰花\",\"replyName\":\"cc.春晓\",\"replyMessageId\":\"f04a6836-2165-4dcb-bb6f-96ff304bd05b\",\"text\":\"谢谢\"},\"messageType\":\"GIFTREPLY\"}",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\",\"teamLogo\":\"/mediasource/teamLogo2/all/gnz48_n3.png\",\"avatar\":\"/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif\",\"level\":4,\"roleId\":3,\"vip\":false,\"pfUrl\":\"/backstage/2025/0822/aiy8n5febvwm8b435ysn8nk.png\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "GIFTREPLY"
+      }
+    },
+    {
+      "msgIdServer": "7403655583",
+      "msgTime": 1789928436683,
+      "msgType": "GIFTREPLY",
+      "text": "谢谢小智齿的星航月兔哇🐰💕～",
+      "reply": {
+        "name": "kabdjciskls",
+        "text": "送给 王语晨 1个星航月兔"
+      },
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟",
+        "avatar": "/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif"
+      },
+      "raw": {
+        "bodys": "{\"giftReplyInfo\":{\"replyText\":\"送给 王语晨 1个星航月兔\",\"replyName\":\"kabdjciskls\",\"replyMessageId\":\"71646213-e4f6-475f-8c85-5f7cd56390b0\",\"text\":\"谢谢小智齿的星航月兔哇🐰💕～\"},\"messageType\":\"GIFTREPLY\"}",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\",\"teamLogo\":\"/mediasource/teamLogo2/all/gnz48_n3.png\",\"avatar\":\"/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif\",\"level\":4,\"roleId\":3,\"vip\":false,\"pfUrl\":\"/backstage/2025/0822/aiy8n5febvwm8b435ysn8nk.png\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "GIFTREPLY"
+      }
+    },
+    {
+      "msgIdServer": "7403704512",
+      "msgTime": 1789928396477,
+      "msgType": "GIFTREPLY",
+      "text": "谢谢心锁💗～",
+      "reply": {
+        "name": "连灿",
+        "text": "送给 王语晨 1个心锁"
+      },
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟",
+        "avatar": "/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif"
+      },
+      "raw": {
+        "bodys": "{\"giftReplyInfo\":{\"replyText\":\"送给 王语晨 1个心锁\",\"replyName\":\"连灿\",\"replyMessageId\":\"57e58c6d-53a1-417b-80b6-fa5df5f0f55f\",\"text\":\"谢谢心锁💗～\"},\"messageType\":\"GIFTREPLY\"}",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\",\"teamLogo\":\"/mediasource/teamLogo2/all/gnz48_n3.png\",\"avatar\":\"/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif\",\"level\":4,\"roleId\":3,\"vip\":false,\"pfUrl\":\"/backstage/2025/0822/aiy8n5febvwm8b435ysn8nk.png\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "GIFTREPLY"
+      }
+    },
+    {
+      "msgIdServer": "7403688289",
+      "msgTime": 1789928384389,
+      "msgType": "GIFTREPLY",
+      "text": "谢谢",
+      "reply": {
+        "name": "叛k",
+        "text": "送给 王语晨 1个一杵清辉"
+      },
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟",
+        "avatar": "/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif"
+      },
+      "raw": {
+        "bodys": "{\"giftReplyInfo\":{\"replyText\":\"送给 王语晨 1个一杵清辉\",\"replyName\":\"叛k\",\"replyMessageId\":\"7e37e283-0db9-498b-a990-68c3a3b022e6\",\"text\":\"谢谢\"},\"messageType\":\"GIFTREPLY\"}",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\",\"teamLogo\":\"/mediasource/teamLogo2/all/gnz48_n3.png\",\"avatar\":\"/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif\",\"level\":4,\"roleId\":3,\"vip\":false,\"pfUrl\":\"/backstage/2025/0822/aiy8n5febvwm8b435ysn8nk.png\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "GIFTREPLY"
+      }
+    },
+    {
+      "msgIdServer": "7403557598",
+      "msgTime": 1789928367607,
+      "msgType": "GIFTREPLY",
+      "text": "谢谢",
+      "reply": {
+        "name": "一款悠晴u7（见过晨晨版）",
+        "text": "送给 王语晨 1个一杵清辉"
+      },
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟",
+        "avatar": "/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif"
+      },
+      "raw": {
+        "bodys": "{\"giftReplyInfo\":{\"replyText\":\"送给 王语晨 1个一杵清辉\",\"replyName\":\"一款悠晴u7（见过晨晨版）\",\"replyMessageId\":\"17df74e8-53f5-49c5-841a-8fa8edb27cb2\",\"text\":\"谢谢\"},\"messageType\":\"GIFTREPLY\"}",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\",\"teamLogo\":\"/mediasource/teamLogo2/all/gnz48_n3.png\",\"avatar\":\"/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif\",\"level\":4,\"roleId\":3,\"vip\":false,\"pfUrl\":\"/backstage/2025/0822/aiy8n5febvwm8b435ysn8nk.png\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "GIFTREPLY"
+      }
+    },
+    {
       "msgIdServer": "7403491372",
       "msgTime": 1789922775377,
       "msgType": "LIVEPUSH",
