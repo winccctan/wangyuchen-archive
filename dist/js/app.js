@@ -286,8 +286,8 @@ function escapeHtml(s) {
 }
 
 /* ---------------- 多语言翻译（浏览器按需，免费接口 + localStorage 缓存） ---------------- */
-// 目标语言：中 / 英 / 西 / 法 / 荷 / 葡 / 罗 / 日 / 越 / 韩（按访客国家分布补：比利时/法国→fr、荷兰→nl、
-// 罗马尼亚→ro、莫桑比克→pt）。选「中文」时不做任何翻译。
+// 目标语言：中 / 英 / 西 / 法 / 荷 / 葡 / 罗 / 日 / 越 / 韩 / 泰（按访客国家分布补：比利时/法国→fr、荷兰→nl、
+// 罗马尼亚→ro、莫桑比克→pt、泰国→th；印度访客通用英语，故不加印地语）。选「中文」时不做任何翻译。
 // 翻译走 translate.googleapis.com 的公开 endpoint（浏览器端 CORS 已放行，无需密钥），
 // 每条译文按「语言 + 文本哈希」缓存到 localStorage，重复查看不再请求、离线也能读缓存。
 const TRANSLATE_ENDPOINT = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&dt=t';
@@ -305,6 +305,7 @@ const TR_UI = {
   ro: { translate: '🌐 Tradu', hide: '🌐 Ascunde traducerea', page: '🌐 Tradu pagina', loading: 'Se traduce…', fail: 'Traducere eșuată', viewOriginal: 'Vezi postarea originală', viewRaw: 'Vezi datele originale', videoGoOriginal: 'Videoclip · deschide postarea originală pentru a viziona' },
   vi: { translate: '🌐 Dịch', hide: '🌐 Ẩn bản dịch', page: '🌐 Dịch trang này', loading: 'Đang dịch…', fail: 'Lỗi dịch', viewOriginal: 'Xem bài gốc', viewRaw: 'Xem dữ liệu gốc', videoGoOriginal: 'Video · mở bài gốc để xem' },
   ko: { translate: '🌐 번역', hide: '🌐 번역 숨기기', page: '🌐 이 페이지 번역', loading: '번역 중…', fail: '번역 실패', viewOriginal: '원본 게시물 보기', viewRaw: '원본 데이터 보기', videoGoOriginal: '동영상 · 원본 게시물에서 시청하세요' },
+  th: { translate: '🌐 แปล', hide: '🌐 ซ่อนคำแปล', page: '🌐 แปลหน้านี้', loading: 'กำลังแปล…', fail: 'แปลไม่สำเร็จ', viewOriginal: 'ดูโพสต์ต้นฉบับ', viewRaw: 'ดูข้อมูลต้นฉบับ', videoGoOriginal: 'วิดีโอ · เปิดโพสต์ต้นฉบับเพื่อดู' },
 };
 function trUI(key, lang) {
   const set = TR_UI[lang] || TR_UI.zh;
