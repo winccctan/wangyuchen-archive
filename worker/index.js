@@ -18,12 +18,14 @@ export default {
     }
 
     if (url.pathname === '/translate') {
+      if (!isSameSite(request)) return forbiddenNotSameSite();
       return handleTranslate(request, url, env, ctx);
     }
 
     // 手动触发抓取：POST /scrape → 经 GitHub API 触发仓库的 scrape.yml 工作流。
     // 这样前端的「刷新」按钮和「页面加载」都能真正去抓一次，而不是只重载旧静态数据。
     if (url.pathname === '/scrape' && request.method === 'POST') {
+      if (!isSameSite(request)) return forbiddenNotSameSite();
       return handleScrape(env);
     }
 
@@ -40,6 +42,36 @@ export default {
     return new Response('Not Found', { status: 404 });
   }
 };
+
+/* ------------------------- 同站校验（防脚本滥用功能接口） -------------------------
+ * /translate（消耗 Workers AI 额度）与 /scrape（触发 GitHub Actions，消耗 CI 分钟数）
+ * 只应被「本站页面」调用。外部脚本（curl / 扫描器）直接拒绝。
+ * 判定（满足任一即放行）：
+ *   ① Origin 或 Referer 的 host 是本站域名（idol.wyc0518.cc，含 localhost 便于本地预览）；
+ *   ② Sec-Fetch-Site 为 same-origin / same-site（现代浏览器 fetch 必带，脚本不会伪造）；
+ *   ③ Sec-Fetch-Mode 为 navigate（地址栏直接打开，便于人工调试）。
+ * 正常粉丝在站点里点「翻译」「刷新」一定满足 ①，因此不会被误伤。
+ */
+const SITE_HOSTS = new Set(['idol.wyc0518.cc', 'localhost', '127.0.0.1']);
+function isSameSite(request) {
+  const host = (h) => (h || '').toLowerCase();
+  const origin = request.headers.get('Origin');
+  const referer = request.headers.get('Referer');
+  for (const raw of [origin, referer]) {
+    if (!raw) continue;
+    try {
+      if (SITE_HOSTS.has(host(new URL(raw).hostname))) return true;
+    } catch (_) { /* 非法的 Origin/Referer，忽略 */ }
+  }
+  const site = (request.headers.get('Sec-Fetch-Site') || '').toLowerCase();
+  if (site === 'same-origin' || site === 'same-site') return true;
+  const mode = (request.headers.get('Sec-Fetch-Mode') || '').toLowerCase();
+  if (mode === 'navigate') return true;
+  return false;
+}
+function forbiddenNotSameSite() {
+  return json({ error: 'forbidden: same-site only' }, 403);
+}
 
 // 静态资源缓存策略：
 //   HTML 与 /data/ 下的数据文件 → 强制「每次都向服务器校验」（no-cache + must-revalidate），
