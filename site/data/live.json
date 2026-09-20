@@ -5,7 +5,7 @@
       "coverPath": "/2026/0921/89653517xyf79hnm5rbkd0c8ocy9qokn.jpg",
       "title": "1",
       "liveType": 1,
-      "status": 2,
+      "status": 3,
       "ctime": "1789920909810",
       "userInfo": {
         "userId": "89653517",
@@ -39,7 +39,8 @@
       "coverHeight": 1104,
       "onlineUserNum": 659,
       "agentId": "0",
-      "playUrl": "rtmp://idol.tv.48.cn/asia-snh48-4/snh48-89653517?wsSecret=2aacd3190c60baf90aa86d15dff2396a&wsTime=6ab00d80&keeptime=14400"
+      "playUrl": "rtmp://idol.tv.48.cn/asia-snh48-4/snh48-89653517?wsSecret=2aacd3190c60baf90aa86d15dff2396a&wsTime=6ab00d80&keeptime=14400",
+      "endedInferred": true
     },
     {
       "liveId": "1308173113268965376",
