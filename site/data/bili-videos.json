@@ -1,6 +1,6 @@
 {
-  "updatedAt": "2026-09-20T17:30:49.861Z",
-  "count": 698,
+  "updatedAt": "2026-09-20T17:34:32.517Z",
+  "count": 711,
   "targets": [
     {
       "mid": "2086351451",
@@ -17,7 +17,7 @@
     "2086351451:season:4158846": 20,
     "2086351451:season:4158274": 3,
     "1315101:series:967578": 4,
-    "1315101:space": 4
+    "1315101:space": 5
   },
   "videos": [
     {
@@ -5595,6 +5595,110 @@
       "aid": 113147390265460,
       "title": "【GNZ48】20240916 Team G《瑶光之迹》公演（『燃烧吧，团魂』第二季 候选队长剧场竞演 ：方琪）",
       "created": 1726496171,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1GU4De4En1",
+      "aid": 113142893907935,
+      "title": "【GNZ48】20240915 Team Z《斗宿之诀》公演",
+      "created": 1726426906,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV11r4SeGEio",
+      "aid": 113141753055086,
+      "title": "【GNZ48】20240915 偶像研究计划G组《剧场女神》首演第一场",
+      "created": 1726408673,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1u8tge3ExG",
+      "aid": 113137072212185,
+      "title": "【GNZ48】20240914 Team Z《斗宿之诀》公演",
+      "created": 1726336609,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV137pze5E8q",
+      "aid": 113102947353497,
+      "title": "【GNZ48】20240908 Team G《瑶光之迹》公演",
+      "created": 1725816599,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1TnpqeeEoD",
+      "aid": 113102074937680,
+      "title": "【GNZ48】20240908 Team NIII《天枢之弈》公演",
+      "created": 1725803272,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1S2pheHEpP",
+      "aid": 113097477982019,
+      "title": "【GNZ48】20240907 Team G《瑶光之迹》张琼予2023年季度MVP公演",
+      "created": 1725732437,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1iWp4eQE4F",
+      "aid": 113096052051595,
+      "title": "【GNZ48】20240907 Team Z《斗宿之诀》公演",
+      "created": 1725710614,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1e3HdebEHJ",
+      "aid": 113091924725458,
+      "title": "【GNZ48】20240906 Team NIII《天枢之弈》公演",
+      "created": 1725647988,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV19cpGegEyS",
+      "aid": 113086103031173,
+      "title": "【GNZ48】20240905 偶像研究计划F组《让梦想闪耀》千秋乐公演（升格成员纪念舞台）",
+      "created": 1725558807,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV11dHieoEiw",
+      "aid": 113063168639587,
+      "title": "【GNZ48】20240901 Team Z《斗宿之诀》公演",
+      "created": 1725209471,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1VjHvevEyV",
+      "aid": 113062111609140,
+      "title": "【GNZ48】20240901 Team NIII《天枢之弈》公演",
+      "created": 1725192688,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV113HwefEno",
+      "aid": 113057665648732,
+      "title": "【GNZ48】20240831《ONLY ONE》农燕萍毕业公演",
+      "created": 1725126496,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1CVHFeSEuJ",
+      "aid": 113056541575118,
+      "title": "【GNZ48】20240831 Team G《瑶光之迹》公演",
+      "created": 1725108142,
       "duration": 0,
       "mid": "1315101"
     },
