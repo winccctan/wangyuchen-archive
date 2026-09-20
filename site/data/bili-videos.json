@@ -1,6 +1,6 @@
 {
-  "updatedAt": "2026-09-20T07:01:34.425Z",
-  "count": 684,
+  "updatedAt": "2026-09-20T10:06:32.811Z",
+  "count": 698,
   "targets": [
     {
       "mid": "2086351451",
@@ -17,7 +17,7 @@
     "2086351451:season:4158846": 20,
     "2086351451:season:4158274": 3,
     "1315101:series:967578": 4,
-    "1315101:space": 3
+    "1315101:space": 4
   },
   "videos": [
     {
@@ -5483,6 +5483,118 @@
       "aid": 113236510770199,
       "title": "【GNZ48】20241001 Team Z 金牛座&巨蟹座生日冷餐会（陈珊玲 罗寒月 丁嘉欣）",
       "created": 1727853174,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1mX4AeEE49",
+      "aid": 113233172172715,
+      "title": "【GNZ48】20241001 偶像研究计划G组《剧场女神》公演",
+      "created": 1727803362,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV13VxveGEY7",
+      "aid": 113232199094102,
+      "title": "【GNZ48】20241001 Team Z《斗宿之诀》金牛座&巨蟹座生日公演（陈珊玲 罗寒月 丁嘉欣）",
+      "created": 1727788336,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1G9x2eCE2d",
+      "aid": 113222115918611,
+      "title": "【GNZ48】20240928 Team Z《斗宿之诀》公演",
+      "created": 1727634179,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1vSxqesEUT",
+      "aid": 113215522475950,
+      "title": "【GNZ48】20240928 Team NIII《天枢之弈》公演",
+      "created": 1727534387,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1tTxKeXE2o",
+      "aid": 113214129964486,
+      "title": "【GNZ48】20240927 Team G《瑶光之迹》公演",
+      "created": 1727512357,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1SQxJeFEgY",
+      "aid": 113204919272767,
+      "title": "【GNZ48】20240926 偶像研究计划G组《剧场女神》公演",
+      "created": 1727371858,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1t8syetEGr",
+      "aid": 113182370696143,
+      "title": "【GNZ48】20240922 Team NIII《天枢之弈》公演",
+      "created": 1727028216,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV17bsCegEqz",
+      "aid": 113181162800409,
+      "title": "【GNZ48】20240922 Team G《瑶光之迹》公演",
+      "created": 1727009889,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1hSt1e5EBA",
+      "aid": 113176750328918,
+      "title": "【GNZ48】20240921 Team Z《斗宿之诀》公演（『燃烧吧，团魂』第二季 候选队长剧场竞演 ：程戈 龙亦瑞）",
+      "created": 1726943050,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV17LtyeUEYx",
+      "aid": 113175626253310,
+      "title": "【GNZ48】20240921 Team NIII《天枢之弈》公演（『燃烧吧，团魂』第二季 候选队长剧场竞演 ：唐莉佳 张润 卢静 项宇婧）",
+      "created": 1726927164,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1CotzeLEs3",
+      "aid": 113174502245360,
+      "title": "【GNZ48】20240920 偶像研究计划G组《剧场女神》公演",
+      "created": 1726907631,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1Dhtve2EUq",
+      "aid": 113153782384845,
+      "title": "【GNZ48】20240917 Team NIII《天枢之弈》公演",
+      "created": 1726595615,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1GutieDErh",
+      "aid": 113153094452461,
+      "title": "【GNZ48】20240916 偶像研究计划G组《剧场女神》首演第二场",
+      "created": 1726582450,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1BBtsewEmU",
+      "aid": 113147390265460,
+      "title": "【GNZ48】20240916 Team G《瑶光之迹》公演（『燃烧吧，团魂』第二季 候选队长剧场竞演 ：方琪）",
+      "created": 1726496171,
       "duration": 0,
       "mid": "1315101"
     },

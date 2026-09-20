@@ -1,6 +1,52 @@
 {
   "messages": [
     {
+      "msgIdServer": "7402852750",
+      "msgTime": 1789897892897,
+      "msgType": "TEXT",
+      "text": "全部都拍完了！",
+      "reply": null,
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟",
+        "avatar": "/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif"
+      },
+      "raw": {
+        "bodys": "全部都拍完了！",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\",\"teamLogo\":\"/mediasource/teamLogo2/all/gnz48_n3.png\",\"avatar\":\"/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif\",\"level\":4,\"roleId\":3,\"vip\":false,\"pfUrl\":\"/backstage/2025/0822/aiy8n5febvwm8b435ysn8nk.png\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "TEXT"
+      }
+    },
+    {
+      "msgIdServer": "7402738260",
+      "msgTime": 1789897882641,
+      "msgType": "TEXT",
+      "text": "我已经下班啦！",
+      "reply": null,
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟",
+        "avatar": "/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif"
+      },
+      "raw": {
+        "bodys": "我已经下班啦！",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\",\"teamLogo\":\"/mediasource/teamLogo2/all/gnz48_n3.png\",\"avatar\":\"/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif\",\"level\":4,\"roleId\":3,\"vip\":false,\"pfUrl\":\"/backstage/2025/0822/aiy8n5febvwm8b435ysn8nk.png\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "TEXT"
+      }
+    },
+    {
       "msgIdServer": "7401853797",
       "msgTime": 1789829941387,
       "msgType": "TEXT",
