@@ -17,6 +17,11 @@ export default {
       });
     }
 
+    // 翻译使用统计（站长自己看：浏览器打开 https://idol.wyc0518.cc/stats）
+    if (url.pathname === '/stats' || url.pathname === '/stats/') {
+      return handleStats(env);
+    }
+
     if (url.pathname === '/translate') {
       if (!isSameSite(request)) return forbiddenNotSameSite();
       return handleTranslate(request, url, env, ctx);
@@ -99,10 +104,53 @@ function applyFreshPolicy(res, url) {
 const SRC_LANG = 'zh';
 const AI_MODEL = '@cf/meta/m2m100-1.2b';
 
+/* ------------------------- 翻译使用统计（存 KV，供 /stats 查看） -------------------------
+ * 复用已绑定的 KV 命名空间 env.SECRETS（本来只存 GH_TOKEN），键统一加 `stat:tr:` 前缀：
+ *   stat:tr:total              累计调用次数
+ *   stat:tr:lang:<tl>          按目标语言累计
+ *   stat:tr:day:<YYYY-MM-DD>   按北京时间每日次数
+ *   stat:tr:u:<day>:<ipHash>   当日出现的独立访客（只存 IP 的短哈希，不落明文 IP）
+ * 统计失败一律静默（绝不能影响翻译本身）。
+ */
+const LANGS = ['en', 'es', 'fr', 'nl', 'pt', 'ro', 'ja', 'vi', 'ko', 'th'];
+const LANG_NAME = { en: '英语', es: '西班牙语', fr: '法语', nl: '荷兰语', pt: '葡萄牙语', ro: '罗马尼亚语', ja: '日语', vi: '越南语', ko: '韩语', th: '泰语' };
+function p2(n) { return String(n).padStart(2, '0'); }
+function bjDay(ts) { // 北京时间日期
+  const d = new Date((ts == null ? Date.now() : ts) + 8 * 3600 * 1000);
+  return `${d.getUTCFullYear()}-${p2(d.getUTCMonth() + 1)}-${p2(d.getUTCDate())}`;
+}
+async function shortHash(s) {
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(s)));
+  return Array.from(new Uint8Array(d)).slice(0, 8).map((x) => x.toString(16).padStart(2, '0')).join('');
+}
+async function incKV(kv, k) {
+  const n = Number((await kv.get(k)) || 0) + 1;
+  await kv.put(k, String(n));
+}
+async function bumpStat(env, tl, request) {
+  try {
+    const kv = env && env.SECRETS;
+    if (!kv || typeof kv.get !== 'function') return;
+    const day = bjDay();
+    const ip = (request.headers.get('cf-connecting-ip') || request.headers.get('x-forwarded-for') || '?').split(',')[0].trim();
+    await incKV(kv, 'stat:tr:total');
+    await incKV(kv, 'stat:tr:lang:' + tl);
+    await incKV(kv, 'stat:tr:day:' + day);
+    await kv.put(`stat:tr:u:${day}:${await shortHash(ip)}`, '1');
+  } catch (_) { /* 统计失败不影响翻译 */ }
+}
+
 async function handleTranslate(request, url, env, ctx) {
   const q = url.searchParams.get('q');
   const tl = url.searchParams.get('tl') || 'en';
   if (!q) return json({ error: 'missing q' }, 400);
+
+  // 成功返回前顺手记一次统计（waitUntil 不阻塞响应）
+  const ok = (obj) => {
+    if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(bumpStat(env, tl, request));
+    else bumpStat(env, tl, request).catch(() => {});
+    return respondCached(obj, cache, cacheKey, ctx);
+  };
 
   // 边缘缓存：同一段文本 24h 内不再重复推理/回源（省 AI 额度、降延迟）
   const cache = caches.default;
@@ -116,7 +164,7 @@ async function handleTranslate(request, url, env, ctx) {
       const out = await env.AI.run(AI_MODEL, { text: q, source_lang: SRC_LANG, target_lang: tl });
       const text = out && (out.translated_text || out.response || out.result);
       if (text && String(text).trim()) {
-        return respondCached({ text: String(text).trim(), via: 'workers-ai' }, cache, cacheKey, ctx);
+        return ok({ text: String(text).trim(), via: 'workers-ai' });
       }
     } catch (e) {
       // 落 Google 兜底
@@ -141,13 +189,70 @@ async function handleTranslate(request, url, env, ctx) {
     if (!/<html/i.test(body)) {
       const d = JSON.parse(body);
       const text = ((d && d[0]) || []).map((s) => s[0]).join('');
-      if (text) return respondCached({ text, via: 'google' }, cache, cacheKey, ctx);
+      if (text) return ok({ text, via: 'google' });
     }
   } catch (e) {
     // 忽略
   }
 
   return json({ error: 'translate-failed' }, 502);
+}
+
+// 站长查看翻译使用情况：返回一张简单表格（累计次数 / 各语言 / 最近 7 天次数与独立访客）
+async function handleStats(env) {
+  const kv = env && env.SECRETS;
+  const html = (s) => new Response(s, {
+    headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' }
+  });
+  if (!kv || typeof kv.get !== 'function') {
+    return html('<meta charset="utf-8"><p>统计未启用：Worker 未绑定 KV 命名空间。</p>');
+  }
+  const total = Number((await kv.get('stat:tr:total')) || 0);
+
+  const langRows = [];
+  for (const l of LANGS) {
+    const n = Number((await kv.get('stat:tr:lang:' + l)) || 0);
+    if (n > 0) langRows.push([l, n]);
+  }
+  langRows.sort((a, b) => b[1] - a[1]);
+
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const d = bjDay(Date.now() - i * 86400000);
+    const n = Number((await kv.get('stat:tr:day:' + d)) || 0);
+    let u = 0;
+    try {
+      const list = await kv.list({ prefix: `stat:tr:u:${d}:` });
+      u = (list && list.keys ? list.keys.length : 0);
+    } catch (_) { /* 忽略 */ }
+    days.push([d, n, u]);
+  }
+
+  const langHtml = langRows.length
+    ? langRows.map(([l, n]) => `<tr><td>${LANG_NAME[l] || l}</td><td class="n">${n}</td></tr>`).join('')
+    : '<tr><td colspan="2" class="dim">暂无记录</td></tr>';
+  const dayHtml = days.map(([d, n, u]) => `<tr><td>${d}</td><td class="n">${n}</td><td class="n">${u}</td></tr>`).join('');
+
+  return html(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>翻译使用统计</title>
+<style>
+ body{font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:#12131a;color:#e8eaf2;margin:0;padding:24px}
+ h1{font-size:19px;margin:0 0 4px} .dim{color:#8b90a0;font-size:13px;margin:0 0 18px}
+ .cards{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px}
+ .card{background:#1c1f2b;border-radius:12px;padding:14px 18px;min-width:120px}
+ .card .k{font-size:12px;color:#8b90a0} .card .v{font-size:24px;font-weight:700;margin-top:4px}
+ h2{font-size:15px;margin:18px 0 8px}
+ table{border-collapse:collapse;width:100%;max-width:520px;background:#1c1f2b;border-radius:10px;overflow:hidden}
+ td{padding:8px 12px;border-bottom:1px solid #2a2e3d;font-size:14px}
+ tr:last-child td{border-bottom:none} td.n{text-align:right;font-variant-numeric:tabular-nums}
+</style>
+<h1>翻译功能使用统计</h1>
+<p class="dim">累计统计自启用之时；独立访客按 IP 短哈希去重估算（不保存明文 IP）。KV 有约 1 分钟同步延迟。</p>
+<div class="cards"><div class="card"><div class="k">累计翻译次数</div><div class="v">${total}</div></div>
+<div class="card"><div class="k">今日次数</div><div class="v">${days[0][1]}</div></div>
+<div class="card"><div class="k">今日独立访客</div><div class="v">${days[0][2]}</div></div></div>
+<h2>各语言使用次数</h2><table>${langHtml}</table>
+<h2>最近 7 天</h2><table><tr><td>日期</td><td class="n">次数</td><td class="n">独立访客</td></tr>${dayHtml}</table>`);
 }
 
 // 手动触发抓取：调用 GitHub REST API 触发 scrape.yml 的 workflow_dispatch。
