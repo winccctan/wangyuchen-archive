@@ -145,18 +145,19 @@ async function handleTranslate(request, url, env, ctx) {
   const tl = url.searchParams.get('tl') || 'en';
   if (!q) return json({ error: 'missing q' }, 400);
 
-  // 成功返回前顺手记一次统计（waitUntil 不阻塞响应）
-  const ok = (obj) => {
+  // 记一次使用（waitUntil 不阻塞响应）。注意：**缓存命中也要计数**，
+  // 否则同一段文字被多人反复翻译只会记 1 次，统计严重偏低。
+  const count = () => {
     if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(bumpStat(env, tl, request));
     else bumpStat(env, tl, request).catch(() => {});
-    return respondCached(obj, cache, cacheKey, ctx);
   };
+  const ok = (obj) => { count(); return respondCached(obj, cache, cacheKey, ctx); };
 
   // 边缘缓存：同一段文本 24h 内不再重复推理/回源（省 AI 额度、降延迟）
   const cache = caches.default;
   const cacheKey = new Request(url.toString(), { method: 'GET' });
   const hit = await cache.match(cacheKey);
-  if (hit) return hit;
+  if (hit) { count(); return hit; }
 
   // 1) Workers AI（Cloudflare 边缘自推理）
   if (env && env.AI) {
