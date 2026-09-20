@@ -39,8 +39,9 @@
       "coverHeight": 1104,
       "onlineUserNum": 659,
       "agentId": "0",
-      "playUrl": "rtmp://idol.tv.48.cn/asia-snh48-4/snh48-89653517?wsSecret=2aacd3190c60baf90aa86d15dff2396a&wsTime=6ab00d80&keeptime=14400",
-      "endedInferred": true
+      "playUrl": "https://idol-vod.48.cn/89653517/20260921/cy/1308586395016433664-s0wod3exq7g7c36ourfz.m3u8",
+      "endedInferred": true,
+      "duration": "30:25"
     },
     {
       "liveId": "1308173113268965376",

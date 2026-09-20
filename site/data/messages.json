@@ -1,6 +1,35 @@
 {
   "messages": [
     {
+      "msgIdServer": "7403491372",
+      "msgTime": 1789922775377,
+      "msgType": "LIVEPUSH",
+      "text": "",
+      "reply": null,
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": {
+        "kind": "live",
+        "title": "1",
+        "desc": "",
+        "pic": "/2026/0921/89653517xu614shr91vg4v8y2129tek8.jpg",
+        "url": "live/playdetail?id=1308594215547899904"
+      },
+      "duration": 0,
+      "sender": {
+        "userId": 89653517,
+        "nickname": "GNZ48-王语晨",
+        "avatar": "/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif"
+      },
+      "raw": {
+        "bodys": "{\"livePushInfo\":{\"liveCover\":\"/2026/0921/89653517xu614shr91vg4v8y2129tek8.jpg\",\"liveTitle\":\"1\",\"liveId\":\"1308594215547899904\",\"shortPath\":\"live/playdetail?id\\u003d1308594215547899904\"},\"messageType\":\"LIVEPUSH\"}",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"GNZ48-王语晨\",\"teamLogo\":\"/mediasource/teamLogo2/all/gnz48_n3.png\",\"avatar\":\"/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif\",\"badge\":[],\"level\":4,\"roleId\":3,\"vip\":false,\"pfUrl\":\"\"},\"monthCardBadge\":{}}",
+        "msgType": "LIVEPUSH"
+      }
+    },
+    {
       "msgIdServer": "7403590364",
       "msgTime": 1789922754288,
       "msgType": "TEXT",
