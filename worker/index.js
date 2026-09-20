@@ -48,9 +48,10 @@ export default {
  * 只应被「本站页面」调用。外部脚本（curl / 扫描器）直接拒绝。
  * 判定（满足任一即放行）：
  *   ① Origin 或 Referer 的 host 是本站域名（idol.wyc0518.cc，含 localhost 便于本地预览）；
- *   ② Sec-Fetch-Site 为 same-origin / same-site（现代浏览器 fetch 必带，脚本不会伪造）；
- *   ③ Sec-Fetch-Mode 为 navigate（地址栏直接打开，便于人工调试）。
- * 正常粉丝在站点里点「翻译」「刷新」一定满足 ①，因此不会被误伤。
+ *   ② Sec-Fetch-Site 为 same-origin / same-site（现代浏览器 fetch 必带，脚本不会伪造）。
+ * 正常粉丝在站点里点「翻译」「刷新」一定满足 ①（同源 fetch 必带 Referer）或 ②，不会被误伤；
+ * 脚本 / 无头浏览器 / 第三方代抓一律拒绝 —— 它们不是同源，拿不到 same-origin，也不会带本站 Referer。
+ * （初版曾放行 Sec-Fetch-Mode: navigate 方便调试，结果无头浏览器代抓也能绕过，已移除。）
  */
 const SITE_HOSTS = new Set(['idol.wyc0518.cc', 'localhost', '127.0.0.1']);
 function isSameSite(request) {
@@ -64,10 +65,7 @@ function isSameSite(request) {
     } catch (_) { /* 非法的 Origin/Referer，忽略 */ }
   }
   const site = (request.headers.get('Sec-Fetch-Site') || '').toLowerCase();
-  if (site === 'same-origin' || site === 'same-site') return true;
-  const mode = (request.headers.get('Sec-Fetch-Mode') || '').toLowerCase();
-  if (mode === 'navigate') return true;
-  return false;
+  return site === 'same-origin' || site === 'same-site';
 }
 function forbiddenNotSameSite() {
   return json({ error: 'forbidden: same-site only' }, 403);
