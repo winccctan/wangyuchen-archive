@@ -793,10 +793,10 @@ async function checkForUpdates() {
       showToast('⚠️ 连接服务器失败，请稍后再试', true);
     }
 
-    // 3) 抓取 → 提交 → Cloudflare 部署这一条链路通常 3~5 分钟（抓取 1~2 + 构建 ~1 + 部署 1~3）。
-    //    这里最多自动等 6 分钟，确保数据真正部署上线后再弹「已同步」，
-    //    避免粉丝在部署完成前查看误以为刷新没生效；超时或已是最新就释放按钮，不把刷新键锁死。
-    const deadline = Date.now() + 360 * 1000;
+    // 3) 现在数据走 KV：抓取 2~4 分钟（慢的时候见过 7 分钟）+ KV 写入传播最长约 60 秒。
+    //    窗口给足 10 分钟，避免「明明抓到了却等到超时」；按钮在 60 秒时就已还给粉丝
+    //    （见下面的 release()），这里只是继续静默等待，不阻塞任何操作。
+    const deadline = Date.now() + 600 * 1000;
     let waited = 0, updated = false;
     while (Date.now() < deadline) {
       await sleep(10000); waited += 10;
@@ -818,7 +818,7 @@ async function checkForUpdates() {
     }
     // 等完还没变化就明确告诉粉丝结果，避免「点了没反应」的困惑
     if (!updated) {
-      showToast(triggered ? '✅ 已是最新，暂无新内容' : '抓取刚跑过，稍后再点一次');
+      showToast(triggered ? '⏳ 已触发抓取，约 3~5 分钟后刷新即可看到最新' : '抓取刚跑过，稍后再点一次');
     }
   } finally {
     release();
