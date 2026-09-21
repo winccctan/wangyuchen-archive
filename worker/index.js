@@ -22,6 +22,11 @@ export default {
       return handleStats(url, env);
     }
 
+    // 统计页面只放 GitHub Pages 备份站；主域名上直接当作不存在（备份站不经 Worker，不受影响）
+    if (url.pathname === '/stats.html') {
+      return new Response('Not Found', { status: 404 });
+    }
+
     if (url.pathname === '/translate') {
       if (!isSameSite(request)) return forbiddenNotSameSite();
       return handleTranslate(request, url, env, ctx);

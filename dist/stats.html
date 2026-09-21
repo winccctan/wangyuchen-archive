@@ -1,0 +1,99 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>翻译功能使用统计</title>
+<style>
+ body{font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:#12131a;color:#e8eaf2;margin:0;padding:24px;max-width:640px}
+ h1{font-size:19px;margin:0 0 4px}
+ .dim{color:#8b90a0;font-size:13px;margin:0 0 18px;line-height:1.6}
+ .cards{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px}
+ .card{background:#1c1f2b;border-radius:12px;padding:14px 18px;min-width:120px;flex:1}
+ .card .k{font-size:12px;color:#8b90a0}
+ .card .v{font-size:24px;font-weight:700;margin-top:4px}
+ h2{font-size:15px;margin:18px 0 8px}
+ table{border-collapse:collapse;width:100%;background:#1c1f2b;border-radius:10px;overflow:hidden}
+ td{padding:8px 12px;border-bottom:1px solid #2a2e3d;font-size:14px}
+ tr:last-child td{border-bottom:none}
+ td.n{text-align:right;font-variant-numeric:tabular-nums}
+ .err{color:#ff9a9a;font-size:14px}
+ #gate{max-width:320px}
+ #gate input{width:100%;padding:10px 12px;font-size:15px;border-radius:8px;border:1px solid #2a2e3d;background:#1c1f2b;color:#e8eaf2;box-sizing:border-box}
+ #gate button{margin-top:10px;width:100%;padding:10px;font-size:15px;border:0;border-radius:8px;background:#4a7cf7;color:#fff;cursor:pointer}
+</style>
+
+<h1>翻译功能使用统计</h1>
+
+<div id="gate">
+  <p class="dim">请输入查看密码：</p>
+  <input id="pw" type="password" placeholder="密码" autocomplete="current-password">
+  <button id="go" type="button">查看统计</button>
+  <p class="err" id="msg"></p>
+</div>
+
+<div id="body" hidden></div>
+
+<script>
+// 密码校验：只存口令的 SHA-256，页面源码里看不到明文
+const PASS_SHA = '8467bba9db22598f009c67ae66a21b1a6f39893779233f5d63c3e2274698babc';
+const API = 'https://idol.wyc0518.cc/stats?k=wyc-stats-2026&format=json';
+
+async function sha256(s) {
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+  return Array.from(new Uint8Array(d)).map(x => x.toString(16).padStart(2, '0')).join('');
+}
+
+function render(d) {
+  const cards =
+    '<div class="cards">' +
+      '<div class="card"><div class="k">累计翻译次数</div><div class="v">' + d.total + '</div></div>' +
+      '<div class="card"><div class="k">今日次数</div><div class="v">' + d.today.count + '</div></div>' +
+      '<div class="card"><div class="k">今日独立访客</div><div class="v">' + d.today.visitors + '</div></div>' +
+    '</div>';
+  const langRows = (d.langs && d.langs.length)
+    ? d.langs.map(l => '<tr><td>' + l.name + '</td><td class="n">' + l.count + '</td></tr>').join('')
+    : '<tr><td colspan="2" class="dim">暂无记录</td></tr>';
+  const dayRows = (d.days || [])
+    .map(x => '<tr><td>' + x.day + '</td><td class="n">' + x.count + '</td><td class="n">' + x.visitors + '</td></tr>').join('');
+
+  const el = document.getElementById('body');
+  el.innerHTML =
+    '<p class="dim">「独立访客」按 IP 短哈希去重估算（不保存明文 IP），同一 WiFi 下多人会算作 1 人，实际人数只会更多。数据约 1 分钟同步延迟。</p>' +
+    cards +
+    '<h2>各语言使用次数</h2><table>' + langRows + '</table>' +
+    '<h2>最近 7 天</h2><table><tr><td>日期</td><td class="n">次数</td><td class="n">独立访客</td></tr>' + dayRows + '</table>';
+  el.hidden = false;
+}
+
+async function load() {
+  try {
+    const r = await fetch(API);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    render(await r.json());
+  } catch (e) {
+    document.getElementById('body').innerHTML = '<p class="err">读取失败：' + e.message + '。请确认补档站在线，或稍后再试。</p>';
+    document.getElementById('body').hidden = false;
+  }
+}
+
+async function submit() {
+  const v = document.getElementById('pw').value || '';
+  if (await sha256(v) === PASS_SHA) {
+    localStorage.setItem('statsPw', '1');
+    document.getElementById('gate').hidden = true;
+    load();
+  } else {
+    document.getElementById('msg').textContent = '密码不对';
+  }
+}
+
+document.getElementById('go').addEventListener('click', submit);
+document.getElementById('pw').addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
+
+// 本机已输过密码就免输（只记在本机浏览器里）
+if (localStorage.getItem('statsPw') === '1') {
+  document.getElementById('gate').hidden = true;
+  load();
+} else {
+  document.getElementById('pw').focus();
+}
+</script>
