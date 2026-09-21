@@ -93,6 +93,7 @@ async function main() {
   delete meta.counts;
   const social = parseGlobalJs('social-media.js', 'SOCIAL_MEDIA') || [];
   const perfCuts = parseGlobalJs('performance-cuts.js', 'PERF_CUTS') || { cuts: [] };
+  const liveCuts = parseGlobalJs('live-cuts.js', 'LIVE_CUTS') || { cuts: [] };
 
   const now = Date.now();
   const cutoff = now - WINDOW_DAYS * 86400000;
@@ -113,7 +114,7 @@ async function main() {
   const perfPush = REBUILD ? performances : performances.filter((x) => Number(x.stime || x.ctime || 0) >= cutoff);
 
   console.log(`[sync-kv] 源：发言 ${messages.length} 条 / 直播 ${live.length} 条 / 公演 ${performances.length} 条`
-    + ` | 社媒美图 ${social.length} 条 | 公演 cut ${(perfCuts.cuts || []).length} 条`);
+    + ` | 社媒美图 ${social.length} 条 | 公演 cut ${(perfCuts.cuts || []).length} 条 | 直播切片 ${(liveCuts.cuts || []).length} 条`);
   console.log(`[sync-kv] 窗口：最近 ${WINDOW_DAYS} 天（${REBUILD ? '★ --rebuild 重建模式' : (FULL ? '★ --full 全量月份' : startMonth + ' 起')}）`
     + ` → 发言 ${[...byMonth.values()].reduce((a, b) => a + b.length, 0)} 条 / ${byMonth.size} 个月，`
     + `直播 ${livePush.length} 条，公演 ${perfPush.length} 条`);
@@ -127,6 +128,7 @@ async function main() {
   if (perfPush.length) parts.push({ name: 'performances', body: { performances: perfPush, ...(REBUILD ? { replace: ['live', 'performances'] } : {}) }, size: JSON.stringify(perfPush).length });
   if (social.length) parts.push({ name: 'social', body: { social }, size: JSON.stringify(social).length });
   if (perfCuts && (perfCuts.cuts || []).length) parts.push({ name: 'perf-cuts', body: { perfCuts }, size: JSON.stringify(perfCuts).length });
+  if (liveCuts && (liveCuts.cuts || []).length) parts.push({ name: 'live-cuts', body: { liveCuts }, size: JSON.stringify(liveCuts).length });
   parts.push({ name: 'meta', body: { meta }, size: JSON.stringify(meta).length });
 
   const batches = [];
@@ -141,7 +143,7 @@ async function main() {
   }
 
   let totalBytes = 0;
-  const agg = { dataChanged: false, indexWritten: false, months: {}, live: null, performances: null, social: null, perfCuts: null, counts: null, updatedAt: 0 };
+  const agg = { dataChanged: false, indexWritten: false, months: {}, live: null, performances: null, social: null, perfCuts: null, liveCuts: null, counts: null, updatedAt: 0 };
   for (let i = 0; i < batches.length; i++) {
     const b = batches[i];
     // 注意：同一批里可能有多个「月份」分片，必须逐个合并进同一个 months 对象；
@@ -171,7 +173,7 @@ async function main() {
         const a = agg.months[m] || { total: 0, added: 0, wrote: false };
         agg.months[m] = { total: v.total, added: a.added + v.added, wrote: a.wrote || v.wrote };
       }
-      for (const k of ['live', 'performances', 'social', 'perfCuts']) {
+      for (const k of ['live', 'performances', 'social', 'perfCuts', 'liveCuts']) {
         const v = out.wrote[k];
         if (!v) continue;
         const a = agg[k] || { total: 0, added: 0, updated: 0, wrote: false };
