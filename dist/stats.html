@@ -68,21 +68,37 @@ function render(d) {
   el.hidden = false;
 }
 
-async function load() {
+function showErr(msg) {
+  const el = document.getElementById('body');
+  el.innerHTML = '<p class="err">' + msg + ' <button id="retry" type="button">重试</button></p>';
+  el.hidden = false;
+  const b = document.getElementById('retry');
+  if (b) b.addEventListener('click', () => load(2));
+}
+
+// 带超时 + 自动重试（网络抖动 / 边缘节点偶发挂起时不会一直空白）
+async function load(retry = 2) {
+  const el = document.getElementById('body');
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 8000);
   try {
-    const r = await fetch(API);
+    const r = await fetch(API, { signal: ctl.signal, cache: 'no-store' });
+    clearTimeout(timer);
     if (!r.ok) throw new Error('HTTP ' + r.status);
     render(await r.json());
   } catch (e) {
-    document.getElementById('body').innerHTML = '<p class="err">读取失败：' + e.message + '。请确认补档站在线，或稍后再试。</p>';
-    document.getElementById('body').hidden = false;
+    clearTimeout(timer);
+    if (retry > 0) { setTimeout(() => load(retry - 1), 1200); return; }
+    showErr('读取失败（' + (e && e.message ? e.message : '未知错误') + '）。');
   }
 }
 
 async function submit() {
   const v = document.getElementById('pw').value || '';
-  if (await sha256(v) === PASS_SHA) {
-    localStorage.setItem('statsPw', '1');
+  let hash = '';
+  try { hash = await sha256(v); } catch (_) { hash = ''; }
+  if (hash && hash === PASS_SHA) {
+    try { localStorage.setItem('statsPw', '1'); } catch (_) { /* 隐私模式忽略 */ }
     document.getElementById('gate').hidden = true;
     load();
   } else {
@@ -93,11 +109,17 @@ async function submit() {
 document.getElementById('go').addEventListener('click', submit);
 document.getElementById('pw').addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
 
-// 本机已输过密码就免输（只记在本机浏览器里）
-if (localStorage.getItem('statsPw') === '1') {
-  document.getElementById('gate').hidden = true;
-  load();
-} else {
-  document.getElementById('pw').focus();
+// 启动：本机已输过密码就免输（只记在本机浏览器里）
+function boot() {
+  let seen = false;
+  try { seen = localStorage.getItem('statsPw') === '1'; } catch (_) { /* 隐私模式 */ }
+  if (seen) {
+    document.getElementById('gate').hidden = true;
+    load();
+  } else {
+    try { document.getElementById('pw').focus(); } catch (_) { /* 忽略 */ }
+  }
 }
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+else boot();
 </script>
