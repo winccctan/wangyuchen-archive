@@ -1,6 +1,193 @@
 {
   "messages": [
     {
+      "msgIdServer": "7404540907",
+      "msgTime": 1789991538872,
+      "msgType": "REPLY",
+      "text": "完蛋 问到你这个最老实的了🫢",
+      "reply": {
+        "name": "GNZ48-王秭歆",
+        "text": "我们很诚实"
+      },
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟",
+        "avatar": "/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif"
+      },
+      "raw": {
+        "bodys": "{\"replyInfo\":{\"replyText\":\"我们很诚实\",\"replyName\":\"GNZ48-王秭歆\",\"replyMessageId\":\"4b171eb8-9e28-4d9a-a275-3cbf98953684\",\"text\":\"完蛋 问到你这个最老实的了🫢\"},\"messageType\":\"REPLY\"}",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\",\"teamLogo\":\"/mediasource/teamLogo2/all/gnz48_n3.png\",\"avatar\":\"/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif\",\"level\":4,\"roleId\":3,\"vip\":false,\"pfUrl\":\"/backstage/2025/0822/aiy8n5febvwm8b435ysn8nk.png\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "REPLY"
+      }
+    },
+    {
+      "msgIdServer": "7404491472",
+      "msgTime": 1789991514964,
+      "msgType": "TEXT",
+      "text": "我们很诚实",
+      "reply": null,
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "userId": 417329,
+        "nickname": "GNZ48-王秭歆",
+        "avatar": "/avatar/2025/0320/417329x17z9s4skd5m19o15vjjphih.jpg"
+      },
+      "raw": {
+        "bodys": "我们很诚实",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"3\",\"user\":{\"userId\":417329,\"nickName\":\"GNZ48-王秭歆\",\"teamLogo\":\"/mediasource/teamLogo2/all/gnz48_g.png\",\"avatar\":\"/avatar/2025/0320/417329x17z9s4skd5m19o15vjjphih.jpg\",\"level\":5,\"roleId\":3,\"vip\":false,\"pfUrl\":\"\"},\"bubbleId\":\"1109488974039945216\"}",
+        "msgType": "TEXT"
+      }
+    },
+    {
+      "msgIdServer": "7404474465",
+      "msgTime": 1789991471602,
+      "msgType": "TEXT",
+      "text": "来越南几天这都第二次了！",
+      "reply": null,
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟",
+        "avatar": "/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif"
+      },
+      "raw": {
+        "bodys": "来越南几天这都第二次了！",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\",\"teamLogo\":\"/mediasource/teamLogo2/all/gnz48_n3.png\",\"avatar\":\"/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif\",\"level\":4,\"roleId\":3,\"vip\":false,\"pfUrl\":\"/backstage/2025/0822/aiy8n5febvwm8b435ysn8nk.png\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "TEXT"
+      }
+    },
+    {
+      "msgIdServer": "7404556387",
+      "msgTime": 1789991464069,
+      "msgType": "TEXT",
+      "text": "我在广州出门都遇不到粉丝",
+      "reply": null,
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟",
+        "avatar": "/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif"
+      },
+      "raw": {
+        "bodys": "我在广州出门都遇不到粉丝",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\",\"teamLogo\":\"/mediasource/teamLogo2/all/gnz48_n3.png\",\"avatar\":\"/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif\",\"level\":4,\"roleId\":3,\"vip\":false,\"pfUrl\":\"/backstage/2025/0822/aiy8n5febvwm8b435ysn8nk.png\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "TEXT"
+      }
+    },
+    {
+      "msgIdServer": "7404491274",
+      "msgTime": 1789991453358,
+      "msgType": "TEXT",
+      "text": "就是！说好的小众女团呢",
+      "reply": null,
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟",
+        "avatar": "/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif"
+      },
+      "raw": {
+        "bodys": "就是！说好的小众女团呢",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\",\"teamLogo\":\"/mediasource/teamLogo2/all/gnz48_n3.png\",\"avatar\":\"/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif\",\"level\":4,\"roleId\":3,\"vip\":false,\"pfUrl\":\"/backstage/2025/0822/aiy8n5febvwm8b435ysn8nk.png\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "TEXT"
+      }
+    },
+    {
+      "msgIdServer": "7404458816",
+      "msgTime": 1789991430817,
+      "msgType": "TEXT",
+      "text": "what is snh48？",
+      "reply": null,
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟",
+        "avatar": "/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif"
+      },
+      "raw": {
+        "bodys": "what is snh48？",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\",\"teamLogo\":\"/mediasource/teamLogo2/all/gnz48_n3.png\",\"avatar\":\"/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif\",\"level\":4,\"roleId\":3,\"vip\":false,\"pfUrl\":\"/backstage/2025/0822/aiy8n5febvwm8b435ysn8nk.png\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "TEXT"
+      }
+    },
+    {
+      "msgIdServer": "7404556380",
+      "msgTime": 1789991421637,
+      "msgType": "TEXT",
+      "text": "要是我的话我就说 nonono",
+      "reply": null,
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟",
+        "avatar": "/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif"
+      },
+      "raw": {
+        "bodys": "要是我的话我就说 nonono",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\",\"teamLogo\":\"/mediasource/teamLogo2/all/gnz48_n3.png\",\"avatar\":\"/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif\",\"level\":4,\"roleId\":3,\"vip\":false,\"pfUrl\":\"/backstage/2025/0822/aiy8n5febvwm8b435ysn8nk.png\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "TEXT"
+      }
+    },
+    {
+      "msgIdServer": "7404491465",
+      "msgTime": 1789991412888,
+      "msgType": "TEXT",
+      "text": "是wzx说的！",
+      "reply": null,
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟",
+        "avatar": "/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif"
+      },
+      "raw": {
+        "bodys": "是wzx说的！",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\",\"teamLogo\":\"/mediasource/teamLogo2/all/gnz48_n3.png\",\"avatar\":\"/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif\",\"level\":4,\"roleId\":3,\"vip\":false,\"pfUrl\":\"/backstage/2025/0822/aiy8n5febvwm8b435ysn8nk.png\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "TEXT"
+      }
+    },
+    {
       "msgIdServer": "7404474614",
       "msgTime": 1789991267620,
       "msgType": "TEXT",
