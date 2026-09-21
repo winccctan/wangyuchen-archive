@@ -37,6 +37,6 @@
   // 注意：若 Cloudflare 是用「Connect Git」自动部署、未读取本文件的 cron，
   // 需在 Cloudflare 仪表板 Workers → 本 Worker → Settings → Triggers → Cron Triggers 手动加一条 */5。
   "triggers": {
-    "crons": ["*/5 * * * *"]
+    "crons": ["*/15 * * * *"]
   }
 }

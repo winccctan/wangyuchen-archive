@@ -5,7 +5,7 @@ name: 抓取并同步到 KV
 
 on:
   schedule:
-    - cron: '*/20 * * * *'         # 兜底：主调度是 Cloudflare Cron（每5分钟，见 wrangler.jsonc）
+    - cron: '*/30 * * * *'         # 兜底：主调度是 Cloudflare Cron（每15分钟，见 wrangler.jsonc）
   workflow_dispatch:
     inputs:
       rebuild:

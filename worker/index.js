@@ -289,6 +289,16 @@ async function handleTrack(url, request, env, ctx) {
         const kv = env && env.SECRETS;
         if (!kv || typeof kv.get !== 'function') return;
         const day = bjDay();
+        // ── 每日写入总闸 ──
+        // 统计是「锦上添花」，绝不能把 KV 每天 1000 次的写入额度抢光、连累数据同步
+        // （2026-09-22 事故）。超过上限就不再记录，页面照常用。
+        const gateKey = 'stat:gate:' + day;
+        const gateMax = 300;
+        let used = 0;
+        try { used = Number((await kv.get(gateKey)) || 0); } catch (_) { used = 0; }
+        if (used >= gateMax) return;
+        // 计数器本身也占写入 → 用 1/5 抽样自增（近似值，用于封顶足够）
+        if (Math.random() < 0.2) { try { await kv.put(gateKey, String(used + 5)); } catch (_) {} }
         const ip = (request.headers.get('cf-connecting-ip') || request.headers.get('x-forwarded-for') || '?').split(',')[0].trim();
         const hash = await shortHash(ip);
         await incKV(kv, 'stat:ev:' + ev);
@@ -576,6 +586,22 @@ function stableStringify(v) {
   return '{' + parts.join(',') + '}';
 }
 
+// 「每次抓取都会变、但不代表内容真的变了」的顶层字段。
+// ⚠️ live-cuts.js / performance-cuts.js 顶层都带 updatedAt（抓取时间），live-cuts 还带 progress（断点续传）。
+// 旧实现是拿整个 JSON 串比对，于是这两个键**每轮同步都被判定为「变了」→ 每轮都写**，
+// 还会把 dataChanged 置真、连 index 一起写 —— 一轮 3~4 写 × 288 轮/天，直接吃满
+// Cloudflare KV 免费版 1000 次写/天的额度（2026-09-22 事故根因）。
+// 比较「是否值得写盘」时剔除这些字段，只在真正的数据变化时才写。
+const VOLATILE_KEYS = ['updatedAt', 'lastUpdated', 'fetchedAt', 'generatedAt', 'progress'];
+function contentSig(v) {
+  if (v && typeof v === 'object' && !Array.isArray(v)) {
+    const o = {};
+    for (const k of Object.keys(v)) if (VOLATILE_KEYS.indexOf(k) < 0) o[k] = v[k];
+    return stableStringify(o);
+  }
+  return stableStringify(v);
+}
+
 function safeParseArr(s) {
   try {
     const v = JSON.parse(s);
@@ -760,7 +786,11 @@ async function replaceKey(kv, key, value) {
   const prevJson = await kv.get(key);
   const outJson = stableStringify(value);
   let wrote = false;
-  if (outJson !== prevJson) {
+  // 用 contentSig（剔除 updatedAt / progress 等易变字段）判断「内容是否真的变了」，
+  // 而不是比对整个 JSON 串 —— 否则每轮都会空写一次 KV。
+  let prev = null;
+  if (prevJson) { try { prev = JSON.parse(prevJson); } catch (_) { prev = null; } }
+  if (prev === null || contentSig(value) !== contentSig(prev)) {
     await kv.put(key, outJson);
     wrote = true;
   }
