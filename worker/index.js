@@ -51,6 +51,14 @@ export default {
       return handleImageProxy(url, ctx);
     }
 
+    // ============ 数据 API（数据存 KV 命名空间 env.KV，前端经此读取 → 站点零部署更新）============
+    // 读接口公开（前端同源 fetch 即可）；写接口 /api/sync 需 SYNC_TOKEN（见 isSyncAuthorized）。
+    // 发言按月份分键：msg/YYYY-MM（单月远小于 KV 单值 25MB 上限 → 数据可无限增长、不被容量卡死）；
+    // 浏览器首屏拉 /api/index（含 recent 最新若干条 + 月份列表 + meta），下滑「加载更早」惰性拉历史月。
+    if (url.pathname.startsWith('/api/')) {
+      return handleApi(url, request, env, ctx);
+    }
+
     if (env && env.ASSETS) {
       const res = await env.ASSETS.fetch(request);
       return applyFreshPolicy(res, url);
@@ -58,9 +66,9 @@ export default {
     return new Response('Not Found', { status: 404 });
   },
 
-  // Cron 定时触发（见 wrangler.jsonc 的 triggers.crons = ["*/20 * * * *"]）：
-  // Cloudflare 边缘每 20 分钟自动派发一次抓取，替代经常延迟/丢跑的 GitHub 原生 cron。
-  // 走的是和「🔄 刷新」按钮完全相同的 handleScrape（含 1 分钟冷却，20 分钟间隔不会误挡）。
+  // Cron 定时触发（见 wrangler.jsonc 的 triggers.crons = ["*/3 * * * *"]）：
+  // Cloudflare 边缘每 3 分钟自动派发一次抓取，替代经常延迟/丢跑的 GitHub 原生 cron。
+  // 走的是和「🔄 刷新」按钮完全相同的 handleScrape（含 1 分钟冷却，3 分钟间隔不会误挡）。
   async scheduled(event, env, ctx) {
     ctx.waitUntil(handleScrape(env));
   }
@@ -476,4 +484,151 @@ function json(obj, status = 200) {
     status,
     headers: { 'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': '*' }
   });
+}
+
+/* ------------------------- 数据 API（数据存 KV 命名空间 env.KV） -------------------------
+ * 设计要点：
+ *   - 口袋发言按「月」分键：msg/YYYY-MM。单月体积远小于 KV 单值 25MB 上限，
+ *     故数据可无限增长、永远不会被容量卡死；浏览器首屏拉 /api/index（含 recent 最新若干条 + 月份列表），
+ *     下滑「加载更早」再惰性拉历史月。
+ *   - 读取接口公开（前端同源 fetch 即可）；写入 /api/sync 需 SYNC_TOKEN（存在 SECRETS KV，键名 SYNC_TOKEN）。
+ *   - 抓取仍由 GitHub Actions（Node）完成，跑完 POST 增量给 /api/sync；Worker 在边缘把数据按月拆键写 KV。
+ *     因此「数据更新」完全不进 git、不触发站点部署 → 站点零部署、实时、不崩。
+ */
+
+function apiJson(obj, cacheControl) {
+  return new Response(JSON.stringify(obj), {
+    status: 200,
+    headers: {
+      'content-type': 'application/json; charset=utf-8',
+      'cache-control': cacheControl || 'no-store',
+      'access-control-allow-origin': '*'
+    }
+  });
+}
+
+// 与前端 app.js 的 msgKey 同源的去重键（不要求算法一致，只要各自稳定即可）
+function strHash(s) {
+  let h = 5381;
+  s = String(s || '');
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+}
+function msgKeyOf(m) {
+  return m.msgIdServer || ('k' + strHash((m.text || '') + ((m.reply && m.reply.text) || '') + (m.msgTime || '')));
+}
+function byTimeDesc(a, b) {
+  return (Number(b.msgTime) || 0) - (Number(a.msgTime) || 0);
+}
+
+// /api/sync 写权限：比对请求头 x-sync-token 与 SECRETS KV 里的 SYNC_TOKEN
+async function isSyncAuthorized(request, env) {
+  const tok = request.headers.get('x-sync-token') || '';
+  if (!tok) return false;
+  let expect = env && env.SYNC_TOKEN;
+  if (!expect && env && env.SECRETS && typeof env.SECRETS.get === 'function') {
+    try { expect = await env.SECRETS.get('SYNC_TOKEN'); } catch (_) { /* 忽略 */ }
+  }
+  return !!expect && tok === expect;
+}
+
+async function handleApi(url, request, env, ctx) {
+  const p = url.pathname;
+  if (p === '/api/index') return handleApiIndex(env);
+  if (p === '/api/month') return handleApiMonth(url, env);
+  if (p === '/api/live') return handleApiKey('live', env);
+  if (p === '/api/performances') return handleApiKey('performances', env);
+  if (p === '/api/social') return handleApiKey('social', env);
+  if (p === '/api/perf-cuts') return handleApiKey('perf-cuts', env);
+  if (p === '/api/sync' && request.method === 'POST') {
+    if (!isSyncAuthorized(request, env)) return json({ error: 'forbidden: sync token required' }, 403);
+    return handleApiSync(request, env, ctx);
+  }
+  return json({ error: 'unknown api: ' + p }, 404);
+}
+
+async function handleApiIndex(env) {
+  const kv = env && env.KV;
+  if (!kv || typeof kv.get !== 'function') return json({ error: 'kv-not-bound' }, 500);
+  const idx = await kv.get('index', { type: 'json' }) || { months: [], recent: [], updatedAt: 0, meta: {} };
+  // 首屏数据：no-store 保证刷新即拿最新（recent/live 状态可能刚更新）
+  return apiJson(idx, 'no-store');
+}
+
+async function handleApiMonth(url, env) {
+  const m = url.searchParams.get('m');
+  if (!/^\d{4}-\d{2}$/.test(m || '')) return json({ error: 'bad month' }, 400);
+  const kv = env && env.KV;
+  if (!kv) return json({ error: 'kv-not-bound' }, 500);
+  const arr = await kv.get('msg/' + m, { type: 'json' }) || [];
+  // 历史月内容不可变 → 允许浏览器/CDN 缓存 5 分钟（重复访问不再重拉）
+  return apiJson(arr, 'public, max-age=300');
+}
+
+async function handleApiKey(key, env) {
+  const kv = env && env.KV;
+  if (!kv) return json({ error: 'kv-not-bound' }, 500);
+  const arr = await kv.get(key, { type: 'json' }) || [];
+  return apiJson(arr, 'public, max-age=60');
+}
+
+// 写入：抓取脚本（GitHub Actions）POST 增量/全量数据进来，Worker 在边缘按月拆键写 KV。
+// body: {
+//   months: { "2026-09": [msg,...], ... },   // 按月发言；单月 < 2MB，回填时逐月调用避免一次过大
+//   mode: "merge" | "overwrite",             // merge=按 msgKey 去重合并；overwrite=整月替换
+//   live, performances, social: [...],        // 小数据，直接覆盖
+//   recent: [...],                            // 可选：最新若干条（不传则取 months 里最新 60 条）
+//   meta: {...}                               // 站点元信息（lastUpdated 等）
+// }
+async function handleApiSync(request, env, ctx) {
+  const kv = env && env.KV;
+  if (!kv || typeof kv.put !== 'function') return json({ error: 'kv-not-bound' }, 500);
+  let body;
+  try { body = await request.json(); } catch (_) { return json({ error: 'bad json' }, 400); }
+  const { months, mode, live, performances, social, meta, recent, perfCuts } = body || {};
+  const results = {};
+
+  if (months && typeof months === 'object') {
+    for (const [m, msgs] of Object.entries(months)) {
+      if (!Array.isArray(msgs)) continue;
+      if (!/^\d{4}-\d{2}$/.test(m)) continue;
+      const key = 'msg/' + m;
+      let merged = msgs;
+      if (mode === 'merge') {
+        const existing = await kv.get(key, { type: 'json' }) || [];
+        const map = new Map();
+        for (const x of existing) map.set(msgKeyOf(x), x);
+        for (const x of msgs) map.set(msgKeyOf(x), x);
+        merged = [...map.values()].sort(byTimeDesc);
+      } else {
+        merged = msgs.slice().sort(byTimeDesc);
+      }
+      await kv.put(key, JSON.stringify(merged));
+      results[m] = merged.length;
+    }
+  }
+
+  if (Array.isArray(live)) await kv.put('live', JSON.stringify(live));
+  if (Array.isArray(performances)) await kv.put('performances', JSON.stringify(performances));
+  if (Array.isArray(social)) await kv.put('social', JSON.stringify(social));
+  if (perfCuts && typeof perfCuts === 'object') await kv.put('perf-cuts', JSON.stringify(perfCuts));
+
+  let idx = await kv.get('index', { type: 'json' }) || { months: [], recent: [], updatedAt: 0, meta: {} };
+  const monthSet = new Set(idx.months);
+  if (months) for (const m of Object.keys(months)) monthSet.add(m);
+  let rec = recent;
+  if (!rec && months) {
+    const all = [];
+    for (const msgs of Object.values(months)) all.push(...msgs);
+    rec = all.sort(byTimeDesc).slice(0, 60);
+  }
+  idx = {
+    months: [...monthSet].sort().reverse(),
+    recent: rec || idx.recent || [],
+    updatedAt: Date.now(),
+    meta: meta || idx.meta || {}
+  };
+  await kv.put('index', JSON.stringify(idx));
+
+  return json({ ok: true, months: results, updatedAt: idx.updatedAt });
 }

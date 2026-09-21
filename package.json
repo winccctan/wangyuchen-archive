@@ -1,0 +1,9 @@
+{
+  "name": "wangyuchen-archive",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build-dist.mjs",
+    "deploy": "wrangler deploy"
+  }
+}

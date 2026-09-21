@@ -1,13 +1,15 @@
-# 王语晨补档站 · 每小时自动抓取工作流
-name: 每小时自动补档
+# 王语晨补档站 · 抓取并写入 KV（零部署更新）
+# 数据不再提交 git、不再触发站点部署；抓取结果由 scripts/sync-kv.mjs 直接写进 Cloudflare KV。
+# 前端从 Worker 数据 API 读取 KV → 数据更新与「代码部署」彻底解耦：只有改页面代码才部署。
+name: 抓取并同步到 KV
 
 on:
   schedule:
-    - cron: '*/5 * * * *'          # 每5分钟（兜底；主调度是 Cloudflare Cron 每3分钟）
+    - cron: '*/5 * * * *'          # 每5分钟兜底；主调度是 Cloudflare Cron 每3分钟
   workflow_dispatch: {}          # 允许手动 / Cloudflare Worker 触发
 
 permissions:
-  contents: write
+  contents: read                 # 只读取仓库（不再写入 / 推送）
 
 concurrency:
   group: scrape
@@ -20,6 +22,8 @@ jobs:
     env:
       POCKET48_TOKEN: ${{ secrets.POCKET48_TOKEN }}
       SCRAPE_PROXY: ${{ secrets.SCRAPE_PROXY }}
+      SYNC_TOKEN: ${{ secrets.SYNC_TOKEN }}
+      WORKER_URL: ${{ secrets.WORKER_URL || 'https://idol.wyc0518.cc' }}
       MAX_PAGES: "3"
       MAX_DETAILS: "40"
       BILI_PAGE_BUDGET: "6"
@@ -48,25 +52,5 @@ jobs:
         run: MAX_DETAILS=40 node scripts/scrape-hers-performances.mjs || true
       - name: 抓取 B站 公演录像备用源
         run: BILI_PAGE_BUDGET=6 PAGE_SLEEP=1500 BILI_SPACE_BAN_TRIES=0 node scripts/fetch-bili-videos.mjs || true
-      - name: 构建发布目录 dist/
-        run: node scripts/build-dist.mjs
-      - name: 提交并推送 main
-        run: |
-          git config user.email "archive@local"
-          git config user.name "wangyuchen-archive"
-          git add -A
-          # 仅以核心数据（发言 / 直播 / 公演）是否变化作为提交依据，
-          # 忽略 meta 时间戳、dist 的 ?v= bump、archive.js 重建等非实质噪音，
-          # 避免每 3 分钟高频轮询把 git 记录与 Cloudflare 部署刷爆。
-          if git diff --cached --quiet -- site/data/messages.json site/data/live.json site/data/performances.json; then
-            echo "核心数据无变化，丢弃本次所有改动（含 dist 时间戳噪音），跳过提交与部署"
-            git reset --hard HEAD
-          else
-            git commit -m "auto: 增量补档 $(date '+%Y-%m-%d %H:%M UTC')"
-            git push origin main
-          fi
-      - name: 镜像 gh-pages 分支
-        if: success()
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: bash scripts/mirror-gh-pages.sh
+      - name: 同步数据到 KV（替代提交 git → 部署）
+        run: node scripts/sync-kv.mjs

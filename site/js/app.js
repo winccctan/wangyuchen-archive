@@ -1,5 +1,8 @@
 // 王语晨补档站 - 前端逻辑
-const DATA = { meta: null, messages: [], live: [], performances: [] };
+const DATA = { meta: null, messages: [], live: [], performances: [], social: [], perfCuts: null };
+// 按月分键加载状态：ALL_MONTHS 为降序月份列表（最新在前），loadedMonths 记录已拉取的月份
+let ALL_MONTHS = [];
+let loadedMonths = new Set();
 // msgKey → message，便于翻译时按 id 取到原文（重新渲染后 DOM 里只剩 mid）
 const MSG_INDEX = new Map();
 const state = { tab: 'messages', query: '', dateFrom: null, dateTo: null, dayLimit: 3, lang: 'zh', expanded: new Set(), guideSub: 'guide', perfSub: 'perf' };
@@ -484,11 +487,64 @@ async function dataVersion() {
   return '';
 }
 
+// 从 Worker 数据 API 取 JSON（数据存 KV，no-store 保证刷新即拿最新）
+async function fetchApi(path) {
+  const r = await fetch(path, { cache: 'no-store' });
+  if (!r.ok) throw new Error('加载 ' + path + ' 失败: ' + r.status);
+  return r.json();
+}
+
+// 惰性加载某月发言（合并进 DATA.messages，按 msgKey 去重）。已加载则跳过。
+async function loadMonth(m, silent) {
+  if (!m || loadedMonths.has(m)) return;
+  loadedMonths.add(m);
+  try {
+    const arr = await fetchApi('/api/month?m=' + encodeURIComponent(m));
+    const map = new Map();
+    for (const x of DATA.messages) map.set(msgKey(x), x);
+    for (const x of arr) map.set(msgKey(x), x);
+    DATA.messages = [...map.values()];
+  } catch (e) {
+    loadedMonths.delete(m); // 允许重试
+    if (!silent) throw e;
+  }
+}
+
+function bjMonth(ts) {
+  const d = new Date((ts == null ? Date.now() : ts) + 8 * 3600 * 1000);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
 async function loadArchive() {
+  // 主路径：从 Worker 数据 API 读取（数据存 KV → 站点零部署更新、实时秒更）
+  try {
+    const idx = await fetchApi('/api/index');   // { months, recent, updatedAt, meta }
+    if (idx && ((idx.months && idx.months.length) || (idx.recent && idx.recent.length))) {
+      DATA.meta = idx.meta || {};
+      DATA.messages = idx.recent || [];
+      ALL_MONTHS = (idx.months || []).slice();    // 降序，最新月份在前
+      loadedMonths = new Set();
+      await loadMonth(bjMonth(Date.now()), true); // 预拉当前月补全首屏
+      const [live, perfs, social, perfCuts] = await Promise.all([
+        fetchApi('/api/live'), fetchApi('/api/performances'), fetchApi('/api/social'), fetchApi('/api/perf-cuts')
+      ]);
+      DATA.live = live || [];
+      DATA.performances = perfs || [];
+      DATA.social = social || [];
+      DATA.perfCuts = perfCuts || null;
+      return { meta: DATA.meta, messages: DATA.messages, live: DATA.live, performances: DATA.performances };
+    }
+  } catch (_) { /* 落到静态兜底 */ }
+
+  // 兜底：KV 无数据或接口异常 → 读旧静态 archive.js（最后一次部署的快照）
+  return loadArchiveStatic();
+}
+
+// 静态兜底（保留旧逻辑）：注入 ./data/archive.js → 读 window.__ARCHIVE__
+async function loadArchiveStatic() {
   const isFile = location.protocol === 'file:';
   let candidates;
   if (isFile) {
-    // file:// 下带查询串会取不到文件，只能直接加载
     candidates = ['./data/archive.js'];
   } else {
     const ver = await dataVersion();
@@ -500,11 +556,13 @@ async function loadArchive() {
   for (const src of candidates) {
     try {
       await injectScript(src);
-      if (window.__ARCHIVE__) return window.__ARCHIVE__;
+      if (window.__ARCHIVE__) {
+        DATA.social = window.SOCIAL_MEDIA || [];
+        DATA.perfCuts = window.PERF_CUTS || null;
+        return window.__ARCHIVE__;
+      }
       lastErr = new Error('数据文件内容为空');
-    } catch (e) {
-      lastErr = e;
-    }
+    } catch (e) { lastErr = e; }
   }
   throw lastErr || new Error('加载数据文件 data/archive.js 失败');
 }
@@ -969,7 +1027,7 @@ function renderPerfSub() {
   if (dateFilterActive()) list = list.filter((m) => inDateRange(m.stime));
   // 挂上该场对应的 cut 数量 / 日期（用于卡片角标跳转）
   const cutByLive = {};
-  (window.PERF_CUTS ? window.PERF_CUTS.cuts : []).forEach(c => {
+  (DATA.perfCuts ? DATA.perfCuts.cuts : []).forEach(c => {
     if (c.liveId) { if (!cutByLive[c.liveId]) cutByLive[c.liveId] = { n: 0, date: c.date }; cutByLive[c.liveId].n++; }
   });
   list = list.map(p => {
@@ -986,7 +1044,7 @@ function renderPerfSub() {
 }
 
 function renderPerfCuts() {
-  const data = window.PERF_CUTS ? window.PERF_CUTS.cuts : [];
+  const data = DATA.perfCuts ? DATA.perfCuts.cuts : [];
   if (!data.length) return '<div class="empty">暂无公演 cut。</div>';
   const groups = {}, order = [];
   data.forEach(c => { if (!groups[c.date]) { groups[c.date] = []; order.push(c.date); } groups[c.date].push(c); });
@@ -1211,9 +1269,12 @@ function renderMessages() {
 
   const moreBtn = document.getElementById('loadMore');
   if (moreBtn) {
-    moreBtn.addEventListener('click', () => {
+    moreBtn.addEventListener('click', async () => {
       const y = window.scrollY;
       state.dayLimit += 7;
+      // 还有更早的月份未加载 → 惰性拉一个进来（append 到 DATA.messages）
+      const next = ALL_MONTHS.find(m => !loadedMonths.has(m));
+      if (next) { try { await loadMonth(next); } catch (_) {} }
       renderMessages();
       window.scrollTo(0, y);
     });
@@ -1489,7 +1550,7 @@ function renderLive() {
 init();
 
 /* ---------------- 新粉指南子标签：社媒美图（@忘记自己是鱼_ 本人发的照片/视频） ----------------
-   数据来自 window.SOCIAL_MEDIA（site/data/social-media.js，自动生成）。
+   数据来自 DATA.social（site/data/social-media.js，自动生成）。
    图片为微博图床原始 URL，经站点图片代理 /img/?u=<encoded> 获取（直链会被 403 拦截）。
    已剔除：① mymblog 混入的「她赞过的微博」卡片（非本人发布）；② 本人发的表情包/文字图/截图。 */
 let socialFilter = 'all';
@@ -1533,7 +1594,7 @@ function setSocialFilter(f) {
 }
 
 function socialVisible() {
-  const data = window.SOCIAL_MEDIA || [];
+  const data = DATA.social || [];
   const q = (document.getElementById('sgSearch').value || '').trim().toLowerCase();
   return data.filter(it => {
     if (socialFilter !== 'all' && it.k !== socialFilter) return false;
@@ -1543,7 +1604,7 @@ function socialVisible() {
 }
 
 function renderSocialWall() {
-  const data = window.SOCIAL_MEDIA || [];
+  const data = DATA.social || [];
   const sel = socialVisible();
   const count = document.getElementById('sgCount');
   if (count) count.innerHTML = '显示 <b>' + sel.length + '</b> / ' + data.length + ' 条' + (socialFilter === 'all' ? '' : '（' + (socialFilter === 'photo' ? '照片' : '视频') + '）');
@@ -1580,7 +1641,7 @@ function renderSocialWall() {
 }
 
 function openSocialModal(i) {
-  const it = (window.SOCIAL_MEDIA || [])[i];
+  const it = (DATA.social || [])[i];
   if (!it) return;
   track('social:open');
   document.getElementById('sgMDate').textContent = it.d;

@@ -18,7 +18,12 @@
   // KV：存放 GitHub PAT（GH_TOKEN），运行时读取，不进公开仓库、也不依赖 Git 构建注入 Secret。
   // 键名填 GH_TOKEN（值 = 你的 PAT）。Git 构建不会注入 dashboard Secret，故用 KV 保证生效。
   "kv_namespaces": [
-    { "binding": "SECRETS", "id": "ef32273095ad4a86953aa1222a11843b" }
+    { "binding": "SECRETS", "id": "ef32273095ad4a86953aa1222a11843b" },
+    // 数据 KV：存补档站全部数据（口袋发言按月分键 msg/YYYY-MM、live、performances、social、index）。
+    // 与 SECRETS 分离，避免大体积数据涨爆密钥命名空间。
+    // 【部署前必填】在 Cloudflare 控制台 Workers & Pages → KV → Create a namespace 新建一个，
+    // 命名如 wyc-archive-data，把它的「Namespace ID」替换到下面的 id 占位。
+    { "binding": "KV", "id": "bc641d8acc654e1faa12c0afac7aec2f" }
   ],
   // /scrape 手动触发抓取用（非敏感，可明文）：GitHub 仓库名。
   "vars": {
