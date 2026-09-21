@@ -538,7 +538,8 @@ function loadRemainingMonths() {
   if (allMonthsPromise) return allMonthsPromise;
   const todo = ALL_MONTHS.filter((m) => !loadedMonths.has(m));
   monthsProgress = { done: 0, total: todo.length };
-  if (!todo.length) { allMonthsLoaded = true; allMonthsPromise = Promise.resolve(); return allMonthsPromise; }
+  if (!todo.length) { allMonthsLoaded = true; allMonthsPromise = Promise.resolve(); updateHistSpinner(); return allMonthsPromise; }
+  startHistTicker();
   allMonthsPromise = (async () => {
     let i = 0;
     const worker = async () => {
@@ -553,32 +554,29 @@ function loadRemainingMonths() {
     await Promise.all(Array.from({ length: Math.min(MONTH_CONCURRENCY, todo.length) }, worker));
     rebuildIndex();
     allMonthsLoaded = true;
-    if (state.tab === 'messages') {
-      if (state.query || dateFilterActive()) {
-        // 正在搜索/筛选：必须重绘才能把新补进来的历史结果显示出来
-        const y = window.scrollY;
-        renderMessages();
-        window.scrollTo(0, y);
-      } else {
-        // 普通浏览：**不要整表重绘**——刚打开就重绘会闪一下、打断阅读（用户反馈「没有以前顺滑」）。
-        // 只就地撤掉「加载中」提示条，并把「加载更早」的剩余条数改成真实值。
-        const note = document.querySelector('.hist-note');
-        if (note) note.remove();
-        const btn = document.getElementById('loadMore');
-        if (btn) {
-          const groups = {};
-          for (const m of DATA.messages) {
-            const d = fmtDate(m.msgTime) || '未知日期';
-            (groups[d] ||= []).push(m);
-          }
-          const days = Object.keys(groups).sort((a, b) => (b > a ? 1 : -1));
-          const restDays = days.length - Math.min(state.dayLimit, days.length);
-          if (restDays > 0) {
-            const restCount = days.slice(state.dayLimit).reduce((n, d) => n + groups[d].length, 0);
-            btn.textContent = `加载更早的消息（还有 ${restCount} 条 / ${restDays} 天）`;
-          } else {
-            btn.remove();
-          }
+    stopHistTicker();
+    if (state.tab === 'messages' && (state.query || dateFilterActive())) {
+      // 正在搜索/筛选：必须重绘才能把新补进来的历史结果显示出来
+      const y = window.scrollY;
+      renderMessages();
+      window.scrollTo(0, y);
+    } else {
+      // 普通浏览：**不整表重绘**（刚打开就重绘会闪一下、打断阅读）。
+      // 小 spinner 已由 stopHistTicker() 收起；这里只把「加载更早」的剩余条数就地改成真实值。
+      const btn = document.getElementById('loadMore');
+      if (btn) {
+        const groups = {};
+        for (const m of DATA.messages) {
+          const d = fmtDate(m.msgTime) || '未知日期';
+          (groups[d] ||= []).push(m);
+        }
+        const days = Object.keys(groups).sort((a, b) => (b > a ? 1 : -1));
+        const restDays = days.length - Math.min(state.dayLimit, days.length);
+        if (restDays > 0) {
+          const restCount = days.slice(state.dayLimit).reduce((n, d) => n + groups[d].length, 0);
+          btn.textContent = `加载更早的消息（还有 ${restCount} 条 / ${restDays} 天）`;
+        } else {
+          btn.remove();
         }
       }
     }
@@ -1073,13 +1071,26 @@ function filterNote(count) {
     `<button class="filter-clear" type="button">清除筛选</button></div>`;
 }
 
-// 历史月仍在后台并行拉取时的提示条：让用户明确知道
-// 「现在搜不到的老发言不是没有，而是还在加载」，并给出进度，避免被当成数据缺失。
-function histLoadingNote() {
-  if (allMonthsLoaded || !monthsProgress.total) return '';
-  const pct = Math.round((monthsProgress.done / monthsProgress.total) * 100);
-  return `<div class="hist-note">⏳ 正在加载全部历史发言… ${monthsProgress.done}/${monthsProgress.total} 个月（${pct}%）` +
-    `，加载完成后即可搜索、按时间筛选全部历史</div>`;
+// 历史月后台补齐时，只在工具栏显示一个低调的小 spinner，加载完自动消失。
+// （早期版本是在列表上方插一条黄色横幅，太抢眼——用户反馈「丑」，已废弃。）
+let histTick = null;
+function updateHistSpinner() {
+  const el = document.getElementById('histLoading');
+  if (!el) return;
+  if (allMonthsLoaded || !monthsProgress.total) { el.hidden = true; return; }
+  el.hidden = false;
+  const txt = document.getElementById('histText');
+  if (txt) txt.textContent = `加载历史 ${monthsProgress.done}/${monthsProgress.total}`;
+}
+function startHistTicker() {
+  updateHistSpinner();
+  if (histTick) return;
+  // 只刷新一个小数字，不触碰列表 DOM → 不会闪烁
+  histTick = setInterval(updateHistSpinner, 300);
+}
+function stopHistTicker() {
+  if (histTick) { clearInterval(histTick); histTick = null; }
+  updateHistSpinner();
 }
 
 function renderAll() {
@@ -1319,9 +1330,9 @@ function renderMessages() {
   if (state.query) list = list.filter((m) => matchQuery(m));
 
   if (!list.length) {
-    // 历史月还没拉完就先说「没有」会严重误导——此时只提示正在加载。
+    // 历史月还没拉完就先说「没有」会严重误导——此时只给一行低调的加载占位（不用大色块横幅）
     if (filtering && !allMonthsLoaded) {
-      panel.innerHTML = histLoadingNote();
+      panel.innerHTML = '<div class="hist-line">正在加载历史发言…</div>';
       loadRemainingMonths().then(() => { if (state.query || dateFilterActive()) renderMessages(); });
       return;
     }
@@ -1359,7 +1370,7 @@ function renderMessages() {
     </div>`;
 
   const matchedCount = sortedDays.reduce((n, d) => n + groups[d].length, 0);
-  panel.innerHTML = filterNote(matchedCount) + histLoadingNote() + shown.map(renderDay).join('')
+  panel.innerHTML = filterNote(matchedCount) + shown.map(renderDay).join('')
     + (restDays > 0
       ? `<button class="load-more" id="loadMore" type="button">加载更早的消息（还有 ${restCount} 条 / ${restDays} 天）</button>`
       : '');

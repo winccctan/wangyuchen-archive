@@ -558,12 +558,23 @@ body {
   border-radius: 10px; font-size: 13px; color: var(--text);
 }
 .filter-note b { color: var(--primary); font-weight: 600; }
-/* 历史发言后台补齐中的提示条：说明「搜不到的老发言是还在加载，不是没有」 */
-.hist-note {
-  max-width: 960px; margin: 12px auto 0; padding: 8px 14px;
-  background: rgba(255,193,7,.12); border: 1px solid rgba(255,193,7,.45);
-  border-radius: 10px; font-size: 13px; color: var(--text); text-align: center;
+/* 历史发言后台补齐中的「小 spinner」：放在工具栏里，低调、加载完自动消失。
+   （早期版本是列表上方一条大黄条，太抢眼，已废弃。） */
+.hist-loading {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; color: var(--muted, #8a8a8a); opacity: .85;
+  white-space: nowrap; user-select: none;
 }
+.hist-loading[hidden] { display: none; }
+.hist-spin {
+  width: 11px; height: 11px; flex: 0 0 auto; border-radius: 50%;
+  border: 1.5px solid currentColor; border-top-color: transparent;
+  animation: hist-spin .75s linear infinite;
+}
+@keyframes hist-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .hist-spin { animation-duration: 2s; } }
+/* 极端情况（筛选时历史仍未就绪）用的一行低调占位，不再用大色块横幅 */
+.hist-line { padding: 26px 0; text-align: center; color: var(--muted, #8a8a8a); font-size: 13px; }
 .filter-clear {
   margin-left: auto; border: 1px solid var(--primary); background: transparent;
   color: var(--primary); border-radius: 999px; padding: 3px 12px;

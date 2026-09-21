@@ -5,14 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>王语晨 · 补档站</title>
   <meta name="description" content="王语晨（GNZ48 TEAM NIII）口袋发言 / 直播录播 / 公演补档存档站。" />
-  <link rel="stylesheet" href="./css/style.css?v=1790002240819" />
-  <link rel="icon" type="image/png" href="./assets/avatar-round.png?v=1790002240819" />
-  <link rel="apple-touch-icon" href="./assets/avatar-round.png?v=1790002240819" />
+  <link rel="stylesheet" href="./css/style.css?v=1790002699700" />
+  <link rel="icon" type="image/png" href="./assets/avatar-round.png?v=1790002699700" />
+  <link rel="apple-touch-icon" href="./assets/avatar-round.png?v=1790002699700" />
 </head>
 <body>
   <header class="site-header">
     <div class="header-inner">
-      <img class="avatar" id="memberAvatar" src="./assets/avatar.png?v=1790002240819" alt="王语晨" width="201" height="304" decoding="async" />
+      <img class="avatar" id="memberAvatar" src="./assets/avatar.png?v=1790002699700" alt="王语晨" width="201" height="304" decoding="async" />
       <div class="member-meta">
         <h1 id="memberName">王语晨</h1>
         <p id="memberSub">GNZ48 TEAM NIII · 十三期生</p>
@@ -36,6 +36,9 @@
     <input type="search" id="searchInput" placeholder="搜索发言内容 / 标题…" />
     <button id="dateToggleBtn" class="date-toggle-btn" type="button" title="按时间筛选" hidden>📅 时间</button>
     <div class="toolbar-actions">
+      <span class="hist-loading" id="histLoading" hidden title="正在加载全部历史发言，完成后即可搜索/按时间筛选全部历史">
+        <span class="hist-spin" aria-hidden="true"></span><span class="hist-txt" id="histText">加载历史</span>
+      </span>
       <span class="updated" id="updatedAt"></span>
       <button id="trAllBtn" class="tr-all-btn" type="button" hidden>🌐 翻译本页</button>
       <select id="langSelect" class="lang-select" title="选择翻译语言">
@@ -91,9 +94,9 @@
     </div>
   </div>
 
-  <script src="./vendor/hls.min.js?v=1790002240819"></script>
-  <script src="./data/social-media.js?v=1790002240819"></script>
-  <script src="./data/performance-cuts.js?v=1790002240819"></script>
-  <script src="./js/app.js?v=1790002240819"></script>
+  <script src="./vendor/hls.min.js?v=1790002699700"></script>
+  <script src="./data/social-media.js?v=1790002699700"></script>
+  <script src="./data/performance-cuts.js?v=1790002699700"></script>
+  <script src="./js/app.js?v=1790002699700"></script>
 </body>
 </html>
