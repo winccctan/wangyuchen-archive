@@ -63,11 +63,14 @@ function proxyGet(urlStr, referer) {
     }
     const req = https.request({
       host: p.hostname, port: Number(p.port) || 443, method: 'CONNECT',
-      path: `${t.hostname}:443`, headers, timeout: 25000
+      path: `${t.hostname}:443`, headers, timeout: 25000,
+      // 该出口代理是自建/自有（scraper/lib/api.mjs 同样这么设）：它会用自家证书做中间人，
+      // 不做证书校验才能建隧道；走的只是公开的 B 站接口数据，没有敏感信息。
+      rejectUnauthorized: false
     });
     req.on('connect', (res, socket) => {
       if (res.statusCode !== 200) { socket.destroy(); return reject(new Error('proxy CONNECT ' + res.statusCode)); }
-      const s = tls.connect({ socket, servername: t.hostname }, () => {
+      const s = tls.connect({ socket, servername: t.hostname, rejectUnauthorized: false }, () => {
         s.write([
           `GET ${t.pathname}${t.search} HTTP/1.1`,
           `Host: ${t.hostname}`,
