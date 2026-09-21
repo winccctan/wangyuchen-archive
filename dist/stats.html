@@ -54,13 +54,17 @@ function render(d) {
     : '<tr><td colspan="2" class="dim">暂无记录</td></tr>';
   const dayRows = (d.days || [])
     .map(x => '<tr><td>' + x.day + '</td><td class="n">' + x.count + '</td><td class="n">' + x.visitors + '</td></tr>').join('');
+  const evRows = (d.events && d.events.length)
+    ? d.events.map(e => '<tr><td>' + e.name + '</td><td class="n">' + e.total + '</td><td class="n">' + e.today + '</td></tr>').join('')
+    : '<tr><td colspan="3" class="dim">暂无记录</td></tr>';
 
   const el = document.getElementById('body');
   el.innerHTML =
     '<p class="dim">「独立访客」按 IP 短哈希去重估算（不保存明文 IP），同一 WiFi 下多人会算作 1 人，实际人数只会更多。数据约 1 分钟同步延迟。</p>' +
     cards +
-    '<h2>各语言使用次数</h2><table>' + langRows + '</table>' +
-    '<h2>最近 7 天</h2><table><tr><td>日期</td><td class="n">次数</td><td class="n">独立访客</td></tr>' + dayRows + '</table>';
+    '<h2>功能使用（累计 / 今日）</h2><table><tr><td>动作</td><td class="n">累计</td><td class="n">今日</td></tr>' + evRows + '</table>' +
+    '<h2>各语言翻译次数</h2><table>' + langRows + '</table>' +
+    '<h2>最近 7 天（翻译）</h2><table><tr><td>日期</td><td class="n">次数</td><td class="n">独立访客</td></tr>' + dayRows + '</table>';
   el.hidden = false;
 }
 

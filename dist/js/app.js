@@ -545,6 +545,23 @@ async function fetchJson(name) {
   return res.json();
 }
 
+/* ---------------- 使用统计 ---------------- */
+// 只记「发生了什么动作」的次数（如切到哪个 tab、播放视频、点开美图），
+// 不含任何发言内容 / 个人信息；请求失败一律忽略，绝不影响正常使用。
+// 用 1x1 图片发请求：不受跨域限制、不阻塞页面、关闭页面也能发出。
+function track(ev) {
+  try {
+    new Image().src = './track?e=' + encodeURIComponent(String(ev).slice(0, 40)) + '&t=' + Date.now();
+  } catch (_) { /* 忽略 */ }
+}
+
+// 搜索框防抖统计（停止输入 800ms 才记一次，避免敲每个字都打点）
+let trackSearchTimer = null;
+function trackSearch() {
+  clearTimeout(trackSearchTimer);
+  trackSearchTimer = setTimeout(() => track('search'), 800);
+}
+
 /* ---------------- 检查更新 ---------------- */
 function showToast(msg, isError, linkUrl) {
   let t = document.getElementById('toast');
@@ -580,6 +597,7 @@ async function checkForUpdates() {
   if (!btn || btn.disabled) return;
   const oldText = btn.textContent;
   const beforeTs = String((DATA.meta && DATA.meta.lastUpdated) || '');
+  track('refresh');
   btn.disabled = true;
   btn.textContent = '刷新中…';
 
@@ -676,6 +694,7 @@ function bindEvents() {
       const trAll = document.getElementById('trAllBtn');
       if (trAll) { trAll.hidden = state.lang === 'zh'; trAll.textContent = trUI('page', state.lang); }
       if (state.tab === 'messages') renderMessages();
+      track('lang:' + state.lang);
     });
   }
   const trAllBtn = document.getElementById('trAllBtn');
@@ -691,9 +710,13 @@ function bindEvents() {
   }
 
   document.querySelectorAll('.tab').forEach((btn) => {
-    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+    btn.addEventListener('click', () => { switchTab(btn.dataset.tab); track('tab:' + btn.dataset.tab); });
   });
-  $('#searchInput').addEventListener('input', (e) => { state.query = e.target.value.trim().toLowerCase(); renderAll(); });
+  $('#searchInput').addEventListener('input', (e) => {
+    state.query = e.target.value.trim().toLowerCase();
+    renderAll();
+    if (state.query) trackSearch(); // 只在真的输入了内容时才记
+  });
   // 时间筛选：弹窗 + 点「确认」才刷新；含「全部 / 近 N 天」快捷
   const dateModal = document.getElementById('dateModal');
   const openDateModal = () => {
@@ -717,6 +740,7 @@ function bindEvents() {
       });
     });
     document.getElementById('dateConfirm').addEventListener('click', () => {
+      track('filter:date');
       const f = $('#dateFrom').value, t = $('#dateTo').value;
       // 固定按北京时间 0 点（+08:00）取边界，避免访客本地时区导致前后差一天
       state.dateFrom = f ? new Date(f + 'T00:00:00+08:00').getTime() : null;          // 当天 0 点
@@ -810,9 +834,12 @@ function bindEvents() {
     const playBtn = e.target.closest('.play-btn');
     if (playBtn) {
       e.stopPropagation();
+      track('play');
       openPlayer(playBtn.dataset.play, playBtn.dataset.title);
       return;
     }
+    const biliLink = e.target.closest('.bili-btn');
+    if (biliLink) { track('bili'); return; }
     const socialBtn = e.target.closest('.social-btn');
     if (socialBtn) {
       e.stopPropagation();
@@ -823,6 +850,7 @@ function bindEvents() {
     const subBtn = e.target.closest('.subtab');
     if (subBtn) {
       e.stopPropagation();
+      track('sub:' + subBtn.dataset.sub);
       if (state.tab === 'performances') {
         state.perfSub = subBtn.dataset.sub;
         panels.performances.querySelectorAll('.subtab').forEach((b) =>
@@ -1539,6 +1567,7 @@ function renderSocialWall() {
 function openSocialModal(i) {
   const it = (window.SOCIAL_MEDIA || [])[i];
   if (!it) return;
+  track('social:open');
   document.getElementById('sgMDate').textContent = it.d;
   document.getElementById('sgMText').textContent = it.t || '';
   document.getElementById('sgMLink').href = it.u;
