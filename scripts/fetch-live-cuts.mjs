@@ -274,28 +274,55 @@ function save() {
     c.date = bjDate(c.created);
   }
   const cuts = [...merged.values()].sort((a, b) => b.created - a.created);
-  // 按日期匹配直播回放（切片常在直播当天或次日发布，故允许 ±1 天）
-  const liveByDate = new Map();
+  // ---------- 匹配对应的直播场次 ----------
+  // ⚠️ 切片的【发布时间】不是【直播时间】：切片都是直播结束后才剪出来发的，
+  //    实测同一直播的切片可跨 3 天发布（16/17/18 号各一条）；直播跨零点时 UP 还会把
+  //    日期写成次日。所以匹配必须用「时间点」，不能用「发布日 ±1 天」。
+  // 用 245 条「回放」（标题自带直播日期＝真值）做过验证：
+  //   旧规则「发布日 ±1 天」67.3%  →  新规则「发布时间之前最近的一场直播」91.8%
+  //   剩余差异主要是 UP 标题年份手滑（写 2025 实为 2026）与跨零点日期口径，并非匹配错误。
+  // 发布-直播开始间隔：中位 2.9h、P75 8h、max 40.5h；切片更晚，故窗口放宽到 72h。
+  const liveList = [];
   try {
     const lj = JSON.parse(readFileSync(LIVE_JSON, 'utf8'));
     for (const l of (lj.live || [])) {
-      const d = bjDate(Math.round(Number(l.ctime) / 1000));
-      if (d && !liveByDate.has(d)) liveByDate.set(d, String(l.liveId));
+      const ms = Number(l.ctime);
+      if (!ms) continue;
+      liveList.push({ liveId: String(l.liveId), ctime: ms, day: bjDate(Math.round(ms / 1000)) });
     }
+    liveList.sort((a, b) => a.ctime - b.ctime);
   } catch (_) { /* 没 live.json 就先不匹配 */ }
-  const dayShift = (d, off) => new Date(Date.parse(d + 'T00:00:00Z') + off * 86400000).toISOString().slice(0, 10);
+  const liveByDay = new Map();
+  for (const l of liveList) if (!liveByDay.has(l.day)) liveByDay.set(l.day, l);
+  const MATCH_WINDOW_MS = 72 * 3600e3;
+
   for (const c of cuts) {
-    // 标题里写了日期（回放基本都有）→ 那个日期就是直播当天，直接精确匹配；
-    // 没写日期的（多数切片）→ 用发布时间，并放宽 ±1 天（切片常在直播当天或次日发布）
-    const exact = c.titleDate;
-    const anchor = exact || c.date;
-    const offs = exact ? [0] : [0, -1, 1];
-    let liveId = '';
-    for (const off of offs) {
-      const hit = liveByDate.get(dayShift(anchor, off));
-      if (hit) { liveId = hit; break; }
+    // 「公演cut」对应的是公演（另一套 performance 数据），不参与直播匹配
+    if (/公演/.test(c.collection || '')) { delete c.liveId; delete c.liveDate; continue; }
+    let hit = null;
+    // ① 标题自带日期（回放基本都有）→ 精确命中；UP 把年份写错时试相邻年份
+    if (c.titleDate) {
+      hit = liveByDay.get(c.titleDate) || null;
+      if (!hit) {
+        for (const dy of [-1, 1]) {
+          const alt = (Number(c.titleDate.slice(0, 4)) + dy) + c.titleDate.slice(4);
+          const h2 = liveByDay.get(alt);
+          if (h2) { hit = h2; break; }
+        }
+      }
     }
-    if (liveId) c.liveId = liveId; else delete c.liveId;
+    // ② 没有可用日期（多数切片）→ 取「发布时间之前最近的一场直播」，且限制在 72h 内
+    if (!hit && liveList.length) {
+      const t = Number(c.created) * 1000;
+      let lo = 0, hi = liveList.length - 1, best = null;
+      while (lo <= hi) {
+        const mid = (lo + hi) >> 1;
+        if (liveList[mid].ctime <= t) { best = liveList[mid]; lo = mid + 1; } else hi = mid - 1;
+      }
+      if (best && (t - best.ctime) <= MATCH_WINDOW_MS) hit = best;
+    }
+    if (hit) { c.liveId = hit.liveId; c.liveDate = hit.day; }
+    else { delete c.liveId; delete c.liveDate; }
   }
   const matched = cuts.filter((c) => c.liveId).length;
   const replays = cuts.filter((c) => c.kind === 'replay');
@@ -444,7 +471,7 @@ for (const up of UP_TARGETS) {
 
 const stat = save() || { total: merged.size, matched: 0, replays: 0, clips: 0 };
 console.log(`\n[直播切片] 完成：库中 ${stat.total} 条`
-  + `（直播回放 ${stat.replays} / 直播切片 ${stat.clips}；其中按日期对上直播的 ${stat.matched} 条），本次新增 ${added} 条`);
+  + `（直播回放 ${stat.replays} / 直播切片 ${stat.clips}；其中对上直播场次的 ${stat.matched} 条），本次新增 ${added} 条`);
 console.log(`[直播切片] 输出：${OUT}`);
 if (ok === 0 && merged.size === 0) {
   console.warn('[直播切片] 两个号都没抓到内容（多半是 B 站风控限流），本轮跳过，历史数据保持不变');

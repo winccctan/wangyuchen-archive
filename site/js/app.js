@@ -1662,7 +1662,7 @@ function renderCard(item, timeKey) {
     : '';
   // 该场直播对应的 B 站切片 / 回放：角标跳到「直播切片」栏的对应日期
   const liveCutBtn = (item._liveCutCount)
-    ? `<button class="cut-btn" type="button" onclick="gotoLiveCuts('${escapeHtml(item._liveCutDate)}')">🎬 ${item._liveCutCount} 切片</button>`
+    ? `<button class="cut-btn" type="button" onclick="gotoLiveCuts('${escapeHtml(item._liveCutId)}')">🎬 ${item._liveCutCount} 切片</button>`
     : '';
   return `<div class="card">
     ${cover ? `<img class="card-img" loading="lazy" referrerpolicy="no-referrer" src="${escapeHtml(cover)}" alt="" onclick="window.__lightboxShow(this.src)" onerror="this.classList.add('failed')" />` : ''}
@@ -1728,12 +1728,13 @@ function renderLiveSub() {
   for (const c of liveCutList()) {
     if (!c.liveId) continue;
     const k = String(c.liveId);
-    if (!byLive[k]) byLive[k] = { n: 0, date: c.titleDate || c.date };
+    if (!byLive[k]) byLive[k] = { n: 0 };
     byLive[k].n++;
   }
   const list2 = list.map((p) => {
     const c = byLive[String(p.liveId)];
-    return c ? { ...p, _liveCutCount: c.n, _liveCutDate: c.date } : p;
+    // 用 liveId 定位（而不是日期）：切片发布日不等于直播日，按日期跳转会跳错组
+    return c ? { ...p, _liveCutCount: c.n, _liveCutId: String(p.liveId) } : p;
   });
   box.innerHTML = filterNote(list2.length) +
     `<div class="card-grid">${list2.map((m) => renderCard(m, 'ctime')).join('')}</div>`;
@@ -1744,33 +1745,47 @@ function renderLiveSub() {
 function renderLiveCuts() {
   const data = liveCutList();
   if (!data.length) return '<div class="empty">暂无直播切片。数据随抓取自动更新，若刚上线请稍后再看。</div>';
-  const groups = {}, order = [];
+  // ★ 分组键用「直播场次」而不是日期：
+  //   切片是直播结束后才剪出来发的（实测同一直播的切片可跨 3 天发布），
+  //   若按发布时间分组，同一场直播的回放与切片会被拆散，还会把「09-16 的直播」
+  //   和「09-16 发布的切片」混为一谈。
+  //   所以：能对上直播的 → 按 liveId 归组；对不上的 → 按发布日排在时间线上。
+  const groups = new Map();
   data.forEach((c) => {
-    const d = c.titleDate || c.date;
-    if (!groups[d]) { groups[d] = []; order.push(d); }
-    groups[d].push(c);
+    const day = c.liveDate || c.titleDate || c.date;
+    const key = c.liveId ? ('live:' + c.liveId) : ('day:' + day);
+    let g = groups.get(key);
+    if (!g) { g = { live: !!c.liveId, liveId: c.liveId || '', day, items: [] }; groups.set(key, g); }
+    g.items.push(c);
   });
-  order.sort((a, b) => b.localeCompare(a));
+  const list = [...groups.values()].sort((a, b) => String(b.day).localeCompare(String(a.day)));
   let html = '';
-  order.forEach((date) => {
-    const arr = groups[date].slice().sort((a, b) => b.created - a.created);
+  list.forEach((g) => {
+    // 组内：回放排最前，其余（切片）按发布时间正序
+    const arr = g.items.slice().sort((a, b) =>
+      (a.kind === 'replay' ? 0 : 1) - (b.kind === 'replay' ? 0 : 1) || a.created - b.created);
     const nReplay = arr.filter((x) => x.kind === 'replay').length;
     const nCut = arr.length - nReplay;
     const parts = [];
     if (nReplay) parts.push(`直播回放 ${nReplay}`);
     if (nCut) parts.push(`切片 ${nCut}`);
-    html += `<section class="pc-group" id="lc-group-${escapeHtml(date)}">`
-      + `<h2 class="pc-group-h"><span class="ym">${escapeHtml(date)}</span>`
+    const gid = 'lc-group-' + (g.live ? 'live-' + g.liveId : 'day-' + g.day);
+    html += `<section class="pc-group" id="${escapeHtml(gid)}">`
+      + `<h2 class="pc-group-h"><span class="ym">${escapeHtml(g.day)}</span>`
+      + (g.live ? '' : '<span class="pub">未对上直播 · 按发布日</span>')
       + `<span class="perf">${parts.join(' · ')}</span>`
       + `<span class="n">${arr.length} 条</span></h2><div class="pc-grid">`;
     arr.forEach((c) => {
       const cover = c.cover
         ? `<img src="${escapeHtml(c.cover)}" loading="lazy" referrerpolicy="no-referrer" alt="">`
         : '<div class="pc-void">▶</div>';
+      // 左下角标出「UP · 发布 MM-DD」：组标题是直播日，而这条的发布日可能晚一两天，
+      // 标出来才不会让人误以为它和直播同一天。
+      const meta = `${c.up || ''} · 发布 ${String(c.date || '').slice(5)}`;
       html += `<a class="pc-card" href="${escapeHtml(c.url)}" target="_blank" rel="noopener">${cover}`
         + '<div class="pc-scrim"></div>'
         + (c.kind ? `<span class="pc-ov song">${c.kind === 'replay' ? '回放' : '切片'}</span>` : '')
-        + `<span class="pc-ov date">${escapeHtml(c.up || '')}</span>`
+        + `<span class="pc-ov date">${escapeHtml(meta)}</span>`
         + '<span class="pc-ov go">去 B 站看 ↗</span>'
         + '</a>';
     });
@@ -1779,16 +1794,15 @@ function renderLiveCuts() {
   return html;
 }
 
-function gotoLiveCuts(date) {
+// 从直播回放卡片的「🎬 N 切片」跳到切片栏对应的那一场（按 liveId 定位，不依赖日期）
+function gotoLiveCuts(liveId) {
   state.liveSub = 'cuts';
   switchTab('live');
   setTimeout(() => {
-    const el = document.getElementById('lc-group-' + date);
+    const el = document.getElementById('lc-group-live-' + liveId);
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, 60);
 }
-
-init();
 
 /* ---------------- 新粉指南子标签：社媒美图（@忘记自己是鱼_ 本人发的照片/视频） ----------------
    数据来自 DATA.social（site/data/social-media.js，自动生成）。
