@@ -55,6 +55,44 @@ export default {
     // 读接口公开（前端同源 fetch 即可）；写接口 /api/sync 需 SYNC_TOKEN（见 isSyncAuthorized）。
     // 发言按月份分键：msg/YYYY-MM（单月远小于 KV 单值 25MB 上限 → 数据可无限增长、不被容量卡死）；
     // 浏览器首屏拉 /api/index（含 recent 最新若干条 + 月份列表 + meta），下滑「加载更早」惰性拉历史月。
+    // ============ TEMP-D1：迁移引导接口（数据迁移完成后删除本段）============
+    // 建表：POST /api/_d1_init
+    if (url.pathname === '/api/_d1_init' && request.method === 'POST') {
+      if (!(await isSyncAuthorized(request, env))) return json({ error: 'forbidden: sync token required' }, 403);
+      if (!env.DB) return json({ error: 'd1-not-bound' }, 500);
+      await env.DB.exec(
+        'CREATE TABLE IF NOT EXISTS messages (' +
+        '  mid TEXT PRIMARY KEY,' +
+        '  month TEXT NOT NULL,' +
+        '  msgTime INTEGER NOT NULL,' +
+        '  data TEXT NOT NULL' +
+        ');' +
+        'CREATE INDEX IF NOT EXISTS idx_messages_month ON messages(month);' +
+        'CREATE INDEX IF NOT EXISTS idx_messages_time ON messages(msgTime DESC);'
+      );
+      const t = await env.DB.prepare("SELECT name FROM sqlite_master WHERE type='table'").all();
+      return json({ ok: true, tables: (t.results || []).map((r) => r.name) });
+    }
+    // 迁移某个月（从 KV 读 → 写 D1）：POST /api/_d1_migrate?m=YYYY-MM
+    if (url.pathname === '/api/_d1_migrate' && request.method === 'POST') {
+      if (!(await isSyncAuthorized(request, env))) return json({ error: 'forbidden: sync token required' }, 403);
+      if (!env.DB) return json({ error: 'd1-not-bound' }, 500);
+      const m = url.searchParams.get('m');
+      if (!/^\d{4}-\d{2}$/.test(m || '')) return json({ error: 'bad month' }, 400);
+      const arr = (await env.KV.get('msg/' + m, { type: 'json' })) || [];
+      const CH = 100;                       // D1 batch 每批 ≤100 条
+      let sent = 0;
+      for (let i = 0; i < arr.length; i += CH) {
+        const stmts = arr.slice(i, i + CH).map((x) => env.DB.prepare(
+          'INSERT OR REPLACE INTO messages (mid, month, msgTime, data) VALUES (?, ?, ?, ?)'
+        ).bind(msgKeyOf(x), m, Number(x.msgTime) || 0, JSON.stringify(x)));
+        if (stmts.length) await env.DB.batch(stmts);
+        sent += stmts.length;
+      }
+      const c = await env.DB.prepare('SELECT COUNT(*) AS n FROM messages WHERE month = ?').bind(m).first();
+      return json({ ok: true, month: m, kvCount: arr.length, sent, dbCount: (c && c.n) || 0 });
+    }
+
     if (url.pathname.startsWith('/api/')) {
       return handleApi(url, request, env, ctx);
     }
