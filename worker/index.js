@@ -27,6 +27,12 @@ export default {
       return new Response('Not Found', { status: 404 });
     }
 
+    // 站点动作统计（前端 track() 用 1x1 图片上报）：只记动作次数，不含任何内容
+    if (url.pathname === '/track') {
+      if (!isSameSite(request)) return new Response('forbidden', { status: 403 });
+      return handleTrack(url, request, env, ctx);
+    }
+
     if (url.pathname === '/translate') {
       if (!isSameSite(request)) return forbiddenNotSameSite();
       return handleTranslate(request, url, env, ctx);
@@ -117,6 +123,24 @@ const AI_MODEL = '@cf/meta/m2m100-1.2b';
  *   stat:tr:u:<day>:<ipHash>   当日出现的独立访客（只存 IP 的短哈希，不落明文 IP）
  * 统计失败一律静默（绝不能影响翻译本身）。
  */
+// 站点动作统计的事件清单（前端 app.js 的 track() 上报）
+const EVENTS = [
+  ['tab:messages', '口袋发言 tab'],
+  ['tab:live', '直播·录播 tab'],
+  ['tab:performances', '公演 tab'],
+  ['tab:guide', '新粉指南 tab'],
+  ['sub:replay', '公演回放 子标签'],
+  ['sub:cuts', '公演cut 子标签'],
+  ['sub:social', '社媒美图 子标签'],
+  ['sub:gallery', '公式照 子标签'],
+  ['sub:exp', '经历备注 子标签'],
+  ['play', '视频播放'],
+  ['refresh', '手动刷新'],
+  ['social:open', '美图点开大图'],
+  ['bili', 'B 站跳转'],
+  ['search', '搜索'],
+  ['filter:date', '时间筛选']
+];
 const LANGS = ['en', 'es', 'fr', 'nl', 'pt', 'ro', 'ja', 'vi', 'ko', 'th'];
 // 统计数据的读取密钥：只有带这个 key 才拿得到，避免统计接口挂在主域名上被随手访问。
 // 可用 KV 里的 STATS_KEY 覆盖（无需改代码）。
@@ -207,6 +231,36 @@ async function handleTranslate(request, url, env, ctx) {
   return json({ error: 'translate-failed' }, 502);
 }
 
+// 1x1 透明 GIF：track 请求的响应（浏览器把它当图片加载，不报错、不阻塞）
+const GIF = Uint8Array.from(atob('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'), (c) => c.charCodeAt(0));
+function gif() {
+  return new Response(GIF, {
+    headers: { 'content-type': 'image/gif', 'cache-control': 'no-store', 'access-control-allow-origin': '*' }
+  });
+}
+
+// 站点动作统计：?e=<事件名>
+async function handleTrack(url, request, env, ctx) {
+  const raw = String(url.searchParams.get('e') || '').toLowerCase();
+  // 只接受 [a-z0-9:_-]，避免任意键写进 KV
+  const ev = raw.replace(/[^a-z0-9:_-]/g, '').slice(0, 40);
+  if (ev) {
+    const job = (async () => {
+      try {
+        const kv = env && env.SECRETS;
+        if (!kv || typeof kv.get !== 'function') return;
+        const day = bjDay();
+        const ip = (request.headers.get('cf-connecting-ip') || request.headers.get('x-forwarded-for') || '?').split(',')[0].trim();
+        await incKV(kv, 'stat:ev:' + ev);
+        await incKV(kv, 'stat:evd:' + day + ':' + ev);
+        await kv.put(`stat:u:${day}:${await shortHash(ip)}`, '1');
+      } catch (_) { /* 统计失败不影响页面 */ }
+    })();
+    if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(job);
+  }
+  return gif();
+}
+
 // 站长查看翻译使用情况：返回一张简单表格（累计次数 / 各语言 / 最近 7 天次数与独立访客）
 async function handleStats(url, env) {
   // 站长看统计走 GitHub Pages（docs/stats.html），本域名上**不暴露任何统计页面**：
@@ -252,13 +306,27 @@ async function handleStats(url, env) {
     : '<tr><td colspan="2" class="dim">暂无记录</td></tr>';
   const dayHtml = days.map(([d, n, u]) => `<tr><td>${d}</td><td class="n">${n}</td><td class="n">${u}</td></tr>`).join('');
 
+  // 站点动作（tab 切换 / 视频播放 / 刷新 / 搜索 …）
+  const evDefs = EVENTS.concat(LANGS.map((l) => ['lang:' + l, '切换为' + (LANG_NAME[l] || l)]));
+  const evList = [];
+  for (const [key, name] of evDefs) {
+    const t = Number((await kv.get('stat:ev:' + key)) || 0);
+    const d = Number((await kv.get(`stat:evd:${days[0][0]}:${key}`)) || 0);
+    if (t > 0 || d > 0) evList.push({ key, name, total: t, today: d });
+  }
+  evList.sort((a, b) => b.total - a.total);
+  const evHtml = evList.length
+    ? evList.map((e) => `<tr><td>${e.name}</td><td class="n">${e.total}</td><td class="n">${e.today}</td></tr>`).join('')
+    : '<tr><td colspan="3" class="dim">暂无记录</td></tr>';
+
   // JSON 模式：给 GitHub Pages 上的统计页面跨域读取（docs/stats.html）
   if (wantJson) {
     return new Response(JSON.stringify({
       total,
       today: { day: days[0][0], count: days[0][1], visitors: days[0][2] },
       langs: langRows.map(([l, n]) => ({ lang: l, name: LANG_NAME[l] || l, count: n })),
-      days: days.map(([d, n, u]) => ({ day: d, count: n, visitors: u }))
+      days: days.map(([d, n, u]) => ({ day: d, count: n, visitors: u })),
+      events: evList
     }), {
       headers: {
         'content-type': 'application/json; charset=utf-8',
@@ -287,7 +355,8 @@ async function handleStats(url, env) {
 <div class="card"><div class="k">今日次数</div><div class="v">${days[0][1]}</div></div>
 <div class="card"><div class="k">今日独立访客</div><div class="v">${days[0][2]}</div></div></div>
 <h2>各语言使用次数</h2><table>${langHtml}</table>
-<h2>最近 7 天</h2><table><tr><td>日期</td><td class="n">次数</td><td class="n">独立访客</td></tr>${dayHtml}</table>`);
+<h2>功能使用（累计 / 今日）</h2><table><tr><td>动作</td><td class="n">累计</td><td class="n">今日</td></tr>${evHtml}</table>
+<h2>最近 7 天（翻译）</h2><table><tr><td>日期</td><td class="n">次数</td><td class="n">独立访客</td></tr>${dayHtml}</table>`);
 }
 
 // 手动触发抓取：调用 GitHub REST API 触发 scrape.yml 的 workflow_dispatch。
