@@ -58,7 +58,7 @@ jobs:
       - name: 抓取 B站 公演录像备用源
         run: BILI_PAGE_BUDGET=6 PAGE_SLEEP=1500 BILI_SPACE_BAN_TRIES=0 node scripts/fetch-bili-videos.mjs || true
       - name: 抓取 B站 直播切片 / 直播回放（两个粉丝 UP）
-        run: BILI_CUT_SPACE_PAGES=6 node scripts/fetch-live-cuts.mjs || true
+        run: BILI_CUT_SPACE_PAGES=2 node scripts/fetch-live-cuts.mjs || true
       - name: 合并生成 archive.js（公演筛选 / B站挂源 / 消息瘦身）
         run: node scripts/build-archive.mjs
       - name: 同步数据到 KV（替代提交 git → 部署）
