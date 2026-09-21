@@ -1,6 +1,123 @@
 {
   "messages": [
     {
+      "msgIdServer": "7404393009",
+      "msgTime": 1789986773926,
+      "msgType": "TEXT",
+      "text": "这个大彩虹",
+      "reply": null,
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟",
+        "avatar": "/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif"
+      },
+      "raw": {
+        "bodys": "这个大彩虹",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\",\"teamLogo\":\"/mediasource/teamLogo2/all/gnz48_n3.png\",\"avatar\":\"/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif\",\"level\":4,\"roleId\":3,\"vip\":false,\"pfUrl\":\"/backstage/2025/0822/aiy8n5febvwm8b435ysn8nk.png\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "TEXT"
+      }
+    },
+    {
+      "msgIdServer": "7404376984",
+      "msgTime": 1789986770861,
+      "msgType": "TEXT",
+      "text": "这个大拉链",
+      "reply": null,
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟",
+        "avatar": "/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif"
+      },
+      "raw": {
+        "bodys": "这个大拉链",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\",\"teamLogo\":\"/mediasource/teamLogo2/all/gnz48_n3.png\",\"avatar\":\"/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif\",\"level\":4,\"roleId\":3,\"vip\":false,\"pfUrl\":\"/backstage/2025/0822/aiy8n5febvwm8b435ysn8nk.png\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "TEXT"
+      }
+    },
+    {
+      "msgIdServer": "7404442589",
+      "msgTime": 1789986767676,
+      "msgType": "TEXT",
+      "text": "好有设计感的一件衣服",
+      "reply": null,
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟",
+        "avatar": "/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif"
+      },
+      "raw": {
+        "bodys": "好有设计感的一件衣服",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\",\"teamLogo\":\"/mediasource/teamLogo2/all/gnz48_n3.png\",\"avatar\":\"/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif\",\"level\":4,\"roleId\":3,\"vip\":false,\"pfUrl\":\"/backstage/2025/0822/aiy8n5febvwm8b435ysn8nk.png\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "TEXT"
+      }
+    },
+    {
+      "msgIdServer": "7404393008",
+      "msgTime": 1789986763470,
+      "msgType": "IMAGE",
+      "text": "",
+      "reply": null,
+      "images": [
+        "https://kd48-nosdn.yunxinsvr.com/NDA5MzEwOA==/bmltYV8xMTMzMjAyNjQ4MDBfMTc4OTgwNjY0ODE3OV80MGNmNTI2Ni03MmFjLTRlOGMtYWVkYS1iNWIyODdhY2ViYWU="
+      ],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟",
+        "avatar": "/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif"
+      },
+      "raw": {
+        "bodys": "{\"size\":1898386,\"ext\":\"jpg\",\"w\":4284,\"url\":\"https:\\/\\/kd48-nosdn.yunxinsvr.com\\/NDA5MzEwOA==\\/bmltYV8xMTMzMjAyNjQ4MDBfMTc4OTgwNjY0ODE3OV80MGNmNTI2Ni03MmFjLTRlOGMtYWVkYS1iNWIyODdhY2ViYWU=\",\"md5\":\"a4763f89721d3b11fe8dace454e33dfe\",\"h\":4284}",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\",\"teamLogo\":\"/mediasource/teamLogo2/all/gnz48_n3.png\",\"avatar\":\"/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif\",\"level\":4,\"roleId\":3,\"vip\":false,\"pfUrl\":\"/backstage/2025/0822/aiy8n5febvwm8b435ysn8nk.png\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "IMAGE"
+      }
+    },
+    {
+      "msgIdServer": "7404425833",
+      "msgTime": 1789986762828,
+      "msgType": "TEXT",
+      "text": "哇噻",
+      "reply": null,
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟",
+        "avatar": "/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif"
+      },
+      "raw": {
+        "bodys": "哇噻",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\",\"teamLogo\":\"/mediasource/teamLogo2/all/gnz48_n3.png\",\"avatar\":\"/avatar/2023/1228/89653517xuct15pbbj8o1lv2u4fdvp01.gif\",\"level\":4,\"roleId\":3,\"vip\":false,\"pfUrl\":\"/backstage/2025/0822/aiy8n5febvwm8b435ysn8nk.png\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "TEXT"
+      }
+    },
+    {
       "msgIdServer": "7404442359",
       "msgTime": 1789985012753,
       "msgType": "TEXT",
