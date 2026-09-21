@@ -55,8 +55,12 @@ jobs:
           git config user.email "archive@local"
           git config user.name "wangyuchen-archive"
           git add -A
-          if git diff --cached --quiet; then
-            echo "数据无变化，跳过提交"
+          # 仅以核心数据（发言 / 直播 / 公演）是否变化作为提交依据，
+          # 忽略 meta 时间戳、dist 的 ?v= bump、archive.js 重建等非实质噪音，
+          # 避免每 3 分钟高频轮询把 git 记录与 Cloudflare 部署刷爆。
+          if git diff --cached --quiet -- site/data/messages.json site/data/live.json site/data/performances.json; then
+            echo "核心数据无变化，丢弃本次所有改动（含 dist 时间戳噪音），跳过提交与部署"
+            git reset --hard HEAD
           else
             git commit -m "auto: 增量补档 $(date '+%Y-%m-%d %H:%M UTC')"
             git push origin main
