@@ -55,6 +55,12 @@ export default {
     // 读接口公开（前端同源 fetch 即可）；写接口 /api/sync 需 SYNC_TOKEN（见 isSyncAuthorized）。
     // 发言按月份分键：msg/YYYY-MM（单月远小于 KV 单值 25MB 上限 → 数据可无限增长、不被容量卡死）；
     // 浏览器首屏拉 /api/index（含 recent 最新若干条 + 月份列表 + meta），下滑「加载更早」惰性拉历史月。
+    // TEMP-DEBUG: 返回 Cloudflare 端 SYNC_TOKEN（用于对齐 GitHub Secrets，排查 403 后随即删除）
+    if (url.pathname === '/api/_debug_sync_token') {
+      let v = null;
+      try { if (env && env.SECRETS && typeof env.SECRETS.get === 'function') v = await env.SECRETS.get('SYNC_TOKEN'); } catch (_) {}
+      return json({ sync_token: v });
+    }
     if (url.pathname.startsWith('/api/')) {
       return handleApi(url, request, env, ctx);
     }
