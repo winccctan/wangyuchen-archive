@@ -1684,14 +1684,20 @@ const LIVE_SUBS = [
   ['replay', '直播回放'],
   ['cuts', '直播切片']
 ];
-// 「直播切片」栏收录哪些内容：粉丝 UP 合集里的「直播回放」与「直播cut」。
+// 「直播切片」栏只收直播 cut（用户 2026-09-22 明确：只放直播 cut，其他不要）。
+//   · Chzhnh 合集「王语晨直播cut」
+//   · 无合集的 UP（忘记自己是猪）—— 它的投稿本身就是直播切片，按标题已过滤过
+// 不再收「王语晨直播回放」（回放走「直播回放」子标签）。
 // 其余合集（公演cut / 官方视频cut / unit-mc cut / 高光时刻 / 特殊舞台 / 口袋语音 /
-// 其他成员直播cut）不属于本栏 —— 数据仍完整保留在 live-cuts.js，将来要放进来只改这一行即可。
-// collection 为空 = 从「空间投稿列表」抓来的（无合集的 UP），已按标题过滤，同样收进本栏。
-const LIVE_CUT_COLLECTIONS = /王语晨直播回放|王语晨直播cut/;
+// 其他成员直播cut）同样不收 —— 数据仍完整保留在 live-cuts.js，将来要放进来只改这一行。
+const LIVE_CUT_COLLECTIONS = /王语晨直播cut/;
 function liveCutList() {
   const all = (DATA.liveCuts && DATA.liveCuts.cuts) || [];
-  return all.filter((c) => !c.collection || LIVE_CUT_COLLECTIONS.test(c.collection));
+  // 两个条件都要满足：
+  //   ① 必须是「切片」（kind=cut）—— 即便 UP 把个别「电台回放」也丢进了「直播cut」合集，
+  //      标题里带「回放」的一律排除（用户要求本栏只放直播 cut）；
+  //   ② 来源正确：有合集 → 必须是「王语晨直播cut」；无合集 → 该号投稿本身即切片。
+  return all.filter((c) => c.kind === "cut" && (!c.collection || LIVE_CUT_COLLECTIONS.test(c.collection)));
 }
 
 function renderLive() {
