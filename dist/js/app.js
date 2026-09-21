@@ -1,5 +1,5 @@
 // 王语晨补档站 - 前端逻辑
-const DATA = { meta: null, messages: [], live: [], performances: [], social: [], perfCuts: null };
+const DATA = { meta: null, messages: [], live: [], performances: [], social: [], perfCuts: null, liveCuts: null };
 // 按月分键加载状态：ALL_MONTHS 为降序月份列表（最新在前），loadedMonths 记录已拉取的月份
 let ALL_MONTHS = [];
 let loadedMonths = new Set();
@@ -9,7 +9,7 @@ let loadedMonths = new Set();
 const API_BASE = /(^|\.)wyc0518\.cc$/.test(location.hostname) ? '' : 'https://idol.wyc0518.cc';
 // msgKey → message，便于翻译时按 id 取到原文（重新渲染后 DOM 里只剩 mid）
 const MSG_INDEX = new Map();
-const state = { tab: 'messages', query: '', dateFrom: null, dateTo: null, dayLimit: 3, lang: 'zh', expanded: new Set(), guideSub: 'guide', perfSub: 'perf' };
+const state = { tab: 'messages', query: '', dateFrom: null, dateTo: null, dayLimit: 3, lang: 'zh', expanded: new Set(), guideSub: 'guide', perfSub: 'perf', liveSub: 'replay' };
 
 const $ = (sel) => document.querySelector(sel);
 const panels = {
@@ -613,13 +613,17 @@ async function loadArchive() {
       loadRemainingMonths();
       // 首屏只额外等「当月」补全（它就在上面那批并行下载里，await 到的是同一个 Promise）
       await loadMonth(bjMonth(Date.now()), true);
-      const [live, perfs, social, perfCuts] = await Promise.all([
-        fetchApi('/api/live'), fetchApi('/api/performances'), fetchApi('/api/social'), fetchApi('/api/perf-cuts')
+      const [live, perfs, social, perfCuts, liveCuts] = await Promise.all([
+        fetchApi('/api/live'), fetchApi('/api/performances'), fetchApi('/api/social'), fetchApi('/api/perf-cuts'),
+        // 「直播切片」是锦上添花的数据：单独失败不该拖垮整页
+        // （否则整个 API 分支抛错 → 回退去下 19MB 静态 archive.js，因小失大）
+        fetchApi('/api/live-cuts').catch(() => null)
       ]);
       DATA.live = live || [];
       DATA.performances = perfs || [];
       DATA.social = social || [];
       DATA.perfCuts = (perfCuts && Array.isArray(perfCuts.cuts)) ? perfCuts : null;
+      DATA.liveCuts = (liveCuts && Array.isArray(liveCuts.cuts)) ? liveCuts : null;
       return { meta: DATA.meta, messages: DATA.messages, live: DATA.live, performances: DATA.performances };
     }
   } catch (_) { /* 落到静态兜底 */ }
@@ -647,6 +651,7 @@ async function loadArchiveStatic() {
       if (window.__ARCHIVE__) {
         DATA.social = window.SOCIAL_MEDIA || [];
         DATA.perfCuts = window.PERF_CUTS || null;
+        DATA.liveCuts = window.LIVE_CUTS || null;
         return window.__ARCHIVE__;
       }
       lastErr = new Error('数据文件内容为空');
@@ -1040,6 +1045,11 @@ function bindEvents() {
         panels.performances.querySelectorAll('.subtab').forEach((b) =>
           b.classList.toggle('active', b.dataset.sub === state.perfSub));
         renderPerfSub();
+      } else if (state.tab === 'live') {
+        state.liveSub = subBtn.dataset.sub;
+        panels.live.querySelectorAll('.subtab').forEach((b) =>
+          b.classList.toggle('active', b.dataset.sub === state.liveSub));
+        renderLiveSub();
       } else {
         state.guideSub = subBtn.dataset.sub;
         panels.guide.querySelectorAll('.subtab').forEach((b) =>
@@ -1650,6 +1660,10 @@ function renderCard(item, timeKey) {
   const cutBtn = (item._cutCount)
     ? `<button class="cut-btn" type="button" onclick="gotoPerfCuts('${escapeHtml(item._cutDate)}')">🎬 ${item._cutCount} cut</button>`
     : '';
+  // 该场直播对应的 B 站切片 / 回放：角标跳到「直播切片」栏的对应日期
+  const liveCutBtn = (item._liveCutCount)
+    ? `<button class="cut-btn" type="button" onclick="gotoLiveCuts('${escapeHtml(item._liveCutDate)}')">🎬 ${item._liveCutCount} 切片</button>`
+    : '';
   return `<div class="card">
     ${cover ? `<img class="card-img" loading="lazy" referrerpolicy="no-referrer" src="${escapeHtml(cover)}" alt="" onclick="window.__lightboxShow(this.src)" onerror="this.classList.add('failed')" />` : ''}
     <div class="card-body">
@@ -1660,13 +1674,44 @@ function renderCard(item, timeKey) {
         <span>🕒 ${escapeHtml(time)}</span>
         ${playNum ? `<span>▶ ${escapeHtml(String(playNum))}</span>` : ''}
       </div>
-      <div class="card-actions">${playBtn}${biliBtn}${cutBtn}</div>
+      <div class="card-actions">${playBtn}${biliBtn}${cutBtn}${liveCutBtn}</div>
     </div>
   </div>`;
 }
 
+/* ---------------- 直播 / 录播（含子标签：直播回放 / 直播切片） ---------------- */
+const LIVE_SUBS = [
+  ['replay', '直播回放'],
+  ['cuts', '直播切片']
+];
+// 「直播切片」栏收录哪些内容：粉丝 UP 合集里的「直播回放」与「直播cut」。
+// 其余合集（公演cut / 官方视频cut / unit-mc cut / 高光时刻 / 特殊舞台 / 口袋语音 /
+// 其他成员直播cut）不属于本栏 —— 数据仍完整保留在 live-cuts.js，将来要放进来只改这一行即可。
+// collection 为空 = 从「空间投稿列表」抓来的（无合集的 UP），已按标题过滤，同样收进本栏。
+const LIVE_CUT_COLLECTIONS = /王语晨直播回放|王语晨直播cut/;
+function liveCutList() {
+  const all = (DATA.liveCuts && DATA.liveCuts.cuts) || [];
+  return all.filter((c) => !c.collection || LIVE_CUT_COLLECTIONS.test(c.collection));
+}
+
 function renderLive() {
   const panel = panels.live;
+  const subtabs = LIVE_SUBS.map(([k, label]) =>
+    `<button class="subtab${state.liveSub === k ? ' active' : ''}" data-sub="${k}">${escapeHtml(label)}</button>`
+  ).join('');
+  panel.innerHTML = `
+    <div class="perf">
+      <div class="subtabs">${subtabs}</div>
+      <div class="perf-sub" id="liveSub"></div>
+    </div>`;
+  renderLiveSub();
+}
+
+function renderLiveSub() {
+  const box = $('#liveSub');
+  if (!box) return;
+  if (state.liveSub === 'cuts') { box.innerHTML = renderLiveCuts(); return; }
+  // 直播回放（原 renderLive 内容）
   let list = DATA.live;
   if (state.query) list = list.filter((m) =>
     (m.title || '').toLowerCase().includes(state.query) ||
@@ -1674,12 +1719,73 @@ function renderLive() {
   );
   if (dateFilterActive()) list = list.filter((m) => inDateRange(m.ctime));
   if (!list.length) {
-    panel.innerHTML = filterNote(0) +
+    box.innerHTML = filterNote(0) +
       `<div class="empty-state">${dateFilterActive() ? '该时间范围内没有直播 / 录播，点上方「清除筛选」看全部。' : '暂无直播 / 录播数据。'}</div>`;
     return;
   }
-  panel.innerHTML = filterNote(list.length) +
-    `<div class="card-grid">${list.map((m) => renderCard(m, 'ctime')).join('')}</div>`;
+  // 按 liveId 统计该场直播有几个 B 站切片/回放 → 卡片上出现「🎬 N 切片」角标，点了跳到切片栏对应日期
+  const byLive = {};
+  for (const c of liveCutList()) {
+    if (!c.liveId) continue;
+    const k = String(c.liveId);
+    if (!byLive[k]) byLive[k] = { n: 0, date: c.titleDate || c.date };
+    byLive[k].n++;
+  }
+  const list2 = list.map((p) => {
+    const c = byLive[String(p.liveId)];
+    return c ? { ...p, _liveCutCount: c.n, _liveCutDate: c.date } : p;
+  });
+  box.innerHTML = filterNote(list2.length) +
+    `<div class="card-grid">${list2.map((m) => renderCard(m, 'ctime')).join('')}</div>`;
+}
+
+// 直播切片 / 直播回放列表：按【标题日期优先、否则发布时间】分天倒序，
+// 同一天里该 UP 的切片与回放并列，方便对照「这场直播有哪些片段」。
+function renderLiveCuts() {
+  const data = liveCutList();
+  if (!data.length) return '<div class="empty">暂无直播切片。数据随抓取自动更新，若刚上线请稍后再看。</div>';
+  const groups = {}, order = [];
+  data.forEach((c) => {
+    const d = c.titleDate || c.date;
+    if (!groups[d]) { groups[d] = []; order.push(d); }
+    groups[d].push(c);
+  });
+  order.sort((a, b) => b.localeCompare(a));
+  let html = '';
+  order.forEach((date) => {
+    const arr = groups[date].slice().sort((a, b) => b.created - a.created);
+    const nReplay = arr.filter((x) => x.kind === 'replay').length;
+    const nCut = arr.length - nReplay;
+    const parts = [];
+    if (nReplay) parts.push(`直播回放 ${nReplay}`);
+    if (nCut) parts.push(`切片 ${nCut}`);
+    html += `<section class="pc-group" id="lc-group-${escapeHtml(date)}">`
+      + `<h2 class="pc-group-h"><span class="ym">${escapeHtml(date)}</span>`
+      + `<span class="perf">${parts.join(' · ')}</span>`
+      + `<span class="n">${arr.length} 条</span></h2><div class="pc-grid">`;
+    arr.forEach((c) => {
+      const cover = c.cover
+        ? `<img src="${escapeHtml(c.cover)}" loading="lazy" referrerpolicy="no-referrer" alt="">`
+        : '<div class="pc-void">▶</div>';
+      html += `<a class="pc-card" href="${escapeHtml(c.url)}" target="_blank" rel="noopener">${cover}`
+        + '<div class="pc-scrim"></div>'
+        + (c.kind ? `<span class="pc-ov song">${c.kind === 'replay' ? '回放' : '切片'}</span>` : '')
+        + `<span class="pc-ov date">${escapeHtml(c.up || '')}</span>`
+        + '<span class="pc-ov go">去 B 站看 ↗</span>'
+        + '</a>';
+    });
+    html += '</div></section>';
+  });
+  return html;
+}
+
+function gotoLiveCuts(date) {
+  state.liveSub = 'cuts';
+  switchTab('live');
+  setTimeout(() => {
+    const el = document.getElementById('lc-group-' + date);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 60);
 }
 
 init();

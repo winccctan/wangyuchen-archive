@@ -604,6 +604,7 @@ async function handleApi(url, request, env, ctx) {
   if (p === '/api/performances') return handleApiKey('performances', env);
   if (p === '/api/social') return handleApiKey('social', env);
   if (p === '/api/perf-cuts') return handleApiKey('perf-cuts', env);
+  if (p === '/api/live-cuts') return handleApiKey('live-cuts', env);
   if (p === '/api/sync' && request.method === 'POST') {
     if (!(await isSyncAuthorized(request, env))) return json({ error: 'forbidden: sync token required' }, 403);
     return handleApiSync(request, env, ctx);
@@ -692,7 +693,7 @@ async function handleApiKey(key, env) {
   const kv = env && env.KV;
   if (!kv) return json({ error: 'kv-not-bound' }, 500);
   const v = await kv.get(key, { type: 'json' });
-  if (v == null) return apiJson(key === 'perf-cuts' ? { cuts: [] } : [], 'public, max-age=60');
+  if (v == null) return apiJson((key === 'perf-cuts' || key === 'live-cuts') ? { cuts: [] } : [], 'public, max-age=60');
   return apiJson(v, 'public, max-age=60');
 }
 
@@ -797,12 +798,12 @@ async function handleApiSync(request, env, ctx) {
   if (!kv || typeof kv.put !== 'function') return json({ error: 'kv-not-bound' }, 500);
   let body;
   try { body = await request.json(); } catch (_) { return json({ error: 'bad json' }, 400); }
-  const { months, live, performances, social, perfCuts, meta } = body || {};
+  const { months, live, performances, social, perfCuts, liveCuts, meta } = body || {};
   const replace = new Set(Array.isArray(body && body.replace) ? body.replace : []);
 
   const idx = normIndex(await kv.get('index', { type: 'json' }));
   const oldSig = idxSignature(idx);
-  const result = { months: {}, live: null, performances: null, social: null, perfCuts: null };
+  const result = { months: {}, live: null, performances: null, social: null, perfCuts: null, liveCuts: null };
   let dataChanged = false;
   const latest = [];
 
@@ -854,6 +855,11 @@ async function handleApiSync(request, env, ctx) {
   if (perfCuts && typeof perfCuts === 'object') {
     const r = await replaceKey(kv, 'perf-cuts', perfCuts);
     result.perfCuts = r;
+    if (r.wrote) dataChanged = true;
+  }
+  if (liveCuts && typeof liveCuts === 'object') {
+    const r = await replaceKey(kv, 'live-cuts', liveCuts);
+    result.liveCuts = r;
     if (r.wrote) dataChanged = true;
   }
 
