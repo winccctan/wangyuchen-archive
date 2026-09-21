@@ -626,11 +626,22 @@ async function checkForUpdates() {
       return; // ← finally 会负责恢复按钮
     }
 
-    // 2) 数据没变化 → 静默触发一次后台抓取（GitHub Actions），失败也不提示
+    // 2) 数据没变化 → 触发一次后台抓取（GitHub Actions）
+    //    ⚠️ 必须带 Content-Type + body：裸的「空 body POST」会被 Cloudflare 的防护规则拦掉
+    //    （前端只会看到 Failed to fetch），曾导致点「刷新」看似有反应、实际根本没触发抓取。
     try {
-      const r = await fetch('/scrape', { method: 'POST', cache: 'no-store' });
-      if (r.ok) { const j = await r.json().catch(() => ({})); triggered = !j.skipped; }
-    } catch (_) { /* 忽略 */ }
+      const r = await fetch('/scrape', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+        cache: 'no-store'
+      });
+      const j = await r.json().catch(() => ({}));
+      triggered = r.ok && !j.skipped;
+      if (!r.ok) showToast('⚠️ 触发抓取失败，请稍后再试', true);
+    } catch (_) {
+      showToast('⚠️ 连接服务器失败，请稍后再试', true);
+    }
 
     // 3) 抓取 → 提交 → Cloudflare 部署这一条链路通常 1~3 分钟。这里最多自动等 3 分钟，
     //    期间粉丝只需点一次；超时或已是最新就释放按钮，不把刷新键锁死。
@@ -651,7 +662,10 @@ async function checkForUpdates() {
         if (waited >= 60) release();
       } catch (_) { /* 继续等 */ }
     }
-    if (!updated && triggered) showToast('抓取已触发，稍后再点一次刷新即可看到最新');
+    // 等完还没变化就明确告诉粉丝结果，避免「点了没反应」的困惑
+    if (!updated) {
+      showToast(triggered ? '✅ 已是最新，暂无新内容' : '抓取刚跑过，稍后再点一次');
+    }
   } finally {
     release();
   }
