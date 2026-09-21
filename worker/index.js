@@ -701,7 +701,10 @@ async function mergeById(kv, key, incoming, sortFn) {
     for (const f of Object.keys(it)) {
       const v = it[f];
       if (v === '' || v == null) continue;
-      if (JSON.stringify(old[f]) !== JSON.stringify(v)) { merged[f] = v; diff = true; }
+      // 必须用 stableStringify 比较（与下面的落盘判断同一口径）：
+      // 直接 JSON.stringify 对嵌套对象是「键顺序敏感」的，会把同一份数据误判成「有变化」，
+      // 导致日志里每轮都报「更新 N 条」而实际没写盘，排查时极易被误导。
+      if (stableStringify(old[f]) !== stableStringify(v)) { merged[f] = v; diff = true; }
     }
     if (diff) { map.set(k, merged); updated++; }
   }
