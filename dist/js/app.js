@@ -1804,6 +1804,9 @@ function gotoLiveCuts(liveId) {
   }, 60);
 }
 
+// 启动（脚本位于 </body> 前，DOM 已就绪；注意：这一行曾被补丁误删过，勿移除）
+init();
+
 /* ---------------- 新粉指南子标签：社媒美图（@忘记自己是鱼_ 本人发的照片/视频） ----------------
    数据来自 DATA.social（site/data/social-media.js，自动生成）。
    图片为微博图床原始 URL，经站点图片代理 /img/?u=<encoded> 获取（直链会被 403 拦截）。
