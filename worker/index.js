@@ -743,9 +743,25 @@ async function handleApiIndex(env) {
 async function handleApiMonth(url, env) {
   const m = url.searchParams.get('m');
   if (!/^\d{4}-\d{2}$/.test(m || '')) return json({ error: 'bad month' }, 400);
-  const kv = env && env.KV;
-  if (!kv) return json({ error: 'kv-not-bound' }, 500);
-  const arr = await kv.get('msg/' + m, { type: 'json' }) || [];
+  // ── 读路径：D1 优先，未绑定或出错时回退 KV ──
+  // 发言已迁到 D1（免费 10 万写/天，是 KV 1000 的 100 倍）；KV 里的月份键仍保留作备份，
+  // 所以这里任何异常都能无损回退，绝不会「读不到数据」。
+  let arr = null;
+  if (env && env.DB) {
+    try {
+      const rs = await env.DB.prepare(
+        'SELECT data FROM messages WHERE month = ? ORDER BY msgTime DESC'
+      ).bind(m).all();
+      arr = (rs.results || [])
+        .map((r) => { try { return JSON.parse(r.data); } catch (_) { return null; } })
+        .filter(Boolean);
+    } catch (_) { arr = null; }
+  }
+  if (arr === null) {
+    const kv = env && env.KV;
+    if (!kv) return json({ error: 'kv-not-bound' }, 500);
+    arr = await kv.get('msg/' + m, { type: 'json' }) || [];
+  }
   // 历史月内容永不再变 → 允许浏览器/CDN 长缓存（前端会后台把 44 个月全拉一遍，
   // 长缓存能让回访几乎零请求）；当月仍在增长 → 必须不缓存，否则看不到新发言。
   const now = new Date(Date.now() + 8 * 3600 * 1000);
@@ -784,6 +800,28 @@ async function mergeMonth(kv, m, msgs) {
     wrote = true;
   }
   return { total: merged.length, added, wrote, head: merged.slice(0, 120) };
+}
+
+// 发言写入 D1：只写「比库里最新一条还要新」的条目。
+// 发言一旦落库几乎不再变动，所以「只插新增」既保证正确、又把写入量压到每天几十条。
+// （若每轮把窗口内 3000 条全量 REPLACE，96 轮/天 = 28.8 万，会超过 D1 免费 10 万/天的写入额度。）
+// D1 故障绝不能影响 KV 主路径 —— 整个函数吞掉异常。
+async function writeMonthToD1(db, m, msgs) {
+  if (!db || !Array.isArray(msgs) || !msgs.length) return 0;
+  try {
+    const row = await db.prepare('SELECT MAX(msgTime) AS t FROM messages WHERE month = ?').bind(m).first();
+    const last = Number(row && row.t) || 0;
+    const news = msgs.filter((x) => (Number(x.msgTime) || 0) > last);
+    let sent = 0;
+    for (let i = 0; i < news.length; i += 100) {
+      const stmts = news.slice(i, i + 100).map((x) => db.prepare(
+        'INSERT OR REPLACE INTO messages (mid, month, msgTime, data) VALUES (?, ?, ?, ?)'
+      ).bind(msgKeyOf(x), m, Number(x.msgTime) || 0, JSON.stringify(x)));
+      if (stmts.length) await db.batch(stmts);
+      sent += stmts.length;
+    }
+    return sent;
+  } catch (_) { return 0; }
 }
 
 // 直播 / 公演：按 liveId 并集；同键只覆盖「有值且真变化」的字段（空字符串不覆盖，避免抹掉已有的 playUrl）。
@@ -884,8 +922,10 @@ async function handleApiSync(request, env, ctx) {
       if (!Array.isArray(msgs)) continue;
       mset.add(m);
       const r = await mergeMonth(kv, m, msgs);
+      // 同步写 D1（只插新增）；KV 继续保留该月数据作为备份/回退
+      const d1Sent = await writeMonthToD1(env.DB, m, msgs);
       idx.counts[m] = r.total;
-      result.months[m] = { total: r.total, added: r.added, wrote: r.wrote };
+      result.months[m] = { total: r.total, added: r.added, wrote: r.wrote, d1: d1Sent };
       if (r.wrote) dataChanged = true;
       for (const x of r.head) latest.push(x);
     }
