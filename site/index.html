@@ -36,9 +36,7 @@
     <input type="search" id="searchInput" placeholder="搜索发言内容 / 标题…" />
     <button id="dateToggleBtn" class="date-toggle-btn" type="button" title="按时间筛选" hidden>📅 时间</button>
     <div class="toolbar-actions">
-      <span class="hist-loading" id="histLoading" hidden title="正在加载全部历史发言，完成后即可搜索/按时间筛选全部历史">
-        <span class="hist-spin" aria-hidden="true"></span><span class="hist-txt" id="histText">加载历史</span>
-      </span>
+      <span class="busy-note" id="busyNote" hidden></span>
       <span class="updated" id="updatedAt"></span>
       <button id="trAllBtn" class="tr-all-btn" type="button" hidden>🌐 翻译本页</button>
       <select id="langSelect" class="lang-select" title="选择翻译语言">

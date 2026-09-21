@@ -523,11 +523,11 @@ function bjMonth(ts) {
 // 为什么必须做：数据改按月分键存 KV 后，首屏只有 recent + 当前月，
 // 若只靠「加载更早」按钮那就一次只多拉 1 个月 —— 想翻到两年前要点击上百次，
 // 搜索/日期筛选也只能搜到已加载的那一小段，体验远不如以前一次性读整份数据。
-// 历史月内容永不再变（且 /api/month 允许浏览器/CDN 缓存），所以后台顺序拉完最划算：
+// 历史月内容永不再变（且 /api/month 允许浏览器/CDN 缓存），所以后台并行拉完最划算：
 // 首屏不受影响，拉完后「加载更早」/搜索/日期筛选恢复全量语义。
+// ★ 全程**静默**：不给加载过程任何提示，只有「搜索/筛选正等数据」时才在工具栏显示小字。
 let allMonthsPromise = null;
 let allMonthsLoaded = false;
-let monthsProgress = { done: 0, total: 0 };
 
 // 并行度 8：实测 44 个月「串行 54s / 并行 8 路 2.1s」，是收益最大的那个点
 // （再高会被浏览器同域连接数上限拖慢，实测 44 路并发反而回落到 4s）。
@@ -537,9 +537,7 @@ const MONTH_CONCURRENCY = 8;
 function loadRemainingMonths() {
   if (allMonthsPromise) return allMonthsPromise;
   const todo = ALL_MONTHS.filter((m) => !loadedMonths.has(m));
-  monthsProgress = { done: 0, total: todo.length };
-  if (!todo.length) { allMonthsLoaded = true; allMonthsPromise = Promise.resolve(); updateHistSpinner(); return allMonthsPromise; }
-  startHistTicker();
+  if (!todo.length) { allMonthsLoaded = true; allMonthsPromise = Promise.resolve(); return allMonthsPromise; }
   allMonthsPromise = (async () => {
     let i = 0;
     const worker = async () => {
@@ -548,13 +546,12 @@ function loadRemainingMonths() {
         // 并发下每个 loadMonth 在 await 之后才读 DATA.messages、并同步写回，
         // 中间没有 await → 单线程下不会交错，无需加锁。
         try { await loadMonth(m, true); } catch (_) { /* 单月失败不影响其余 */ }
-        monthsProgress.done++;
       }
     };
     await Promise.all(Array.from({ length: Math.min(MONTH_CONCURRENCY, todo.length) }, worker));
     rebuildIndex();
     allMonthsLoaded = true;
-    stopHistTicker();
+    hideBusy(); // 数据到齐：收起「搜索中…」小字
     if (state.tab === 'messages' && (state.query || dateFilterActive())) {
       // 正在搜索/筛选：必须重绘才能把新补进来的历史结果显示出来
       const y = window.scrollY;
@@ -562,7 +559,7 @@ function loadRemainingMonths() {
       window.scrollTo(0, y);
     } else {
       // 普通浏览：**不整表重绘**（刚打开就重绘会闪一下、打断阅读）。
-      // 小 spinner 已由 stopHistTicker() 收起；这里只把「加载更早」的剩余条数就地改成真实值。
+      // 这里只把「加载更早」的剩余条数就地改成真实值。
       const btn = document.getElementById('loadMore');
       if (btn) {
         const groups = {};
@@ -861,9 +858,12 @@ function bindEvents() {
     if (state.query) trackSearch(); // 只在真的输入了内容时才记
     // ★ 搜索必须覆盖「全部历史」，否则就是假阴性：数据按月分键、首屏只有 recent+当月，
     //   历史月还在后台拉的时候立刻下结论，用户就会以为「搜不到老发言」。
-    //   故搜索时等全量补齐后再重渲一次（并行 8 路，实测约 2 秒）。
+    //   故搜索时等全量补齐后再重渲一次（并行 8 路，实测约 2 秒），期间在工具栏显示「搜索中…」。
     if (state.query && !allMonthsLoaded) {
+      showBusy('搜索中…');
       loadRemainingMonths().then(() => { if (state.query) renderAll(); });
+    } else if (!state.query) {
+      hideBusy();
     }
   });
   // 时间筛选：弹窗 + 点「确认」才刷新；含「全部 / 近 N 天」快捷
@@ -900,7 +900,10 @@ function bindEvents() {
       showToast(state.dateFrom || state.dateTo ? '✅ 已按时间筛选' : '✅ 已显示全部时间');
       // 同搜索：按时间筛选也必须覆盖全部历史月，否则早年区间会显示「没有发言」。
       if ((state.dateFrom || state.dateTo) && !allMonthsLoaded) {
+        showBusy('筛选中…');
         loadRemainingMonths().then(() => renderAll());
+      } else {
+        hideBusy();
       }
     });
   }
@@ -1071,26 +1074,21 @@ function filterNote(count) {
     `<button class="filter-clear" type="button">清除筛选</button></div>`;
 }
 
-// 历史月后台补齐时，只在工具栏显示一个低调的小 spinner，加载完自动消失。
-// （早期版本是在列表上方插一条黄色横幅，太抢眼——用户反馈「丑」，已废弃。）
-let histTick = null;
-function updateHistSpinner() {
-  const el = document.getElementById('histLoading');
+// 工具栏「更新于」左侧的忙碌小字：只在「搜索 / 筛选正等着历史数据就绪」时出现，
+// 数据一到就消失。后台静默补齐历史**不显示任何提示**（用户明确要求完全静默）。
+let busyTimer = null;
+function showBusy(text) {
+  const el = document.getElementById('busyNote');
   if (!el) return;
-  if (allMonthsLoaded || !monthsProgress.total) { el.hidden = true; return; }
+  el.textContent = text;
   el.hidden = false;
-  const txt = document.getElementById('histText');
-  if (txt) txt.textContent = `加载历史 ${monthsProgress.done}/${monthsProgress.total}`;
+  if (busyTimer) clearTimeout(busyTimer);
+  busyTimer = setTimeout(hideBusy, 15000); // 兜底：异常时最多显示 15 秒，不会卡住不消失
 }
-function startHistTicker() {
-  updateHistSpinner();
-  if (histTick) return;
-  // 只刷新一个小数字，不触碰列表 DOM → 不会闪烁
-  histTick = setInterval(updateHistSpinner, 300);
-}
-function stopHistTicker() {
-  if (histTick) { clearInterval(histTick); histTick = null; }
-  updateHistSpinner();
+function hideBusy() {
+  if (busyTimer) { clearTimeout(busyTimer); busyTimer = null; }
+  const el = document.getElementById('busyNote');
+  if (el) el.hidden = true;
 }
 
 function renderAll() {
@@ -1330,9 +1328,10 @@ function renderMessages() {
   if (state.query) list = list.filter((m) => matchQuery(m));
 
   if (!list.length) {
-    // 历史月还没拉完就先说「没有」会严重误导——此时只给一行低调的加载占位（不用大色块横幅）
+    // 历史月还没拉完就先说「没有」会严重误导。此时**完全不碰面板**（完全静默），
+    // 只在工具栏挂一个「搜索中…/筛选中…」小字，数据到齐后会自动重绘出真实结果。
     if (filtering && !allMonthsLoaded) {
-      panel.innerHTML = '<div class="hist-line">正在加载历史发言…</div>';
+      showBusy(state.query ? '搜索中…' : '筛选中…');
       loadRemainingMonths().then(() => { if (state.query || dateFilterActive()) renderMessages(); });
       return;
     }

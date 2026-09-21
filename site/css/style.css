@@ -558,23 +558,18 @@ body {
   border-radius: 10px; font-size: 13px; color: var(--text);
 }
 .filter-note b { color: var(--primary); font-weight: 600; }
-/* 历史发言后台补齐中的「小 spinner」：放在工具栏里，低调、加载完自动消失。
-   （早期版本是列表上方一条大黄条，太抢眼，已废弃。） */
-.hist-loading {
-  display: inline-flex; align-items: center; gap: 5px;
-  font-size: 11px; color: var(--muted, #8a8a8a); opacity: .85;
+/* 工具栏「更新于」左侧的忙碌小字（「搜索中…」/「筛选中…」）。
+   只在搜索/筛选正在等历史数据就绪的那一两秒出现，随后自动消失。
+   后台静默补齐历史**不显示任何东西**——用户明确要求完全静默，
+   也废弃过「列表上方黄色横幅」和「小 spinner」两种更显眼的做法。 */
+.busy-note {
+  font-size: 12px; color: var(--primary, #2bc4e0); opacity: .9;
   white-space: nowrap; user-select: none;
+  animation: busy-fade .18s ease-out;
 }
-.hist-loading[hidden] { display: none; }
-.hist-spin {
-  width: 11px; height: 11px; flex: 0 0 auto; border-radius: 50%;
-  border: 1.5px solid currentColor; border-top-color: transparent;
-  animation: hist-spin .75s linear infinite;
-}
-@keyframes hist-spin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .hist-spin { animation-duration: 2s; } }
-/* 极端情况（筛选时历史仍未就绪）用的一行低调占位，不再用大色块横幅 */
-.hist-line { padding: 26px 0; text-align: center; color: var(--muted, #8a8a8a); font-size: 13px; }
+.busy-note[hidden] { display: none; }
+@keyframes busy-fade { from { opacity: 0; } to { opacity: .9; } }
+@media (prefers-reduced-motion: reduce) { .busy-note { animation: none; } }
 .filter-clear {
   margin-left: auto; border: 1px solid var(--primary); background: transparent;
   color: var(--primary); border-radius: 999px; padding: 3px 12px;
