@@ -499,19 +499,30 @@ async function fetchApi(path) {
 }
 
 // 惰性加载某月发言（合并进 DATA.messages，按 msgKey 去重）。已加载则跳过。
+// 同一月份「正在加载中」时复用同一个 Promise —— 后台并行补齐与「首屏预拉当月」可能同时要这个月，
+// 没有它的话第二方会直接 early-return（以为已完成），拿到的其实是空数据。
+const monthPromises = new Map();
 async function loadMonth(m, silent) {
-  if (!m || loadedMonths.has(m)) return;
-  loadedMonths.add(m);
-  try {
-    const arr = await fetchApi('/api/month?m=' + encodeURIComponent(m));
-    const map = new Map();
-    for (const x of DATA.messages) map.set(msgKey(x), x);
-    for (const x of arr) map.set(msgKey(x), x);
-    DATA.messages = [...map.values()];
-  } catch (e) {
-    loadedMonths.delete(m); // 允许重试
-    if (!silent) throw e;
-  }
+  if (!m) return;
+  if (monthPromises.has(m)) return monthPromises.get(m); // 已在加载 → 复用，不重复请求
+  if (loadedMonths.has(m)) return;
+  const p = (async () => {
+    loadedMonths.add(m);
+    try {
+      const arr = await fetchApi('/api/month?m=' + encodeURIComponent(m));
+      const map = new Map();
+      for (const x of DATA.messages) map.set(msgKey(x), x);
+      for (const x of arr) map.set(msgKey(x), x);
+      DATA.messages = [...map.values()];
+    } catch (e) {
+      loadedMonths.delete(m); // 允许重试
+      if (!silent) throw e;
+    }
+  })();
+  monthPromises.set(m, p);
+  const cleanup = () => monthPromises.delete(m);
+  p.then(cleanup, cleanup); // 用 then(, ) 而非 finally：避免非 silent 失败时产生 unhandled rejection
+  return p;
 }
 
 function bjMonth(ts) {
@@ -590,7 +601,12 @@ async function loadArchive() {
       DATA.messages = idx.recent || [];
       ALL_MONTHS = (idx.months || []).slice();    // 降序，最新月份在前
       loadedMonths = new Set();
-      await loadMonth(bjMonth(Date.now()), true); // 预拉当前月补全首屏
+      // ★ 历史月是「搜索 / 时间筛选 / 加载更早」的前提，必须在拿到月份清单的**那一刻**就
+      //   最优先开始下载——不能排在 live/performances/social 后面，否则用户要多等同样长的时间
+      //   才能搜到历史。这里立刻启动（不 await，不阻塞首屏；搜索/筛选会 await 同一个 Promise）。
+      loadRemainingMonths();
+      // 首屏只额外等「当月」补全（它就在上面那批并行下载里，await 到的是同一个 Promise）
+      await loadMonth(bjMonth(Date.now()), true);
       const [live, perfs, social, perfCuts] = await Promise.all([
         fetchApi('/api/live'), fetchApi('/api/performances'), fetchApi('/api/social'), fetchApi('/api/perf-cuts')
       ]);
@@ -598,7 +614,6 @@ async function loadArchive() {
       DATA.performances = perfs || [];
       DATA.social = social || [];
       DATA.perfCuts = (perfCuts && Array.isArray(perfCuts.cuts)) ? perfCuts : null;
-      loadRemainingMonths(); // 后台补齐历史月（不阻塞首屏渲染）
       return { meta: DATA.meta, messages: DATA.messages, live: DATA.live, performances: DATA.performances };
     }
   } catch (_) { /* 落到静态兜底 */ }
