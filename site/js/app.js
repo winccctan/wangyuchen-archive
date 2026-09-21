@@ -553,12 +553,34 @@ function loadRemainingMonths() {
     await Promise.all(Array.from({ length: Math.min(MONTH_CONCURRENCY, todo.length) }, worker));
     rebuildIndex();
     allMonthsLoaded = true;
-    // 全量就绪后刷新一次发言列表：让「加载更早」的剩余条数/天数变成真实值，
-    // 也让「加载中…」提示消失。滚动位置保持不变，避免打断阅读。
     if (state.tab === 'messages') {
-      const y = window.scrollY;
-      renderMessages();
-      window.scrollTo(0, y);
+      if (state.query || dateFilterActive()) {
+        // 正在搜索/筛选：必须重绘才能把新补进来的历史结果显示出来
+        const y = window.scrollY;
+        renderMessages();
+        window.scrollTo(0, y);
+      } else {
+        // 普通浏览：**不要整表重绘**——刚打开就重绘会闪一下、打断阅读（用户反馈「没有以前顺滑」）。
+        // 只就地撤掉「加载中」提示条，并把「加载更早」的剩余条数改成真实值。
+        const note = document.querySelector('.hist-note');
+        if (note) note.remove();
+        const btn = document.getElementById('loadMore');
+        if (btn) {
+          const groups = {};
+          for (const m of DATA.messages) {
+            const d = fmtDate(m.msgTime) || '未知日期';
+            (groups[d] ||= []).push(m);
+          }
+          const days = Object.keys(groups).sort((a, b) => (b > a ? 1 : -1));
+          const restDays = days.length - Math.min(state.dayLimit, days.length);
+          if (restDays > 0) {
+            const restCount = days.slice(state.dayLimit).reduce((n, d) => n + groups[d].length, 0);
+            btn.textContent = `加载更早的消息（还有 ${restCount} 条 / ${restDays} 天）`;
+          } else {
+            btn.remove();
+          }
+        }
+      }
     }
   })();
   return allMonthsPromise;
