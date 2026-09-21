@@ -1693,11 +1693,11 @@ const LIVE_SUBS = [
 const LIVE_CUT_COLLECTIONS = /王语晨直播cut/;
 function liveCutList() {
   const all = (DATA.liveCuts && DATA.liveCuts.cuts) || [];
-  // 两个条件都要满足：
-  //   ① 必须是「切片」（kind=cut）—— 即便 UP 把个别「电台回放」也丢进了「直播cut」合集，
-  //      标题里带「回放」的一律排除（用户要求本栏只放直播 cut）；
-  //   ② 来源正确：有合集 → 必须是「王语晨直播cut」；无合集 → 该号投稿本身即切片。
-  return all.filter((c) => c.kind === "cut" && (!c.collection || LIVE_CUT_COLLECTIONS.test(c.collection)));
+  // 有合集 → 以 UP 的归类为准：「王语晨直播cut」合集里的**全部**内容都收。
+  //   ⚠️ 该合集里混有 2 条「电台直播回放」（20260711 / 20251216 第二段）——
+  //   电台也是她的一种直播形式，属于本栏，不能因为标题带「回放」就排除。
+  // 无合集 → 该号投稿本身即切片（忘记自己是猪），但标题带「回放」的仍排除。
+  return all.filter((c) => (c.collection ? LIVE_CUT_COLLECTIONS.test(c.collection) : c.kind === "cut"));
 }
 
 function renderLive() {
@@ -1773,8 +1773,8 @@ function renderLiveCuts() {
     const nReplay = arr.filter((x) => x.kind === 'replay').length;
     const nCut = arr.length - nReplay;
     const parts = [];
-    if (nReplay) parts.push(`直播回放 ${nReplay}`);
     if (nCut) parts.push(`切片 ${nCut}`);
+    if (nReplay) parts.push(`回放 ${nReplay}`);   // 仅「直播cut」合集内混入的电台回放会走到这
     const gid = 'lc-group-' + (g.live ? 'live-' + g.liveId : 'day-' + g.day);
     html += `<section class="pc-group" id="${escapeHtml(gid)}">`
       + `<h2 class="pc-group-h"><span class="ym">${escapeHtml(g.day)}</span>`
