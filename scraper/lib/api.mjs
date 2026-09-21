@@ -111,11 +111,11 @@ async function buildHeaders(token) {
     'User-Agent': APP_USER_AGENT,
     'Accept-Language': 'zh-Hans-AW;q=1'
   };
-  if (token) {
-    headers.token = token;
-    // pa 为反爬签名，由 wasm 生成；带 token 的请求必须携带
-    headers.pa = generatePa();
-  }
+  if (token) headers.token = token;
+  // pa 为反爬签名，由 wasm 生成。★ 必须无条件携带：
+  // 口袋48 已对「直播 / 公演」这类原先无需登录的接口也开始校验 pa，
+  // 只带 appInfo 不带 pa 会被直接打回 403（表现为返回一坨 nginx 403 HTML）。
+  headers.pa = generatePa();
   return headers;
 }
 
