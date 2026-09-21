@@ -17,9 +17,9 @@ export default {
       });
     }
 
-    // 翻译使用统计（站长自己看：浏览器打开 https://idol.wyc0518.cc/stats）
+    // 翻译使用统计：仅带 key 才返回（给 GitHub Pages 的统计页面用），否则 404
     if (url.pathname === '/stats' || url.pathname === '/stats/') {
-      return handleStats(env);
+      return handleStats(url, env);
     }
 
     if (url.pathname === '/translate') {
@@ -113,6 +113,9 @@ const AI_MODEL = '@cf/meta/m2m100-1.2b';
  * 统计失败一律静默（绝不能影响翻译本身）。
  */
 const LANGS = ['en', 'es', 'fr', 'nl', 'pt', 'ro', 'ja', 'vi', 'ko', 'th'];
+// 统计数据的读取密钥：只有带这个 key 才拿得到，避免统计接口挂在主域名上被随手访问。
+// 可用 KV 里的 STATS_KEY 覆盖（无需改代码）。
+const STATS_KEY = 'wyc-stats-2026';
 const LANG_NAME = { en: '英语', es: '西班牙语', fr: '法语', nl: '荷兰语', pt: '葡萄牙语', ro: '罗马尼亚语', ja: '日语', vi: '越南语', ko: '韩语', th: '泰语' };
 function p2(n) { return String(n).padStart(2, '0'); }
 function bjDay(ts) { // 北京时间日期
@@ -200,8 +203,18 @@ async function handleTranslate(request, url, env, ctx) {
 }
 
 // 站长查看翻译使用情况：返回一张简单表格（累计次数 / 各语言 / 最近 7 天次数与独立访客）
-async function handleStats(env) {
+async function handleStats(url, env) {
+  // 站长看统计走 GitHub Pages（docs/stats.html），本域名上**不暴露任何统计页面**：
+  // 未带正确 key 一律 404（看起来就像没有这个地址），带 key 才返回数据。
+  const wantJson = url.searchParams.get('format') === 'json';
   const kv = env && env.SECRETS;
+  let key = STATS_KEY;
+  if (kv && typeof kv.get === 'function') {
+    try { key = (await kv.get('STATS_KEY')) || STATS_KEY; } catch (_) { /* 用默认值 */ }
+  }
+  if (url.searchParams.get('k') !== key) {
+    return new Response('Not Found', { status: 404 });
+  }
   const html = (s) => new Response(s, {
     headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' }
   });
@@ -233,6 +246,22 @@ async function handleStats(env) {
     ? langRows.map(([l, n]) => `<tr><td>${LANG_NAME[l] || l}</td><td class="n">${n}</td></tr>`).join('')
     : '<tr><td colspan="2" class="dim">暂无记录</td></tr>';
   const dayHtml = days.map(([d, n, u]) => `<tr><td>${d}</td><td class="n">${n}</td><td class="n">${u}</td></tr>`).join('');
+
+  // JSON 模式：给 GitHub Pages 上的统计页面跨域读取（docs/stats.html）
+  if (wantJson) {
+    return new Response(JSON.stringify({
+      total,
+      today: { day: days[0][0], count: days[0][1], visitors: days[0][2] },
+      langs: langRows.map(([l, n]) => ({ lang: l, name: LANG_NAME[l] || l, count: n })),
+      days: days.map(([d, n, u]) => ({ day: d, count: n, visitors: u }))
+    }), {
+      headers: {
+        'content-type': 'application/json; charset=utf-8',
+        'cache-control': 'no-store',
+        'access-control-allow-origin': '*'
+      }
+    });
+  }
 
   return html(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>翻译使用统计</title>
