@@ -1,9 +1,9 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-09-21T16:07:35.320Z",
-  "count": 569,
-  "matched": 479,
-  "replays": 246,
-  "clips": 317,
+  "updatedAt": "2026-09-21T16:36:41.977Z",
+  "count": 620,
+  "matched": 449,
+  "replays": 248,
+  "clips": 372,
   "targets": [
     {
       "mid": "1805448354",
@@ -38,7 +38,23 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1308594215547899904"
+      "liveId": "1308594215547899904",
+      "liveDate": "2026-09-21"
+    },
+    {
+      "bvid": "BV1b8hv6tEaT",
+      "collection": "",
+      "cover": "http://i2.hdslb.com/bfs/archive/2f44ad76ca62bd7eb3d561252526ca0b5f9b70b7.jpg",
+      "created": 1789955249,
+      "date": "2026-09-21",
+      "kind": "cut",
+      "liveId": "1308594215547899904",
+      "mid": "1805448354",
+      "title": "【王语晨】cc：方琪你是我的神！",
+      "titleDate": "",
+      "up": "忘记自己是猪",
+      "url": "https://www.bilibili.com/video/BV1b8hv6tEaT",
+      "liveDate": "2026-09-21"
     },
     {
       "bvid": "BV1j2hh6cEc1",
@@ -52,7 +68,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1308594215547899904"
+      "liveId": "1308586395016433664",
+      "liveDate": "2026-09-21"
     },
     {
       "bvid": "BV1QMei6GE9W",
@@ -66,7 +83,23 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1308173113268965376"
+      "liveId": "1308173113268965376",
+      "liveDate": "2026-09-19"
+    },
+    {
+      "bvid": "BV1P4ei6cEBP",
+      "collection": "",
+      "cover": "http://i1.hdslb.com/bfs/archive/8810d214eb7248cbf197a5454ea8b10bd6656f32.jpg",
+      "created": 1789870255,
+      "date": "2026-09-20",
+      "kind": "cut",
+      "liveId": "1308173113268965376",
+      "mid": "1805448354",
+      "title": "【王语晨】早上起来怨气很重哇",
+      "titleDate": "",
+      "up": "忘记自己是猪",
+      "url": "https://www.bilibili.com/video/BV1P4ei6cEBP",
+      "liveDate": "2026-09-19"
     },
     {
       "bvid": "BV1upeh6tE4M",
@@ -80,7 +113,23 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1308173113268965376"
+      "liveId": "1308173113268965376",
+      "liveDate": "2026-09-19"
+    },
+    {
+      "bvid": "BV1wqeb6gExJ",
+      "collection": "",
+      "cover": "http://i0.hdslb.com/bfs/archive/98d8a255d38280e6a020545d8857d0dfaa8df39b.jpg",
+      "created": 1789812784,
+      "date": "2026-09-19",
+      "kind": "cut",
+      "liveId": "1307810563775860736",
+      "mid": "1805448354",
+      "title": "【王语晨】姐姐能不能先把钱给我我发誓今天就交自拍",
+      "titleDate": "",
+      "up": "忘记自己是猪",
+      "url": "https://www.bilibili.com/video/BV1wqeb6gExJ",
+      "liveDate": "2026-09-18"
     },
     {
       "bvid": "BV13ReS6EEJp",
@@ -94,7 +143,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1308173113268965376"
+      "liveId": "1307810563775860736",
+      "liveDate": "2026-09-18"
     },
     {
       "bvid": "BV1EzeS6bEZz",
@@ -108,7 +158,23 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1307810563775860736"
+      "liveId": "1307810563775860736",
+      "liveDate": "2026-09-18"
+    },
+    {
+      "bvid": "BV1Wse16pEPw",
+      "collection": "",
+      "cover": "http://i1.hdslb.com/bfs/archive/b069702b11c76929b974c91ea09c0cac96cbcaa5.jpg",
+      "created": 1789714891,
+      "date": "2026-09-18",
+      "kind": "cut",
+      "liveId": "1307478939104251904",
+      "mid": "1805448354",
+      "title": "【王语晨】大馋丫头越南吃饭偶遇粉丝全障碍交流",
+      "titleDate": "",
+      "up": "忘记自己是猪",
+      "url": "https://www.bilibili.com/video/BV1Wse16pEPw",
+      "liveDate": "2026-09-17"
     },
     {
       "bvid": "BV1kneC67ETj",
@@ -122,7 +188,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1307810563775860736"
+      "liveId": "1307478939104251904",
+      "liveDate": "2026-09-17"
     },
     {
       "bvid": "BV1eQe66bEBs",
@@ -136,7 +203,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1307478939104251904"
+      "liveId": "1307478939104251904",
+      "liveDate": "2026-09-17"
     },
     {
       "bvid": "BV1gneM6hEFX",
@@ -149,8 +217,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1gneM6hEFX",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨直播cut",
-      "liveId": "1307478939104251904"
+      "collection": "合集·王语晨直播cut"
     },
     {
       "bvid": "BV1ZYeF6JEwv",
@@ -164,7 +231,23 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1307478939104251904"
+      "liveId": "1306046852958588928",
+      "liveDate": "2026-09-14"
+    },
+    {
+      "bvid": "BV1kFeJ6CEKz",
+      "collection": "",
+      "cover": "http://i0.hdslb.com/bfs/archive/700f5f13b26f779832b7fd12a2448189a7003338.jpg",
+      "created": 1789446176,
+      "date": "2026-09-15",
+      "kind": "cut",
+      "liveId": "1306046852958588928",
+      "mid": "1805448354",
+      "title": "【王语晨】希望大家不要被一些东西给困住了。可以多多做产出宣传我专注我就好了",
+      "titleDate": "",
+      "up": "忘记自己是猪",
+      "url": "https://www.bilibili.com/video/BV1kFeJ6CEKz",
+      "liveDate": "2026-09-14"
     },
     {
       "bvid": "BV1iMeJ6ME9F",
@@ -178,7 +261,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1306046852958588928"
+      "liveId": "1306046852958588928",
+      "liveDate": "2026-09-14"
     },
     {
       "bvid": "BV16DY66KEUx",
@@ -192,7 +276,23 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1306046852958588928"
+      "liveId": "1306046852958588928",
+      "liveDate": "2026-09-14"
+    },
+    {
+      "bvid": "BV1gRYr6pEtY",
+      "collection": "",
+      "cover": "http://i2.hdslb.com/bfs/archive/22ce784ae3f8b538064dcd968afb8204127d7abc.jpg",
+      "created": 1789352838,
+      "date": "2026-09-14",
+      "kind": "cut",
+      "liveId": "1306046852958588928",
+      "mid": "1805448354",
+      "title": "【王语晨】cc被热情的后辈们吓到恐人直呼曾雨思快带我走",
+      "titleDate": "",
+      "up": "忘记自己是猪",
+      "url": "https://www.bilibili.com/video/BV1gRYr6pEtY",
+      "liveDate": "2026-09-14"
     },
     {
       "bvid": "BV17vYz6tEn7",
@@ -205,8 +305,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV17vYz6tEn7",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1305685319044894720"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1zhYz6cE9i",
@@ -220,7 +319,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1306046852958588928"
+      "liveId": "1306046852958588928",
+      "liveDate": "2026-09-14"
     },
     {
       "bvid": "BV1emYa6KEeT",
@@ -247,7 +347,23 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1305685319044894720"
+      "liveId": "1305685319044894720",
+      "liveDate": "2026-09-13"
+    },
+    {
+      "bvid": "BV1GJYo6aEu1",
+      "collection": "",
+      "cover": "http://i2.hdslb.com/bfs/archive/5a99e8396b14410d348fadf2a6e280a81e78312a.jpg",
+      "created": 1789237066,
+      "date": "2026-09-13",
+      "kind": "cut",
+      "liveId": "1305685319044894720",
+      "mid": "1805448354",
+      "title": "【王语晨】侄女不穿阿迪？我大学外号阿迪王谢谢",
+      "titleDate": "",
+      "up": "忘记自己是猪",
+      "url": "https://www.bilibili.com/video/BV1GJYo6aEu1",
+      "liveDate": "2026-09-13"
     },
     {
       "bvid": "BV13EYo6AEet",
@@ -261,7 +377,23 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1305685319044894720"
+      "liveId": "1305685319044894720",
+      "liveDate": "2026-09-13"
+    },
+    {
+      "bvid": "BV1xUYW6YEzL",
+      "collection": "",
+      "cover": "http://i0.hdslb.com/bfs/archive/aa5f564bf1a70c38ae2c44c1bbc4531bca1391c6.jpg",
+      "created": 1788929098,
+      "date": "2026-09-09",
+      "kind": "cut",
+      "mid": "358477444",
+      "title": "【王语晨】2026SNH48GROUP年度青春盛典-GNZ48 VLOG(3)-cut",
+      "titleDate": "",
+      "up": "Chzhnh",
+      "url": "https://www.bilibili.com/video/BV1xUYW6YEzL",
+      "liveId": "1303492659076993024",
+      "liveDate": "2026-09-06"
     },
     {
       "bvid": "BV1MxYs6MEhU",
@@ -274,7 +406,9 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1MxYs6MEhU",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨unit/mc cut"
+      "collection": "合集·王语晨unit/mc cut",
+      "liveId": "1303492659076993024",
+      "liveDate": "2026-09-06"
     },
     {
       "bvid": "BV1zubV61Ezw",
@@ -287,7 +421,24 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1zubV61Ezw",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨直播cut"
+      "collection": "合集·王语晨直播cut",
+      "liveId": "1303492659076993024",
+      "liveDate": "2026-09-06"
+    },
+    {
+      "bvid": "BV1GGbN6rE4x",
+      "collection": "",
+      "cover": "http://i2.hdslb.com/bfs/archive/be1843bb6225c7d3503a1ea98f6c235077f0b37e.jpg",
+      "created": 1788784921,
+      "date": "2026-09-07",
+      "kind": "cut",
+      "liveId": "1303492659076993024",
+      "mid": "1805448354",
+      "title": "【王语晨x杨若惜】yrx你没有发现吗你是我的镇静剂",
+      "titleDate": "",
+      "up": "忘记自己是猪",
+      "url": "https://www.bilibili.com/video/BV1GGbN6rE4x",
+      "liveDate": "2026-09-06"
     },
     {
       "bvid": "BV1cNbw6SEDL",
@@ -301,7 +452,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1303492659076993024"
+      "liveId": "1303492659076993024",
+      "liveDate": "2026-09-06"
     },
     {
       "bvid": "BV1uVbx6hEMp",
@@ -315,7 +467,23 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1303492659076993024"
+      "liveId": "1303492659076993024",
+      "liveDate": "2026-09-06"
+    },
+    {
+      "bvid": "BV1dybx6uEj3",
+      "collection": "",
+      "cover": "http://i2.hdslb.com/bfs/archive/2879100875300535d2f8e3f2654045e6a7b56cc6.jpg",
+      "created": 1788714479,
+      "date": "2026-09-07",
+      "kind": "cut",
+      "liveId": "1303492659076993024",
+      "mid": "1805448354",
+      "title": "【王语晨】出门拍照上一秒误会路人下一秒霸气对付偷拍男",
+      "titleDate": "",
+      "up": "忘记自己是猪",
+      "url": "https://www.bilibili.com/video/BV1dybx6uEj3",
+      "liveDate": "2026-09-06"
     },
     {
       "bvid": "BV1fvbx6LEMU",
@@ -329,7 +497,38 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1303492659076993024"
+      "liveId": "1303492659076993024",
+      "liveDate": "2026-09-06"
+    },
+    {
+      "bvid": "BV1JDbp6BEpu",
+      "collection": "",
+      "cover": "http://i0.hdslb.com/bfs/archive/92bd1f4ba33476f4534c70b6fd752e475cccd183.jpg",
+      "created": 1788674634,
+      "date": "2026-09-06",
+      "kind": "cut",
+      "liveId": "1303094463599284224",
+      "mid": "1805448354",
+      "title": "【王语晨】焦虑什么呢有这张脸做什么都会成功的好吗",
+      "titleDate": "",
+      "up": "忘记自己是猪",
+      "url": "https://www.bilibili.com/video/BV1JDbp6BEpu",
+      "liveDate": "2026-09-05"
+    },
+    {
+      "bvid": "BV1bcb76qExg",
+      "collection": "",
+      "cover": "http://i0.hdslb.com/bfs/archive/3cdd52d348945d3f0f818707895d6bf06e7cd27a.jpg",
+      "created": 1788634879,
+      "date": "2026-09-06",
+      "kind": "cut",
+      "liveId": "1303094463599284224",
+      "mid": "1805448354",
+      "title": "【王语晨】我现在已经不在意很多人对我的看法了。你所见即是我好与坏我都不反驳",
+      "titleDate": "",
+      "up": "忘记自己是猪",
+      "url": "https://www.bilibili.com/video/BV1bcb76qExg",
+      "liveDate": "2026-09-05"
     },
     {
       "bvid": "BV1w9b76wECv",
@@ -343,7 +542,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1303492659076993024"
+      "liveId": "1303094463599284224",
+      "liveDate": "2026-09-05"
     },
     {
       "bvid": "BV1WPbL6oEvU",
@@ -357,7 +557,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1303094463599284224"
+      "liveId": "1303094463599284224",
+      "liveDate": "2026-09-05"
     },
     {
       "bvid": "BV1pet26CE4r",
@@ -370,8 +571,22 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1pet26CE4r",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1303094463599284224"
+      "collection": "合集·王语晨公演cut"
+    },
+    {
+      "bvid": "BV1zXtz67EMB",
+      "collection": "",
+      "cover": "http://i2.hdslb.com/bfs/archive/480455272d1c9fc3b0ee81b1e69331c2eb0fcf91.jpg",
+      "created": 1788541196,
+      "date": "2026-09-05",
+      "kind": "cut",
+      "liveId": "1302776560404467712",
+      "mid": "1805448354",
+      "title": "【王语晨】当cc收到老婆特效礼物后",
+      "titleDate": "",
+      "up": "忘记自己是猪",
+      "url": "https://www.bilibili.com/video/BV1zXtz67EMB",
+      "liveDate": "2026-09-04"
     },
     {
       "bvid": "BV1pCtz6sE84",
@@ -385,7 +600,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1302776560404467712"
+      "liveId": "1302776560404467712",
+      "liveDate": "2026-09-04"
     },
     {
       "bvid": "BV1Vjtq6NEdH",
@@ -398,8 +614,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1Vjtq6NEdH",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨官方视频cut",
-      "liveId": "1302776560404467712"
+      "collection": "合集·王语晨官方视频cut"
     },
     {
       "bvid": "BV1Jvtg6TESv",
@@ -412,7 +627,9 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1Jvtg6TESv",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨直播cut"
+      "collection": "合集·王语晨直播cut",
+      "liveId": "1300970849529827328",
+      "liveDate": "2026-08-30"
     },
     {
       "bvid": "BV1Fytx6jEhF",
@@ -426,7 +643,23 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1300970849529827328"
+      "liveId": "1300970849529827328",
+      "liveDate": "2026-08-30"
+    },
+    {
+      "bvid": "BV1cxt46EExA",
+      "collection": "",
+      "cover": "http://i1.hdslb.com/bfs/archive/01596f558a0e62f54a57a72c80ca634dbd7bc559.jpg",
+      "created": 1788138361,
+      "date": "2026-08-31",
+      "kind": "cut",
+      "liveId": "1300970849529827328",
+      "mid": "1805448354",
+      "title": "【王语晨】到时候我定制你们再在台下给我冷漠一个试试呢",
+      "titleDate": "",
+      "up": "忘记自己是猪",
+      "url": "https://www.bilibili.com/video/BV1cxt46EExA",
+      "liveDate": "2026-08-30"
     },
     {
       "bvid": "BV1qHtp6eEZx",
@@ -440,7 +673,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1300970849529827328"
+      "liveId": "1300970849529827328",
+      "liveDate": "2026-08-30"
     },
     {
       "bvid": "BV1cdtp6GEdJ",
@@ -453,8 +687,52 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1cdtp6GEdJ",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1300970849529827328"
+      "collection": "合集·王语晨公演cut"
+    },
+    {
+      "bvid": "BV1PW416BEiH",
+      "collection": "",
+      "cover": "http://i1.hdslb.com/bfs/archive/16fa0cc568b084ca110c889157dac0d04622b40b.jpg",
+      "created": 1788018079,
+      "date": "2026-08-29",
+      "kind": "cut",
+      "liveId": "1300562573805817856",
+      "mid": "1805448354",
+      "title": "【王语晨】打王者别人靠技术而我靠顽强的生命力",
+      "titleDate": "",
+      "up": "忘记自己是猪",
+      "url": "https://www.bilibili.com/video/BV1PW416BEiH",
+      "liveDate": "2026-08-29"
+    },
+    {
+      "bvid": "BV1BY416aE6j",
+      "collection": "",
+      "cover": "http://i1.hdslb.com/bfs/archive/3964528f60d45d20a2272f0ee13a085c6efbeba8.jpg",
+      "created": 1788017844,
+      "date": "2026-08-29",
+      "kind": "replay",
+      "liveId": "1300562573805817856",
+      "mid": "358477444",
+      "title": "【王语晨】20260829 直播回放",
+      "titleDate": "2026-08-29",
+      "up": "Chzhnh",
+      "url": "https://www.bilibili.com/video/BV1BY416aE6j",
+      "liveDate": "2026-08-29"
+    },
+    {
+      "bvid": "BV1Sm4C6VEVj",
+      "collection": "",
+      "cover": "http://i2.hdslb.com/bfs/archive/a2ca8cfdeab40b691202b2ae6395965abed221e5.jpg",
+      "created": 1788001378,
+      "date": "2026-08-29",
+      "kind": "cut",
+      "liveId": "1300562573805817856",
+      "mid": "358477444",
+      "title": "【王语晨】20260829 GNZ48 team NIII《拾忆：TEAM NIII》公演cut",
+      "titleDate": "2026-08-29",
+      "up": "Chzhnh",
+      "url": "https://www.bilibili.com/video/BV1Sm4C6VEVj",
+      "liveDate": "2026-08-29"
     },
     {
       "bvid": "BV1j4tw66EWK",
@@ -468,7 +746,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1300562573805817856"
+      "liveId": "1299106973695676416",
+      "liveDate": "2026-08-25"
     },
     {
       "bvid": "BV1hshA6rEew",
@@ -481,7 +760,9 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1hshA6rEew",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨官方视频cut"
+      "collection": "合集·王语晨官方视频cut",
+      "liveId": "1299106973695676416",
+      "liveDate": "2026-08-25"
     },
     {
       "bvid": "BV1Am8d6CEdt",
@@ -495,7 +776,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1299106973695676416"
+      "liveId": "1299106973695676416",
+      "liveDate": "2026-08-25"
     },
     {
       "bvid": "BV11i8Q6eEsR",
@@ -509,7 +791,23 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1299106973695676416"
+      "liveId": "1299106973695676416",
+      "liveDate": "2026-08-25"
+    },
+    {
+      "bvid": "BV1LWhj6SELi",
+      "collection": "",
+      "cover": "http://i0.hdslb.com/bfs/archive/5211c3987453f73ecff9ca9296828849e6f93562.jpg",
+      "created": 1787674714,
+      "date": "2026-08-26",
+      "kind": "cut",
+      "liveId": "1299106973695676416",
+      "mid": "1805448354",
+      "title": "【王语晨】我那不懂事让人操心的爸爸",
+      "titleDate": "",
+      "up": "忘记自己是猪",
+      "url": "https://www.bilibili.com/video/BV1LWhj6SELi",
+      "liveDate": "2026-08-25"
     },
     {
       "bvid": "BV1zxhV6DERp",
@@ -523,7 +821,38 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1299106973695676416"
+      "liveId": "1299106973695676416",
+      "liveDate": "2026-08-25"
+    },
+    {
+      "bvid": "BV1ivhV6yEt9",
+      "collection": "",
+      "cover": "http://i2.hdslb.com/bfs/archive/8d002a9454fa5fd5e69b4b18fb51d83c5b7f589a.jpg",
+      "created": 1787671294,
+      "date": "2026-08-25",
+      "kind": "cut",
+      "liveId": "1299106973695676416",
+      "mid": "1805448354",
+      "title": "【王语晨】玩撕名牌游戏被哥哥追着提醒语晨姐不美丽了哈",
+      "titleDate": "",
+      "up": "忘记自己是猪",
+      "url": "https://www.bilibili.com/video/BV1ivhV6yEt9",
+      "liveDate": "2026-08-25"
+    },
+    {
+      "bvid": "BV1TXhV6PEqS",
+      "collection": "",
+      "cover": "http://i2.hdslb.com/bfs/archive/d3ab087d893d1fee24368b2198af2134e78215a7.jpg",
+      "created": 1787668585,
+      "date": "2026-08-25",
+      "kind": "replay",
+      "liveId": "1299106973695676416",
+      "mid": "358477444",
+      "title": "【王语晨】20260825 直播回放",
+      "titleDate": "2026-08-25",
+      "up": "Chzhnh",
+      "url": "https://www.bilibili.com/video/BV1TXhV6PEqS",
+      "liveDate": "2026-08-25"
     },
     {
       "bvid": "BV1Qqh36vESU",
@@ -537,7 +866,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1299106973695676416"
+      "liveId": "1298412263742181376",
+      "liveDate": "2026-08-23"
     },
     {
       "bvid": "BV1eg8i6TE7c",
@@ -551,7 +881,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1298412263742181376"
+      "liveId": "1298412263742181376",
+      "liveDate": "2026-08-23"
     },
     {
       "bvid": "BV1wN8h6KEqY",
@@ -565,7 +896,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1298412263742181376"
+      "liveId": "1298412263742181376",
+      "liveDate": "2026-08-23"
     },
     {
       "bvid": "BV1S18t6gEPb",
@@ -578,8 +910,22 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1S18t6gEPb",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1298412263742181376"
+      "collection": "合集·王语晨公演cut"
+    },
+    {
+      "bvid": "BV1Jm866tECA",
+      "collection": "",
+      "cover": "http://i1.hdslb.com/bfs/archive/d08f46a9ea5310c9862adaf86d96be4048dbe971.jpg",
+      "created": 1787338470,
+      "date": "2026-08-22",
+      "kind": "cut",
+      "liveId": "1297704341374570496",
+      "mid": "358477444",
+      "title": "【王语晨】我是中华大曲库，上次豪歌猜歌游戏，好多歌都没去抢都夺冠了（本视频包含豪歌高光时刻）",
+      "titleDate": "",
+      "up": "Chzhnh",
+      "url": "https://www.bilibili.com/video/BV1Jm866tECA",
+      "liveDate": "2026-08-21"
     },
     {
       "bvid": "BV1AB866eE1u",
@@ -593,7 +939,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1297704341374570496"
+      "liveId": "1297704341374570496",
+      "liveDate": "2026-08-21"
     },
     {
       "bvid": "BV1jS8B6EESS",
@@ -606,8 +953,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1jS8B6EESS",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1297704341374570496"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1NJbZ62EuA",
@@ -621,7 +967,23 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1296964945738272768"
+      "liveId": "1296964945738272768",
+      "liveDate": "2026-08-19"
+    },
+    {
+      "bvid": "BV1P28H6jEmF",
+      "collection": "",
+      "cover": "http://i0.hdslb.com/bfs/archive/303cf128b0b71622549ac385e483dcc7c12ec541.jpg",
+      "created": 1787158530,
+      "date": "2026-08-20",
+      "kind": "cut",
+      "liveId": "1296964945738272768",
+      "mid": "1805448354",
+      "title": "【王语晨】七夕奖励自己点的大杯奶茶给洒了好心酸吧",
+      "titleDate": "",
+      "up": "忘记自己是猪",
+      "url": "https://www.bilibili.com/video/BV1P28H6jEmF",
+      "liveDate": "2026-08-19"
     },
     {
       "bvid": "BV1HS8H65EXc",
@@ -635,7 +997,23 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1296964945738272768"
+      "liveId": "1296964945738272768",
+      "liveDate": "2026-08-19"
+    },
+    {
+      "bvid": "BV1Hq8V6nEdy",
+      "collection": "",
+      "cover": "http://i0.hdslb.com/bfs/archive/337d34fe9d16fee21dc77dd49e1ef4fe159bce74.jpg",
+      "created": 1787076170,
+      "date": "2026-08-19",
+      "kind": "cut",
+      "liveId": "1296599333946068992",
+      "mid": "1805448354",
+      "title": "【王语晨】一直只玩一个游戏是会烦的",
+      "titleDate": "",
+      "up": "忘记自己是猪",
+      "url": "https://www.bilibili.com/video/BV1Hq8V6nEdy",
+      "liveDate": "2026-08-18"
     },
     {
       "bvid": "BV1gd8V6KEsF",
@@ -649,7 +1027,23 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1296599333946068992"
+      "liveId": "1296599333946068992",
+      "liveDate": "2026-08-18"
+    },
+    {
+      "bvid": "BV16Sb16qEHd",
+      "collection": "",
+      "cover": "http://i1.hdslb.com/bfs/archive/467531e45be0870846e3ad1185d527c7e89ddab4.jpg",
+      "created": 1786816248,
+      "date": "2026-08-16",
+      "kind": "cut",
+      "liveId": "1295524747443769344",
+      "mid": "1805448354",
+      "title": "【王语晨】以前打一天游戏说不务正业现在打一天游戏说宝宝好努力",
+      "titleDate": "",
+      "up": "忘记自己是猪",
+      "url": "https://www.bilibili.com/video/BV16Sb16qEHd",
+      "liveDate": "2026-08-15"
     },
     {
       "bvid": "BV1iRb16PECh",
@@ -663,7 +1057,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1295524747443769344"
+      "liveId": "1295524747443769344",
+      "liveDate": "2026-08-15"
     },
     {
       "bvid": "BV11Eb26mEVc",
@@ -676,8 +1071,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV11Eb26mEVc",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1295524747443769344"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1Negj6nEdP",
@@ -691,7 +1085,38 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1294410238574530560"
+      "liveId": "1294410238574530560",
+      "liveDate": "2026-08-12"
+    },
+    {
+      "bvid": "BV19XgG6DEE3",
+      "collection": "",
+      "cover": "http://i2.hdslb.com/bfs/archive/ba5ccef263317a290ae3d311469e32d8aad468ba.jpg",
+      "created": 1786516313,
+      "date": "2026-08-12",
+      "kind": "cut",
+      "liveId": "1294054343038537728",
+      "mid": "1805448354",
+      "title": "【王语晨】昨晚上打了把王者气得我睡不着",
+      "titleDate": "",
+      "up": "忘记自己是猪",
+      "url": "https://www.bilibili.com/video/BV19XgG6DEE3",
+      "liveDate": "2026-08-11"
+    },
+    {
+      "bvid": "BV1czu663EmC",
+      "collection": "",
+      "cover": "http://i0.hdslb.com/bfs/archive/9cbc49c6cb92652a14ca51d05547bce2de2366be.jpg",
+      "created": 1786467641,
+      "date": "2026-08-12",
+      "kind": "cut",
+      "liveId": "1294054343038537728",
+      "mid": "1805448354",
+      "title": "【王语晨】最后声明！不管在哪段关系里都没有三过！请停止用未经证实的言论网络暴力！如有发现将一告到底！",
+      "titleDate": "",
+      "up": "忘记自己是猪",
+      "url": "https://www.bilibili.com/video/BV1czu663EmC",
+      "liveDate": "2026-08-11"
     },
     {
       "bvid": "BV15Su66eESb",
@@ -705,7 +1130,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1294410238574530560"
+      "liveId": "1294054343038537728",
+      "liveDate": "2026-08-11"
     },
     {
       "bvid": "BV1zHur6rEms",
@@ -719,7 +1145,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1294054343038537728"
+      "liveId": "1294054343038537728",
+      "liveDate": "2026-08-11"
     },
     {
       "bvid": "BV1QUuV6JEVg",
@@ -733,7 +1160,23 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1292989464185737216"
+      "liveId": "1292989464185737216",
+      "liveDate": "2026-08-08"
+    },
+    {
+      "bvid": "BV1uZuP6pEYE",
+      "collection": "",
+      "cover": "http://i1.hdslb.com/bfs/archive/655be3a489532e1fae8103f2d93a0352a655ccb5.jpg",
+      "created": 1786127913,
+      "date": "2026-08-08",
+      "kind": "cut",
+      "liveId": "1292633464236740608",
+      "mid": "1805448354",
+      "title": "【王语晨】你们这种浪费的行为让我丢失了好多分分！",
+      "titleDate": "",
+      "up": "忘记自己是猪",
+      "url": "https://www.bilibili.com/video/BV1uZuP6pEYE",
+      "liveDate": "2026-08-07"
     },
     {
       "bvid": "BV1DiuN6xEA4",
@@ -747,7 +1190,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1292633464236740608"
+      "liveId": "1292633464236740608",
+      "liveDate": "2026-08-07"
     },
     {
       "bvid": "BV1kaMC6UErW",
@@ -761,7 +1205,23 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1291883782086660096"
+      "liveId": "1291548300727357440",
+      "liveDate": "2026-08-04"
+    },
+    {
+      "bvid": "BV1xoMq6ME19",
+      "collection": "",
+      "cover": "http://i1.hdslb.com/bfs/archive/e62d6abf1b4be7c1bab1875b9af77f654e644a03.jpg",
+      "created": 1785867463,
+      "date": "2026-08-05",
+      "kind": "cut",
+      "liveId": "1291548300727357440",
+      "mid": "1805448354",
+      "title": "【王语晨&王珺】珺珺“深情表白”惨被拒（王中王好嗑x）",
+      "titleDate": "",
+      "up": "忘记自己是猪",
+      "url": "https://www.bilibili.com/video/BV1xoMq6ME19",
+      "liveDate": "2026-08-04"
     },
     {
       "bvid": "BV1EuMB6FE98",
@@ -775,7 +1235,23 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1291548300727357440"
+      "liveId": "1291517186860191744",
+      "liveDate": "2026-08-04"
+    },
+    {
+      "bvid": "BV1Lz326pEYW",
+      "collection": "",
+      "cover": "http://i2.hdslb.com/bfs/archive/c95c097b59a83b0a4e61c74df4ec8b3ed7b4832a.jpg",
+      "created": 1785606275,
+      "date": "2026-08-02",
+      "kind": "cut",
+      "liveId": "1290448931617837056",
+      "mid": "1805448354",
+      "title": "【王语晨】我很好骗的夸我两句就替你干活卖命了",
+      "titleDate": "",
+      "up": "忘记自己是猪",
+      "url": "https://www.bilibili.com/video/BV1Lz326pEYW",
+      "liveDate": "2026-08-01"
     },
     {
       "bvid": "BV1a43m6JEFj",
@@ -789,7 +1265,23 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1290448931617837056"
+      "liveId": "1290437002895626240",
+      "liveDate": "2026-08-01"
+    },
+    {
+      "bvid": "BV11eGK64Egq",
+      "collection": "",
+      "cover": "http://i1.hdslb.com/bfs/archive/d15ea1234b246821eb5e2b8a3aeb623c234d61b2.jpg",
+      "created": 1785519152,
+      "date": "2026-08-01",
+      "kind": "cut",
+      "liveId": "1290071212111499264",
+      "mid": "1805448354",
+      "title": "【王语晨&王珺】你年v能不能给我首solo来",
+      "titleDate": "",
+      "up": "忘记自己是猪",
+      "url": "https://www.bilibili.com/video/BV11eGK64Egq",
+      "liveDate": "2026-07-31"
     },
     {
       "bvid": "BV1m4GK6wECs",
@@ -803,7 +1295,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1290071212111499264"
+      "liveId": "1290071212111499264",
+      "liveDate": "2026-07-31"
     },
     {
       "bvid": "BV1nnGN67EE6",
@@ -816,8 +1309,22 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1nnGN67EE6",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1290071212111499264"
+      "collection": "合集·王语晨公演cut"
+    },
+    {
+      "bvid": "BV1PQGA6EERj",
+      "collection": "",
+      "cover": "http://i0.hdslb.com/bfs/archive/7773c547372869aad7638bd29c8c67511e3497be.jpg",
+      "created": 1785481782,
+      "date": "2026-07-31",
+      "kind": "cut",
+      "liveId": "1289720106151907328",
+      "mid": "1805448354",
+      "title": "【王语晨】啥意思啊嘉兴路就这么对我们一来厕所就炸了",
+      "titleDate": "",
+      "up": "忘记自己是猪",
+      "url": "https://www.bilibili.com/video/BV1PQGA6EERj",
+      "liveDate": "2026-07-30"
     },
     {
       "bvid": "BV18R3t6bEv6",
@@ -831,7 +1338,23 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1289720106151907328"
+      "liveId": "1289720106151907328",
+      "liveDate": "2026-07-30"
+    },
+    {
+      "bvid": "BV16R3B6uEXa",
+      "collection": "",
+      "cover": "http://i2.hdslb.com/bfs/archive/5d91cb3f5b5c9c012ef58dafb8f75a3459ec5a62.jpg",
+      "created": 1785258916,
+      "date": "2026-07-29",
+      "kind": "cut",
+      "liveId": "1288971739209732096",
+      "mid": "1805448354",
+      "title": "【王语晨】我们队总选服是我找的呢谁敢说不好看",
+      "titleDate": "",
+      "up": "忘记自己是猪",
+      "url": "https://www.bilibili.com/video/BV16R3B6uEXa",
+      "liveDate": "2026-07-28"
     },
     {
       "bvid": "BV18W3361EWj",
@@ -845,7 +1368,38 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1287902779085230080"
+      "liveId": "1287902779085230080",
+      "liveDate": "2026-07-25"
+    },
+    {
+      "bvid": "BV1kX3K6nEFs",
+      "collection": "",
+      "cover": "http://i0.hdslb.com/bfs/archive/4756500a094f4dbb37f2e1ff77136833d8215ee8.jpg",
+      "created": 1784950275,
+      "date": "2026-07-25",
+      "kind": "cut",
+      "liveId": "1287558890482634752",
+      "mid": "1805448354",
+      "title": "当得知粉丝两分钟前刚分手【王语晨】的反应",
+      "titleDate": "",
+      "up": "忘记自己是猪",
+      "url": "https://www.bilibili.com/video/BV1kX3K6nEFs",
+      "liveDate": "2026-07-24"
+    },
+    {
+      "bvid": "BV1wjgi6eECm",
+      "collection": "",
+      "cover": "http://i1.hdslb.com/bfs/archive/8a23bfdfc351c224659297bdd0f84305b2b6d470.jpg",
+      "created": 1784915940,
+      "date": "2026-07-25",
+      "kind": "cut",
+      "liveId": "1287558890482634752",
+      "mid": "1805448354",
+      "title": "【王语晨】穿衣服被问已经开放成这样了吗怒答老娘这是假两件",
+      "titleDate": "",
+      "up": "忘记自己是猪",
+      "url": "https://www.bilibili.com/video/BV1wjgi6eECm",
+      "liveDate": "2026-07-24"
     },
     {
       "bvid": "BV1yDgi6gEXa",
@@ -859,7 +1413,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1287558890482634752"
+      "liveId": "1287558659774943232",
+      "liveDate": "2026-07-24"
     },
     {
       "bvid": "BV1dggq64EGk",
@@ -872,8 +1427,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1dggq64EGk",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1287558890482634752"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1AsK46YENm",
@@ -886,7 +1440,24 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1AsK46YENm",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨直播cut"
+      "collection": "合集·王语晨直播cut",
+      "liveId": "1285720955701497856",
+      "liveDate": "2026-07-19"
+    },
+    {
+      "bvid": "BV1H7KC6GEmF",
+      "collection": "",
+      "cover": "http://i1.hdslb.com/bfs/archive/12dc7c774bb541548e54928321835b2aa6e9ad8f.jpg",
+      "created": 1784481136,
+      "date": "2026-07-20",
+      "kind": "cut",
+      "liveId": "1285720955701497856",
+      "mid": "1805448354",
+      "title": "【王语晨】挨过印象最深刻的一次打",
+      "titleDate": "",
+      "up": "忘记自己是猪",
+      "url": "https://www.bilibili.com/video/BV1H7KC6GEmF",
+      "liveDate": "2026-07-19"
     },
     {
       "bvid": "BV1ikK66tEGz",
@@ -900,7 +1471,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1285720955701497856"
+      "liveId": "1285720955701497856",
+      "liveDate": "2026-07-19"
     },
     {
       "bvid": "BV1wTKz6YEWC",
@@ -913,8 +1485,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1wTKz6YEWC",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1285720955701497856"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1fGKN6cEUW",
@@ -928,7 +1499,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1285368128806391808"
+      "liveId": "1285368128806391808",
+      "liveDate": "2026-07-18"
     },
     {
       "bvid": "BV1rcN66aE4h",
@@ -942,7 +1514,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1284260486788747264"
+      "liveId": "1284259366565646336",
+      "liveDate": "2026-07-15"
     },
     {
       "bvid": "BV1UQNr6jEkR",
@@ -956,7 +1529,23 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1283180280015556608"
+      "liveId": "1283180280015556608",
+      "liveDate": "2026-07-12"
+    },
+    {
+      "bvid": "BV1wiNV69EAq",
+      "collection": "",
+      "cover": "http://i1.hdslb.com/bfs/archive/981c587999b56dd60340d5cacb9c21ed2ec3cfd0.jpg",
+      "created": 1783874715,
+      "date": "2026-07-13",
+      "kind": "cut",
+      "liveId": "1283180280015556608",
+      "mid": "1805448354",
+      "title": "【王语晨】拉票ug喊错成ng了 结果中报进tg高兴得唱起了好日子",
+      "titleDate": "",
+      "up": "忘记自己是猪",
+      "url": "https://www.bilibili.com/video/BV1wiNV69EAq",
+      "liveDate": "2026-07-12"
     },
     {
       "bvid": "BV1EQNM6MEBC",
@@ -970,7 +1559,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1282829851448643584"
+      "liveId": "1282829851448643584",
+      "liveDate": "2026-07-11"
     },
     {
       "bvid": "BV1yNNc64EGR",
@@ -983,8 +1573,22 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1yNNc64EGR",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1282829851448643584"
+      "collection": "合集·王语晨公演cut"
+    },
+    {
+      "bvid": "BV1f2N46WEvF",
+      "collection": "",
+      "cover": "http://i2.hdslb.com/bfs/archive/62af15a41fe17a644c184d2db7ed37a3020030e2.jpg",
+      "created": 1783742986,
+      "date": "2026-07-11",
+      "kind": "cut",
+      "liveId": "1282465984369463296",
+      "mid": "1805448354",
+      "title": "【王语晨】大家没事可以多私信跟我分享生活我挺爱看的",
+      "titleDate": "",
+      "up": "忘记自己是猪",
+      "url": "https://www.bilibili.com/video/BV1f2N46WEvF",
+      "liveDate": "2026-07-10"
     },
     {
       "bvid": "BV1ngNH6CECX",
@@ -998,7 +1602,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1282829851448643584"
+      "liveId": "1282829851448643584",
+      "liveDate": "2026-07-11"
     },
     {
       "bvid": "BV1DAMx61EQb",
@@ -1011,7 +1616,24 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1DAMx61EQb",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨直播cut"
+      "collection": "合集·王语晨直播cut",
+      "liveId": "1280675613733883904",
+      "liveDate": "2026-07-05"
+    },
+    {
+      "bvid": "BV1TLT96EEuC",
+      "collection": "",
+      "cover": "http://i2.hdslb.com/bfs/archive/3ff979ea895d916afffe3848ac87003c225b4fde.jpg",
+      "created": 1783342797,
+      "date": "2026-07-06",
+      "kind": "cut",
+      "liveId": "1280675613733883904",
+      "mid": "1805448354",
+      "title": "【王语晨】中国rap界来了个天才",
+      "titleDate": "",
+      "up": "忘记自己是猪",
+      "url": "https://www.bilibili.com/video/BV1TLT96EEuC",
+      "liveDate": "2026-07-05"
     },
     {
       "bvid": "BV19BT96hE8M",
@@ -1024,8 +1646,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV19BT96hE8M",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1280675613733883904"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1F5Tm69E8C",
@@ -1039,7 +1660,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1280675613733883904"
+      "liveId": "1280675613733883904",
+      "liveDate": "2026-07-05"
     },
     {
       "bvid": "BV1YkMN6tEFi",
@@ -1052,8 +1674,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1YkMN6tEFi",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1280300518305763328"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1KnTW6aEc5",
@@ -1066,8 +1687,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1KnTW6aEc5",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1279580972376723456"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1WFTn6JETV",
@@ -1081,7 +1701,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1279580972376723456"
+      "liveId": "1279580972376723456",
+      "liveDate": "2026-07-02"
     },
     {
       "bvid": "BV1zqTA6FE8x",
@@ -1095,7 +1716,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1277777126788763648"
+      "liveId": "1277777126788763648",
+      "liveDate": "2026-06-27"
     },
     {
       "bvid": "BV1tFTP65E9G",
@@ -1108,8 +1730,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1tFTP65E9G",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1277777126788763648"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1UW7q6AEM8",
@@ -1123,7 +1744,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1276692532115083264"
+      "liveId": "1276692532115083264",
+      "liveDate": "2026-06-25"
     },
     {
       "bvid": "BV1jL786xEFi",
@@ -1136,8 +1758,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1jL786xEFi",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1276692532115083264"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1we7x6oEvv",
@@ -1151,7 +1772,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1276692532115083264"
+      "liveId": "1276692532115083264",
+      "liveDate": "2026-06-25"
     },
     {
       "bvid": "BV1cE746oELu",
@@ -1165,7 +1787,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1276685508044197888"
+      "liveId": "1276685508044197888",
+      "liveDate": "2026-06-24"
     },
     {
       "bvid": "BV1HujU6JEez",
@@ -1179,7 +1802,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1276284665084055552"
+      "liveId": "1276284665084055552",
+      "liveDate": "2026-06-23"
     },
     {
       "bvid": "BV1Zi7g6gEqp",
@@ -1192,8 +1816,22 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1Zi7g6gEqp",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1275566612054609920"
+      "collection": "合集·王语晨公演cut"
+    },
+    {
+      "bvid": "BV17t7P6HE65",
+      "collection": "",
+      "cover": "http://i2.hdslb.com/bfs/archive/3bea957c591c05b222bfb4b743a8b50b44ffbc11.jpg",
+      "created": 1782111689,
+      "date": "2026-06-22",
+      "kind": "cut",
+      "liveId": "1275566612054609920",
+      "mid": "1805448354",
+      "title": "【王语晨x曾雨思】连麦魔法对轰。伞伞卖车卖房也要做晨晨单推王",
+      "titleDate": "",
+      "up": "忘记自己是猪",
+      "url": "https://www.bilibili.com/video/BV17t7P6HE65",
+      "liveDate": "2026-06-21"
     },
     {
       "bvid": "BV1rbjf6LELV",
@@ -1207,7 +1845,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1275566612054609920"
+      "liveId": "1275566612054609920",
+      "liveDate": "2026-06-21"
     },
     {
       "bvid": "BV1x8jk66EMJ",
@@ -1221,7 +1860,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1274880873960640512"
+      "liveId": "1274880873960640512",
+      "liveDate": "2026-06-20"
     },
     {
       "bvid": "BV1mrjz6vEbA",
@@ -1235,7 +1875,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1274862100155273216"
+      "liveId": "1274862100155273216",
+      "liveDate": "2026-06-19"
     },
     {
       "bvid": "BV18jj66rExL",
@@ -1248,8 +1889,37 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV18jj66rExL",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1274862100155273216"
+      "collection": "合集·王语晨公演cut"
+    },
+    {
+      "bvid": "BV1C4LX6bEUv",
+      "collection": "",
+      "cover": "http://i0.hdslb.com/bfs/archive/0d819f491e3ad285a04e03995720afbaaf1e5307.jpg",
+      "created": 1781688688,
+      "date": "2026-06-17",
+      "kind": "cut",
+      "liveId": "1273765463311847424",
+      "mid": "1805448354",
+      "title": "【王语晨】鱼鱼老师小课堂开课了情景版真情演绎教会你念（晨式）英文",
+      "titleDate": "",
+      "up": "忘记自己是猪",
+      "url": "https://www.bilibili.com/video/BV1C4LX6bEUv",
+      "liveDate": "2026-06-16"
+    },
+    {
+      "bvid": "BV1amLD6TEbR",
+      "collection": "",
+      "cover": "http://i0.hdslb.com/bfs/archive/36bb5b041a58867ef946e72d0d508beae67390c6.jpg",
+      "created": 1781673590,
+      "date": "2026-06-17",
+      "kind": "cut",
+      "liveId": "1273765463311847424",
+      "mid": "1805448354",
+      "title": "【王语晨】晨晨酱在线学习手势舞",
+      "titleDate": "",
+      "up": "忘记自己是猪",
+      "url": "https://www.bilibili.com/video/BV1amLD6TEbR",
+      "liveDate": "2026-06-16"
     },
     {
       "bvid": "BV1w8jL6dEF2",
@@ -1263,7 +1933,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1273765463311847424"
+      "liveId": "1273765463311847424",
+      "liveDate": "2026-06-16"
     },
     {
       "bvid": "BV1xpJs6AErM",
@@ -1277,7 +1948,23 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1272696218817728512"
+      "liveId": "1272643804555186176",
+      "liveDate": "2026-06-13"
+    },
+    {
+      "bvid": "BV1PyJH6HEw8",
+      "collection": "",
+      "cover": "http://i0.hdslb.com/bfs/archive/5f25727aec140638ead01d5dd388c038c4b8e2f5.jpg",
+      "created": 1781363635,
+      "date": "2026-06-13",
+      "kind": "cut",
+      "liveId": "1272644000857001984",
+      "mid": "1805448354",
+      "title": "【王语晨】后台无聊想帮忙做事被staff姐姐拒绝并疑问王语晨是人设吗",
+      "titleDate": "",
+      "up": "忘记自己是猪",
+      "url": "https://www.bilibili.com/video/BV1PyJH6HEw8",
+      "liveDate": "2026-06-13"
     },
     {
       "bvid": "BV1PrJH6WECW",
@@ -1290,8 +1977,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1PrJH6WECW",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1272696218817728512"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1BYJp6mEDP",
@@ -1305,7 +1991,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1272696218817728512"
+      "liveId": "1272643804555186176",
+      "liveDate": "2026-06-13"
     },
     {
       "bvid": "BV1NcJW6bEzf",
@@ -1318,8 +2005,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1NcJW6bEzf",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1272696218817728512"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1W3Jj6BEkx",
@@ -1333,7 +2019,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1272318169135779840"
+      "liveId": "1272315330980286464",
+      "liveDate": "2026-06-12"
     },
     {
       "bvid": "BV1pLEy61EzN",
@@ -1346,8 +2033,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1pLEy61EzN",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1271977216915083264"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1LJEB6UEJf",
@@ -1361,7 +2047,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1271977216915083264"
+      "liveId": "1271977216915083264",
+      "liveDate": "2026-06-11"
     },
     {
       "bvid": "BV17bE26yE9x",
@@ -1375,7 +2062,38 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1271232345468112896"
+      "liveId": "1271232345468112896",
+      "liveDate": "2026-06-09"
+    },
+    {
+      "bvid": "BV1M2Eg64EV9",
+      "collection": "",
+      "cover": "http://i2.hdslb.com/bfs/archive/7d76b4a7593a1432ee43aca930a92dfd79ddc6b4.jpg",
+      "created": 1780910760,
+      "date": "2026-06-08",
+      "kind": "cut",
+      "liveId": "1270495977746010112",
+      "mid": "1805448354",
+      "title": "【王语晨】转盘业务模仿表情包",
+      "titleDate": "",
+      "up": "忘记自己是猪",
+      "url": "https://www.bilibili.com/video/BV1M2Eg64EV9",
+      "liveDate": "2026-06-07"
+    },
+    {
+      "bvid": "BV1ReEg6vEGK",
+      "collection": "",
+      "cover": "http://i1.hdslb.com/bfs/archive/01012febe8daf4242f0084809f1422b735273337.jpg",
+      "created": 1780908318,
+      "date": "2026-06-08",
+      "kind": "cut",
+      "liveId": "1270495977746010112",
+      "mid": "1805448354",
+      "title": "小后辈连麦王语晨，晨晨酱大方表示来广州请吃饭",
+      "titleDate": "",
+      "up": "忘记自己是猪",
+      "url": "https://www.bilibili.com/video/BV1ReEg6vEGK",
+      "liveDate": "2026-06-07"
     },
     {
       "bvid": "BV1TJET6EEzS",
@@ -1388,8 +2106,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1TJET6EEzS",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1270495977746010112"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1ujE86UEEU",
@@ -1403,7 +2120,23 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1270495977746010112"
+      "liveId": "1270495977746010112",
+      "liveDate": "2026-06-07"
+    },
+    {
+      "bvid": "BV1r6En63E4A",
+      "collection": "",
+      "cover": "http://i2.hdslb.com/bfs/archive/ad966205e9b7f1312108fb751d3c8fc7929e900d.jpg",
+      "created": 1780747057,
+      "date": "2026-06-06",
+      "kind": "cut",
+      "liveId": "1269807393162465280",
+      "mid": "1805448354",
+      "title": "【王语晨】直播开点骂业务，晨s排队挨骂",
+      "titleDate": "",
+      "up": "忘记自己是猪",
+      "url": "https://www.bilibili.com/video/BV1r6En63E4A",
+      "liveDate": "2026-06-06"
     },
     {
       "bvid": "BV1dx7m6rE9A",
@@ -1417,7 +2150,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1269807393162465280"
+      "liveId": "1269807393162465280",
+      "liveDate": "2026-06-06"
     },
     {
       "bvid": "BV1eP7y6cECN",
@@ -1443,7 +2177,24 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1oRVq6TEP6",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨直播cut"
+      "collection": "合集·王语晨直播cut",
+      "liveId": "1267986906132320256",
+      "liveDate": "2026-05-31"
+    },
+    {
+      "bvid": "BV195Vd67EUe",
+      "collection": "",
+      "cover": "http://i2.hdslb.com/bfs/archive/ea7cea8774ac6ae0ac60a706598bd169ae33fbb1.jpg",
+      "created": 1780300577,
+      "date": "2026-06-01",
+      "kind": "cut",
+      "liveId": "1267986906132320256",
+      "mid": "1805448354",
+      "title": "【王语晨】一个不爱表达自己的高需求感小女孩",
+      "titleDate": "",
+      "up": "忘记自己是猪",
+      "url": "https://www.bilibili.com/video/BV195Vd67EUe",
+      "liveDate": "2026-05-31"
     },
     {
       "bvid": "BV1mvVD6tEXT",
@@ -1456,8 +2207,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1mvVD6tEXT",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1267986906132320256"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1qXVU6MEyn",
@@ -1471,7 +2221,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1267986906132320256"
+      "liveId": "1267901115980910592",
+      "liveDate": "2026-05-31"
     },
     {
       "bvid": "BV1FnVp6NE42",
@@ -1484,7 +2235,39 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1FnVp6NE42",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨官方视频cut"
+      "collection": "合集·王语晨官方视频cut",
+      "liveId": "1266149424361181184",
+      "liveDate": "2026-05-26"
+    },
+    {
+      "bvid": "BV1YbGy6LEzM",
+      "collection": "",
+      "cover": "http://i0.hdslb.com/bfs/archive/19eef4fb9d3ad7c3b5efaecc57f757d14d360cea.jpg",
+      "created": 1779873877,
+      "date": "2026-05-27",
+      "kind": "cut",
+      "liveId": "1266149424361181184",
+      "mid": "1805448354",
+      "title": "【王语晨】直播re生日公演立飞竟成最大服装赞助商感谢daddy",
+      "titleDate": "",
+      "up": "忘记自己是猪",
+      "url": "https://www.bilibili.com/video/BV1YbGy6LEzM",
+      "liveDate": "2026-05-26"
+    },
+    {
+      "bvid": "BV1YPGC6kEqd",
+      "collection": "",
+      "cover": "http://i1.hdslb.com/bfs/archive/93556e18bbcafa78366ad7daf47534d943960e6b.jpg",
+      "created": 1779852312,
+      "date": "2026-05-27",
+      "kind": "cut",
+      "liveId": "1266149424361181184",
+      "mid": "1805448354",
+      "title": "【王语晨】直播念陈淑钰手写信",
+      "titleDate": "",
+      "up": "忘记自己是猪",
+      "url": "https://www.bilibili.com/video/BV1YPGC6kEqd",
+      "liveDate": "2026-05-26"
     },
     {
       "bvid": "BV1xrVT6vEyq",
@@ -1498,7 +2281,23 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1266149424361181184"
+      "liveId": "1266149424361181184",
+      "liveDate": "2026-05-26"
+    },
+    {
+      "bvid": "BV1hYGd63Eno",
+      "collection": "",
+      "cover": "http://i2.hdslb.com/bfs/archive/4c2543fa653ce7360866749ac591bba57bbb68e2.jpg",
+      "created": 1779698549,
+      "date": "2026-05-25",
+      "kind": "cut",
+      "liveId": "1265458950856052736",
+      "mid": "1805448354",
+      "title": "【王语晨】好孩子魏诗绮暖心安慰晨晨",
+      "titleDate": "",
+      "up": "忘记自己是猪",
+      "url": "https://www.bilibili.com/video/BV1hYGd63Eno",
+      "liveDate": "2026-05-25"
     },
     {
       "bvid": "BV1PtGs65Eh9",
@@ -1512,7 +2311,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1265458950856052736"
+      "liveId": "1265458950856052736",
+      "liveDate": "2026-05-25"
     },
     {
       "bvid": "BV1KPGx6SExr",
@@ -1525,8 +2325,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1KPGx6SExr",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1265097381831839744"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1gCGz68E7M",
@@ -1540,7 +2339,23 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1265097381831839744"
+      "liveId": "1265097381831839744",
+      "liveDate": "2026-05-24"
+    },
+    {
+      "bvid": "BV1khGe6AEyS",
+      "collection": "",
+      "cover": "http://i2.hdslb.com/bfs/archive/e126af477f597264d5dd01f77304989451bd8bab.jpg",
+      "created": 1779512066,
+      "date": "2026-05-23",
+      "kind": "cut",
+      "liveId": "1264703746988642304",
+      "mid": "1805448354",
+      "title": "听说广芭来了个很拽的新人叫王语晨",
+      "titleDate": "",
+      "up": "忘记自己是猪",
+      "url": "https://www.bilibili.com/video/BV1khGe6AEyS",
+      "liveDate": "2026-05-22"
     },
     {
       "bvid": "BV1w6Gb6QEV3",
@@ -1554,7 +2369,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1264703746988642304"
+      "liveId": "1264703746988642304",
+      "liveDate": "2026-05-22"
     },
     {
       "bvid": "BV1o8LA6VEu7",
@@ -1568,7 +2384,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1263241558461583360"
+      "liveId": "1263241558461583360",
+      "liveDate": "2026-05-18"
     },
     {
       "bvid": "BV12k5f6UENP",
@@ -1582,7 +2399,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1262919409813229568"
+      "liveId": "1262919409813229568",
+      "liveDate": "2026-05-17"
     },
     {
       "bvid": "BV1FXLJ6YEec",
@@ -1595,8 +2413,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1FXLJ6YEec",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1262919409813229568"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1G6L56TEFu",
@@ -1623,7 +2440,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1261049268372574208"
+      "liveId": "1261049268372574208",
+      "liveDate": "2026-05-12"
     },
     {
       "bvid": "BV1cE5b69EMq",
@@ -1650,7 +2468,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1259270299830784000"
+      "liveId": "1259270299830784000",
+      "liveDate": "2026-05-07"
     },
     {
       "bvid": "BV11pR4B9E48",
@@ -1664,7 +2483,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1258571600255324160"
+      "liveId": "1258571600255324160",
+      "liveDate": "2026-05-05"
     },
     {
       "bvid": "BV1ccRHBeEtB",
@@ -1678,7 +2498,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1258571600255324160"
+      "liveId": "1258571600255324160",
+      "liveDate": "2026-05-05"
     },
     {
       "bvid": "BV1aoRJB7ERh",
@@ -1691,8 +2512,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1aoRJB7ERh",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1258571600255324160"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1LTR6BGEFU",
@@ -1706,7 +2526,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1258210382671843328"
+      "liveId": "1258210382671843328",
+      "liveDate": "2026-05-04"
     },
     {
       "bvid": "BV1FhRiBgEuu",
@@ -1719,8 +2540,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1FhRiBgEuu",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1258210382671843328"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1X4RNBrE2C",
@@ -1734,7 +2554,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1257836988222738432"
+      "liveId": "1257836988222738432",
+      "liveDate": "2026-05-03"
     },
     {
       "bvid": "BV1q9RcBqEAR",
@@ -1747,8 +2568,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1q9RcBqEAR",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1257836988222738432"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1fL99BJExt",
@@ -1762,7 +2582,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1257475518741942272"
+      "liveId": "1257463097109319680",
+      "liveDate": "2026-05-02"
     },
     {
       "bvid": "BV1wu99BxE1q",
@@ -1775,8 +2596,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1wu99BxE1q",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1257475518741942272"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1Ej9hBHEEA",
@@ -1790,7 +2610,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1256383146847178752"
+      "liveId": "1256383146847178752",
+      "liveDate": "2026-04-29"
     },
     {
       "bvid": "BV1AJ9tBQEiG",
@@ -1804,7 +2625,23 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1256383146847178752"
+      "liveId": "1256383146847178752",
+      "liveDate": "2026-04-29"
+    },
+    {
+      "bvid": "BV1iso6BmEaH",
+      "collection": "",
+      "cover": "http://i2.hdslb.com/bfs/archive/624c83910f4889cdd41ff44e998903892a050272.jpg",
+      "created": 1777258967,
+      "date": "2026-04-27",
+      "kind": "cut",
+      "liveId": "1255313972121112576",
+      "mid": "1805448354",
+      "title": "【王语晨】不再依赖姐姐算长大吗？算你有病",
+      "titleDate": "",
+      "up": "忘记自己是猪",
+      "url": "https://www.bilibili.com/video/BV1iso6BmEaH",
+      "liveDate": "2026-04-27"
     },
     {
       "bvid": "BV1k2oBB9ECj",
@@ -1818,7 +2655,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1255313972121112576"
+      "liveId": "1255313972121112576",
+      "liveDate": "2026-04-27"
     },
     {
       "bvid": "BV16yoeBzEFu",
@@ -1845,7 +2683,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1254944807656951808"
+      "liveId": "1254944807656951808",
+      "liveDate": "2026-04-25"
     },
     {
       "bvid": "BV1TxoRBVEdm",
@@ -1858,8 +2697,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1TxoRBVEdm",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1254944807656951808"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1yQo9BiEc8",
@@ -1872,8 +2710,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1yQo9BiEc8",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1254944807656951808"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1MCdfBWEPA",
@@ -1887,7 +2724,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1252744944039038976"
+      "liveId": "1252415600938782720",
+      "liveDate": "2026-04-19"
     },
     {
       "bvid": "BV1cQdRBaE7S",
@@ -1901,7 +2739,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1252744944039038976"
+      "liveId": "1252415600938782720",
+      "liveDate": "2026-04-19"
     },
     {
       "bvid": "BV1UEdWBXEzi",
@@ -1927,7 +2766,9 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1qKdqBuETL",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨直播cut"
+      "collection": "合集·王语晨直播cut",
+      "liveId": "1250933564868726784",
+      "liveDate": "2026-04-14"
     },
     {
       "bvid": "BV1QqQ3B7E4f",
@@ -1941,7 +2782,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1250933564868726784"
+      "liveId": "1250933564868726784",
+      "liveDate": "2026-04-14"
     },
     {
       "bvid": "BV1ZCQYBXEfP",
@@ -1955,7 +2797,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1250933564868726784"
+      "liveId": "1249843947549560832",
+      "liveDate": "2026-04-11"
     },
     {
       "bvid": "BV1dCD1B7Eck",
@@ -1969,7 +2812,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1249843947549560832"
+      "liveId": "1249843947549560832",
+      "liveDate": "2026-04-11"
     },
     {
       "bvid": "BV1TjDCBFE2g",
@@ -1982,8 +2826,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1TjDCBFE2g",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1249843947549560832"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1P9DtBmEQa",
@@ -1997,7 +2840,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1249111081144356864"
+      "liveId": "1249111081144356864",
+      "liveDate": "2026-04-09"
     },
     {
       "bvid": "BV1XxDYB3EHE",
@@ -2011,7 +2855,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1248047586743226368"
+      "liveId": "1248047586743226368",
+      "liveDate": "2026-04-06"
     },
     {
       "bvid": "BV14jDaBbEM3",
@@ -2025,7 +2870,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1248047586743226368"
+      "liveId": "1248047586743226368",
+      "liveDate": "2026-04-06"
     },
     {
       "bvid": "BV1MvSfBMEpu",
@@ -2038,8 +2884,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1MvSfBMEpu",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1248047586743226368"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1ZZSSB8ErW",
@@ -2053,7 +2898,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1247659512070737920"
+      "liveId": "1247566947514388480",
+      "liveDate": "2026-04-05"
     },
     {
       "bvid": "BV1UZSDBJEJd",
@@ -2067,7 +2913,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1247659512070737920"
+      "liveId": "1247566947514388480",
+      "liveDate": "2026-04-05"
     },
     {
       "bvid": "BV14sDPBJESy",
@@ -2094,7 +2941,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1246984744631865344"
+      "liveId": "1246984744631865344",
+      "liveDate": "2026-04-04"
     },
     {
       "bvid": "BV1q5XeBxEtK",
@@ -2107,8 +2955,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1q5XeBxEtK",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1245158684365754368"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1prXRBtEby",
@@ -2122,7 +2969,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1245158684365754368"
+      "liveId": "1245158684365754368",
+      "liveDate": "2026-03-29"
     },
     {
       "bvid": "BV1sFX1BvExG",
@@ -2136,7 +2984,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1244801400838098944"
+      "liveId": "1244801400838098944",
+      "liveDate": "2026-03-28"
     },
     {
       "bvid": "BV1zZXLBVEo4",
@@ -2149,8 +2998,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1zZXLBVEo4",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1244801400838098944"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1HHXgBYEv3",
@@ -2164,7 +3012,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1244434680336158720"
+      "liveId": "1244434680336158720",
+      "liveDate": "2026-03-27"
     },
     {
       "bvid": "BV1S7AAzEErb",
@@ -2191,7 +3040,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1241545054374137856"
+      "liveId": "1241545054374137856",
+      "liveDate": "2026-03-20"
     },
     {
       "bvid": "BV12yAVz6Eg4",
@@ -2218,7 +3068,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1240081779497177088"
+      "liveId": "1240081779497177088",
+      "liveDate": "2026-03-15"
     },
     {
       "bvid": "BV1TCw8zpE9v",
@@ -2232,7 +3083,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1239709531351355392"
+      "liveId": "1239709531351355392",
+      "liveDate": "2026-03-14"
     },
     {
       "bvid": "BV1YYc2zgEh8",
@@ -2245,7 +3097,9 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1YYc2zgEh8",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨直播回放"
+      "collection": "合集·王语晨直播回放",
+      "liveId": "1238970459183976448",
+      "liveDate": "2026-03-12"
     },
     {
       "bvid": "BV1wNwAzeE7k",
@@ -2259,7 +3113,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1238600280960733184"
+      "liveId": "1238600280960733184",
+      "liveDate": "2026-03-11"
     },
     {
       "bvid": "BV1bXN3zLELh",
@@ -2272,7 +3127,9 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1bXN3zLELh",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨直播回放"
+      "collection": "合集·王语晨直播回放",
+      "liveId": "972861768363479040",
+      "liveDate": "2024-03-08"
     },
     {
       "bvid": "BV1VENgzUEUr",
@@ -2285,8 +3142,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1VENgzUEUr",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1237531454139600896"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1dzPtzPE8r",
@@ -2300,7 +3156,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1236827851338878976"
+      "liveId": "1236827851338878976",
+      "liveDate": "2026-03-06"
     },
     {
       "bvid": "BV1KVPxz5ECn",
@@ -2313,8 +3170,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1KVPxz5ECn",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1236827851338878976"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1kHPqzqEv6",
@@ -2328,7 +3184,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1236066536433455104"
+      "liveId": "1236066536433455104",
+      "liveDate": "2026-03-04"
     },
     {
       "bvid": "BV1FrPFzFE6F",
@@ -2342,7 +3199,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1236066536433455104"
+      "liveId": "1236066536433455104",
+      "liveDate": "2026-03-04"
     },
     {
       "bvid": "BV1f6PFzfEdt",
@@ -2356,7 +3214,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1235742606954926080"
+      "liveId": "1235723913789247488",
+      "liveDate": "2026-03-03"
     },
     {
       "bvid": "BV1LvP5z8ExP",
@@ -2370,7 +3229,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1235021017640669184"
+      "liveId": "1235021017640669184",
+      "liveDate": "2026-03-02"
     },
     {
       "bvid": "BV1kYPuzxExv",
@@ -2384,7 +3244,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1235009367382495232"
+      "liveId": "1235009367382495232",
+      "liveDate": "2026-03-01"
     },
     {
       "bvid": "BV1BnPgzWECY",
@@ -2397,8 +3258,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1BnPgzWECY",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1235009367382495232"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1p5ABzMEGD",
@@ -2412,7 +3272,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1234653661747810304"
+      "liveId": "1234653661747810304",
+      "liveDate": "2026-02-28"
     },
     {
       "bvid": "BV1WFAazWE1h",
@@ -2425,8 +3286,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1WFAazWE1h",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1234653661747810304"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1GQfHBPEdv",
@@ -2439,7 +3299,9 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1GQfHBPEdv",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨直播回放"
+      "collection": "合集·王语晨直播回放",
+      "liveId": "1232104502675181568",
+      "liveDate": "2026-02-21"
     },
     {
       "bvid": "BV1ouf5BUEo8",
@@ -2453,7 +3315,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1231740958641295360"
+      "liveId": "1231740958641295360",
+      "liveDate": "2026-02-20"
     },
     {
       "bvid": "BV1mdZRB1ENj",
@@ -2467,7 +3330,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1230969215957929984"
+      "liveId": "1230969215957929984",
+      "liveDate": "2026-02-18"
     },
     {
       "bvid": "BV1NZZCB1Ehg",
@@ -2481,7 +3345,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1230606916801859584"
+      "liveId": "1230606916801859584",
+      "liveDate": "2026-02-17"
     },
     {
       "bvid": "BV1ZZZGB5EgL",
@@ -2495,7 +3360,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1230290765249056768"
+      "liveId": "1230290765249056768",
+      "liveDate": "2026-02-16"
     },
     {
       "bvid": "BV1yTcWzfEBb",
@@ -2509,7 +3375,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1229206026815606784"
+      "liveId": "1229206026815606784",
+      "liveDate": "2026-02-13"
     },
     {
       "bvid": "BV153cVzjEgn",
@@ -2523,7 +3390,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1096524043078406144"
+      "liveId": "1096524043078406144",
+      "liveDate": "2025-02-12"
     },
     {
       "bvid": "BV1Y5cPzpEiY",
@@ -2537,7 +3405,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1227408576652054528"
+      "liveId": "1227408576652054528",
+      "liveDate": "2026-02-09"
     },
     {
       "bvid": "BV1agcFzzEeb",
@@ -2550,8 +3419,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1agcFzzEeb",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1227046882964738048"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1oFFxzEEnP",
@@ -2565,7 +3433,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1227046882964738048"
+      "liveId": "1227046882964738048",
+      "liveDate": "2026-02-08"
     },
     {
       "bvid": "BV1V1FxzmEtR",
@@ -2591,7 +3460,9 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1yDFKzkEG7",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨直播回放"
+      "collection": "合集·王语晨直播回放",
+      "liveId": "960322560876941312",
+      "liveDate": "2024-02-02"
     },
     {
       "bvid": "BV1Sx6hBTEuc",
@@ -2605,7 +3476,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1224854900041388032"
+      "liveId": "1224854900041388032",
+      "liveDate": "2026-02-01"
     },
     {
       "bvid": "BV1A96tBHEhS",
@@ -2618,8 +3490,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1A96tBHEhS",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1224854900041388032"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1AB6JB8EF7",
@@ -2633,7 +3504,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1224497867622518784"
+      "liveId": "1224497867622518784",
+      "liveDate": "2026-01-31"
     },
     {
       "bvid": "BV1KE61BuExd",
@@ -2646,8 +3518,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1KE61BuExd",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1224497867622518784"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1yQ6zBHEME",
@@ -2660,7 +3531,9 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1yQ6zBHEME",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨直播回放"
+      "collection": "合集·王语晨直播回放",
+      "liveId": "1223765887528275968",
+      "liveDate": "2026-01-29"
     },
     {
       "bvid": "BV1Xy63BpE7u",
@@ -2674,7 +3547,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1223043329501761536"
+      "liveId": "1222697383794380800",
+      "liveDate": "2026-01-27"
     },
     {
       "bvid": "BV1tbziB2Ery",
@@ -2688,7 +3562,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1223043329501761536"
+      "liveId": "1222697383794380800",
+      "liveDate": "2026-01-27"
     },
     {
       "bvid": "BV17DziBaEzU",
@@ -2702,7 +3577,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1222666732995153920"
+      "liveId": "1222666732995153920",
+      "liveDate": "2026-01-26"
     },
     {
       "bvid": "BV17FzuBQE2P",
@@ -2716,7 +3592,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1221957328339537920"
+      "liveId": "1221609954807189504",
+      "liveDate": "2026-01-24"
     },
     {
       "bvid": "BV15MzuBjE7N",
@@ -2730,7 +3607,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1221596659798839296"
+      "liveId": "1221596421738532864",
+      "liveDate": "2026-01-23"
     },
     {
       "bvid": "BV1nPzLBVEf7",
@@ -2744,7 +3622,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1220522792233799680"
+      "liveId": "1220522792233799680",
+      "liveDate": "2026-01-21"
     },
     {
       "bvid": "BV1kQk7BfEdS",
@@ -2757,7 +3636,9 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1kQk7BfEdS",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨直播回放"
+      "collection": "合集·王语晨直播回放",
+      "liveId": "955977693384216576",
+      "liveDate": "2024-01-21"
     },
     {
       "bvid": "BV11tkEBNE3B",
@@ -2770,7 +3651,9 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV11tkEBNE3B",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨直播回放"
+      "collection": "合集·王语晨直播回放",
+      "liveId": "955594503029067776",
+      "liveDate": "2024-01-20"
     },
     {
       "bvid": "BV12Fk4BxEtd",
@@ -2784,7 +3667,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1219752819831934976"
+      "liveId": "1219752819831934976",
+      "liveDate": "2026-01-18"
     },
     {
       "bvid": "BV1YNrQBKEFo",
@@ -2798,7 +3682,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1219392346011799552"
+      "liveId": "1219392346011799552",
+      "liveDate": "2026-01-17"
     },
     {
       "bvid": "BV1RsrCBJEJt",
@@ -2812,7 +3697,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1219023604463505408"
+      "liveId": "1219023604463505408",
+      "liveDate": "2026-01-16"
     },
     {
       "bvid": "BV1yMroBBErt",
@@ -2826,7 +3712,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1218318240327733248"
+      "liveId": "1218318240327733248",
+      "liveDate": "2026-01-14"
     },
     {
       "bvid": "BV1fkrWBKEKE",
@@ -2840,7 +3727,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1218318240327733248"
+      "liveId": "1218318240327733248",
+      "liveDate": "2026-01-14"
     },
     {
       "bvid": "BV1nUrEBoEXN",
@@ -2853,8 +3741,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1nUrEBoEXN",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨直播cut",
-      "liveId": "1218318240327733248"
+      "collection": "合集·王语晨直播cut"
     },
     {
       "bvid": "BV1z1rqBrEg3",
@@ -2862,13 +3749,14 @@ window.LIVE_CUTS = {
       "created": 1768275335,
       "date": "2026-01-13",
       "titleDate": "2025-05-01",
-      "kind": "",
+      "kind": "cut",
       "cover": "http://i2.hdslb.com/bfs/archive/1a7b98e067e41fde48b76fdc7227cc099ad95720.jpg",
       "url": "https://www.bilibili.com/video/BV1z1rqBrEg3",
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨2025特殊舞台",
-      "liveId": "1124844038925389824"
+      "liveId": "1124844038925389824",
+      "liveDate": "2025-05-01"
     },
     {
       "bvid": "BV1BarbBEE5E",
@@ -2876,13 +3764,14 @@ window.LIVE_CUTS = {
       "created": 1768190981,
       "date": "2026-01-12",
       "titleDate": "2025-05-01",
-      "kind": "",
+      "kind": "cut",
       "cover": "http://i0.hdslb.com/bfs/archive/8ceff8d261b10d557295264fac97440d6d2d0794.jpg",
       "url": "https://www.bilibili.com/video/BV1BarbBEE5E",
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨2025特殊舞台",
-      "liveId": "1124844038925389824"
+      "liveId": "1124844038925389824",
+      "liveDate": "2025-05-01"
     },
     {
       "bvid": "BV1ty6DBdEnK",
@@ -2896,7 +3785,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1216901598372761600"
+      "liveId": "1216901598372761600",
+      "liveDate": "2026-01-11"
     },
     {
       "bvid": "BV17C6SBBETT",
@@ -2917,12 +3807,14 @@ window.LIVE_CUTS = {
       "created": 1767930375,
       "date": "2026-01-09",
       "titleDate": "2025-02-15",
-      "kind": "",
+      "kind": "cut",
       "cover": "http://i0.hdslb.com/bfs/archive/2579dd04731ad2225bfc971d09eda93f1da18734.jpg",
       "url": "https://www.bilibili.com/video/BV15hrwBNEy7",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨2025特殊舞台"
+      "collection": "合集·王语晨2025特殊舞台",
+      "liveId": "964695046292836352",
+      "liveDate": "2024-02-15"
     },
     {
       "bvid": "BV1MgiDBLEFB",
@@ -2961,7 +3853,9 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1FiipB9EYV",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨直播cut"
+      "collection": "合集·王语晨直播cut",
+      "liveId": "1214349521960374272",
+      "liveDate": "2026-01-03"
     },
     {
       "bvid": "BV1PoizB5Eok",
@@ -2974,8 +3868,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1PoizB5Eok",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1214349521960374272"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV197i6BfEQs",
@@ -2989,7 +3882,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1214349521960374272"
+      "liveId": "1214349521960374272",
+      "liveDate": "2026-01-03"
     },
     {
       "bvid": "BV13YicBjE6y",
@@ -3003,7 +3897,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1213966089283506176"
+      "liveId": "1213966089283506176",
+      "liveDate": "2026-01-02"
     },
     {
       "bvid": "BV1UfiFBzE61",
@@ -3016,8 +3911,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1UfiFBzE61",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1213966089283506176"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1koi5BTEVt",
@@ -3031,7 +3925,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1213304401936846848"
+      "liveId": "1213304401936846848",
+      "liveDate": "2026-01-01"
     },
     {
       "bvid": "BV1ZJiGB9EYo",
@@ -3058,7 +3953,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1213304401936846848"
+      "liveId": "1212157743140245504",
+      "liveDate": "2025-12-28"
     },
     {
       "bvid": "BV1ccvaB1Ei6",
@@ -3071,7 +3967,9 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1ccvaB1Ei6",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨直播cut"
+      "collection": "合集·王语晨直播cut",
+      "liveId": "1212157743140245504",
+      "liveDate": "2025-12-28"
     },
     {
       "bvid": "BV1HuvmBxEY3",
@@ -3085,7 +3983,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1212157743140245504"
+      "liveId": "1212157743140245504",
+      "liveDate": "2025-12-28"
     },
     {
       "bvid": "BV1EhvyBCEPa",
@@ -3099,7 +3998,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1212157743140245504"
+      "liveId": "1212157743140245504",
+      "liveDate": "2025-12-28"
     },
     {
       "bvid": "BV1Urv6BJEBW",
@@ -3113,7 +4013,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨unit/mc cut",
-      "liveId": "1212157743140245504"
+      "liveId": "1212157743140245504",
+      "liveDate": "2025-12-28"
     },
     {
       "bvid": "BV134BCBMEYy",
@@ -3127,7 +4028,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1211784149956628480"
+      "liveId": "1211784149956628480",
+      "liveDate": "2025-12-27"
     },
     {
       "bvid": "BV1QCBkBqEok",
@@ -3140,8 +4042,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1QCBkBqEok",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1211784149956628480"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1ggBYBuEiE",
@@ -3155,7 +4056,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1211085222815010816"
+      "liveId": "1211085222815010816",
+      "liveDate": "2025-12-25"
     },
     {
       "bvid": "BV1WHB9BHENP",
@@ -3169,7 +4071,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1211085222815010816"
+      "liveId": "1210738161565372416",
+      "liveDate": "2025-12-25"
     },
     {
       "bvid": "BV1UnBUB2Edx",
@@ -3183,7 +4086,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1211085222815010816"
+      "liveId": "1210738161565372416",
+      "liveDate": "2025-12-25"
     },
     {
       "bvid": "BV1khB2BwE3r",
@@ -3197,7 +4101,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1211085222815010816"
+      "liveId": "1210738161565372416",
+      "liveDate": "2025-12-25"
     },
     {
       "bvid": "BV1xABVBGECf",
@@ -3211,7 +4116,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1211085222815010816"
+      "liveId": "1209618442372321280",
+      "liveDate": "2025-12-21"
     },
     {
       "bvid": "BV1MWBNBdEwB",
@@ -3224,7 +4130,9 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1MWBNBdEwB",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨直播cut"
+      "collection": "合集·王语晨直播cut",
+      "liveId": "1209618442372321280",
+      "liveDate": "2025-12-21"
     },
     {
       "bvid": "BV1e2BWBXEqT",
@@ -3238,7 +4146,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1209618442372321280"
+      "liveId": "1209618442372321280",
+      "liveDate": "2025-12-21"
     },
     {
       "bvid": "BV1UtBEB8EMc",
@@ -3252,7 +4161,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1209618442372321280"
+      "liveId": "1209618442372321280",
+      "liveDate": "2025-12-21"
     },
     {
       "bvid": "BV17YqmBdEDk",
@@ -3265,8 +4175,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV17YqmBdEDk",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1209618442372321280"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1qDqyB2ETy",
@@ -3280,7 +4189,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1209286160780431360"
+      "liveId": "1208929507316928512",
+      "liveDate": "2025-12-20"
     },
     {
       "bvid": "BV174qCB5EHF",
@@ -3294,7 +4204,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1209286160780431360"
+      "liveId": "1208929507316928512",
+      "liveDate": "2025-12-20"
     },
     {
       "bvid": "BV1hiqrB8Eby",
@@ -3307,8 +4218,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1hiqrB8Eby",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1209286160780431360"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1ipBwBfEbi",
@@ -3322,7 +4232,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1209286160780431360"
+      "liveId": "1208929507316928512",
+      "liveDate": "2025-12-20"
     },
     {
       "bvid": "BV1vHBFBQE3i",
@@ -3349,7 +4260,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1209286160780431360"
+      "liveId": "1207834684606451712",
+      "liveDate": "2025-12-16"
     },
     {
       "bvid": "BV1DqqEB8EAh",
@@ -3362,7 +4274,9 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1DqqEB8EAh",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨直播cut"
+      "collection": "合集·王语晨直播cut",
+      "liveId": "1207834684606451712",
+      "liveDate": "2025-12-16"
     },
     {
       "bvid": "BV16rqgBREW8",
@@ -3376,7 +4290,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1207834684606451712"
+      "liveId": "1207834684606451712",
+      "liveDate": "2025-12-16"
     },
     {
       "bvid": "BV1GfqYBkEju",
@@ -3390,7 +4305,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1207834684606451712"
+      "liveId": "1207827296339955712",
+      "liveDate": "2025-12-16"
     },
     {
       "bvid": "BV1YHqvB1ENX",
@@ -3404,7 +4320,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1207834684606451712"
+      "liveId": "1207827296339955712",
+      "liveDate": "2025-12-16"
     },
     {
       "bvid": "BV1QpmyBwEZ4",
@@ -3418,7 +4335,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1207116181427523584"
+      "liveId": "1207116181427523584",
+      "liveDate": "2025-12-15"
     },
     {
       "bvid": "BV1ZFmBBXEu1",
@@ -3432,7 +4350,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1207116181427523584"
+      "liveId": "1207116181427523584",
+      "liveDate": "2025-12-15"
     },
     {
       "bvid": "BV1k4miB4Eo2",
@@ -3459,7 +4378,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1205984523328491520"
+      "liveId": "1205984523328491520",
+      "liveDate": "2025-12-11"
     },
     {
       "bvid": "BV1Lim3B5EUe",
@@ -3473,7 +4393,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1205984523328491520"
+      "liveId": "1205984231107137536",
+      "liveDate": "2025-12-11"
     },
     {
       "bvid": "BV1XomMBAEB1",
@@ -3486,8 +4407,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1XomMBAEB1",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨直播cut",
-      "liveId": "1205984523328491520"
+      "collection": "合集·王语晨直播cut"
     },
     {
       "bvid": "BV1vrmsBEE95",
@@ -3500,8 +4420,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1vrmsBEE95",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨直播cut",
-      "liveId": "1205984523328491520"
+      "collection": "合集·王语晨直播cut"
     },
     {
       "bvid": "BV1xv2SBvEfD",
@@ -3514,7 +4433,9 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1xv2SBvEfD",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨直播cut"
+      "collection": "合集·王语晨直播cut",
+      "liveId": "1204181915274121216",
+      "liveDate": "2025-12-06"
     },
     {
       "bvid": "BV1GU2rB9EVi",
@@ -3527,7 +4448,9 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1GU2rB9EVi",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨直播cut"
+      "collection": "合集·王语晨直播cut",
+      "liveId": "1204181915274121216",
+      "liveDate": "2025-12-06"
     },
     {
       "bvid": "BV1jm2oB6EQo",
@@ -3541,7 +4464,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨官方视频cut",
-      "liveId": "1204181915274121216"
+      "liveId": "1204181915274121216",
+      "liveDate": "2025-12-06"
     },
     {
       "bvid": "BV1Dd2RBxEQs",
@@ -3555,7 +4479,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1204181915274121216"
+      "liveId": "1204181915274121216",
+      "liveDate": "2025-12-06"
     },
     {
       "bvid": "BV1xk2JBEEVA",
@@ -3569,7 +4494,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1203835813710598144"
+      "liveId": "1203835813710598144",
+      "liveDate": "2025-12-05"
     },
     {
       "bvid": "BV1uN25BuE4U",
@@ -3583,7 +4509,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1203835813710598144"
+      "liveId": "1203469715739840512",
+      "liveDate": "2025-12-04"
     },
     {
       "bvid": "BV15Y2vB6EbR",
@@ -3597,7 +4524,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1203469715739840512"
+      "liveId": "1203469715739840512",
+      "liveDate": "2025-12-04"
     },
     {
       "bvid": "BV1412YB9Ewc",
@@ -3611,7 +4539,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1203469715739840512"
+      "liveId": "1202742516778864640",
+      "liveDate": "2025-12-02"
     },
     {
       "bvid": "BV1DqShBwE2X",
@@ -3625,7 +4554,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1202742516778864640"
+      "liveId": "1202742516778864640",
+      "liveDate": "2025-12-02"
     },
     {
       "bvid": "BV1iNS8BNEwM",
@@ -3639,7 +4569,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1202742516778864640"
+      "liveId": "1202742516778864640",
+      "liveDate": "2025-12-02"
     },
     {
       "bvid": "BV1aFSWB5ESu",
@@ -3653,7 +4584,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1202742516778864640"
+      "liveId": "1202022232656515072",
+      "liveDate": "2025-11-30"
     },
     {
       "bvid": "BV1fpSkB3E5A",
@@ -3667,7 +4599,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨unit/mc cut",
-      "liveId": "1202022232656515072"
+      "liveId": "1202022232656515072",
+      "liveDate": "2025-11-30"
     },
     {
       "bvid": "BV1tYSiBgExJ",
@@ -3681,7 +4614,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1202022232656515072"
+      "liveId": "1202022232656515072",
+      "liveDate": "2025-11-30"
     },
     {
       "bvid": "BV1KUUfBvEfi",
@@ -3694,8 +4628,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1KUUfBvEfi",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1201316691244290048"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1MkSJBFEzt",
@@ -3709,7 +4642,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1201316691244290048"
+      "liveId": "1201316691244290048",
+      "liveDate": "2025-11-29"
     },
     {
       "bvid": "BV1gLSEBfEtA",
@@ -3735,8 +4669,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1LJSLBbEEJ",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨直播cut",
-      "liveId": "1201316691244290048"
+      "collection": "合集·王语晨直播cut"
     },
     {
       "bvid": "BV1CJU6BrEhg",
@@ -3762,7 +4695,9 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1F4UbBMEDn",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨直播cut"
+      "collection": "合集·王语晨直播cut",
+      "liveId": "1199508140515463168",
+      "liveDate": "2025-11-24"
     },
     {
       "bvid": "BV1bCUmBuE65",
@@ -3776,7 +4711,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1199508140515463168"
+      "liveId": "1199508140515463168",
+      "liveDate": "2025-11-24"
     },
     {
       "bvid": "BV1nEUVBtELH",
@@ -3790,7 +4726,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨unit/mc cut",
-      "liveId": "1199508140515463168"
+      "liveId": "1199508140515463168",
+      "liveDate": "2025-11-24"
     },
     {
       "bvid": "BV1H3U3BsEEk",
@@ -3804,7 +4741,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1199508140515463168"
+      "liveId": "1199508140515463168",
+      "liveDate": "2025-11-24"
     },
     {
       "bvid": "BV1SMUMBfEUB",
@@ -3817,8 +4755,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1SMUMBfEUB",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1199189163578822656"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1JNUNBNETS",
@@ -3832,7 +4769,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1199189163578822656"
+      "liveId": "1199189163578822656",
+      "liveDate": "2025-11-23"
     },
     {
       "bvid": "BV1HzUxBYEMx",
@@ -3853,7 +4791,7 @@ window.LIVE_CUTS = {
       "created": 1763810670,
       "date": "2025-11-22",
       "titleDate": "2025-11-22",
-      "kind": "",
+      "kind": "cut",
       "cover": "http://i1.hdslb.com/bfs/archive/3c2ebccbdc6157bfb00475297288d40d25b1c89d.jpg",
       "url": "https://www.bilibili.com/video/BV1WGUsBwEpF",
       "up": "Chzhnh",
@@ -3871,8 +4809,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1vKUWBjEZF",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨官方视频cut",
-      "liveId": "1199189163578822656"
+      "collection": "合集·王语晨官方视频cut"
     },
     {
       "bvid": "BV1g6UVBVEPq",
@@ -3880,12 +4817,14 @@ window.LIVE_CUTS = {
       "created": 1763719619,
       "date": "2025-11-21",
       "titleDate": "2025-11-21",
-      "kind": "",
+      "kind": "cut",
       "cover": "http://i1.hdslb.com/bfs/archive/5eb42f0e2f796f31906b7cd0e778f394081be94b.jpg",
       "url": "https://www.bilibili.com/video/BV1g6UVBVEPq",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨口袋语音"
+      "collection": "合集·王语晨口袋语音",
+      "liveId": "1197674238092054528",
+      "liveDate": "2025-11-18"
     },
     {
       "bvid": "BV1Q9yMBWEaL",
@@ -3898,7 +4837,9 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1Q9yMBWEaL",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨unit/mc cut"
+      "collection": "合集·王语晨unit/mc cut",
+      "liveId": "1197674238092054528",
+      "liveDate": "2025-11-18"
     },
     {
       "bvid": "BV1oRyABEEVS",
@@ -3906,12 +4847,14 @@ window.LIVE_CUTS = {
       "created": 1763651557,
       "date": "2025-11-20",
       "titleDate": "2025-11-20",
-      "kind": "",
+      "kind": "cut",
       "cover": "http://i0.hdslb.com/bfs/archive/0caa57e4b3cef44a149783d7e5c1d185287c0311.jpg",
       "url": "https://www.bilibili.com/video/BV1oRyABEEVS",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨口袋语音"
+      "collection": "合集·王语晨口袋语音",
+      "liveId": "1197674238092054528",
+      "liveDate": "2025-11-18"
     },
     {
       "bvid": "BV1ZTycBkEYN",
@@ -3924,7 +4867,9 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1ZTycBkEYN",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨直播cut"
+      "collection": "合集·王语晨直播cut",
+      "liveId": "1197674238092054528",
+      "liveDate": "2025-11-18"
     },
     {
       "bvid": "BV1QVyJBnEKR",
@@ -3938,7 +4883,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1197674238092054528"
+      "liveId": "1197674238092054528",
+      "liveDate": "2025-11-18"
     },
     {
       "bvid": "BV1bUyVBAEEs",
@@ -3952,7 +4898,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1197674238092054528"
+      "liveId": "1197674238092054528",
+      "liveDate": "2025-11-18"
     },
     {
       "bvid": "BV1eBCrBSEqw",
@@ -3966,7 +4913,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1197674238092054528"
+      "liveId": "1196587434777579520",
+      "liveDate": "2025-11-15"
     },
     {
       "bvid": "BV1k5CqBSEUj",
@@ -3980,7 +4928,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨官方视频cut",
-      "liveId": "1197674238092054528"
+      "liveId": "1196587434777579520",
+      "liveDate": "2025-11-15"
     },
     {
       "bvid": "BV1KfCaBLE2i",
@@ -3994,7 +4943,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1197674238092054528"
+      "liveId": "1196587434777579520",
+      "liveDate": "2025-11-15"
     },
     {
       "bvid": "BV1NDCUBREwi",
@@ -4008,7 +4958,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1196587434777579520"
+      "liveId": "1196587434777579520",
+      "liveDate": "2025-11-15"
     },
     {
       "bvid": "BV17RCkBZEQw",
@@ -4021,8 +4972,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV17RCkBZEQw",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1196587434777579520"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1gsCKBkEAK",
@@ -4036,7 +4986,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1196587434777579520"
+      "liveId": "1195134480958689280",
+      "liveDate": "2025-11-11"
     },
     {
       "bvid": "BV1phCsBnEf2",
@@ -4049,7 +5000,9 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1phCsBnEf2",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨直播cut"
+      "collection": "合集·王语晨直播cut",
+      "liveId": "1195134480958689280",
+      "liveDate": "2025-11-11"
     },
     {
       "bvid": "BV1CrCJBME1a",
@@ -4063,7 +5016,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1195134480958689280"
+      "liveId": "1195134480958689280",
+      "liveDate": "2025-11-11"
     },
     {
       "bvid": "BV1hrCjBrEWK",
@@ -4077,7 +5031,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1195134480958689280"
+      "liveId": "1195134480958689280",
+      "liveDate": "2025-11-11"
     },
     {
       "bvid": "BV1iDkCBxE6d",
@@ -4091,7 +5046,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1195134480958689280"
+      "liveId": "1195134480958689280",
+      "liveDate": "2025-11-11"
     },
     {
       "bvid": "BV1s1kBBsEJv",
@@ -4105,7 +5061,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1195134480958689280"
+      "liveId": "1194771635595186176",
+      "liveDate": "2025-11-10"
     },
     {
       "bvid": "BV1A1kiB2EuW",
@@ -4119,7 +5076,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1194771635595186176"
+      "liveId": "1194771635595186176",
+      "liveDate": "2025-11-10"
     },
     {
       "bvid": "BV1MGkZBUEKe",
@@ -4133,7 +5091,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨unit/mc cut",
-      "liveId": "1194771635595186176"
+      "liveId": "1194414930956980224",
+      "liveDate": "2025-11-09"
     },
     {
       "bvid": "BV1X7kRBmEWW",
@@ -4147,7 +5106,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1194414930956980224"
+      "liveId": "1194414930956980224",
+      "liveDate": "2025-11-09"
     },
     {
       "bvid": "BV1RbkQBkEst",
@@ -4160,8 +5120,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1RbkQBkEst",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1194414930956980224"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1XUkUBAEku",
@@ -4175,7 +5134,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1194414930956980224"
+      "liveId": "1194065518145638400",
+      "liveDate": "2025-11-08"
     },
     {
       "bvid": "BV17U1XB8ERU",
@@ -4189,7 +5149,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1194065518145638400"
+      "liveId": "1194065518145638400",
+      "liveDate": "2025-11-08"
     },
     {
       "bvid": "BV18219BSEX7",
@@ -4202,8 +5163,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV18219BSEX7",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1194065518145638400"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV15c2TBfEhW",
@@ -4216,8 +5176,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV15c2TBfEhW",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨直播cut",
-      "liveId": "1194065518145638400"
+      "collection": "合集·王语晨直播cut"
     },
     {
       "bvid": "BV1Gh1fBKEBh",
@@ -4243,7 +5202,9 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1VN1WBTErD",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨直播cut"
+      "collection": "合集·王语晨直播cut",
+      "liveId": "1191895698482466816",
+      "liveDate": "2025-11-03"
     },
     {
       "bvid": "BV1Ft1kBPEjz",
@@ -4257,7 +5218,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1191895698482466816"
+      "liveId": "1191895698482466816",
+      "liveDate": "2025-11-03"
     },
     {
       "bvid": "BV1TR1YB9Ezd",
@@ -4271,7 +5233,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨unit/mc cut",
-      "liveId": "1191895698482466816"
+      "liveId": "1191895698482466816",
+      "liveDate": "2025-11-03"
     },
     {
       "bvid": "BV1Kc1wB8Exr",
@@ -4285,7 +5248,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1191895698482466816"
+      "liveId": "1191895698482466816",
+      "liveDate": "2025-11-03"
     },
     {
       "bvid": "BV1vJ1FBzEwA",
@@ -4298,8 +5262,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1vJ1FBzEwA",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1191531820812668928"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1tzyXBkEZ8",
@@ -4313,7 +5276,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1191531820812668928"
+      "liveId": "1191531820812668928",
+      "liveDate": "2025-11-02"
     },
     {
       "bvid": "BV1LAyQBEEhZ",
@@ -4340,7 +5304,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1190807628559486976"
+      "liveId": "1190807628559486976",
+      "liveDate": "2025-10-31"
     },
     {
       "bvid": "BV1HV1PBFEXo",
@@ -4354,7 +5319,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1190807628559486976"
+      "liveId": "1190807628559486976",
+      "liveDate": "2025-10-31"
     },
     {
       "bvid": "BV1bxyvBtEfi",
@@ -4368,7 +5334,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1190807628559486976"
+      "liveId": "1190807628559486976",
+      "liveDate": "2025-10-31"
     },
     {
       "bvid": "BV1G6yeBFEFp",
@@ -4382,7 +5349,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1190789584302968832"
+      "liveId": "1190789584302968832",
+      "liveDate": "2025-10-30"
     },
     {
       "bvid": "BV1t7ybBzE8B",
@@ -4395,8 +5363,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1t7ybBzE8B",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨直播cut",
-      "liveId": "1190789584302968832"
+      "collection": "合集·王语晨直播cut"
     },
     {
       "bvid": "BV1a1ymBAEVx",
@@ -4410,7 +5377,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1190789584302968832"
+      "liveId": "1189327871972020224",
+      "liveDate": "2025-10-26"
     },
     {
       "bvid": "BV1ZoyzBXEjT",
@@ -4423,7 +5391,9 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1ZoyzBXEjT",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨直播cut"
+      "collection": "合集·王语晨直播cut",
+      "liveId": "1189327871972020224",
+      "liveDate": "2025-10-26"
     },
     {
       "bvid": "BV16ksrzwEHV",
@@ -4437,7 +5407,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1189327871972020224"
+      "liveId": "1189327871972020224",
+      "liveDate": "2025-10-26"
     },
     {
       "bvid": "BV11GskzrE57",
@@ -4451,7 +5422,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1189327871972020224"
+      "liveId": "1189327871972020224",
+      "liveDate": "2025-10-26"
     },
     {
       "bvid": "BV1S7szz6EG4",
@@ -4465,7 +5437,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1189327871972020224"
+      "liveId": "1189327871972020224",
+      "liveDate": "2025-10-26"
     },
     {
       "bvid": "BV1z4xNz8EaB",
@@ -4478,8 +5451,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1z4xNz8EaB",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1189327871972020224"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1CGxAzwEdq",
@@ -4493,7 +5465,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1189327871972020224"
+      "liveId": "1188976242785587200",
+      "liveDate": "2025-10-25"
     },
     {
       "bvid": "BV1MLsZzRE7j",
@@ -4507,7 +5480,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1188976242785587200"
+      "liveId": "1188976242785587200",
+      "liveDate": "2025-10-25"
     },
     {
       "bvid": "BV1ERsozuEnH",
@@ -4520,8 +5494,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1ERsozuEnH",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1188976242785587200"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1Z9WtzpEfJ",
@@ -4560,8 +5533,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1ahxYzhEu9",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1182808263186255872"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1Kex7z5EiW",
@@ -4574,8 +5546,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1Kex7z5EiW",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1182085838580551680"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1VExKzREAi",
@@ -4640,8 +5611,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1dVYKzCEsx",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1171233482376810496"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1ZhaGzaEUW",
@@ -4654,8 +5624,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1ZhaGzaEUW",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1169032666442174464"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1DehRziEY9",
@@ -4668,8 +5637,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1DehRziEY9",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1168337044412108800"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1P6exzDEyC",
@@ -4682,8 +5650,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1P6exzDEyC",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1166521646725271552"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1sBe5zpEbq",
@@ -4710,7 +5677,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨官方视频cut",
-      "liveId": "1165075140914778112"
+      "liveId": "1165075140914778112",
+      "liveDate": "2025-08-20"
     },
     {
       "bvid": "BV1CNYyzYEhY",
@@ -4723,8 +5691,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1CNYyzYEhY",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1163955311600275456"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1TNYqznEvS",
@@ -4751,7 +5718,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨官方视频cut",
-      "liveId": "1162154889327742976"
+      "liveId": "1162154889327742976",
+      "liveDate": "2025-08-12"
     },
     {
       "bvid": "BV1GNbNz4EAV",
@@ -4764,8 +5732,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1GNbNz4EAV",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1161433848695558144"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1og4dzTEy1",
@@ -4779,7 +5746,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨官方视频cut",
-      "liveId": "1159259869624995840"
+      "liveId": "1159259869624995840",
+      "liveDate": "2025-08-04"
     },
     {
       "bvid": "BV14583zqEsx",
@@ -4792,8 +5760,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV14583zqEsx",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1156379333281779712"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1dzgYzcEjM",
@@ -4806,8 +5773,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1dzgYzcEjM",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1153835445631389696"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV182uwzwE22",
@@ -4820,8 +5786,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV182uwzwE22",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1151281779535843328"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1k1GGzWEAF",
@@ -4847,8 +5812,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1Cf3qzoEUu",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1148746403764047872"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1Bq3EzFEuy",
@@ -4887,8 +5851,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1awNRzMEHv",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1143668330244935680"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1yjM8zaEde",
@@ -4901,8 +5864,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1yjM8zaEde",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1141150740549275648"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1v3MSzqEms",
@@ -4941,8 +5903,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1yQ7KzXEvU",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1135722699106881536"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV11gj3zAE4H",
@@ -4955,8 +5916,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV11gj3zAE4H",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1133548957362622464"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV17hJ3z8EGa",
@@ -4969,8 +5929,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV17hJ3z8EGa",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1130991856027242496"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1giEgz5EPN",
@@ -4996,8 +5955,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1LSV5zpE1n",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1125203737461985280"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV16QVuz1E3r",
@@ -5010,8 +5968,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV16QVuz1E3r",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1124844038925389824"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1D7G6zjEa3",
@@ -5024,8 +5981,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1D7G6zjEa3",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1124844038925389824"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1qfLdz5Emv",
@@ -5038,8 +5994,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1qfLdz5Emv",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1123032910817726464"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV19yLFzjEaB",
@@ -5052,8 +6007,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV19yLFzjEaB",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1120507005872443392"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1bjdeYxEFp",
@@ -5066,8 +6020,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1bjdeYxEFp",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1117953857739886592"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1m7d1YWEkE",
@@ -5080,8 +6033,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1m7d1YWEkE",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1117235687618056193"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1DRZUYkEaH",
@@ -5094,8 +6046,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1DRZUYkEaH",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1114701531122044928"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1bHZzY5EbF",
@@ -5121,8 +6072,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1zmXYYeEd4",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1110703402324398080"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1DuXsYtE4A",
@@ -5135,8 +6085,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1DuXsYtE4A",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1110333447259099136"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1mVQDYoEoq",
@@ -5149,8 +6098,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1mVQDYoEoq",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1107818265219764224"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1Q9R8YSEmF",
@@ -5163,8 +6111,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1Q9R8YSEmF",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1105620512188207104"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1AE9SYpEjX",
@@ -5177,8 +6124,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1AE9SYpEjX",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1104917701330800640"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1EfAUeBEd3",
@@ -5192,7 +6138,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1100191198902816768"
+      "liveId": "1100191198902816768",
+      "liveDate": "2025-02-22"
     },
     {
       "bvid": "BV1ZoPTeQEuj",
@@ -5205,8 +6152,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1ZoPTeQEuj",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1100191198902816768"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1R7PNe6EUU",
@@ -5220,7 +6166,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1099475930761203712"
+      "liveId": "1099457904540192768",
+      "liveDate": "2025-02-20"
     },
     {
       "bvid": "BV1LewZeXEuR",
@@ -5234,7 +6181,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1098021217834438656"
+      "liveId": "1097689584338014208",
+      "liveDate": "2025-02-16"
     },
     {
       "bvid": "BV1pQA5eLE6N",
@@ -5247,8 +6195,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1pQA5eLE6N",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1098021217834438656"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1WqAMehENd",
@@ -5262,7 +6209,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1098021217834438656"
+      "liveId": "1097689584338014208",
+      "liveDate": "2025-02-16"
     },
     {
       "bvid": "BV1r6AKeDEuu",
@@ -5289,7 +6237,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1096524043078406144"
+      "liveId": "1096524043078406144",
+      "liveDate": "2025-02-12"
     },
     {
       "bvid": "BV1D2Nde2EHK",
@@ -5303,7 +6252,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1095492080364228608"
+      "liveId": "1095492080364228608",
+      "liveDate": "2025-02-09"
     },
     {
       "bvid": "BV1rQNme3EWu",
@@ -5316,8 +6266,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1rQNme3EWu",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1095492080364228608"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1WAD1YKEWN",
@@ -5331,7 +6280,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1062094370319962112"
+      "liveId": "1062094370319962112",
+      "liveDate": "2024-11-09"
     },
     {
       "bvid": "BV1yqDaYvEST",
@@ -5345,7 +6295,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1061768510949888000"
+      "liveId": "1061768510949888000",
+      "liveDate": "2024-11-08"
     },
     {
       "bvid": "BV1M2DQYcE4M",
@@ -5358,7 +6309,9 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1M2DQYcE4M",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨直播回放"
+      "collection": "合集·王语晨直播回放",
+      "liveId": "928082967998042112",
+      "liveDate": "2023-11-06"
     },
     {
       "bvid": "BV1YrDJY5E5e",
@@ -5385,7 +6338,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1059628214954823680"
+      "liveId": "1059628214954823680",
+      "liveDate": "2024-11-03"
     },
     {
       "bvid": "BV14sS9YFEKg",
@@ -5399,7 +6353,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1058516086642511872"
+      "liveId": "1058516086642511872",
+      "liveDate": "2024-10-30"
     },
     {
       "bvid": "BV1yjSiYrECD",
@@ -5412,8 +6367,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1yjSiYrECD",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1057421108629540864"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV17vS4YBEij",
@@ -5453,7 +6407,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1057421108629540864"
+      "liveId": "1057086056611778560",
+      "liveDate": "2024-10-27"
     },
     {
       "bvid": "BV1S71LY1EAs",
@@ -5467,7 +6422,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1057421108629540864"
+      "liveId": "1057086056611778560",
+      "liveDate": "2024-10-27"
     },
     {
       "bvid": "BV1f1yVYRE3K",
@@ -5481,7 +6437,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1054880300449730560"
+      "liveId": "1054880300449730560",
+      "liveDate": "2024-10-20"
     },
     {
       "bvid": "BV12TyYYpEu9",
@@ -5494,8 +6451,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV12TyYYpEu9",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1054880300449730560"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1wgmKY7EjU",
@@ -5509,7 +6465,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1053388017145548800"
+      "liveId": "1053388017145548800",
+      "liveDate": "2024-10-16"
     },
     {
       "bvid": "BV1TZ2hYtECi",
@@ -5523,7 +6480,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1051998505383301120"
+      "liveId": "1051998398839590912",
+      "liveDate": "2024-10-12"
     },
     {
       "bvid": "BV1CK2CYDEs4",
@@ -5537,7 +6495,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1051277601309265920"
+      "liveId": "1051277601309265920",
+      "liveDate": "2024-10-10"
     },
     {
       "bvid": "BV1Py12YbEaz",
@@ -5551,7 +6510,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1049832501261701120"
+      "liveId": "1049832501261701120",
+      "liveDate": "2024-10-06"
     },
     {
       "bvid": "BV1es12YGEPa",
@@ -5564,8 +6524,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1es12YGEPa",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1049832501261701120"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1ne1fY9ELr",
@@ -5579,7 +6538,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1049450696859783168"
+      "liveId": "1049450696859783168",
+      "liveDate": "2024-10-05"
     },
     {
       "bvid": "BV1aD1mYVEvS",
@@ -5593,7 +6553,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1049110512528068608"
+      "liveId": "1049110512528068608",
+      "liveDate": "2024-10-04"
     },
     {
       "bvid": "BV1Tr1UYuEUM",
@@ -5606,8 +6567,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1Tr1UYuEUM",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1049110512528068608"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1pbxdeQEZ6",
@@ -5621,7 +6581,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1048735540739641344"
+      "liveId": "1048735540739641344",
+      "liveDate": "2024-10-03"
     },
     {
       "bvid": "BV1uMxQeSEVp",
@@ -5634,8 +6595,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1uMxQeSEVp",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1048735540739641344"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1n4xMemEi3",
@@ -5714,7 +6674,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1034261147330351104"
+      "liveId": "1034261147330351104",
+      "liveDate": "2024-08-25"
     },
     {
       "bvid": "BV1MFWYexEP6",
@@ -5728,7 +6689,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1033111340897341440"
+      "liveId": "1033111340897341440",
+      "liveDate": "2024-08-21"
     },
     {
       "bvid": "BV1mVpyeHENi",
@@ -5742,7 +6704,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1032068305648422912"
+      "liveId": "1032068305648422912",
+      "liveDate": "2024-08-18"
     },
     {
       "bvid": "BV12VpyeHEf9",
@@ -5755,8 +6718,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV12VpyeHEf9",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1032068305648422912"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1gvpfeeE6q",
@@ -5770,7 +6732,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1031687753984446464"
+      "liveId": "1031687753984446464",
+      "liveDate": "2024-08-17"
     },
     {
       "bvid": "BV1TFpfetEyQ",
@@ -5783,8 +6746,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1TFpfetEyQ",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1031687753984446464"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1iUepeMEo8",
@@ -5798,7 +6760,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1030624327803670528"
+      "liveId": "1030624327803670528",
+      "liveDate": "2024-08-14"
     },
     {
       "bvid": "BV1GuYyeHEAK",
@@ -5812,7 +6775,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1030232765038923776"
+      "liveId": "1030232765038923776",
+      "liveDate": "2024-08-13"
     },
     {
       "bvid": "BV1P4YZe7EZP",
@@ -5826,7 +6790,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1029532270058082304"
+      "liveId": "1029532270058082304",
+      "liveDate": "2024-08-11"
     },
     {
       "bvid": "BV1s4YZejESn",
@@ -5839,8 +6804,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1s4YZejESn",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1029532270058082304"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1nuYnePEJa",
@@ -5854,7 +6818,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1029142037009338368"
+      "liveId": "1029142037009338368",
+      "liveDate": "2024-08-10"
     },
     {
       "bvid": "BV1TkYVetEqj",
@@ -5868,7 +6833,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1029142037009338368"
+      "liveId": "1028814245617012736",
+      "liveDate": "2024-08-09"
     },
     {
       "bvid": "BV1tPYLewEQ5",
@@ -5882,7 +6848,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1028814245617012736"
+      "liveId": "1028814245617012736",
+      "liveDate": "2024-08-09"
     },
     {
       "bvid": "BV12JYceREQP",
@@ -5896,7 +6863,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1027334933453803520"
+      "liveId": "1027334104386703360",
+      "liveDate": "2024-08-05"
     },
     {
       "bvid": "BV192YceKECU",
@@ -5910,7 +6878,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1027334933453803520"
+      "liveId": "1027334104386703360",
+      "liveDate": "2024-08-05"
     },
     {
       "bvid": "BV1BricenEUY",
@@ -5924,7 +6893,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1027004011693019136"
+      "liveId": "1027004011693019136",
+      "liveDate": "2024-08-04"
     },
     {
       "bvid": "BV1q8vXedEwY",
@@ -5938,7 +6908,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1026635803773440000"
+      "liveId": "1026303631267008512",
+      "liveDate": "2024-08-03"
     },
     {
       "bvid": "BV1kRi3eHEHe",
@@ -5952,7 +6923,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1026635803773440000"
+      "liveId": "1026303631267008512",
+      "liveDate": "2024-08-03"
     },
     {
       "bvid": "BV1cVvqepEgG",
@@ -5966,7 +6938,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1025913004364730368"
+      "liveId": "1025913004364730368",
+      "liveDate": "2024-08-01"
     },
     {
       "bvid": "BV1Ghvxe3EuS",
@@ -5980,7 +6953,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1025547158891073536"
+      "liveId": "1025547158891073536",
+      "liveDate": "2024-07-31"
     },
     {
       "bvid": "BV1Zqvse7E1b",
@@ -5994,7 +6968,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1025180642685292544"
+      "liveId": "1025180642685292544",
+      "liveDate": "2024-07-30"
     },
     {
       "bvid": "BV1nw4m1k7nd",
@@ -6008,7 +6983,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1024475415468380160"
+      "liveId": "1024475415468380160",
+      "liveDate": "2024-07-29"
     },
     {
       "bvid": "BV1ri42167Dh",
@@ -6022,7 +6998,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1024475415468380160"
+      "liveId": "1024475415468380160",
+      "liveDate": "2024-07-29"
     },
     {
       "bvid": "BV1Lf421B7KN",
@@ -6036,7 +7013,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1024475415468380160"
+      "liveId": "1024475415468380160",
+      "liveDate": "2024-07-29"
     },
     {
       "bvid": "BV1Vm42137Pw",
@@ -6050,7 +7028,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1024136050867245056"
+      "liveId": "1024136050867245056",
+      "liveDate": "2024-07-28"
     },
     {
       "bvid": "BV1Vm42137F2",
@@ -6064,7 +7043,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1023380421944872960"
+      "liveId": "1023380421944872960",
+      "liveDate": "2024-07-25"
     },
     {
       "bvid": "BV1mw4m1k7X3",
@@ -6077,8 +7057,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1mw4m1k7X3",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1023380421944872960"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1WT42167Tb",
@@ -6092,7 +7071,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1023380421944872960"
+      "liveId": "1023380421944872960",
+      "liveDate": "2024-07-25"
     },
     {
       "bvid": "BV1wZ421K7fC",
@@ -6106,7 +7086,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1023020258872332288"
+      "liveId": "1023018032309276672",
+      "liveDate": "2024-07-24"
     },
     {
       "bvid": "BV1t142187TK",
@@ -6120,7 +7101,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1023020258872332288"
+      "liveId": "1023018032309276672",
+      "liveDate": "2024-07-24"
     },
     {
       "bvid": "BV1xE4m1d7wm",
@@ -6134,7 +7116,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1022651965359591424"
+      "liveId": "1022651965359591424",
+      "liveDate": "2024-07-23"
     },
     {
       "bvid": "BV17z421i7MJ",
@@ -6148,7 +7131,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1021962762195898368"
+      "liveId": "1021962762195898368",
+      "liveDate": "2024-07-22"
     },
     {
       "bvid": "BV1Jr421K7N6",
@@ -6161,8 +7145,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1Jr421K7N6",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1021589534659121152"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1kb421J7CL",
@@ -6175,8 +7158,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1kb421J7CL",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1021215915030417408"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1ab421J7Nj",
@@ -6190,7 +7172,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1021589534659121152"
+      "liveId": "1021589534659121152",
+      "liveDate": "2024-07-21"
     },
     {
       "bvid": "BV1f4421U78U",
@@ -6204,7 +7187,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1021215915030417408"
+      "liveId": "1021215915030417408",
+      "liveDate": "2024-07-20"
     },
     {
       "bvid": "BV1bi421a7jM",
@@ -6231,7 +7215,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1020470255062683648"
+      "liveId": "1020470255062683648",
+      "liveDate": "2024-07-17"
     },
     {
       "bvid": "BV15E421P7mn",
@@ -6245,7 +7230,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1019745106013261824"
+      "liveId": "1019398005702070272",
+      "liveDate": "2024-07-15"
     },
     {
       "bvid": "BV13W421R7jQ",
@@ -6259,7 +7245,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1019745106013261824"
+      "liveId": "1019398005702070272",
+      "liveDate": "2024-07-15"
     },
     {
       "bvid": "BV1XM4m127gU",
@@ -6273,7 +7260,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1019745106013261824"
+      "liveId": "1019398005702070272",
+      "liveDate": "2024-07-15"
     },
     {
       "bvid": "BV16H4y1F7hN",
@@ -6286,8 +7274,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV16H4y1F7hN",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1019055120565735424"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1Rz421q7Ba",
@@ -6301,7 +7288,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1019745106013261824"
+      "liveId": "1019398005702070272",
+      "liveDate": "2024-07-15"
     },
     {
       "bvid": "BV1jw4m1Y7w5",
@@ -6315,7 +7303,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1019055120565735424"
+      "liveId": "1019055120565735424",
+      "liveDate": "2024-07-14"
     },
     {
       "bvid": "BV1Py411B7Gk",
@@ -6329,7 +7318,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1018664641697222656"
+      "liveId": "1018664641697222656",
+      "liveDate": "2024-07-12"
     },
     {
       "bvid": "BV1PW421d7Z2",
@@ -6343,7 +7333,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1018664641697222656"
+      "liveId": "1018664641697222656",
+      "liveDate": "2024-07-12"
     },
     {
       "bvid": "BV1y4421D7MV",
@@ -6357,7 +7348,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1018269856771674112"
+      "liveId": "1018269856771674112",
+      "liveDate": "2024-07-11"
     },
     {
       "bvid": "BV1Cx4y1x7sF",
@@ -6371,7 +7363,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1018664641697222656"
+      "liveId": "1018269856771674112",
+      "liveDate": "2024-07-11"
     },
     {
       "bvid": "BV1aT421k7vt",
@@ -6385,7 +7378,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1017899814817173504"
+      "liveId": "1017899814817173504",
+      "liveDate": "2024-07-10"
     },
     {
       "bvid": "BV11x4y1x7Ft",
@@ -6399,7 +7393,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1017566315681746944"
+      "liveId": "1017566315681746944",
+      "liveDate": "2024-07-09"
     },
     {
       "bvid": "BV1iH4y1w7na",
@@ -6412,8 +7407,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1iH4y1w7na",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1016138834219175936"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1FT421k7vT",
@@ -6440,7 +7434,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1016858775775940608"
+      "liveId": "1016507292878442496",
+      "liveDate": "2024-07-07"
     },
     {
       "bvid": "BV1eZ421T7yf",
@@ -6454,7 +7449,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1016858775775940608"
+      "liveId": "1016507292878442496",
+      "liveDate": "2024-07-07"
     },
     {
       "bvid": "BV1ci421Y7Ku",
@@ -6468,7 +7464,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1016138834219175936"
+      "liveId": "1016138834219175936",
+      "liveDate": "2024-07-06"
     },
     {
       "bvid": "BV1TE421P7SJ",
@@ -6482,7 +7479,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1015374271240540160"
+      "liveId": "1015374069481934848",
+      "liveDate": "2024-07-03"
     },
     {
       "bvid": "BV1hb421n7AV",
@@ -6496,7 +7494,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1015046635549167616"
+      "liveId": "1015046635549167616",
+      "liveDate": "2024-07-02"
     },
     {
       "bvid": "BV1jb421p7Lw",
@@ -6510,7 +7509,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1014352784337473536"
+      "liveId": "1014352784337473536",
+      "liveDate": "2024-07-01"
     },
     {
       "bvid": "BV12S411A7wL",
@@ -6537,7 +7537,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1012842062784827392"
+      "liveId": "1012842062784827392",
+      "liveDate": "2024-06-26"
     },
     {
       "bvid": "BV1QS421d7pg",
@@ -6551,7 +7552,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1012842062784827392"
+      "liveId": "1012842062784827392",
+      "liveDate": "2024-06-26"
     },
     {
       "bvid": "BV1G1421k7Bp",
@@ -6565,7 +7567,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1012472753176776704"
+      "liveId": "1012472753176776704",
+      "liveDate": "2024-06-25"
     },
     {
       "bvid": "BV1f4421S7vb",
@@ -6579,7 +7582,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1011740381800108032"
+      "liveId": "1011740381800108032",
+      "liveDate": "2024-06-23"
     },
     {
       "bvid": "BV16i421a7uY",
@@ -6592,8 +7596,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV16i421a7uY",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1011396113399091200"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1iZ421g7Eu",
@@ -6606,8 +7609,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1iZ421g7Eu",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1011740381800108032"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1Br421F7MX",
@@ -6621,7 +7623,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1011396113399091200"
+      "liveId": "1011080321604325376",
+      "liveDate": "2024-06-22"
     },
     {
       "bvid": "BV1GW421R7ob",
@@ -6635,7 +7638,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1011396113399091200"
+      "liveId": "1011080321604325376",
+      "liveDate": "2024-06-22"
     },
     {
       "bvid": "BV1Gi421v7En",
@@ -6662,7 +7666,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1010686951908249600"
+      "liveId": "1010686951908249600",
+      "liveDate": "2024-06-20"
     },
     {
       "bvid": "BV1K1421k7bU",
@@ -6675,7 +7680,9 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1K1421k7bU",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨直播cut"
+      "collection": "合集·王语晨直播cut",
+      "liveId": "1009241699334819840",
+      "liveDate": "2024-06-16"
     },
     {
       "bvid": "BV1ws421M7tX",
@@ -6689,7 +7696,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1009241699334819840"
+      "liveId": "1009241699334819840",
+      "liveDate": "2024-06-16"
     },
     {
       "bvid": "BV1jx4y1875A",
@@ -6703,7 +7711,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1009241699334819840"
+      "liveId": "1009230087785877504",
+      "liveDate": "2024-06-16"
     },
     {
       "bvid": "BV1Vm421571i",
@@ -6717,7 +7726,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1009241699334819840"
+      "liveId": "1009230087785877504",
+      "liveDate": "2024-06-16"
     },
     {
       "bvid": "BV1BM4m1m7fq",
@@ -6731,7 +7741,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1008877864862158848"
+      "liveId": "1008877864862158848",
+      "liveDate": "2024-06-15"
     },
     {
       "bvid": "BV1Nn4y1R7GP",
@@ -6745,7 +7756,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1008124161666387968"
+      "liveId": "1008124161666387968",
+      "liveDate": "2024-06-13"
     },
     {
       "bvid": "BV1wx4y1b7Kn",
@@ -6759,7 +7771,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1007073067838279680"
+      "liveId": "1007073067838279680",
+      "liveDate": "2024-06-10"
     },
     {
       "bvid": "BV1Ww4m1v7Gw",
@@ -6773,7 +7786,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1007073067838279680"
+      "liveId": "1007036812752654336",
+      "liveDate": "2024-06-10"
     },
     {
       "bvid": "BV1Ti421i72S",
@@ -6787,7 +7801,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1007073067838279680"
+      "liveId": "1007036812752654336",
+      "liveDate": "2024-06-10"
     },
     {
       "bvid": "BV14S411P7E1",
@@ -6801,7 +7816,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1006704718956531712"
+      "liveId": "1006352671941922816",
+      "liveDate": "2024-06-09"
     },
     {
       "bvid": "BV124421D717",
@@ -6815,7 +7831,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1006704718956531712"
+      "liveId": "1006352671941922816",
+      "liveDate": "2024-06-09"
     },
     {
       "bvid": "BV1Ry411b7ZP",
@@ -6829,7 +7846,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1005255998717104128"
+      "liveId": "1005255998717104128",
+      "liveDate": "2024-06-05"
     },
     {
       "bvid": "BV1cz421h7o7",
@@ -6843,7 +7861,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1004511448302161920"
+      "liveId": "1004511448302161920",
+      "liveDate": "2024-06-03"
     },
     {
       "bvid": "BV1q7421o7nt",
@@ -6857,7 +7876,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1004511448302161920"
+      "liveId": "1004511448302161920",
+      "liveDate": "2024-06-03"
     },
     {
       "bvid": "BV1Br421c79T",
@@ -6870,8 +7890,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1Br421c79T",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "1003452339012308992"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1L7421o7oF",
@@ -6885,7 +7904,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "1003831931887751168"
+      "liveId": "1003831931887751168",
+      "liveDate": "2024-06-02"
     },
     {
       "bvid": "BV1tZ421H7ca",
@@ -6899,7 +7919,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1003831931887751168"
+      "liveId": "1003831931887751168",
+      "liveDate": "2024-06-02"
     },
     {
       "bvid": "BV1fZ421W7SK",
@@ -6926,7 +7947,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1003452339012308992"
+      "liveId": "1003452339012308992",
+      "liveDate": "2024-06-01"
     },
     {
       "bvid": "BV16z421a7pA",
@@ -6940,7 +7962,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1002384093941141504"
+      "liveId": "1002384093941141504",
+      "liveDate": "2024-05-29"
     },
     {
       "bvid": "BV1U7421Z7cK",
@@ -6954,7 +7977,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1001603123788976128"
+      "liveId": "1001603123788976128",
+      "liveDate": "2024-05-26"
     },
     {
       "bvid": "BV1xD42137jD",
@@ -6968,7 +7992,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1001250649739694080"
+      "liveId": "1001250649739694080",
+      "liveDate": "2024-05-25"
     },
     {
       "bvid": "BV1qJ4m1w7mG",
@@ -6982,7 +8007,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "1000909618762551296"
+      "liveId": "1000909618762551296",
+      "liveDate": "2024-05-24"
     },
     {
       "bvid": "BV1Vx4y1p7Fs",
@@ -6995,7 +8021,9 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1Vx4y1p7Fs",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨直播回放"
+      "collection": "合集·王语晨直播回放",
+      "liveId": "866813685020823552",
+      "liveDate": "2023-05-20"
     },
     {
       "bvid": "BV1v1421B7zh",
@@ -7009,7 +8037,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "999092682495954944"
+      "liveId": "999092682495954944",
+      "liveDate": "2024-05-19"
     },
     {
       "bvid": "BV1ax4y1H7Jo",
@@ -7023,7 +8052,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "999092682495954944"
+      "liveId": "999092682495954944",
+      "liveDate": "2024-05-19"
     },
     {
       "bvid": "BV12n4y1d7c5",
@@ -7037,7 +8067,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "998695733515063296"
+      "liveId": "998695733515063296",
+      "liveDate": "2024-05-18"
     },
     {
       "bvid": "BV1YT421D7C3",
@@ -7051,7 +8082,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "998372627005116416"
+      "liveId": "998372627005116416",
+      "liveDate": "2024-05-17"
     },
     {
       "bvid": "BV12M4m1C7Fo",
@@ -7065,7 +8097,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "997948433863872512"
+      "liveId": "997948433863872512",
+      "liveDate": "2024-05-16"
     },
     {
       "bvid": "BV1Xb421b7gn",
@@ -7079,7 +8112,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "997265038766837760"
+      "liveId": "997265038766837760",
+      "liveDate": "2024-05-14"
     },
     {
       "bvid": "BV14z42127QF",
@@ -7093,7 +8127,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "997265038766837760"
+      "liveId": "997265038766837760",
+      "liveDate": "2024-05-14"
     },
     {
       "bvid": "BV1AZ42147iC",
@@ -7106,8 +8141,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1AZ42147iC",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·其他成员直播cut(王语晨出现)",
-      "liveId": "997265038766837760"
+      "collection": "合集·其他成员直播cut(王语晨出现)"
     },
     {
       "bvid": "BV16b421b7GF",
@@ -7134,7 +8168,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "994009726341419008"
+      "liveId": "993684877957992448",
+      "liveDate": "2024-05-05"
     },
     {
       "bvid": "BV1QZ42177gz",
@@ -7147,8 +8182,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1QZ42177gz",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨公演cut",
-      "liveId": "994009726341419008"
+      "collection": "合集·王语晨公演cut"
     },
     {
       "bvid": "BV1VZ421E7Wq",
@@ -7162,7 +8196,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "994009726341419008"
+      "liveId": "993684877957992448",
+      "liveDate": "2024-05-05"
     },
     {
       "bvid": "BV1Wi421y723",
@@ -7189,7 +8224,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "992585794015006720"
+      "liveId": "992585794015006720",
+      "liveDate": "2024-05-02"
     },
     {
       "bvid": "BV1Gf421D7pc",
@@ -7203,7 +8239,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨官方视频cut",
-      "liveId": "991873956948283392"
+      "liveId": "991873956948283392",
+      "liveDate": "2024-04-30"
     },
     {
       "bvid": "BV1jb421a7U3",
@@ -7217,7 +8254,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨官方视频cut",
-      "liveId": "991873956948283392"
+      "liveId": "991873956948283392",
+      "liveDate": "2024-04-30"
     },
     {
       "bvid": "BV1mM4m1f7E2",
@@ -7231,7 +8269,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "991873956948283392"
+      "liveId": "991873956948283392",
+      "liveDate": "2024-04-30"
     },
     {
       "bvid": "BV1iE42157Jg",
@@ -7245,7 +8284,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "991873956948283392"
+      "liveId": "991873956948283392",
+      "liveDate": "2024-04-30"
     },
     {
       "bvid": "BV1Ji421C7Hs",
@@ -7259,7 +8299,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "991873956948283392"
+      "liveId": "991873956948283392",
+      "liveDate": "2024-04-30"
     },
     {
       "bvid": "BV1Rm421s74z",
@@ -7273,7 +8314,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "991146523370524672"
+      "liveId": "991146523370524672",
+      "liveDate": "2024-04-28"
     },
     {
       "bvid": "BV1gH4y1V72k",
@@ -7300,7 +8342,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "991146523370524672"
+      "liveId": "991142270333685760",
+      "liveDate": "2024-04-28"
     },
     {
       "bvid": "BV1xm41117jp",
@@ -7314,7 +8357,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "991146523370524672"
+      "liveId": "991142270333685760",
+      "liveDate": "2024-04-28"
     },
     {
       "bvid": "BV19i42127Zk",
@@ -7328,7 +8372,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨官方视频cut",
-      "liveId": "989622881075662848"
+      "liveId": "989622881075662848",
+      "liveDate": "2024-04-23"
     },
     {
       "bvid": "BV1Ut421A7ir",
@@ -7342,7 +8387,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "989622881075662848"
+      "liveId": "989622881075662848",
+      "liveDate": "2024-04-23"
     },
     {
       "bvid": "BV11H4y1N7EZ",
@@ -7356,7 +8402,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "988958585803051008"
+      "liveId": "988958585803051008",
+      "liveDate": "2024-04-22"
     },
     {
       "bvid": "BV1Ni421m7Qq",
@@ -7370,7 +8417,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "988958585803051008"
+      "liveId": "988958585803051008",
+      "liveDate": "2024-04-22"
     },
     {
       "bvid": "BV1aM4m1D72L",
@@ -7384,7 +8432,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
-      "liveId": "988958585803051008"
+      "liveId": "988958585803051008",
+      "liveDate": "2024-04-22"
     },
     {
       "bvid": "BV1uw4m1U7jr",
@@ -7410,8 +8459,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1gF4m1T7zL",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·其他成员直播cut(王语晨出现)",
-      "liveId": "984981437731901440"
+      "collection": "合集·其他成员直播cut(王语晨出现)"
     },
     {
       "bvid": "BV1zq421F7Hi",
@@ -7425,7 +8473,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨unit/mc cut",
-      "liveId": "983545225087356928"
+      "liveId": "983545225087356928",
+      "liveDate": "2024-04-07"
     },
     {
       "bvid": "BV1cp421y782",
@@ -7439,7 +8488,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "981705778603560960"
+      "liveId": "981705778603560960",
+      "liveDate": "2024-04-01"
     },
     {
       "bvid": "BV1Ep421m7Q8",
@@ -7453,7 +8503,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "980244878818349056"
+      "liveId": "979883687839338496",
+      "liveDate": "2024-03-27"
     },
     {
       "bvid": "BV1qm421n7C9",
@@ -7467,7 +8518,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "980244878818349056"
+      "liveId": "979883687839338496",
+      "liveDate": "2024-03-27"
     },
     {
       "bvid": "BV1vx4y1e7t1",
@@ -7481,7 +8533,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "980244878818349056"
+      "liveId": "979883687839338496",
+      "liveDate": "2024-03-27"
     },
     {
       "bvid": "BV18t421V7JK",
@@ -7495,7 +8548,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·其他成员直播cut(王语晨出现)",
-      "liveId": "976632238057525248"
+      "liveId": "976632238057525248",
+      "liveDate": "2024-03-18"
     },
     {
       "bvid": "BV1GK421v7qR",
@@ -7509,7 +8563,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "976632238057525248"
+      "liveId": "976277570823458816",
+      "liveDate": "2024-03-18"
     },
     {
       "bvid": "BV1aJ4m187wH",
@@ -7523,7 +8578,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨unit/mc cut",
-      "liveId": "976266279652233216"
+      "liveId": "975558048864866304",
+      "liveDate": "2024-03-16"
     },
     {
       "bvid": "BV1Qt421V75Y",
@@ -7537,7 +8593,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨unit/mc cut",
-      "liveId": "976266279652233216"
+      "liveId": "975558048864866304",
+      "liveDate": "2024-03-16"
     },
     {
       "bvid": "BV1vF4m1c7i9",
@@ -7551,7 +8608,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "976266279652233216"
+      "liveId": "975558048864866304",
+      "liveDate": "2024-03-16"
     },
     {
       "bvid": "BV13J4m1873t",
@@ -7565,7 +8623,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "976266279652233216"
+      "liveId": "975558048864866304",
+      "liveDate": "2024-03-16"
     },
     {
       "bvid": "BV1NF4m1c7kQ",
@@ -7579,7 +8638,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "974091353231003648"
+      "liveId": "974091353231003648",
+      "liveDate": "2024-03-11"
     },
     {
       "bvid": "BV1Bt421t7Bz",
@@ -7593,7 +8653,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "971597554617487360"
+      "liveId": "971597554617487360",
+      "liveDate": "2024-03-05"
     },
     {
       "bvid": "BV1JJ4m1Y72R",
@@ -7607,7 +8668,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "971201745031860224"
+      "liveId": "971201745031860224",
+      "liveDate": "2024-03-04"
     },
     {
       "bvid": "BV1ix4y1D77p",
@@ -7621,7 +8683,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "971201745031860224"
+      "liveId": "971201745031860224",
+      "liveDate": "2024-03-04"
     },
     {
       "bvid": "BV1A2421u79C",
@@ -7635,7 +8698,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "970843721087913984"
+      "liveId": "970843721087913984",
+      "liveDate": "2024-03-03"
     },
     {
       "bvid": "BV1Cx42117ku",
@@ -7649,7 +8713,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "968282536069107712"
+      "liveId": "968282536069107712",
+      "liveDate": "2024-02-24"
     },
     {
       "bvid": "BV1Qu4m1c7nd",
@@ -7663,7 +8728,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "968282536069107712"
+      "liveId": "968282536069107712",
+      "liveDate": "2024-02-24"
     },
     {
       "bvid": "BV1jt421a7pJ",
@@ -7677,7 +8743,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "965742496529059840"
+      "liveId": "965389590000898048",
+      "liveDate": "2024-02-16"
     },
     {
       "bvid": "BV1B4421w7Lt",
@@ -7691,7 +8758,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "964696864179687424"
+      "liveId": "964696864179687424",
+      "liveDate": "2024-02-15"
     },
     {
       "bvid": "BV1sJ4m1x7aB",
@@ -7705,7 +8773,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "964667595328131072"
+      "liveId": "964336310709719040",
+      "liveDate": "2024-02-14"
     },
     {
       "bvid": "BV1Cx4y1C7CV",
@@ -7719,7 +8788,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "964274651332939776"
+      "liveId": "963921447961300992",
+      "liveDate": "2024-02-12"
     },
     {
       "bvid": "BV1m1421f7xb",
@@ -7733,7 +8803,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "964274651332939776"
+      "liveId": "963921447961300992",
+      "liveDate": "2024-02-12"
     },
     {
       "bvid": "BV1tF4m1M7fc",
@@ -7747,7 +8818,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "962867286024982528"
+      "liveId": "962867286024982528",
+      "liveDate": "2024-02-10"
     },
     {
       "bvid": "BV1pA4m1G7rF",
@@ -7761,7 +8833,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "961408498818420736"
+      "liveId": "961408498818420736",
+      "liveDate": "2024-02-05"
     },
     {
       "bvid": "BV1N7421T7w3",
@@ -7775,7 +8848,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨unit/mc cut",
-      "liveId": "960644407199862784"
+      "liveId": "960644407199862784",
+      "liveDate": "2024-02-03"
     },
     {
       "bvid": "BV126421g7VA",
@@ -7789,7 +8863,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "960644407199862784"
+      "liveId": "960644407199862784",
+      "liveDate": "2024-02-03"
     },
     {
       "bvid": "BV1qt421W7yw",
@@ -7803,7 +8878,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "960644407199862784"
+      "liveId": "960322560876941312",
+      "liveDate": "2024-02-02"
     },
     {
       "bvid": "BV1Xt421W7dD",
@@ -7816,7 +8892,9 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1Xt421W7dD",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨直播cut"
+      "collection": "合集·王语晨直播cut",
+      "liveId": "958513439638884352",
+      "liveDate": "2024-01-28"
     },
     {
       "bvid": "BV12K411h7GS",
@@ -7830,7 +8908,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "958513439638884352"
+      "liveId": "958513439638884352",
+      "liveDate": "2024-01-28"
     },
     {
       "bvid": "BV1rb4y1A71J",
@@ -7844,7 +8923,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "957800503668707328"
+      "liveId": "957800503668707328",
+      "liveDate": "2024-01-27"
     },
     {
       "bvid": "BV1qV411Q7at",
@@ -7857,8 +8937,7 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1qV411Q7at",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·其他成员直播cut(王语晨出现)",
-      "liveId": "957800503668707328"
+      "collection": "合集·其他成员直播cut(王语晨出现)"
     },
     {
       "bvid": "BV12C4y1C7dJ",
@@ -7872,7 +8951,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "955977693384216576"
+      "liveId": "955594503029067776",
+      "liveDate": "2024-01-20"
     },
     {
       "bvid": "BV1Zi4y1i7Xe",
@@ -7886,7 +8966,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·其他成员直播cut(王语晨出现)",
-      "liveId": "955594503029067776"
+      "liveId": "954509615802683392",
+      "liveDate": "2024-01-17"
     },
     {
       "bvid": "BV1TV411R7br",
@@ -7900,7 +8981,8 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
-      "liveId": "953070836722241536"
+      "liveId": "952746017598279680",
+      "liveDate": "2024-01-13"
     }
   ]
 };
