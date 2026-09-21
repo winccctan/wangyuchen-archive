@@ -23,5 +23,11 @@
   // /scrape 手动触发抓取用（非敏感，可明文）：GitHub 仓库名。
   "vars": {
     "REPO": "winccctan/wangyuchen-archive"
+  },
+  // Cron 触发器：Cloudflare 边缘每 20 分钟自动派发一次抓取（worker/index.js 的 scheduled()）。
+  // 为什么放这里：GitHub 原生 cron 极其不稳定（经常延迟数十分钟甚至整天丢跑），
+  // 用 Cloudflare 的 Cron 作主调度器才稳；GitHub 那份保留作兜底。
+  "triggers": {
+    "crons": ["*/20 * * * *"]
   }
 }

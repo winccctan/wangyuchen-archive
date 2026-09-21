@@ -56,6 +56,13 @@ export default {
       return applyFreshPolicy(res, url);
     }
     return new Response('Not Found', { status: 404 });
+  },
+
+  // Cron 定时触发（见 wrangler.jsonc 的 triggers.crons = ["*/20 * * * *"]）：
+  // Cloudflare 边缘每 20 分钟自动派发一次抓取，替代经常延迟/丢跑的 GitHub 原生 cron。
+  // 走的是和「🔄 刷新」按钮完全相同的 handleScrape（含 1 分钟冷却，20 分钟间隔不会误挡）。
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(handleScrape(env));
   }
 };
 
