@@ -21,15 +21,18 @@
 - 名称 `SYNC_TOKEN`，值 = 第 2 步那个随机串（**必须两边一致**）。
 - （可选）`WORKER_URL` = `https://idol.wyc0518.cc`（不填也行，代码有默认值）。
 
-### 4. 改 Cloudflare 构建命令（关键一步）
+### 4. 改 Cloudflare 构建命令（关键一步 · 已踩坑修正）
 - Cloudflare 控制台 → Workers & Pages → `wangyuchen-archive` → **Settings → Build**（或「部署」设置）。
-- 把 **Build command** 改为：`npm run build && wrangler deploy`
-  （原来大概率是 `wrangler deploy`；加上 `npm run build` 才能在每次部署时用最新的 `site/` 代码生成 `dist/`，而数据不再进 `dist/`、不再触发部署）。
+- **Build command** 填：`npm run build`（只负责用最新 `site/` 生成 `dist/`）。
+- **Deploy command** 保持平台默认：`npx wrangler deploy`（真正的部署由它负责）。
+- ⚠️ **不要**把 `wrangler deploy` 写进 Build command——Build 阶段平台不会注入部署凭证、环境里也没有裸 `wrangler` 命令，会直接构建失败。
+  （2026-09-21 实测：写成 `npm run build && wrangler deploy` 导致 Workers Builds 与 Cloudflare Pages 双双 failed。）
 - 确认部署分支是 `main`。
 
-### 5. 推送并部署
-- 把改动 push 到 `main`：`worker/index.js`、`site/js/app.js`、`wrangler.jsonc`、`scripts/sync-kv.mjs`、`.github/workflows/scrape.yml`、`package.json`。
-- Cloudflare 会自动执行 `npm run build && wrangler deploy`。
+### 5. 推送并部署（已完成）
+- 改动已 push 到 `main`（commit `1af0421`）。
+- Cloudflare 触发构建：`npm run build` → `npx wrangler deploy`。
+- 若构建失败：先按第 4 步确认 Build command 只有 `npm run build`，再到 Cloudflare 构建记录里点 **Retry build**（或由任意一次新提交重新触发）。
 
 ### 6. 回填历史数据（一次性）
 - 部署完成后，到 GitHub → **Actions → 抓取并同步到 KV → Run workflow**（手动触发一次）。
