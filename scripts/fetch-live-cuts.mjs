@@ -186,6 +186,23 @@ const prev = existsSync(OUT) ? parseOut(OUT) : null;
 const merged = new Map((prev?.cuts || []).map((c) => [c.bvid, c]));
 const progress = process.env.RESET === '1' ? {} : (prev?.progress || {});
 
+// ★ CI 每次都从仓库里的 live-cuts.js 出发，而空间投稿列表通道很容易被 B 站限流
+//   （同一轮抓不到就整批丢了）。所以先读一次线上 KV 里已有的数据做**并集**，
+//   让「抓到多少就永久累积在 KV 里」，单轮抓不全也不会把历史条目弄丢。
+const WORKER_URL = (process.env.WORKER_URL || 'https://idol.wyc0518.cc').replace(/\/$/, '');
+async function seedFromKV() {
+  try {
+    const r = await fetch(WORKER_URL + '/api/live-cuts', { headers: { 'user-agent': 'wyc-archive-fetch-live-cuts' } });
+    if (!r.ok) return 0;
+    const d = await r.json();
+    let n = 0;
+    for (const c of (d.cuts || [])) {
+      if (c && c.bvid && !merged.has(c.bvid)) { merged.set(c.bvid, c); n++; }
+    }
+    return n;
+  } catch (_) { return 0; }
+}
+
 function parseOut(file) {
   const code = readFileSync(file, 'utf8');
   const i = code.indexOf('window.LIVE_CUTS');
@@ -409,6 +426,8 @@ async function crawlSpaceList(up) {
 /* ---------------- 主流程 ---------------- */
 console.log(`[直播切片] 目标 ${UP_TARGETS.map((t) => `${t.label}(${t.mid})`).join('、')}`
   + ` | 出口：${PROXY_URL ? '直连→代理兜底' : '直连'}`);
+const seeded = await seedFromKV();
+if (seeded) console.log(`[直播切片] 已从线上 KV 合并回 ${seeded} 条历史记录（单轮抓不全也不会丢）`);
 let ok = 0;
 for (const up of UP_TARGETS) {
   console.log(`\n===== ${up.label} (mid=${up.mid}) =====`);
