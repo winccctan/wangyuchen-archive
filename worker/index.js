@@ -66,9 +66,9 @@ export default {
     return new Response('Not Found', { status: 404 });
   },
 
-  // Cron 定时触发（见 wrangler.jsonc 的 triggers.crons = ["*/3 * * * *"]）：
-  // Cloudflare 边缘每 3 分钟自动派发一次抓取，替代经常延迟/丢跑的 GitHub 原生 cron。
-  // 走的是和「🔄 刷新」按钮完全相同的 handleScrape（含 1 分钟冷却，3 分钟间隔不会误挡）。
+  // Cron 定时触发（见 wrangler.jsonc 的 triggers.crons = ["*/5 * * * *"]）：
+  // Cloudflare 边缘每 5 分钟自动派发一次抓取，替代经常延迟/丢跑的 GitHub 原生 cron。
+  // 走的是和「🔄 刷新」按钮完全相同的 handleScrape（含 1 分钟冷却，5 分钟间隔不会误挡）。
   async scheduled(event, env, ctx) {
     ctx.waitUntil(handleScrape(env));
   }
@@ -485,15 +485,20 @@ function json(obj, status = 200) {
     headers: { 'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': '*' }
   });
 }
-
 /* ------------------------- 数据 API（数据存 KV 命名空间 env.KV） -------------------------
  * 设计要点：
  *   - 口袋发言按「月」分键：msg/YYYY-MM。单月体积远小于 KV 单值 25MB 上限，
  *     故数据可无限增长、永远不会被容量卡死；浏览器首屏拉 /api/index（含 recent 最新若干条 + 月份列表），
  *     下滑「加载更早」再惰性拉历史月。
  *   - 读取接口公开（前端同源 fetch 即可）；写入 /api/sync 需 SYNC_TOKEN（存在 SECRETS KV，键名 SYNC_TOKEN）。
- *   - 抓取仍由 GitHub Actions（Node）完成，跑完 POST 增量给 /api/sync；Worker 在边缘把数据按月拆键写 KV。
- *     因此「数据更新」完全不进 git、不触发站点部署 → 站点零部署、实时、不崩。
+ *   - 抓取仍由 GitHub Actions（Node）完成：scripts/sync-kv.mjs 读 site/data/archive.js（已加工成品：
+ *     公演按「她的公演记录」筛选 + 挂 B 站备用源 + 失效流域名修正 + 消息瘦身），
+ *     只推「可能再变的近期数据」，Worker 在边缘**并集合并**写入 KV。
+ *   - ★ 合并语义 = 只增不删：Actions 每次从仓库快照出发，本地并不含 KV 里最新的全部历史，
+ *     若用「整月覆盖」会把 KV 里较新的发言/直播整段抹掉。故一律按唯一键并集：
+ *     发言按 msgIdServer（缺则文本哈希）、直播/公演按 liveId、其余小数据（社媒美图/公演 cut）整体替换。
+ *   - ★ 只在内容真变化时落盘：Worker 先读旧值做规范化比较（stableStringify），相同就跳过写。
+ *     否则每 3 分钟一轮会把 KV 免费额度（1000 写/天）瞬间打爆。
  */
 
 function apiJson(obj, cacheControl) {
@@ -521,6 +526,29 @@ function byTimeDesc(a, b) {
   return (Number(b.msgTime) || 0) - (Number(a.msgTime) || 0);
 }
 
+// 规范化序列化（对象键排序、递归）：让「读回来的旧值」和「新拼好的值」可以直接字符串比较，
+// 不会因为字段顺序不同而误判为「有变化」→ 避免每轮都白写一遍。
+function stableStringify(v) {
+  if (v === null || typeof v !== 'object') return JSON.stringify(v);
+  if (Array.isArray(v)) return '[' + v.map(stableStringify).join(',') + ']';
+  const keys = Object.keys(v).sort();
+  const parts = [];
+  for (const k of keys) {
+    if (v[k] === undefined) continue;
+    parts.push(JSON.stringify(k) + ':' + stableStringify(v[k]));
+  }
+  return '{' + parts.join(',') + '}';
+}
+
+function safeParseArr(s) {
+  try {
+    const v = JSON.parse(s);
+    return Array.isArray(v) ? v : [];
+  } catch (_) {
+    return [];
+  }
+}
+
 // /api/sync 写权限：比对请求头 x-sync-token 与 SECRETS KV 里的 SYNC_TOKEN
 async function isSyncAuthorized(request, env) {
   const tok = request.headers.get('x-sync-token') || '';
@@ -541,18 +569,74 @@ async function handleApi(url, request, env, ctx) {
   if (p === '/api/social') return handleApiKey('social', env);
   if (p === '/api/perf-cuts') return handleApiKey('perf-cuts', env);
   if (p === '/api/sync' && request.method === 'POST') {
-    if (!isSyncAuthorized(request, env)) return json({ error: 'forbidden: sync token required' }, 403);
+    if (!(await isSyncAuthorized(request, env))) return json({ error: 'forbidden: sync token required' }, 403);
     return handleApiSync(request, env, ctx);
   }
   return json({ error: 'unknown api: ' + p }, 404);
 }
 
+/* ------------------------- 索引（index 键） -------------------------
+ * {
+ *   months:   ["2026-09", ...]        降序
+ *   counts:   { "2026-09": 1234 }     每月条数（用于页头精确总数）
+ *   recent:   [ ...最多 60 条 ]       首屏秒更用
+ *   meta:     { member, lastUpdated, ... }
+ *   liveCount / perfCount             live / performances 的实际条数
+ *   updatedAt                         最近一次「数据真变化」的时间
+ * }
+ */
+function normIndex(raw) {
+  const o = (raw && typeof raw === 'object') ? raw : {};
+  return {
+    months: Array.isArray(o.months) ? o.months : [],
+    counts: (o.counts && typeof o.counts === 'object') ? o.counts : {},
+    recent: Array.isArray(o.recent) ? o.recent : [],
+    meta: (o.meta && typeof o.meta === 'object') ? o.meta : {},
+    updatedAt: Number(o.updatedAt) || 0,
+    liveCount: Number(o.liveCount) || 0,
+    perfCount: Number(o.perfCount) || 0
+  };
+}
+
+// 索引「实质内容」指纹：刻意不含 meta / updatedAt（它们每轮都变），
+// 免得抓取明明没新数据、却因为时间戳变化而每轮都写一次索引。
+function idxSignature(i) {
+  return JSON.stringify([i.months, i.counts, i.recent, i.liveCount, i.perfCount]);
+}
+
+// 逐月求和：只有当**每个月都记了条数**时结果才可信（刚上线、老月份还没回填计数时不能当总数用）
+function countAll(i) {
+  let total = 0, counted = 0;
+  for (const m of i.months) {
+    const n = Number(i.counts[m]);
+    if (Number.isFinite(n)) { total += n; counted++; }
+  }
+  return { total, counted, all: i.months.length > 0 && counted === i.months.length };
+}
+
 async function handleApiIndex(env) {
   const kv = env && env.KV;
   if (!kv || typeof kv.get !== 'function') return json({ error: 'kv-not-bound' }, 500);
-  const idx = await kv.get('index', { type: 'json' }) || { months: [], recent: [], updatedAt: 0, meta: {} };
-  // 首屏数据：no-store 保证刷新即拿最新（recent/live 状态可能刚更新）
-  return apiJson(idx, 'no-store');
+  const idx = normIndex(await kv.get('index', { type: 'json' }));
+  const meta = Object.assign({}, idx.meta);
+  // 页头统计以「KV 里实际存了多少」为准，而不是抓取端的本地文件条数
+  // （公演经过「她参加」筛选后条数远小于原始列表，用原始数会显示 383 而列表只有 277）。
+  // 注意：逐月求和只在**每个月都有计数**时才可信，否则整体回退到 meta.counts，
+  // 绝不能用「部分月份的求和」当总数——那会把 5 万条显示成几千条。
+  const cAll = countAll(idx);
+  meta.counts = {
+    messages: cAll.all ? cAll.total : (Number(meta.counts && meta.counts.messages) || cAll.total),
+    live: idx.liveCount || Number(meta.counts && meta.counts.live) || 0,
+    performances: idx.perfCount || Number(meta.counts && meta.counts.performances) || 0
+  };
+  // 首屏数据：no-store 保证刷新即拿最新
+  return apiJson({
+    months: idx.months,
+    counts: idx.counts,
+    recent: idx.recent,
+    updatedAt: idx.updatedAt,
+    meta
+  }, 'no-store');
 }
 
 async function handleApiMonth(url, env) {
@@ -568,67 +652,199 @@ async function handleApiMonth(url, env) {
 async function handleApiKey(key, env) {
   const kv = env && env.KV;
   if (!kv) return json({ error: 'kv-not-bound' }, 500);
-  const arr = await kv.get(key, { type: 'json' }) || [];
-  return apiJson(arr, 'public, max-age=60');
+  const v = await kv.get(key, { type: 'json' });
+  if (v == null) return apiJson(key === 'perf-cuts' ? { cuts: [] } : [], 'public, max-age=60');
+  return apiJson(v, 'public, max-age=60');
 }
 
-// 写入：抓取脚本（GitHub Actions）POST 增量/全量数据进来，Worker 在边缘按月拆键写 KV。
+/* ------------------------- 写入：并集合并 ------------------------- */
+
+// 发言：按月并集（按 msgKey 去重，新值覆盖同键旧值 → 文本重解析也能生效），永不丢历史。
+async function mergeMonth(kv, m, msgs) {
+  const key = 'msg/' + m;
+  const prevJson = await kv.get(key);
+  const prev = prevJson ? safeParseArr(prevJson) : [];
+  const map = new Map();
+  for (const x of prev) map.set(msgKeyOf(x), x);
+  let added = 0;
+  for (const x of msgs) {
+    const k = msgKeyOf(x);
+    if (!map.has(k)) added++;
+    map.set(k, x);
+  }
+  const merged = [...map.values()].sort(byTimeDesc);
+  const mergedJson = stableStringify(merged);
+  let wrote = false;
+  if (mergedJson !== prevJson) {
+    await kv.put(key, mergedJson);
+    wrote = true;
+  }
+  return { total: merged.length, added, wrote, head: merged.slice(0, 120) };
+}
+
+// 直播 / 公演：按 liveId 并集；同键只覆盖「有值且真变化」的字段（空字符串不覆盖，避免抹掉已有的 playUrl）。
+async function mergeById(kv, key, incoming, sortFn) {
+  const prevJson = await kv.get(key);
+  const prev = prevJson ? safeParseArr(prevJson) : [];
+  const map = new Map();
+  for (const x of prev) map.set(String(x.liveId), x);
+  let added = 0, updated = 0;
+  for (const it of incoming) {
+    const k = String(it.liveId);
+    const old = map.get(k);
+    if (!old) { map.set(k, it); added++; continue; }
+    const merged = Object.assign({}, old);
+    let diff = false;
+    for (const f of Object.keys(it)) {
+      const v = it[f];
+      if (v === '' || v == null) continue;
+      if (JSON.stringify(old[f]) !== JSON.stringify(v)) { merged[f] = v; diff = true; }
+    }
+    if (diff) { map.set(k, merged); updated++; }
+  }
+  const out = [...map.values()].sort(sortFn);
+  const outJson = stableStringify(out);
+  let wrote = false;
+  if (outJson !== prevJson) {
+    await kv.put(key, outJson);
+    wrote = true;
+  }
+  return { total: out.length, added, updated, wrote };
+}
+
+// 小数据（社媒美图 / 公演 cut）：整体替换（来源本身就是全量快照）
+async function replaceKey(kv, key, value) {
+  const prevJson = await kv.get(key);
+  const outJson = stableStringify(value);
+  let wrote = false;
+  if (outJson !== prevJson) {
+    await kv.put(key, outJson);
+    wrote = true;
+  }
+  const total = Array.isArray(value)
+    ? value.length
+    : (value && Array.isArray(value.cuts) ? value.cuts.length : 1);
+  return { total, wrote };
+}
+
+// 全量覆盖（仅用于「重建」：调用方声明这份列表就是权威全集，多出来的旧条目要删掉）。
+// 典型场景：公演从「按队伍抓的原始列表(383)」改为「她的公演记录(277)」后，
+// 并集合并永远删不掉那 106 条她没参加的场次，必须显式重建一次。
+async function replaceList(kv, key, incoming, sortFn) {
+  const prevJson = await kv.get(key);
+  const out = incoming.slice().sort(sortFn);
+  const outJson = stableStringify(out);
+  let wrote = false;
+  if (outJson !== prevJson) {
+    await kv.put(key, outJson);
+    wrote = true;
+  }
+  return { total: out.length, added: 0, updated: 0, wrote, replaced: true };
+}
+
 // body: {
-//   months: { "2026-09": [msg,...], ... },   // 按月发言；单月 < 2MB，回填时逐月调用避免一次过大
-//   mode: "merge" | "overwrite",             // merge=按 msgKey 去重合并；overwrite=整月替换
-//   live, performances, social: [...],        // 小数据，直接覆盖
-//   recent: [...],                            // 可选：最新若干条（不传则取 months 里最新 60 条）
-//   meta: {...}                               // 站点元信息（lastUpdated 等）
+//   months: { "2026-09": [msg,...] },    // 只推「可能再变」的近期月份
+//   live, performances: [...],           // 只推近期条目
+//   social: [...], perfCuts: {...},      // 全量小数据
+//   meta: {...},                         // 站点元信息（member / lastUpdated 等）
+//   replace: ["live","performances"]     // 可选：这些键改为「整份覆盖」（重建时用）
 // }
+// 返回每部分「新增/更新/写入」情况，便于 Actions 日志核对。
 async function handleApiSync(request, env, ctx) {
   const kv = env && env.KV;
   if (!kv || typeof kv.put !== 'function') return json({ error: 'kv-not-bound' }, 500);
   let body;
   try { body = await request.json(); } catch (_) { return json({ error: 'bad json' }, 400); }
-  const { months, mode, live, performances, social, meta, recent, perfCuts } = body || {};
-  const results = {};
+  const { months, live, performances, social, perfCuts, meta } = body || {};
+  const replace = new Set(Array.isArray(body && body.replace) ? body.replace : []);
 
+  const idx = normIndex(await kv.get('index', { type: 'json' }));
+  const oldSig = idxSignature(idx);
+  const result = { months: {}, live: null, performances: null, social: null, perfCuts: null };
+  let dataChanged = false;
+  const latest = [];
+
+  // ---- 1) 发言：按月并集 ----
   if (months && typeof months === 'object') {
-    for (const [m, msgs] of Object.entries(months)) {
-      if (!Array.isArray(msgs)) continue;
+    const mset = new Set(idx.months);
+    for (const m of Object.keys(months)) {
       if (!/^\d{4}-\d{2}$/.test(m)) continue;
-      const key = 'msg/' + m;
-      let merged = msgs;
-      if (mode === 'merge') {
-        const existing = await kv.get(key, { type: 'json' }) || [];
-        const map = new Map();
-        for (const x of existing) map.set(msgKeyOf(x), x);
-        for (const x of msgs) map.set(msgKeyOf(x), x);
-        merged = [...map.values()].sort(byTimeDesc);
-      } else {
-        merged = msgs.slice().sort(byTimeDesc);
-      }
-      await kv.put(key, JSON.stringify(merged));
-      results[m] = merged.length;
+      const msgs = months[m];
+      if (!Array.isArray(msgs)) continue;
+      mset.add(m);
+      const r = await mergeMonth(kv, m, msgs);
+      idx.counts[m] = r.total;
+      result.months[m] = { total: r.total, added: r.added, wrote: r.wrote };
+      if (r.wrote) dataChanged = true;
+      for (const x of r.head) latest.push(x);
+    }
+    idx.months = [...mset].sort().reverse();
+  }
+
+  // ---- 2) 直播 / 录播 ----
+  if (Array.isArray(live)) {
+    const sortByCtime = (a, b) => (Number(b.ctime) || 0) - (Number(a.ctime) || 0);
+    const r = replace.has('live')
+      ? await replaceList(kv, 'live', live, sortByCtime)
+      : await mergeById(kv, 'live', live, sortByCtime);
+    idx.liveCount = r.total;
+    result.live = r;
+    if (r.wrote) dataChanged = true;
+  }
+
+  // ---- 3) 公演 ----
+  if (Array.isArray(performances)) {
+    const sortByStime = (a, b) => (Number(b.stime || b.ctime) || 0) - (Number(a.stime || a.ctime) || 0);
+    const r = replace.has('performances')
+      ? await replaceList(kv, 'performances', performances, sortByStime)
+      : await mergeById(kv, 'performances', performances, sortByStime);
+    idx.perfCount = r.total;
+    result.performances = r;
+    if (r.wrote) dataChanged = true;
+  }
+
+  // ---- 4) 小数据 ----
+  if (Array.isArray(social)) {
+    const r = await replaceKey(kv, 'social', social);
+    result.social = r;
+    if (r.wrote) dataChanged = true;
+  }
+  if (perfCuts && typeof perfCuts === 'object') {
+    const r = await replaceKey(kv, 'perf-cuts', perfCuts);
+    result.perfCuts = r;
+    if (r.wrote) dataChanged = true;
+  }
+
+  // ---- 5) meta（仅随索引一起落盘，不单独触发写入）----
+  if (meta && typeof meta === 'object') idx.meta = Object.assign({}, meta);
+
+  // ---- 6) recent：取本轮各月最新的 60 条（没新发言时内容不变 → 不触发索引写入）----
+  if (latest.length) {
+    const rec = latest.sort(byTimeDesc).slice(0, 60);
+    if (stableStringify(rec) !== stableStringify(idx.recent)) {
+      idx.recent = rec;
     }
   }
 
-  if (Array.isArray(live)) await kv.put('live', JSON.stringify(live));
-  if (Array.isArray(performances)) await kv.put('performances', JSON.stringify(performances));
-  if (Array.isArray(social)) await kv.put('social', JSON.stringify(social));
-  if (perfCuts && typeof perfCuts === 'object') await kv.put('perf-cuts', JSON.stringify(perfCuts));
-
-  let idx = await kv.get('index', { type: 'json' }) || { months: [], recent: [], updatedAt: 0, meta: {} };
-  const monthSet = new Set(idx.months);
-  if (months) for (const m of Object.keys(months)) monthSet.add(m);
-  let rec = recent;
-  if (!rec && months) {
-    const all = [];
-    for (const msgs of Object.values(months)) all.push(...msgs);
-    rec = all.sort(byTimeDesc).slice(0, 60);
+  // ---- 7) 索引：只有「实质内容」变化才落盘 ----
+  const newSig = idxSignature(idx);
+  let indexWritten = false;
+  if (dataChanged || newSig !== oldSig) {
+    idx.updatedAt = Date.now();
+    await kv.put('index', stableStringify(idx));
+    indexWritten = true;
   }
-  idx = {
-    months: [...monthSet].sort().reverse(),
-    recent: rec || idx.recent || [],
-    updatedAt: Date.now(),
-    meta: meta || idx.meta || {}
-  };
-  await kv.put('index', JSON.stringify(idx));
 
-  return json({ ok: true, months: results, updatedAt: idx.updatedAt });
+  return json({
+    ok: true,
+    dataChanged,
+    indexWritten,
+    updatedAt: idx.updatedAt,
+    counts: {
+      messages: countAll(idx).total,
+      live: idx.liveCount,
+      performances: idx.perfCount
+    },
+    wrote: result
+  });
 }

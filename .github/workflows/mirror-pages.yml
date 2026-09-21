@@ -1,0 +1,37 @@
+# 王语晨补档站 · 镜像到 gh-pages（备份站）
+# 为什么单独一个工作流：数据已改走 Cloudflare KV、不再提交 git，
+# 因此「推送 main」现在只可能是**代码改动**——正好是备份站需要跟着更新的时候。
+# 备份站页面里的数据接口指向线上 Worker（见 site/js/app.js 的 API_BASE），
+# 所以这份镜像只负责跟代码，数据本身是实时读 KV 的。
+name: 镜像到 gh-pages（备份站）
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: write                # 需要推送到 gh-pages 分支
+
+concurrency:
+  group: mirror-pages
+  cancel-in-progress: true
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: 构建发布目录 dist/
+        run: node scripts/build-dist.mjs
+      - name: 镜像到 gh-pages
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash scripts/mirror-gh-pages.sh
