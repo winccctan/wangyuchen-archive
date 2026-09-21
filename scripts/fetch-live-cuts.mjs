@@ -213,12 +213,12 @@ function okDate(d) {
   const max = new Date(Date.now() + 8 * 3600e3 + 86400000).toISOString().slice(0, 10);
   return d >= '2020-01-01' && d <= max ? d : '';
 }
-// 类别：回放 / 切片。判据是所属合集名（UP 的合集分得很干净），标题里的关键词只作兜底。
+// 类别：回放 / 切片。判据优先看所属合集名（UP 的合集分得很干净），标题只作兜底。
+// 无合集（从空间投稿列表抓来的号，如「忘记自己是猪」）默认按「切片」算 ——
+// 这些号的投稿本身就是切片，标题形如「【王语晨】cc：方琪你是我的神！」。
 function kindOf(collection, title) {
-  const s = `${collection} ${title}`;
-  if (/回放/.test(s)) return 'replay';
-  if (/cut|切片|高光|集锦/i.test(s)) return 'cut';
-  return '';
+  if (/回放/.test(`${collection} ${title}`)) return 'replay';
+  return 'cut';
 }
 
 let added = 0;
