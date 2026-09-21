@@ -747,6 +747,7 @@ async function handleApiMonth(url, env) {
   // 发言已迁到 D1（免费 10 万写/天，是 KV 1000 的 100 倍）；KV 里的月份键仍保留作备份，
   // 所以这里任何异常都能无损回退，绝不会「读不到数据」。
   let arr = null;
+  let src = 'kv';                       // 数据来源：d1 / kv（便于线上核对是否真的走了 D1）
   if (env && env.DB) {
     try {
       const rs = await env.DB.prepare(
@@ -755,18 +756,22 @@ async function handleApiMonth(url, env) {
       arr = (rs.results || [])
         .map((r) => { try { return JSON.parse(r.data); } catch (_) { return null; } })
         .filter(Boolean);
+      src = 'd1';
     } catch (_) { arr = null; }
   }
   if (arr === null) {
     const kv = env && env.KV;
     if (!kv) return json({ error: 'kv-not-bound' }, 500);
     arr = await kv.get('msg/' + m, { type: 'json' }) || [];
+    src = 'kv';
   }
   // 历史月内容永不再变 → 允许浏览器/CDN 长缓存（前端会后台把 44 个月全拉一遍，
   // 长缓存能让回访几乎零请求）；当月仍在增长 → 必须不缓存，否则看不到新发言。
   const now = new Date(Date.now() + 8 * 3600 * 1000);
   const cur = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
-  return apiJson(arr, m >= cur ? 'no-store' : 'public, max-age=86400');
+  const res = apiJson(arr, m >= cur ? 'no-store' : 'public, max-age=86400');
+  res.headers.set('x-data-source', src);
+  return res;
 }
 
 async function handleApiKey(key, env) {
