@@ -55,24 +55,6 @@ export default {
     // 读接口公开（前端同源 fetch 即可）；写接口 /api/sync 需 SYNC_TOKEN（见 isSyncAuthorized）。
     // 发言按月份分键：msg/YYYY-MM（单月远小于 KV 单值 25MB 上限 → 数据可无限增长、不被容量卡死）；
     // 浏览器首屏拉 /api/index（含 recent 最新若干条 + 月份列表 + meta），下滑「加载更早」惰性拉历史月。
-    // TEMP-DEBUG: 令牌引导端点。仅在「Cloudflare 侧尚未配置任何 SYNC_TOKEN」时可用，
-    // 用于把 GitHub Actions 使用的新令牌写进 SECRETS KV；配置完成后本端点自动返回 409，随即删除本段。
-    if (url.pathname === '/api/_debug_set_token' && request.method === 'POST') {
-      let body = {};
-      try { body = await request.json(); } catch (_) { body = {}; }
-      const newTok = String((body && body.token) || '');
-      let existing = (env && env.SYNC_TOKEN) || null;
-      if (!existing && env && env.SECRETS && typeof env.SECRETS.get === 'function') {
-        try { existing = await env.SECRETS.get('SYNC_TOKEN'); } catch (_) { /* 忽略 */ }
-      }
-      if (existing) return json({ error: 'already-configured' }, 409);
-      if (newTok.length < 16) return json({ error: 'token too short' }, 400);
-      if (!(env && env.SECRETS && typeof env.SECRETS.put === 'function')) return json({ error: 'secrets-kv-not-writable' }, 500);
-      await env.SECRETS.put('SYNC_TOKEN', newTok);
-      let back = null;
-      try { back = await env.SECRETS.get('SYNC_TOKEN'); } catch (_) { /* 忽略 */ }
-      return json({ ok: back === newTok, len: newTok.length });
-    }
     if (url.pathname.startsWith('/api/')) {
       return handleApi(url, request, env, ctx);
     }
@@ -663,8 +645,11 @@ async function handleApiMonth(url, env) {
   const kv = env && env.KV;
   if (!kv) return json({ error: 'kv-not-bound' }, 500);
   const arr = await kv.get('msg/' + m, { type: 'json' }) || [];
-  // 历史月内容不可变 → 允许浏览器/CDN 缓存 5 分钟（重复访问不再重拉）
-  return apiJson(arr, 'public, max-age=300');
+  // 历史月内容永不再变 → 允许浏览器/CDN 长缓存（前端会后台把 44 个月全拉一遍，
+  // 长缓存能让回访几乎零请求）；当月仍在增长 → 必须不缓存，否则看不到新发言。
+  const now = new Date(Date.now() + 8 * 3600 * 1000);
+  const cur = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+  return apiJson(arr, m >= cur ? 'no-store' : 'public, max-age=86400');
 }
 
 async function handleApiKey(key, env) {

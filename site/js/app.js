@@ -519,6 +519,34 @@ function bjMonth(ts) {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
 }
 
+// 后台静默补齐「其余历史月份」。
+// 为什么必须做：数据改按月分键存 KV 后，首屏只有 recent + 当前月，
+// 若只靠「加载更早」按钮那就一次只多拉 1 个月 —— 想翻到两年前要点击上百次，
+// 搜索/日期筛选也只能搜到已加载的那一小段，体验远不如以前一次性读整份数据。
+// 历史月内容永不再变（且 /api/month 允许浏览器/CDN 缓存），所以后台顺序拉完最划算：
+// 首屏不受影响，拉完后「加载更早」/搜索/日期筛选恢复全量语义。
+let allMonthsLoading = false;
+async function loadRemainingMonths() {
+  if (allMonthsLoading) return;
+  allMonthsLoading = true;
+  try {
+    for (const m of ALL_MONTHS) {
+      if (loadedMonths.has(m)) continue;
+      try { await loadMonth(m, true); } catch (_) { /* 单月失败不影响其余 */ }
+      if (loadedMonths.size % 4 === 0) rebuildIndex();
+    }
+    rebuildIndex();
+    // 全量就绪后刷新一次发言列表，让「加载更早」的剩余条数/天数变成真实值
+    if (state.tab === 'messages') {
+      const y = window.scrollY;
+      renderMessages();
+      window.scrollTo(0, y);
+    }
+  } finally {
+    allMonthsLoading = false;
+  }
+}
+
 async function loadArchive() {
   // 主路径：从 Worker 数据 API 读取（数据存 KV → 站点零部署更新、实时秒更）
   try {
@@ -536,6 +564,7 @@ async function loadArchive() {
       DATA.performances = perfs || [];
       DATA.social = social || [];
       DATA.perfCuts = (perfCuts && Array.isArray(perfCuts.cuts)) ? perfCuts : null;
+      loadRemainingMonths(); // 后台补齐历史月（不阻塞首屏渲染）
       return { meta: DATA.meta, messages: DATA.messages, live: DATA.live, performances: DATA.performances };
     }
   } catch (_) { /* 落到静态兜底 */ }
