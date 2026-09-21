@@ -1,5 +1,12 @@
 // 王语晨补档站 - 前端逻辑
-const DATA = { meta: null, messages: [], live: [], performances: [] };
+const DATA = { meta: null, messages: [], live: [], performances: [], social: [], perfCuts: null };
+// 按月分键加载状态：ALL_MONTHS 为降序月份列表（最新在前），loadedMonths 记录已拉取的月份
+let ALL_MONTHS = [];
+let loadedMonths = new Set();
+// 数据接口基址：主站（idol.wyc0518.cc）同源直连；备份站（GitHub Pages）与本地预览走线上 Worker。
+// Worker 的数据接口已开 CORS（access-control-allow-origin: *），故跨域也能读同一份 KV 数据，
+// 备份站因此不必再等 git 提交，也能显示最新补档。
+const API_BASE = /(^|\.)wyc0518\.cc$/.test(location.hostname) ? '' : 'https://idol.wyc0518.cc';
 // msgKey → message，便于翻译时按 id 取到原文（重新渲染后 DOM 里只剩 mid）
 const MSG_INDEX = new Map();
 const state = { tab: 'messages', query: '', dateFrom: null, dateTo: null, dayLimit: 3, lang: 'zh', expanded: new Set(), guideSub: 'guide', perfSub: 'perf' };
@@ -367,7 +374,7 @@ async function translateText(text, target) {
   //   3) MyMemory            —— 公共兜底
   const sources = [];
   sources.push({ kind: 'google', url: gUrl, parse: gParse, timeout: 2500 });
-  if (proxyOk !== false) sources.push({ kind: 'proxy', url: `/translate?tl=${tl}&q=${q}`, parse: pParse, timeout: 9000 });
+  if (proxyOk !== false) sources.push({ kind: 'proxy', url: `${API_BASE}/translate?tl=${tl}&q=${q}`, parse: pParse, timeout: 9000 });
   sources.push({ kind: 'mymemory', url: `https://api.mymemory.translated.net/get?langpair=zh|${target}&q=${q}`, parse: mmParse, timeout: 6000 });
 
   const errs = []; // 记录每个源失败原因，便于用户反馈时定位
@@ -484,11 +491,110 @@ async function dataVersion() {
   return '';
 }
 
+// 从 Worker 数据 API 取 JSON（数据存 KV，no-store 保证刷新即拿最新）
+async function fetchApi(path) {
+  const r = await fetch(API_BASE + path, { cache: 'no-store' });
+  if (!r.ok) throw new Error('加载 ' + path + ' 失败: ' + r.status);
+  return r.json();
+}
+
+// 惰性加载某月发言（合并进 DATA.messages，按 msgKey 去重）。已加载则跳过。
+async function loadMonth(m, silent) {
+  if (!m || loadedMonths.has(m)) return;
+  loadedMonths.add(m);
+  try {
+    const arr = await fetchApi('/api/month?m=' + encodeURIComponent(m));
+    const map = new Map();
+    for (const x of DATA.messages) map.set(msgKey(x), x);
+    for (const x of arr) map.set(msgKey(x), x);
+    DATA.messages = [...map.values()];
+  } catch (e) {
+    loadedMonths.delete(m); // 允许重试
+    if (!silent) throw e;
+  }
+}
+
+function bjMonth(ts) {
+  const d = new Date((ts == null ? Date.now() : ts) + 8 * 3600 * 1000);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
+// 后台静默补齐「其余历史月份」。
+// 为什么必须做：数据改按月分键存 KV 后，首屏只有 recent + 当前月，
+// 若只靠「加载更早」按钮那就一次只多拉 1 个月 —— 想翻到两年前要点击上百次，
+// 搜索/日期筛选也只能搜到已加载的那一小段，体验远不如以前一次性读整份数据。
+// 历史月内容永不再变（且 /api/month 允许浏览器/CDN 缓存），所以后台顺序拉完最划算：
+// 首屏不受影响，拉完后「加载更早」/搜索/日期筛选恢复全量语义。
+let allMonthsPromise = null;
+let allMonthsLoaded = false;
+let monthsProgress = { done: 0, total: 0 };
+
+// 并行度 8：实测 44 个月「串行 54s / 并行 8 路 2.1s」，是收益最大的那个点
+// （再高会被浏览器同域连接数上限拖慢，实测 44 路并发反而回落到 4s）。
+const MONTH_CONCURRENCY = 8;
+
+// 返回同一个 Promise，可安全地被首屏加载、搜索、日期筛选多处重复 await。
+function loadRemainingMonths() {
+  if (allMonthsPromise) return allMonthsPromise;
+  const todo = ALL_MONTHS.filter((m) => !loadedMonths.has(m));
+  monthsProgress = { done: 0, total: todo.length };
+  if (!todo.length) { allMonthsLoaded = true; allMonthsPromise = Promise.resolve(); return allMonthsPromise; }
+  allMonthsPromise = (async () => {
+    let i = 0;
+    const worker = async () => {
+      while (i < todo.length) {
+        const m = todo[i++];
+        // 并发下每个 loadMonth 在 await 之后才读 DATA.messages、并同步写回，
+        // 中间没有 await → 单线程下不会交错，无需加锁。
+        try { await loadMonth(m, true); } catch (_) { /* 单月失败不影响其余 */ }
+        monthsProgress.done++;
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(MONTH_CONCURRENCY, todo.length) }, worker));
+    rebuildIndex();
+    allMonthsLoaded = true;
+    // 全量就绪后刷新一次发言列表：让「加载更早」的剩余条数/天数变成真实值，
+    // 也让「加载中…」提示消失。滚动位置保持不变，避免打断阅读。
+    if (state.tab === 'messages') {
+      const y = window.scrollY;
+      renderMessages();
+      window.scrollTo(0, y);
+    }
+  })();
+  return allMonthsPromise;
+}
+
 async function loadArchive() {
+  // 主路径：从 Worker 数据 API 读取（数据存 KV → 站点零部署更新、实时秒更）
+  try {
+    const idx = await fetchApi('/api/index');   // { months, recent, updatedAt, meta }
+    if (idx && ((idx.months && idx.months.length) || (idx.recent && idx.recent.length))) {
+      DATA.meta = idx.meta || {};
+      DATA.messages = idx.recent || [];
+      ALL_MONTHS = (idx.months || []).slice();    // 降序，最新月份在前
+      loadedMonths = new Set();
+      await loadMonth(bjMonth(Date.now()), true); // 预拉当前月补全首屏
+      const [live, perfs, social, perfCuts] = await Promise.all([
+        fetchApi('/api/live'), fetchApi('/api/performances'), fetchApi('/api/social'), fetchApi('/api/perf-cuts')
+      ]);
+      DATA.live = live || [];
+      DATA.performances = perfs || [];
+      DATA.social = social || [];
+      DATA.perfCuts = (perfCuts && Array.isArray(perfCuts.cuts)) ? perfCuts : null;
+      loadRemainingMonths(); // 后台补齐历史月（不阻塞首屏渲染）
+      return { meta: DATA.meta, messages: DATA.messages, live: DATA.live, performances: DATA.performances };
+    }
+  } catch (_) { /* 落到静态兜底 */ }
+
+  // 兜底：KV 无数据或接口异常 → 读旧静态 archive.js（最后一次部署的快照）
+  return loadArchiveStatic();
+}
+
+// 静态兜底（保留旧逻辑）：注入 ./data/archive.js → 读 window.__ARCHIVE__
+async function loadArchiveStatic() {
   const isFile = location.protocol === 'file:';
   let candidates;
   if (isFile) {
-    // file:// 下带查询串会取不到文件，只能直接加载
     candidates = ['./data/archive.js'];
   } else {
     const ver = await dataVersion();
@@ -500,11 +606,13 @@ async function loadArchive() {
   for (const src of candidates) {
     try {
       await injectScript(src);
-      if (window.__ARCHIVE__) return window.__ARCHIVE__;
+      if (window.__ARCHIVE__) {
+        DATA.social = window.SOCIAL_MEDIA || [];
+        DATA.perfCuts = window.PERF_CUTS || null;
+        return window.__ARCHIVE__;
+      }
       lastErr = new Error('数据文件内容为空');
-    } catch (e) {
-      lastErr = e;
-    }
+    } catch (e) { lastErr = e; }
   }
   throw lastErr || new Error('加载数据文件 data/archive.js 失败');
 }
@@ -731,6 +839,12 @@ function bindEvents() {
     state.query = e.target.value.trim().toLowerCase();
     renderAll();
     if (state.query) trackSearch(); // 只在真的输入了内容时才记
+    // ★ 搜索必须覆盖「全部历史」，否则就是假阴性：数据按月分键、首屏只有 recent+当月，
+    //   历史月还在后台拉的时候立刻下结论，用户就会以为「搜不到老发言」。
+    //   故搜索时等全量补齐后再重渲一次（并行 8 路，实测约 2 秒）。
+    if (state.query && !allMonthsLoaded) {
+      loadRemainingMonths().then(() => { if (state.query) renderAll(); });
+    }
   });
   // 时间筛选：弹窗 + 点「确认」才刷新；含「全部 / 近 N 天」快捷
   const dateModal = document.getElementById('dateModal');
@@ -764,6 +878,10 @@ function bindEvents() {
       state.dayLimit = 3;
       renderAll(); // 发言 / 直播录播 / 公演 三个页都要按新时间范围刷新
       showToast(state.dateFrom || state.dateTo ? '✅ 已按时间筛选' : '✅ 已显示全部时间');
+      // 同搜索：按时间筛选也必须覆盖全部历史月，否则早年区间会显示「没有发言」。
+      if ((state.dateFrom || state.dateTo) && !allMonthsLoaded) {
+        loadRemainingMonths().then(() => renderAll());
+      }
     });
   }
   // 图片放大预览：支持点击放大、在新标签打开原图、下载，方便保存
@@ -933,6 +1051,15 @@ function filterNote(count) {
     `<button class="filter-clear" type="button">清除筛选</button></div>`;
 }
 
+// 历史月仍在后台并行拉取时的提示条：让用户明确知道
+// 「现在搜不到的老发言不是没有，而是还在加载」，并给出进度，避免被当成数据缺失。
+function histLoadingNote() {
+  if (allMonthsLoaded || !monthsProgress.total) return '';
+  const pct = Math.round((monthsProgress.done / monthsProgress.total) * 100);
+  return `<div class="hist-note">⏳ 正在加载全部历史发言… ${monthsProgress.done}/${monthsProgress.total} 个月（${pct}%）` +
+    `，加载完成后即可搜索、按时间筛选全部历史</div>`;
+}
+
 function renderAll() {
   if (state.tab === 'messages') renderMessages();
   else if (state.tab === 'live') renderLive();
@@ -969,7 +1096,7 @@ function renderPerfSub() {
   if (dateFilterActive()) list = list.filter((m) => inDateRange(m.stime));
   // 挂上该场对应的 cut 数量 / 日期（用于卡片角标跳转）
   const cutByLive = {};
-  (window.PERF_CUTS ? window.PERF_CUTS.cuts : []).forEach(c => {
+  (DATA.perfCuts ? DATA.perfCuts.cuts : []).forEach(c => {
     if (c.liveId) { if (!cutByLive[c.liveId]) cutByLive[c.liveId] = { n: 0, date: c.date }; cutByLive[c.liveId].n++; }
   });
   list = list.map(p => {
@@ -986,7 +1113,7 @@ function renderPerfSub() {
 }
 
 function renderPerfCuts() {
-  const data = window.PERF_CUTS ? window.PERF_CUTS.cuts : [];
+  const data = DATA.perfCuts ? DATA.perfCuts.cuts : [];
   if (!data.length) return '<div class="empty">暂无公演 cut。</div>';
   const groups = {}, order = [];
   data.forEach(c => { if (!groups[c.date]) { groups[c.date] = []; order.push(c.date); } groups[c.date].push(c); });
@@ -1170,6 +1297,12 @@ function renderMessages() {
   if (state.query) list = list.filter((m) => matchQuery(m));
 
   if (!list.length) {
+    // 历史月还没拉完就先说「没有」会严重误导——此时只提示正在加载。
+    if (filtering && !allMonthsLoaded) {
+      panel.innerHTML = histLoadingNote();
+      loadRemainingMonths().then(() => { if (state.query || dateFilterActive()) renderMessages(); });
+      return;
+    }
     panel.innerHTML = filterNote(0) +
       `<div class="empty-state">${dateFilterActive() ? '该时间范围内没有发言，点上方「清除筛选」看全部。' : '暂无口袋发言数据。<br/>若尚未抓取，请设置 <code>POCKET48_TOKEN</code> 后运行 <code>node scrape.mjs</code>。'}</div>`;
     return;
@@ -1204,16 +1337,19 @@ function renderMessages() {
     </div>`;
 
   const matchedCount = sortedDays.reduce((n, d) => n + groups[d].length, 0);
-  panel.innerHTML = filterNote(matchedCount) + shown.map(renderDay).join('')
+  panel.innerHTML = filterNote(matchedCount) + histLoadingNote() + shown.map(renderDay).join('')
     + (restDays > 0
       ? `<button class="load-more" id="loadMore" type="button">加载更早的消息（还有 ${restCount} 条 / ${restDays} 天）</button>`
       : '');
 
   const moreBtn = document.getElementById('loadMore');
   if (moreBtn) {
-    moreBtn.addEventListener('click', () => {
+    moreBtn.addEventListener('click', async () => {
       const y = window.scrollY;
       state.dayLimit += 7;
+      // 还有更早的月份未加载 → 惰性拉一个进来（append 到 DATA.messages）
+      const next = ALL_MONTHS.find(m => !loadedMonths.has(m));
+      if (next) { try { await loadMonth(next); } catch (_) {} }
       renderMessages();
       window.scrollTo(0, y);
     });
@@ -1489,7 +1625,7 @@ function renderLive() {
 init();
 
 /* ---------------- 新粉指南子标签：社媒美图（@忘记自己是鱼_ 本人发的照片/视频） ----------------
-   数据来自 window.SOCIAL_MEDIA（site/data/social-media.js，自动生成）。
+   数据来自 DATA.social（site/data/social-media.js，自动生成）。
    图片为微博图床原始 URL，经站点图片代理 /img/?u=<encoded> 获取（直链会被 403 拦截）。
    已剔除：① mymblog 混入的「她赞过的微博」卡片（非本人发布）；② 本人发的表情包/文字图/截图。 */
 let socialFilter = 'all';
@@ -1533,7 +1669,7 @@ function setSocialFilter(f) {
 }
 
 function socialVisible() {
-  const data = window.SOCIAL_MEDIA || [];
+  const data = DATA.social || [];
   const q = (document.getElementById('sgSearch').value || '').trim().toLowerCase();
   return data.filter(it => {
     if (socialFilter !== 'all' && it.k !== socialFilter) return false;
@@ -1543,7 +1679,7 @@ function socialVisible() {
 }
 
 function renderSocialWall() {
-  const data = window.SOCIAL_MEDIA || [];
+  const data = DATA.social || [];
   const sel = socialVisible();
   const count = document.getElementById('sgCount');
   if (count) count.innerHTML = '显示 <b>' + sel.length + '</b> / ' + data.length + ' 条' + (socialFilter === 'all' ? '' : '（' + (socialFilter === 'photo' ? '照片' : '视频') + '）');
@@ -1580,7 +1716,7 @@ function renderSocialWall() {
 }
 
 function openSocialModal(i) {
-  const it = (window.SOCIAL_MEDIA || [])[i];
+  const it = (DATA.social || [])[i];
   if (!it) return;
   track('social:open');
   document.getElementById('sgMDate').textContent = it.d;

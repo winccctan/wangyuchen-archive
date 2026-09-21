@@ -558,6 +558,12 @@ body {
   border-radius: 10px; font-size: 13px; color: var(--text);
 }
 .filter-note b { color: var(--primary); font-weight: 600; }
+/* 历史发言后台补齐中的提示条：说明「搜不到的老发言是还在加载，不是没有」 */
+.hist-note {
+  max-width: 960px; margin: 12px auto 0; padding: 8px 14px;
+  background: rgba(255,193,7,.12); border: 1px solid rgba(255,193,7,.45);
+  border-radius: 10px; font-size: 13px; color: var(--text); text-align: center;
+}
 .filter-clear {
   margin-left: auto; border: 1px solid var(--primary); background: transparent;
   color: var(--primary); border-radius: 999px; padding: 3px 12px;

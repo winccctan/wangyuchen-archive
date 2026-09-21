@@ -525,26 +525,43 @@ function bjMonth(ts) {
 // 搜索/日期筛选也只能搜到已加载的那一小段，体验远不如以前一次性读整份数据。
 // 历史月内容永不再变（且 /api/month 允许浏览器/CDN 缓存），所以后台顺序拉完最划算：
 // 首屏不受影响，拉完后「加载更早」/搜索/日期筛选恢复全量语义。
-let allMonthsLoading = false;
-async function loadRemainingMonths() {
-  if (allMonthsLoading) return;
-  allMonthsLoading = true;
-  try {
-    for (const m of ALL_MONTHS) {
-      if (loadedMonths.has(m)) continue;
-      try { await loadMonth(m, true); } catch (_) { /* 单月失败不影响其余 */ }
-      if (loadedMonths.size % 4 === 0) rebuildIndex();
-    }
+let allMonthsPromise = null;
+let allMonthsLoaded = false;
+let monthsProgress = { done: 0, total: 0 };
+
+// 并行度 8：实测 44 个月「串行 54s / 并行 8 路 2.1s」，是收益最大的那个点
+// （再高会被浏览器同域连接数上限拖慢，实测 44 路并发反而回落到 4s）。
+const MONTH_CONCURRENCY = 8;
+
+// 返回同一个 Promise，可安全地被首屏加载、搜索、日期筛选多处重复 await。
+function loadRemainingMonths() {
+  if (allMonthsPromise) return allMonthsPromise;
+  const todo = ALL_MONTHS.filter((m) => !loadedMonths.has(m));
+  monthsProgress = { done: 0, total: todo.length };
+  if (!todo.length) { allMonthsLoaded = true; allMonthsPromise = Promise.resolve(); return allMonthsPromise; }
+  allMonthsPromise = (async () => {
+    let i = 0;
+    const worker = async () => {
+      while (i < todo.length) {
+        const m = todo[i++];
+        // 并发下每个 loadMonth 在 await 之后才读 DATA.messages、并同步写回，
+        // 中间没有 await → 单线程下不会交错，无需加锁。
+        try { await loadMonth(m, true); } catch (_) { /* 单月失败不影响其余 */ }
+        monthsProgress.done++;
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(MONTH_CONCURRENCY, todo.length) }, worker));
     rebuildIndex();
-    // 全量就绪后刷新一次发言列表，让「加载更早」的剩余条数/天数变成真实值
+    allMonthsLoaded = true;
+    // 全量就绪后刷新一次发言列表：让「加载更早」的剩余条数/天数变成真实值，
+    // 也让「加载中…」提示消失。滚动位置保持不变，避免打断阅读。
     if (state.tab === 'messages') {
       const y = window.scrollY;
       renderMessages();
       window.scrollTo(0, y);
     }
-  } finally {
-    allMonthsLoading = false;
-  }
+  })();
+  return allMonthsPromise;
 }
 
 async function loadArchive() {
@@ -822,6 +839,12 @@ function bindEvents() {
     state.query = e.target.value.trim().toLowerCase();
     renderAll();
     if (state.query) trackSearch(); // 只在真的输入了内容时才记
+    // ★ 搜索必须覆盖「全部历史」，否则就是假阴性：数据按月分键、首屏只有 recent+当月，
+    //   历史月还在后台拉的时候立刻下结论，用户就会以为「搜不到老发言」。
+    //   故搜索时等全量补齐后再重渲一次（并行 8 路，实测约 2 秒）。
+    if (state.query && !allMonthsLoaded) {
+      loadRemainingMonths().then(() => { if (state.query) renderAll(); });
+    }
   });
   // 时间筛选：弹窗 + 点「确认」才刷新；含「全部 / 近 N 天」快捷
   const dateModal = document.getElementById('dateModal');
@@ -855,6 +878,10 @@ function bindEvents() {
       state.dayLimit = 3;
       renderAll(); // 发言 / 直播录播 / 公演 三个页都要按新时间范围刷新
       showToast(state.dateFrom || state.dateTo ? '✅ 已按时间筛选' : '✅ 已显示全部时间');
+      // 同搜索：按时间筛选也必须覆盖全部历史月，否则早年区间会显示「没有发言」。
+      if ((state.dateFrom || state.dateTo) && !allMonthsLoaded) {
+        loadRemainingMonths().then(() => renderAll());
+      }
     });
   }
   // 图片放大预览：支持点击放大、在新标签打开原图、下载，方便保存
@@ -1022,6 +1049,15 @@ function filterNote(count) {
   const t = state.dateTo ? fmtDate(state.dateTo - 86400000) : '最新';
   return `<div class="filter-note">📅 <b>${escapeHtml(f)}</b> ~ <b>${escapeHtml(t)}</b> · 共 ${count} 条` +
     `<button class="filter-clear" type="button">清除筛选</button></div>`;
+}
+
+// 历史月仍在后台并行拉取时的提示条：让用户明确知道
+// 「现在搜不到的老发言不是没有，而是还在加载」，并给出进度，避免被当成数据缺失。
+function histLoadingNote() {
+  if (allMonthsLoaded || !monthsProgress.total) return '';
+  const pct = Math.round((monthsProgress.done / monthsProgress.total) * 100);
+  return `<div class="hist-note">⏳ 正在加载全部历史发言… ${monthsProgress.done}/${monthsProgress.total} 个月（${pct}%）` +
+    `，加载完成后即可搜索、按时间筛选全部历史</div>`;
 }
 
 function renderAll() {
@@ -1261,6 +1297,12 @@ function renderMessages() {
   if (state.query) list = list.filter((m) => matchQuery(m));
 
   if (!list.length) {
+    // 历史月还没拉完就先说「没有」会严重误导——此时只提示正在加载。
+    if (filtering && !allMonthsLoaded) {
+      panel.innerHTML = histLoadingNote();
+      loadRemainingMonths().then(() => { if (state.query || dateFilterActive()) renderMessages(); });
+      return;
+    }
     panel.innerHTML = filterNote(0) +
       `<div class="empty-state">${dateFilterActive() ? '该时间范围内没有发言，点上方「清除筛选」看全部。' : '暂无口袋发言数据。<br/>若尚未抓取，请设置 <code>POCKET48_TOKEN</code> 后运行 <code>node scrape.mjs</code>。'}</div>`;
     return;
@@ -1295,7 +1337,7 @@ function renderMessages() {
     </div>`;
 
   const matchedCount = sortedDays.reduce((n, d) => n + groups[d].length, 0);
-  panel.innerHTML = filterNote(matchedCount) + shown.map(renderDay).join('')
+  panel.innerHTML = filterNote(matchedCount) + histLoadingNote() + shown.map(renderDay).join('')
     + (restDays > 0
       ? `<button class="load-more" id="loadMore" type="button">加载更早的消息（还有 ${restCount} 条 / ${restDays} 天）</button>`
       : '');
