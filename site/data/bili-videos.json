@@ -1,6 +1,6 @@
 {
-  "updatedAt": "2026-09-21T07:47:21.718Z",
-  "count": 724,
+  "updatedAt": "2026-09-21T10:29:58.881Z",
+  "count": 737,
   "targets": [
     {
       "mid": "2086351451",
@@ -17,7 +17,7 @@
     "2086351451:season:4158846": 20,
     "2086351451:season:4158274": 3,
     "1315101:series:967578": 4,
-    "1315101:space": 6
+    "1315101:space": 7
   },
   "videos": [
     {
@@ -5803,6 +5803,110 @@
       "aid": 1056296762,
       "title": "【GNZ48】20240815 Team Z《斗宿之诀》上海巡演",
       "created": 1723740438,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1My411v7Dh",
+      "aid": 1956484227,
+      "title": "【GNZ48】20240811 Team NIII《天枢之弈》公演",
+      "created": 1723382178,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1Ji421a7Zp",
+      "aid": 1456408001,
+      "title": "【GNZ48】20240810 Team Z《斗宿之诀》陈珂2023年季度MVP公演",
+      "created": 1723312001,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1hW42197Du",
+      "aid": 1856375888,
+      "title": "【GNZ48】20240810 偶像研究计划F组《让梦想闪耀》公演",
+      "created": 1723296589,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV19M4m1y71m",
+      "aid": 1306389045,
+      "title": "【GNZ48】20240808 Team G《瑶光之迹》上海巡演",
+      "created": 1723131437,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1YW42197B5",
+      "aid": 1856378107,
+      "title": "【GNZ48】20240728 Team Z《斗宿之诀》上海巡演",
+      "created": 1722175909,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1yw4m1r7Jd",
+      "aid": 1106273003,
+      "title": "【GNZ48】20240725 Team NIII《天枢之弈》上海巡演",
+      "created": 1721923175,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV19E421c7Mx",
+      "aid": 1656253946,
+      "title": "【GNZ48】20240721《Keep Shining》全团联合公演",
+      "created": 1721581364,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1Jr421M7uA",
+      "aid": 1406298818,
+      "title": "【GNZ48】20240721 Team G《瑶光之迹》公演（青春时刻：黄宣绮）",
+      "created": 1721568797,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1sS42197VW",
+      "aid": 1506450674,
+      "title": "【GNZ48】20240720 朱怡欣《梦境出逃计划》主题生日公演",
+      "created": 1721498662,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1FZ421K7Z7",
+      "aid": 1156472586,
+      "title": "【GNZ48】20240720 朱怡欣生日冷餐",
+      "created": 1721486772,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1px4y147Pc",
+      "aid": 1006311642,
+      "title": "【GNZ48】20240719《OKTV粤来乐有SHOWCASE》成都巡演",
+      "created": 1721449319,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1k4421Z7B6",
+      "aid": 1756426902,
+      "title": "【GNZ48】20240718 偶像研究计划F组《让梦想闪耀》公演",
+      "created": 1721324037,
+      "duration": 0,
+      "mid": "1315101"
+    },
+    {
+      "bvid": "BV1BT421k7Tu",
+      "aid": 1706249872,
+      "title": "【GNZ48】20240714 Team NIII《天枢之弈》公演（青春时刻：陆靖婷 丁嘉欣，冼燊楠千秋乐）",
+      "created": 1720973697,
       "duration": 0,
       "mid": "1315101"
     },
