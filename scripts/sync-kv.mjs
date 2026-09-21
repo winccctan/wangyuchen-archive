@@ -1,11 +1,24 @@
 // 王语晨补档站 · 抓取结果写入 Cloudflare KV（替代「提交 git → 部署」）
-// 由 GitHub Actions 在 scraper 跑完 scrape.mjs 之后调用；也可本地手动跑做历史回填。
-// 数据按「月」分键写 KV（msg/YYYY-MM），单月体积远小于 KV 单值 25MB 上限 → 可无限增长；
-// 浏览器首屏读 /api/index（含 recent 最新若干条 + 月份列表），下滑「加载更早」惰性拉历史月。
+// 由 GitHub Actions 在抓取链路的最后一步调用；也可本地手动跑做回填/排查。
+//
+// ★ 关键：数据源是 site/data/archive.js（build-archive.mjs 生成的「成品」），不是原始 json。
+//   因为站点真正用的就是这份成品：公演已按「她的公演记录」筛过、挂了 B 站备用源、修过失效流域名，
+//   消息也已瘦身（去掉只用于兜底的 raw）。直接推原始 json 会让公演页混进她没参加的场次、且体积翻倍。
+//
+// ★ 只推「可能再变」的数据：发言按月份键、且只推最近窗口内的月份；直播/公演只推近期条目。
+//   更早的历史在 KV 里已经存着、且永不再变，无需每轮重传。
+//   Worker 侧一律按唯一键**并集合并**（只增不删），所以本地快照不含 KV 里最新数据也不会误删。
 //
 // 依赖环境变量：
-//   SYNC_TOKEN   必填，需与 Cloudflare 侧 SECRETS KV 里的 SYNC_TOKEN 一致（/api/sync 鉴权）
-//   WORKER_URL   可选，默认 https://idol.wyc0518.cc
+//   SYNC_TOKEN        必填，需与 Cloudflare 侧 SECRETS KV 里的 SYNC_TOKEN 一致（/api/sync 鉴权）
+//   WORKER_URL        可选，默认 https://idol.wyc0518.cc
+//   SYNC_WINDOW_DAYS  可选，默认 60（只同步最近 N 天内的数据）
+//   SYNC_CHUNK_BYTES  可选，默认 4MB（单次请求体积上限，超出则拆包）
+//
+// 用法：
+//   node scripts/sync-kv.mjs              # 增量（日常）
+//   node scripts/sync-kv.mjs --full       # 全量发言：把全部月份都推一遍（历史回填用）
+//   node scripts/sync-kv.mjs --rebuild    # 重建：全量月份 + 直播/公演整份覆盖（修正历史脏数据用）
 import { readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -14,14 +27,27 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = resolve(__dirname, '../site/data');
 const WORKER_URL = (process.env.WORKER_URL || 'https://idol.wyc0518.cc').replace(/\/$/, '');
 const TOKEN = process.env.SYNC_TOKEN;
+const WINDOW_DAYS = Number(process.env.SYNC_WINDOW_DAYS || 60);
+const CHUNK_BYTES = Number(process.env.SYNC_CHUNK_BYTES || 4 * 1024 * 1024);
+// --rebuild：把 KV 按 archive.js 的现状重建一遍（声明「这份就是权威全集」）。
+// 日常绝不要用：它是唯一会「删数据」的路径，只在数据口径变了、需要清掉历史脏条目时手动跑一次。
+const REBUILD = process.argv.includes('--rebuild') || process.env.SYNC_REBUILD === '1';
+const FULL = REBUILD || process.argv.includes('--full');
 
 if (!TOKEN) {
   console.error('[sync-kv] 缺少 SYNC_TOKEN 环境变量（在 GitHub Secrets / 本地环境变量中设置，值需与 Cloudflare SECRETS KV 的 SYNC_TOKEN 一致）');
   process.exit(1);
 }
 
-function loadJson(name) {
-  try { return JSON.parse(readFileSync(resolve(DATA_DIR, name), 'utf8')); } catch (e) { return null; }
+// 读 build-archive.mjs 生成的成品：`window.__ARCHIVE__ = {...};`
+function readArchive() {
+  const code = readFileSync(resolve(DATA_DIR, 'archive.js'), 'utf8');
+  const anchor = 'window.__ARCHIVE__ =';
+  const i = code.indexOf(anchor);
+  if (i < 0) throw new Error('archive.js 格式不符：未找到 window.__ARCHIVE__（请先跑 node scripts/build-archive.mjs）');
+  const start = i + anchor.length;
+  const end = code.lastIndexOf(';');
+  return JSON.parse(code.slice(start, end));
 }
 
 // 解析形如 `window.X = {...};` 的自动生成脚本，取出全局对象（SOCIAL_MEDIA / PERF_CUTS）
@@ -42,6 +68,8 @@ function monthOf(ts) {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
 }
 
+const mb = (n) => (n / 1048576).toFixed(2) + 'MB';
+
 async function postSync(body) {
   const r = await fetch(WORKER_URL + '/api/sync', {
     method: 'POST',
@@ -56,39 +84,116 @@ async function postSync(body) {
 }
 
 async function main() {
-  const msgsDoc = loadJson('messages.json');
-  const messages = (msgsDoc && msgsDoc.messages) || [];
-  const live = (loadJson('live.json') || {}).live || [];
-  const performances = (loadJson('performances.json') || {}).performances || [];
-  const meta = loadJson('meta.json') || {};
-  const social = parseGlobalJs('social-media.js', 'SOCIAL_MEDIA');
-  const perfCuts = parseGlobalJs('performance-cuts.js', 'PERF_CUTS');
+  const arc = readArchive();
+  const messages = arc.messages || [];
+  const live = arc.live || [];
+  const performances = arc.performances || [];
+  const meta = Object.assign({}, arc.meta || {});
+  // 页头统计由 Worker 按 KV 实际内容算，本地的 counts 是抓取端局部数字（公演未经筛选），丢掉避免误导
+  delete meta.counts;
+  const social = parseGlobalJs('social-media.js', 'SOCIAL_MEDIA') || [];
+  const perfCuts = parseGlobalJs('performance-cuts.js', 'PERF_CUTS') || { cuts: [] };
 
-  // 1) 发言按月拆分，逐月 PUT（overwrite，避免单次请求体过大；KV 单值上限 25MB）
+  const now = Date.now();
+  const cutoff = now - WINDOW_DAYS * 86400000;
+  const startMonth = monthOf(cutoff);
+
+  // 1) 发言：按月分片。日常只取窗口内的月份（更早月份永不再变）；--full 时全量
   const byMonth = new Map();
   for (const m of messages) {
-    const k = monthOf(m.msgTime);
-    if (!byMonth.has(k)) byMonth.set(k, []);
-    byMonth.get(k).push(m);
+    const mo = monthOf(m.msgTime);
+    if (!FULL && mo < startMonth) continue;
+    if (!byMonth.has(mo)) byMonth.set(mo, []);
+    byMonth.get(mo).push(m);
   }
-  let done = 0;
-  for (const [m, arr] of byMonth) {
-    await postSync({ months: { [m]: arr }, mode: 'overwrite' });
-    if (++done % 5 === 0) console.log(`[sync-kv] 已同步 ${done}/${byMonth.size} 个月`);
+
+  // 2) 直播 / 公演：日常只推近期条目（更早的 playUrl / 状态不会再变）；
+  //    --rebuild 时推全量并声明「整份覆盖」，用于清掉口径变更前留下的脏条目。
+  const livePush = REBUILD ? live : live.filter((x) => Number(x.ctime || 0) >= cutoff);
+  const perfPush = REBUILD ? performances : performances.filter((x) => Number(x.stime || x.ctime || 0) >= cutoff);
+
+  console.log(`[sync-kv] 源：发言 ${messages.length} 条 / 直播 ${live.length} 条 / 公演 ${performances.length} 条`
+    + ` | 社媒美图 ${social.length} 条 | 公演 cut ${(perfCuts.cuts || []).length} 条`);
+  console.log(`[sync-kv] 窗口：最近 ${WINDOW_DAYS} 天（${REBUILD ? '★ --rebuild 重建模式' : (FULL ? '★ --full 全量月份' : startMonth + ' 起')}）`
+    + ` → 发言 ${[...byMonth.values()].reduce((a, b) => a + b.length, 0)} 条 / ${byMonth.size} 个月，`
+    + `直播 ${livePush.length} 条，公演 ${perfPush.length} 条`);
+
+  // 3) 装箱：按体积拆成若干请求，避免单请求过大
+  const parts = [];
+  for (const [m, arr] of [...byMonth.entries()].sort()) {
+    parts.push({ name: 'msg/' + m, body: { months: { [m]: arr } }, size: JSON.stringify(arr).length });
   }
-  console.log(`[sync-kv] 发言：共 ${messages.length} 条，分 ${byMonth.size} 个月写入 KV`);
+  if (livePush.length) parts.push({ name: 'live', body: { live: livePush, ...(REBUILD ? { replace: ['live'] } : {}) }, size: JSON.stringify(livePush).length });
+  if (perfPush.length) parts.push({ name: 'performances', body: { performances: perfPush, ...(REBUILD ? { replace: ['live', 'performances'] } : {}) }, size: JSON.stringify(perfPush).length });
+  if (social.length) parts.push({ name: 'social', body: { social }, size: JSON.stringify(social).length });
+  if (perfCuts && (perfCuts.cuts || []).length) parts.push({ name: 'perf-cuts', body: { perfCuts }, size: JSON.stringify(perfCuts).length });
+  parts.push({ name: 'meta', body: { meta }, size: JSON.stringify(meta).length });
 
-  // 2) 小数据全量覆盖（live / performances / social / perfCuts / meta）
-  await postSync({ live, performances, social, perfCuts, meta });
+  const batches = [];
+  let cur = null;
+  for (const p of parts) {
+    if (!cur || (cur.size + p.size > CHUNK_BYTES && cur.parts.length)) {
+      cur = { parts: [], size: 0 };
+      batches.push(cur);
+    }
+    cur.parts.push(p);
+    cur.size += p.size;
+  }
 
-  // 3) recent：取最新 60 条，供首屏秒更（无需等历史月全加载）
-  const recent = messages
-    .slice()
-    .sort((a, b) => Number(b.msgTime || 0) - Number(a.msgTime || 0))
-    .slice(0, 60);
-  await postSync({ recent, meta });
+  let totalBytes = 0;
+  const agg = { dataChanged: false, indexWritten: false, months: {}, live: null, performances: null, social: null, perfCuts: null, counts: null, updatedAt: 0 };
+  for (let i = 0; i < batches.length; i++) {
+    const b = batches[i];
+    // 注意：同一批里可能有多个「月份」分片，必须逐个合并进同一个 months 对象；
+    // 若直接用 Object.assign 覆盖，body.months 会被最后一个月份顶掉 → 前面几个月根本没发出去。
+    const body = {};
+    for (const p of b.parts) {
+      if (p.body.months) {
+        body.months = body.months || {};
+        Object.assign(body.months, p.body.months);
+        for (const k of Object.keys(p.body)) {
+          if (k !== 'months') body[k] = p.body[k];
+        }
+      } else {
+        Object.assign(body, p.body);
+      }
+    }
+    const out = await postSync(body);
+    totalBytes += b.size;
+    console.log(`[sync-kv] 第 ${i + 1}/${batches.length} 批（${mb(b.size)}，含 ${b.parts.map((p) => p.name).join(', ')}）`
+      + ` → 索引写入 ${out.indexWritten ? '是' : '否'}`);
+    agg.dataChanged = agg.dataChanged || !!out.dataChanged;
+    agg.indexWritten = agg.indexWritten || !!out.indexWritten;
+    agg.counts = out.counts || agg.counts;
+    agg.updatedAt = out.updatedAt || agg.updatedAt;
+    if (out.wrote) {
+      for (const [m, v] of Object.entries(out.wrote.months || {})) {
+        const a = agg.months[m] || { total: 0, added: 0, wrote: false };
+        agg.months[m] = { total: v.total, added: a.added + v.added, wrote: a.wrote || v.wrote };
+      }
+      for (const k of ['live', 'performances', 'social', 'perfCuts']) {
+        const v = out.wrote[k];
+        if (!v) continue;
+        const a = agg[k] || { total: 0, added: 0, updated: 0, wrote: false };
+        agg[k] = {
+          total: v.total,
+          added: (a.added || 0) + (v.added || 0),
+          updated: (a.updated || 0) + (v.updated || 0),
+          wrote: a.wrote || v.wrote
+        };
+      }
+    }
+  }
 
-  console.log('[sync-kv] live / performances / social / perf-cuts / meta / recent 同步完成');
+  const addedMsg = Object.values(agg.months).reduce((a, v) => a + (v.added || 0), 0);
+  console.log(`[sync-kv] 完成：上传 ${mb(totalBytes)} / ${batches.length} 批`);
+  console.log(`[sync-kv] 新增发言 ${addedMsg} 条`
+    + ` | 直播 新增${(agg.live && agg.live.added) || 0}/更新${(agg.live && agg.live.updated) || 0}`
+    + ` | 公演 新增${(agg.performances && agg.performances.added) || 0}/更新${(agg.performances && agg.performances.updated) || 0}`);
+  if (agg.counts) {
+    console.log(`[sync-kv] KV 现有：发言 ${agg.counts.messages} 条 / 直播 ${agg.counts.live} 条 / 公演 ${agg.counts.performances} 条`);
+  }
+  if (!agg.dataChanged) console.log('[sync-kv] 数据无实质变化（未产生多余写入）');
 }
 
 main().catch((e) => { console.error('[sync-kv] 失败：', e.message); process.exit(1); });

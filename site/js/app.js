@@ -3,6 +3,10 @@ const DATA = { meta: null, messages: [], live: [], performances: [], social: [],
 // 按月分键加载状态：ALL_MONTHS 为降序月份列表（最新在前），loadedMonths 记录已拉取的月份
 let ALL_MONTHS = [];
 let loadedMonths = new Set();
+// 数据接口基址：主站（idol.wyc0518.cc）同源直连；备份站（GitHub Pages）与本地预览走线上 Worker。
+// Worker 的数据接口已开 CORS（access-control-allow-origin: *），故跨域也能读同一份 KV 数据，
+// 备份站因此不必再等 git 提交，也能显示最新补档。
+const API_BASE = /(^|\.)wyc0518\.cc$/.test(location.hostname) ? '' : 'https://idol.wyc0518.cc';
 // msgKey → message，便于翻译时按 id 取到原文（重新渲染后 DOM 里只剩 mid）
 const MSG_INDEX = new Map();
 const state = { tab: 'messages', query: '', dateFrom: null, dateTo: null, dayLimit: 3, lang: 'zh', expanded: new Set(), guideSub: 'guide', perfSub: 'perf' };
@@ -370,7 +374,7 @@ async function translateText(text, target) {
   //   3) MyMemory            —— 公共兜底
   const sources = [];
   sources.push({ kind: 'google', url: gUrl, parse: gParse, timeout: 2500 });
-  if (proxyOk !== false) sources.push({ kind: 'proxy', url: `/translate?tl=${tl}&q=${q}`, parse: pParse, timeout: 9000 });
+  if (proxyOk !== false) sources.push({ kind: 'proxy', url: `${API_BASE}/translate?tl=${tl}&q=${q}`, parse: pParse, timeout: 9000 });
   sources.push({ kind: 'mymemory', url: `https://api.mymemory.translated.net/get?langpair=zh|${target}&q=${q}`, parse: mmParse, timeout: 6000 });
 
   const errs = []; // 记录每个源失败原因，便于用户反馈时定位
@@ -489,7 +493,7 @@ async function dataVersion() {
 
 // 从 Worker 数据 API 取 JSON（数据存 KV，no-store 保证刷新即拿最新）
 async function fetchApi(path) {
-  const r = await fetch(path, { cache: 'no-store' });
+  const r = await fetch(API_BASE + path, { cache: 'no-store' });
   if (!r.ok) throw new Error('加载 ' + path + ' 失败: ' + r.status);
   return r.json();
 }
@@ -531,7 +535,7 @@ async function loadArchive() {
       DATA.live = live || [];
       DATA.performances = perfs || [];
       DATA.social = social || [];
-      DATA.perfCuts = perfCuts || null;
+      DATA.perfCuts = (perfCuts && Array.isArray(perfCuts.cuts)) ? perfCuts : null;
       return { meta: DATA.meta, messages: DATA.messages, live: DATA.live, performances: DATA.performances };
     }
   } catch (_) { /* 落到静态兜底 */ }
