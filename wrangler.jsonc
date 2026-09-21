@@ -24,10 +24,12 @@
   "vars": {
     "REPO": "winccctan/wangyuchen-archive"
   },
-  // Cron 触发器：Cloudflare 边缘每 20 分钟自动派发一次抓取（worker/index.js 的 scheduled()）。
+  // Cron 触发器：Cloudflare 边缘每 3 分钟自动派发一次抓取（worker/index.js 的 scheduled()）。
   // 为什么放这里：GitHub 原生 cron 极其不稳定（经常延迟数十分钟甚至整天丢跑），
-  // 用 Cloudflare 的 Cron 作主调度器才稳；GitHub 那份保留作兜底。
+  // 用 Cloudflare 的 Cron 作主调度器才稳；GitHub 那份保留作兜底（每5分钟）。
+  // 注意：若 Cloudflare 是用「Connect Git」自动部署、未读取本文件的 cron，
+  // 需在 Cloudflare 仪表板 Workers → 本 Worker → Settings → Triggers → Cron Triggers 手动加一条 */3。
   "triggers": {
-    "crons": ["*/20 * * * *"]
+    "crons": ["*/3 * * * *"]
   }
 }

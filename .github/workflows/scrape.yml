@@ -3,7 +3,7 @@ name: 每小时自动补档
 
 on:
   schedule:
-    - cron: '*/20 * * * *'          # 每20分钟
+    - cron: '*/5 * * * *'          # 每5分钟（兜底；主调度是 Cloudflare Cron 每3分钟）
   workflow_dispatch: {}          # 允许手动 / Cloudflare Worker 触发
 
 permissions:
