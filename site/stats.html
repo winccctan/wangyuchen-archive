@@ -15,6 +15,10 @@
  td{padding:8px 12px;border-bottom:1px solid #2a2e3d;font-size:14px}
  tr:last-child td{border-bottom:none}
  td.n{text-align:right;font-variant-numeric:tabular-nums}
+ /* 功能表有 5 列，窄屏要收紧一点才不挤 */
+ .wide td{padding:7px 8px;font-size:13px}
+ .wide td:first-child{padding-left:10px}
+ @media (max-width:420px){ .wide td{padding:7px 5px;font-size:12px} }
  .err{color:#ff9a9a;font-size:14px}
  #gate{max-width:320px}
  #gate input{width:100%;padding:10px 12px;font-size:15px;border-radius:8px;border:1px solid #2a2e3d;background:#1c1f2b;color:#e8eaf2;box-sizing:border-box}
@@ -55,14 +59,16 @@ function render(d) {
   const dayRows = (d.days || [])
     .map(x => '<tr><td>' + x.day + '</td><td class="n">' + x.count + '</td><td class="n">' + x.visitors + '</td></tr>').join('');
   const evRows = (d.events && d.events.length)
-    ? d.events.map(e => '<tr><td>' + e.name + '</td><td class="n">' + e.total + '</td><td class="n">' + e.today + '</td></tr>').join('')
-    : '<tr><td colspan="3" class="dim">暂无记录</td></tr>';
+    ? d.events.map(e => '<tr><td>' + e.name + '</td><td class="n">' + e.total + '</td><td class="n">' + e.today + '</td>'
+        + '<td class="n">' + (e.uniqTotal == null ? '-' : e.uniqTotal) + '</td>'
+        + '<td class="n">' + (e.uniqToday == null ? '-' : e.uniqToday) + '</td></tr>').join('')
+    : '<tr><td colspan="5" class="dim">暂无记录</td></tr>';
 
   const el = document.getElementById('body');
   el.innerHTML =
-    '<p class="dim">「独立访客」按 IP 短哈希去重估算（不保存明文 IP），同一 WiFi 下多人会算作 1 人，实际人数只会更多。数据约 1 分钟同步延迟。</p>' +
+    '<p class="dim">「独立访客」按 IP 短哈希去重估算（不保存明文 IP），同一 WiFi 下多人会算作 1 人，实际人数只会更多。功能表里的「独立累计 / 独立今日」＝该功能一共有多少人 / 今天有多少人用过（不是次数）。数据约 1 分钟同步延迟。</p>' +
     cards +
-    '<h2>功能使用（累计 / 今日）</h2><table><tr><td>动作</td><td class="n">累计</td><td class="n">今日</td></tr>' + evRows + '</table>' +
+    '<h2>功能使用（次数 / 独立访客）</h2><table class="wide"><tr><td>动作</td><td class="n">累计</td><td class="n">今日</td><td class="n">独立累计</td><td class="n">独立今日</td></tr>' + evRows + '</table>' +
     '<h2>各语言翻译次数</h2><table>' + langRows + '</table>' +
     '<h2>最近 7 天（翻译）</h2><table><tr><td>日期</td><td class="n">次数</td><td class="n">独立访客</td></tr>' + dayRows + '</table>';
   el.hidden = false;

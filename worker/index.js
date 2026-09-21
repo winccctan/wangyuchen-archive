@@ -174,6 +174,30 @@ async function incKV(kv, k) {
   const n = Number((await kv.get(k)) || 0) + 1;
   await kv.put(k, String(n));
 }
+// 「独立访客」：把去重后的 IP 短哈希存成一个小 JSON 数组（单个动作最多几百个 → 几 KB）。
+// 为什么不用「一个访客一个 KV 键」：那样读统计要 kv.list 分页、写也要多一次 put；
+// 数组方案读统计只要 1 次 get/动作，且**同一访客重复点同一功能时直接 return，不再写盘**
+// （KV 免费额度只有 1000 写/天，必须省着用）。
+const UNIQ_CAP = 20000; // 兜底：极端情况下不让单个值无限长大（远超本站真实访客量级）
+async function addUniq(kv, key, hash) {
+  let arr = [];
+  try {
+    const raw = await kv.get(key);
+    if (raw) { const p = JSON.parse(raw); if (Array.isArray(p)) arr = p; }
+  } catch (_) { arr = []; }
+  if (arr.includes(hash)) return; // 已记过 → 不写盘
+  arr.push(hash);
+  if (arr.length > UNIQ_CAP) arr = arr.slice(-UNIQ_CAP);
+  await kv.put(key, JSON.stringify(arr));
+}
+async function readUniqCount(kv, key) {
+  try {
+    const raw = await kv.get(key);
+    if (!raw) return 0;
+    const p = JSON.parse(raw);
+    return Array.isArray(p) ? p.length : 0;
+  } catch (_) { return 0; }
+}
 async function bumpStat(env, tl, request) {
   try {
     const kv = env && env.SECRETS;
@@ -266,9 +290,15 @@ async function handleTrack(url, request, env, ctx) {
         if (!kv || typeof kv.get !== 'function') return;
         const day = bjDay();
         const ip = (request.headers.get('cf-connecting-ip') || request.headers.get('x-forwarded-for') || '?').split(',')[0].trim();
+        const hash = await shortHash(ip);
         await incKV(kv, 'stat:ev:' + ev);
         await incKV(kv, 'stat:evd:' + day + ':' + ev);
-        await kv.put(`stat:u:${day}:${await shortHash(ip)}`, '1');
+        // 该动作的独立访客（累计 / 当日）：按 IP 短哈希去重，重复访客不重复写盘
+        await addUniq(kv, 'stat:evu:' + ev, hash);
+        await addUniq(kv, `stat:evud:${day}:${ev}`, hash);
+        // 站点级「当日独立访客」：原来每次上报都写一遍，改成只在当天首次出现时写（省 KV 写额度）
+        const uKey = `stat:u:${day}:${hash}`;
+        if (!(await kv.get(uKey))) await kv.put(uKey, '1');
       } catch (_) { /* 统计失败不影响页面 */ }
     })();
     if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(job);
@@ -322,17 +352,23 @@ async function handleStats(url, env) {
   const dayHtml = days.map(([d, n, u]) => `<tr><td>${d}</td><td class="n">${n}</td><td class="n">${u}</td></tr>`).join('');
 
   // 站点动作（tab 切换 / 视频播放 / 刷新 / 搜索 …）
+  // 除「次数」外还算「独立访客」：累计 = 该功能一共有多少人来用过，今日 = 今天有多少人用过。
+  const evToday = days[0][0];
   const evDefs = EVENTS.concat(LANGS.map((l) => ['lang:' + l, '切换为' + (LANG_NAME[l] || l)]));
   const evList = [];
   for (const [key, name] of evDefs) {
     const t = Number((await kv.get('stat:ev:' + key)) || 0);
-    const d = Number((await kv.get(`stat:evd:${days[0][0]}:${key}`)) || 0);
-    if (t > 0 || d > 0) evList.push({ key, name, total: t, today: d });
+    const d = Number((await kv.get(`stat:evd:${evToday}:${key}`)) || 0);
+    if (t <= 0 && d <= 0) continue;
+    const uniqTotal = await readUniqCount(kv, 'stat:evu:' + key);
+    const uniqToday = await readUniqCount(kv, `stat:evud:${evToday}:${key}`);
+    evList.push({ key, name, total: t, today: d, uniqTotal, uniqToday });
   }
   evList.sort((a, b) => b.total - a.total);
   const evHtml = evList.length
-    ? evList.map((e) => `<tr><td>${e.name}</td><td class="n">${e.total}</td><td class="n">${e.today}</td></tr>`).join('')
-    : '<tr><td colspan="3" class="dim">暂无记录</td></tr>';
+    ? evList.map((e) => `<tr><td>${e.name}</td><td class="n">${e.total}</td><td class="n">${e.today}</td>`
+      + `<td class="n">${e.uniqTotal}</td><td class="n">${e.uniqToday}</td></tr>`).join('')
+    : '<tr><td colspan="5" class="dim">暂无记录</td></tr>';
 
   // JSON 模式：给 GitHub Pages 上的统计页面跨域读取（docs/stats.html）
   if (wantJson) {
@@ -360,17 +396,17 @@ async function handleStats(url, env) {
  .card{background:#1c1f2b;border-radius:12px;padding:14px 18px;min-width:120px}
  .card .k{font-size:12px;color:#8b90a0} .card .v{font-size:24px;font-weight:700;margin-top:4px}
  h2{font-size:15px;margin:18px 0 8px}
- table{border-collapse:collapse;width:100%;max-width:520px;background:#1c1f2b;border-radius:10px;overflow:hidden}
+ table{border-collapse:collapse;width:100%;max-width:640px;background:#1c1f2b;border-radius:10px;overflow:hidden}
  td{padding:8px 12px;border-bottom:1px solid #2a2e3d;font-size:14px}
  tr:last-child td{border-bottom:none} td.n{text-align:right;font-variant-numeric:tabular-nums}
 </style>
 <h1>翻译功能使用统计</h1>
-<p class="dim">累计统计自启用之时；独立访客按 IP 短哈希去重估算（不保存明文 IP）。KV 有约 1 分钟同步延迟。</p>
+<p class="dim">累计统计自启用之时；「独立访客」按 IP 短哈希去重估算（不保存明文 IP），同一 WiFi 下多人会算作 1 人，实际人数只会更多。KV 有约 1 分钟同步延迟。</p>
 <div class="cards"><div class="card"><div class="k">累计翻译次数</div><div class="v">${total}</div></div>
 <div class="card"><div class="k">今日次数</div><div class="v">${days[0][1]}</div></div>
 <div class="card"><div class="k">今日独立访客</div><div class="v">${days[0][2]}</div></div></div>
 <h2>各语言使用次数</h2><table>${langHtml}</table>
-<h2>功能使用（累计 / 今日）</h2><table><tr><td>动作</td><td class="n">累计</td><td class="n">今日</td></tr>${evHtml}</table>
+<h2>功能使用（次数 / 独立访客）</h2><table><tr><td>动作</td><td class="n">累计</td><td class="n">今日</td><td class="n">独立累计</td><td class="n">独立今日</td></tr>${evHtml}</table>
 <h2>最近 7 天（翻译）</h2><table><tr><td>日期</td><td class="n">次数</td><td class="n">独立访客</td></tr>${dayHtml}</table>`);
 }
 
