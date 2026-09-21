@@ -643,9 +643,10 @@ async function checkForUpdates() {
       showToast('⚠️ 连接服务器失败，请稍后再试', true);
     }
 
-    // 3) 抓取 → 提交 → Cloudflare 部署这一条链路通常 1~3 分钟。这里最多自动等 3 分钟，
-    //    期间粉丝只需点一次；超时或已是最新就释放按钮，不把刷新键锁死。
-    const deadline = Date.now() + 180 * 1000;
+    // 3) 抓取 → 提交 → Cloudflare 部署这一条链路通常 3~5 分钟（抓取 1~2 + 构建 ~1 + 部署 1~3）。
+    //    这里最多自动等 6 分钟，确保数据真正部署上线后再弹「已同步」，
+    //    避免粉丝在部署完成前查看误以为刷新没生效；超时或已是最新就释放按钮，不把刷新键锁死。
+    const deadline = Date.now() + 360 * 1000;
     let waited = 0, updated = false;
     while (Date.now() < deadline) {
       await sleep(10000); waited += 10;
