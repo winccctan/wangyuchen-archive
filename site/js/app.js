@@ -601,6 +601,12 @@ async function loadArchive() {
       DATA.messages = idx.recent || [];
       ALL_MONTHS = (idx.months || []).slice();    // 降序，最新月份在前
       loadedMonths = new Set();
+      // ★ 重载时必须把「月份加载状态」一并复位。否则 loadRemainingMonths() 会直接返回
+      //   上一次已经完成的 Promise，历史月再也不会被拉进来 —— 刷新之后搜索/时间筛选就失效了
+      //   （表现为「刷新完反而搜不到以前的数据」）。
+      allMonthsPromise = null;
+      allMonthsLoaded = false;
+      monthPromises.clear();
       // ★ 历史月是「搜索 / 时间筛选 / 加载更早」的前提，必须在拿到月份清单的**那一刻**就
       //   最优先开始下载——不能排在 live/performances/social 后面，否则用户要多等同样长的时间
       //   才能搜到历史。这里立刻启动（不 await，不阻塞首屏；搜索/筛选会 await 同一个 Promise）。
@@ -757,11 +763,15 @@ async function checkForUpdates() {
 
   let triggered = false;
   try {
-    // 1) 先用 500 字节的 meta.json 看版本号，并重载一次：
-    //    版本号变了 → 拿到最新快照（提示已同步）；没变 → URL 不变，浏览器缓存直接命中，几乎秒回。
-    const ver = await dataVersion();
-    await applyLatest();
-    if (ver && ver !== beforeTs) {
+    // 1) 比「数据版本号」，相等就不用重下。
+    // ★ 版本号必须取自 KV（/api/index 的 meta.lastUpdated）。
+    //   数据现在存 KV，而静态 ./data/meta.json 是「上次部署时」的快照、
+    //   根本不随抓取更新 —— 拿它跟 KV 的时间比永远不相等，会导致
+    //   「点刷新 → 立刻提示已同步 → 实际根本没触发抓取」（用户反馈「手动点更新也没更新」就是这个）。
+    const idx = await fetchApi('/api/index');
+    const nowVer = String((idx && idx.meta && idx.meta.lastUpdated) || '');
+    if (beforeTs && nowVer && nowVer !== beforeTs) {
+      await applyLatest();
       showToast('✅ 已同步到最新补档');
       return; // ← finally 会负责恢复按钮
     }
@@ -792,7 +802,10 @@ async function checkForUpdates() {
       await sleep(10000); waited += 10;
       btn.textContent = `同步中 ${waited}s…`;
       try {
-        const v = await dataVersion();
+        // 同上：轮询也要看 **KV** 的版本号。原先读静态 meta.json，
+        // 它永远不会变 → 永远等不到变化 → 之前每次点刷新都以「已是最新」收尾。
+        const idx2 = await fetchApi('/api/index');
+        const v = String((idx2 && idx2.meta && idx2.meta.lastUpdated) || '');
         if (v && v !== beforeTs) {
           await applyLatest();
           updated = true;
