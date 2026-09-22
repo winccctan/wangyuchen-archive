@@ -30,6 +30,19 @@ const PATH_KEYS = new Set([
 ]);
 
 /**
+ * 昵称恰好是一串数字（有人的昵称就是自己的 uid）→ 打码。
+ * 昵称本身保留（公开说过的话），但「昵称 = uid」会直接把 uid 放出去，必须糊掉。
+ * @param {any} v
+ * @param {(string|number)} selfId
+ */
+export function maskNumericNick(v, selfId) {
+  if (typeof v !== 'string') return v;
+  if (!/^\d{8,12}$/.test(v)) return v;
+  if (String(v) === String(selfId)) return v;
+  return v.slice(0, 4) + '****' + v.slice(-2);
+}
+
+/**
  * 找出图片路径里隐含的「属主 uid」
  *   /avatar/2025/0119/63xezg4ldmwvdmr41ff71jp00o.jpg  -> 63
  *   /2026/0213/826829x7rb0awmfm0cn2yz8wy4bnp1.jpg    -> 826829
@@ -77,6 +90,13 @@ function scrubDeep(node, selfId, depth = 0) {
       continue;
     }
     if (key === 'avatar' || key === 'avatarUrl' || key === 'headImgUrl') continue; // 已被上面处理
+
+    // 昵称类字段的值是纯数字（= uid 本身）→ 打码，别把 uid 当昵称放出去
+    if (KEEP_KEYS.has(key) && typeof val === 'string'
+        && /^\d{8,12}$/.test(val) && String(val) !== String(selfId)) {
+      node[key] = val.slice(0, 4) + '****' + val.slice(-2);
+      continue;
+    }
 
     if (ID_KEYS.has(key) && !KEEP_KEYS.has(key)) {
       const isSelf = String(val) === String(selfId);
@@ -150,14 +170,14 @@ export function scrubMessage(m, selfId) {
     if (isSelf) {
       out.sender = { self: true, userId: out.sender.userId, nickname: out.sender.nickname, avatar: out.sender.avatar };
     } else {
-      // 第三方：只保留昵称
-      out.sender = { nickname: out.sender.nickname };
+      // 第三方：只保留昵称（昵称是纯数字时打码——那通常就是 uid 本身）
+      out.sender = { nickname: maskNumericNick(out.sender.nickname, selfId) };
     }
   }
 
   // ── reply：本身只有 name / text，再兜一层底 ────────────────
   if (out.reply && typeof out.reply === 'object') {
-    out.reply = { name: out.reply.name, text: out.reply.text };
+    out.reply = { name: maskNumericNick(out.reply.name, selfId), text: out.reply.text };
     if (out.reply.name === undefined) delete out.reply.name;
   }
 
