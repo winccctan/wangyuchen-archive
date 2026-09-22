@@ -1,6 +1,32 @@
 {
   "performances": [
     {
+      "liveId": "1309192735636131840",
+      "title": "GNZ48剧场公演",
+      "subTitle": "拾忆：TEAM NIII·第二十八场",
+      "coverPath": "/backstage/2026/0922/q8f3u28cvqwprd12z36e0n3.jpg",
+      "status": 1,
+      "stime": "1790401500000",
+      "endTime": "1790417700000",
+      "teamList": [
+        {
+          "teamId": 1202,
+          "groupId": 12,
+          "teamName": "TEAM NIII",
+          "teamLogo": "/mediasource/teamLogo2/all/gnz48_n3.png",
+          "seineTeamLogo": "/mediasource/teamLogo2/all/gnz48_n3.png",
+          "seineTeamBadge": "/backstage/2026/0819/76dml678tfcw4ij45gk12io.png",
+          "teamColor": "FFD700",
+          "teamStatus": 1,
+          "avatarBg": "/backstage/2026/0818/42a49l66sq47eeo2gsx2195.png"
+        }
+      ],
+      "liveType": 0,
+      "isCollection": 0,
+      "playNum": "0",
+      "playUrl": ""
+    },
+    {
       "liveId": "1307018469519986688",
       "title": "GNZ48剧场公演",
       "subTitle": "拾忆：TEAM NIII·第二十七场",

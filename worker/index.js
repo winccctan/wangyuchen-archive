@@ -775,10 +775,93 @@ async function handleApiIndex(env) {
   return apiJson({
     months: idx.months,
     counts: idx.counts,
-    recent: idx.recent,
+    recent: scrubList(idx.recent),
     updatedAt: idx.updatedAt,
     meta
   }, 'no-store');
+}
+
+/* ---------------- 出口脱敏：第三方身份一律不得下发 ----------------
+ * 红线（站长 2026-09-22 定）：口袋48 侧任何第三方用户的 uid / 头像路径 / 等级 / 主页
+ * 不得出现在任何线上响应里。昵称属于房间里公开说过的话的一部分，保留。
+ * 本人 userId 是公开 starId，保留。
+ *
+ * ⚠️ 这里是「最后一道闸门」：D1 / KV 里可能还存着脱敏前写进去的旧数据，
+ * 所以读取侧必须清洗；写入侧（/api/sync）同样会清洗，保证存量逐步被替换干净。
+ */
+const SELF_ID = '89653517';
+
+/** 取图片路径里隐含的属主 uid：/avatar/2025/0119/63x… 或 /2026/0213/826829x… → "63"/"826829" */
+function pathOwnerId(v) {
+  if (typeof v !== 'string') return null;
+  const m = v.match(/^\/?(?:avatar\/)?\d{4}\/\d{2,4}\/(\d{1,12})(?=[a-z0-9])/);
+  return m ? m[1] : null;
+}
+
+const ID_KEYS = new Set(['userId', 'uid', 'userid', 'Uid', 'UserId', 'pfUrl', 'level', 'vip', 'vipLevel', 'roleId', 'roleid', 'teamLogo']);
+
+/** 递归清洗对象里的第三方身份（就地修改） */
+function scrubNode(node, depth) {
+  if (!node || typeof node !== 'object' || (depth || 0) > 8) return node;
+  if (Array.isArray(node)) {
+    for (const it of node) scrubNode(it, (depth || 0) + 1);
+    return node;
+  }
+  for (const key of Object.keys(node)) {
+    const val = node[key];
+    if (typeof val === 'string' && val.charAt(0) === '/') {
+      const owner = pathOwnerId(val);
+      if (owner && owner !== SELF_ID) { delete node[key]; continue; }
+    }
+    if (Array.isArray(val) && key !== 'extInfo') {
+      node[key] = val.filter((v) => {
+        const owner = pathOwnerId(v);
+        return !(typeof v === 'string' && owner && owner !== SELF_ID);
+      });
+    }
+    if (ID_KEYS.has(key) && String(val) !== SELF_ID) { delete node[key]; continue; }
+    if (val && typeof val === 'object') scrubNode(val, (depth || 0) + 1);
+  }
+  return node;
+}
+
+/** 字符串形式的 JSON（raw.bodys / raw.extInfo）：把隐含他人 uid 的路径值清空 */
+function scrubJsonText(s) {
+  if (typeof s !== 'string') return s;
+  return s.replace(/"([A-Za-z_]\w*)":"(\/[^"]*)"/g, (full, k, v) => {
+    const owner = pathOwnerId(v);
+    return owner && owner !== SELF_ID ? `"${k}":""` : full;
+  });
+}
+
+/** 单条房间消息脱敏 */
+function scrubMsg(m) {
+  if (!m || typeof m !== 'object') return m;
+  if (m.sender && typeof m.sender === 'object') {
+    if (String(m.sender.userId) === SELF_ID) {
+      m.sender = { self: true, userId: m.sender.userId, nickname: m.sender.nickname, avatar: m.sender.avatar };
+    } else {
+      m.sender = { nickname: m.sender.nickname };   // 第三方：只留昵称
+    }
+  }
+  if (m.reply && typeof m.reply === 'object') m.reply = { name: m.reply.name, text: m.reply.text };
+  if (m.raw && typeof m.raw === 'object') {
+    for (const k of Object.keys(m.raw)) {
+      if (typeof m.raw[k] === 'string') m.raw[k] = scrubJsonText(m.raw[k]);
+      else if (m.raw[k] && typeof m.raw[k] === 'object') scrubNode(m.raw[k], 0);
+    }
+    if (typeof m.raw.extInfo === 'string') {
+      try { m.raw.extInfo = JSON.stringify(scrubNode(JSON.parse(m.raw.extInfo), 0)); } catch (_) { m.raw.extInfo = ''; }
+    }
+  }
+  return scrubNode(m, 0);
+}
+
+/** 批量脱敏 */
+function scrubList(arr) {
+  if (!Array.isArray(arr)) return arr;
+  for (const m of arr) scrubMsg(m);
+  return arr;
 }
 
 async function handleApiMonth(url, env) {
@@ -810,7 +893,8 @@ async function handleApiMonth(url, env) {
   // 长缓存能让回访几乎零请求）；当月仍在增长 → 必须不缓存，否则看不到新发言。
   const now = new Date(Date.now() + 8 * 3600 * 1000);
   const cur = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
-  const res = apiJson(arr, m >= cur ? 'no-store' : 'public, max-age=86400');
+  // 出库前统一脱敏：D1/KV 里可能仍有脱敏之前落库的旧数据
+  const res = apiJson(scrubList(arr), m >= cur ? 'no-store' : 'public, max-age=86400');
   res.headers.set('x-data-source', src);
   return res;
 }
@@ -967,6 +1051,7 @@ async function handleApiSync(request, env, ctx) {
       const msgs = months[m];
       if (!Array.isArray(msgs)) continue;
       mset.add(m);
+      scrubList(msgs);                     // 入库前脱敏：第三身份永不落库
       const r = await mergeMonth(kv, m, msgs);
       // 同步写 D1（只插新增）；KV 继续保留该月数据作为备份/回退
       const d1Sent = await writeMonthToD1(env.DB, m, msgs);
