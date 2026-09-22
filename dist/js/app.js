@@ -1537,25 +1537,33 @@ function renderMsg(m) {
   </div>`;
 }
 
-function liveStatusBadge(status) {
+function liveStatusBadge(status, kind) {
   const s = Number(status);
   if (s === 2) return '<span class="badge live">直播中</span>';
   if (s === 1) return '<span class="badge rec">录播</span>';
-  if (s === 0) return '<span class="badge soon">预告</span>';
+  if (s === 0) return `<span class="badge soon">${kind === 'perf' ? '未开始' : '预告'}</span>`;
   return '<span class="badge end">已结束</span>';
 }
 
-// 直播「结束判定」前端兜底：口袋48 的直播结束后若官方未生成回放，该条目会从
-// 「直播中」「录播」两个列表同时消失，抓取端拿不到状态更新，本地 status 可能仍停在 2。
-// 这里按开播时间兜底：开播已超过 6 小时仍标记「直播中」的，一律按已结束呈现。
-// （单场口袋直播极少超过 6 小时，阈值足够安全；抓取端正常时不会走到这里。）
-const LIVE_STALE_MS = 6 * 3600 * 1000;
-function displayStatus(item) {
+// ⚠️ 口袋48 的 status 对「还没开演」的场次完全不可信：官方一放出排期就可能直接给
+//   3（已结束）或 1（录播）。线上曾把 9-26 / 9-27 两场未来公演显示成「录播」「已结束」。
+//   所以「开始时间」永远优先于 status：
+//     · 现在 < 开始时间        → 0 未开始 / 预告（不看 status）
+//     · 开始后仍在合理时长内且 status=2 → 直播中
+//     · 开播已远超该时长仍挂在 status=2 → 状态没更新，按已结束呈现
+//   （直播结束后若官方未生成回放，条目会从「直播中」「录播」列表同时消失，
+//     抓取端拿不到更新，本地 status 会停在 2 —— 这一条就是为此兜底。）
+const LIVE_STALE_MS = 6 * 3600 * 1000;   // 单场口袋直播极少超过 6 小时
+const PERF_STALE_MS = 5 * 3600 * 1000;   // 公演一般 2.5~3.5 小时，留足富余
+function displayStatus(item, timeKey) {
   const s = Number(item.status);
-  if (s === 2 && item.ctime) {
-    const started = Number(item.ctime);
-    if (Number.isFinite(started) && started > 0 && Date.now() - started > LIVE_STALE_MS) return 3;
-  }
+  const key = timeKey === 'stime' ? 'stime' : 'ctime';
+  const start = Number(item[key] || 0);
+  if (!Number.isFinite(start) || start <= 0) return s;   // 没有开始时间就只能信 status
+  const now = Date.now();
+  if (now < start) return 0;                             // 还没开演 → 未开始 / 预告
+  const stale = key === 'stime' ? PERF_STALE_MS : LIVE_STALE_MS;
+  if (s === 2 && now - start > stale) return 3;           // 状态卡在「直播中」→ 已结束
   return s;
 }
 
@@ -1642,16 +1650,16 @@ function renderCard(item, timeKey) {
   const playNum = item.playNum || item.playCount || '';
   // 只有 http(s) 的 m3u8 能播；rtmp:// 是直播拉流地址（浏览器播不了），不能给「▶ 播放」按钮
   const canPlay = !!item.playUrl && /^https?:/i.test(item.playUrl);
-  const st = displayStatus(item);
-  // 排期累积来的场次（尚未开演 / 尚无录播）标记为 upcoming；
-  // playUrlDead = 官方回放流已失效（ts.48.cn），此时若挂了 B 站备用源就只显示 B 站按钮
-  const noPlayText = item.upcoming ? '即将开演'
+  const st = displayStatus(item, timeKey);
+  // 未开演的场次只显示「未开始」；playUrlDead = 官方回放流已失效（ts.48.cn），
+  // 此时若挂了 B 站备用源就只显示 B 站按钮
+  const noPlayText = st === 0 ? (timeKey === 'stime' ? '未开始' : '未开播')
     : (item.playUrlDead ? '官方回放已失效'
     : (item.playUrl && !canPlay ? (st === 2 ? '直播中' : '回放生成中')
     : (timeKey === 'ctime' && st === 3 ? '无回放' : '无视频')));
   const playBtn = canPlay
     ? `<button class="play-btn" data-play="${escapeHtml(item.playUrl)}" data-title="${escapeHtml(title + ' · ' + time)}">▶ 播放</button>`
-    : (item.biliUrl ? '' : `<span class="no-play">${noPlayText}</span>`);
+    : (item.biliUrl || st === 0 ? '' : `<span class="no-play">${noPlayText}</span>`);   // 未开演时角标已说明，不再重复一行
   // 无录播（或有）时的 B 站跳转（按名称手工匹配挂上）
   const biliBtn = item.biliUrl
     ? `<a class="bili-btn" href="${escapeHtml(item.biliUrl)}" target="_blank" rel="noopener">📺 B 站观看</a>`
@@ -1670,7 +1678,7 @@ function renderCard(item, timeKey) {
       <p class="card-title">${escapeHtml(title)}</p>
       ${sub ? `<p class="card-sub">${escapeHtml(sub)}</p>` : ''}
       <div class="card-meta">
-        ${item.upcoming ? '<span class="badge soon">即将开始</span>' : liveStatusBadge(st)}
+        ${liveStatusBadge(st, timeKey === 'stime' ? 'perf' : 'live')}
         <span>🕒 ${escapeHtml(time)}</span>
         ${playNum ? `<span>▶ ${escapeHtml(String(playNum))}</span>` : ''}
       </div>
