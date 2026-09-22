@@ -16,3 +16,6 @@ scraper/.workbuddy/
 scraper/.live-cursor.json
 scraper/.live-cursor.json.tmp
 scraper/data/
+
+# 粉丝档案原始抓取缓存（含 uid 名单，绝不提交）
+.cache/
