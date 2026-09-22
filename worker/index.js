@@ -824,35 +824,48 @@ async function handleApiMine(request, env) {
   if (!/^\d{4,12}$/.test(uid)) return json({ error: 'uid 是 9~10 位纯数字' }, 400);
   if (!env || !env.DB) return json({ error: 'd1-not-bound' }, 500);
 
-  // 首次全量灌库要跑很久，期间表存在但没有数据 —— 必须和「查不到这个人」区分开，
-  // 否则所有人都会看到「你没在房间里留过记录」。用一行 __ready__ 标记位判定。
-  let ready = null;
-  try {
-    ready = await env.DB.prepare("SELECT data AS d FROM fans WHERE uid = '__ready__'").first();
-  } catch {
-    return json({ error: '档案还在准备中，过一会儿再来看看～' }, 503);
-  }
-  if (!ready) return json({ error: '档案正在生成（首次需要跑一段时间），过一会儿再来看看～' }, 503);
-  let cov = {};
-  try { cov = JSON.parse(ready.d || '{}'); } catch { cov = {}; }
+  const kv = (env && env.KV && typeof env.KV.get === 'function') ? env.KV : null;
 
-  let row = null;
-  try {
-    row = await env.DB.prepare('SELECT nick, total, data, updatedAt FROM fans WHERE uid = ?').bind(uid).first();
-  } catch {
-    return json({ error: '档案还在准备中，过一会儿再来看看～' }, 503);
+  // 覆盖区间 + 就绪标记：先查 KV 副本，没有再查 D1。
+  // （D1 免费版行读配额容易打满，KV 读 10 万/天宽裕得多，所以 KV 是查询主路径。）
+  let cov = null;
+  if (kv) {
+    try { const r = await kv.get('fan/__ready__'); if (r) cov = JSON.parse(r); } catch (_) { cov = null; }
   }
-  if (!row) {
+  if (!cov && env && env.DB) {
+    let ready = null;
+    try {
+      ready = await env.DB.prepare("SELECT data AS d FROM fans WHERE uid = '__ready__'").first();
+    } catch {
+      return json({ error: '档案还在准备中，过一会儿再来看看～' }, 503);
+    }
+    if (ready) { try { cov = JSON.parse(ready.d || '{}'); } catch { cov = {}; } }
+  }
+  // 首次全量灌库要跑很久，期间没有数据 —— 必须和「查不到这个人」区分开，
+  // 否则所有人都会看到「你没在房间里留过记录」。
+  if (!cov) return json({ error: '档案正在生成（首次需要跑一段时间），过一会儿再来看看～' }, 503);
+
+  let data = null, nick = '';
+  if (kv) {
+    try {
+      const b = await kv.get('fan/' + uid.slice(-2));       // 按 uid 末两位分桶
+      if (b) { const map = JSON.parse(b) || {}; if (map[uid]) { data = map[uid]; } }
+    } catch (_) { data = null; }
+  }
+  if (!data && env && env.DB) {
+    try {
+      const row = await env.DB.prepare('SELECT nick, data FROM fans WHERE uid = ?').bind(uid).first();
+      if (row) { try { data = JSON.parse(row.data || '{}'); } catch { data = {}; } nick = row.nick || ''; }
+    } catch (_) { data = null; }
+  }
+  if (!data) {
     // 档案只覆盖部分时段时，查不到 ≠ 没记录。带上覆盖起点让前端说实话。
     const FLOOR = Date.parse('2022-11-01T00:00:00+08:00');
     if (cov.since && cov.since > FLOOR + 86400e3) return json({ found: false, partial: true, since: cov.since });
     return json({ found: false });
   }
-  let data = {};
-  try { data = JSON.parse(row.data || '{}'); } catch { data = {}; }
   return json(Object.assign({ found: true }, data, {
-    nick: row.nick || data.nick || '',
-    updatedAt: row.updatedAt || 0,
+    nick: nick || data.nick || '',
     since: cov.since || 0,                       // 档案覆盖起点（0 = 已全量）
   }));
 }
@@ -887,15 +900,39 @@ async function handleFansUpsert(request, env) {
   let body = {};
   try { body = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
   const rows = Array.isArray(body.rows) ? body.rows : [];
+  const kv = (env && env.KV && typeof env.KV.put === 'function') ? env.KV : null;
+
   // ready:true → 灌库收尾，打上就绪标记（此后 /api/mine 才对外发档案）
   if (body.ready === true) {
     // coverage：本批档案实际覆盖到哪天（首次全量要跑很久，中途会先灌一批开放测试）。
     // /api/mine 查不到人时用它区分「你真的没记录」和「历史还没补到」。
     const cov = (body.coverage && typeof body.coverage === 'object') ? body.coverage : {};
-    await env.DB.prepare(
-      "INSERT OR REPLACE INTO fans (uid, nick, total, data, updatedAt) VALUES ('__ready__', '', 0, ?, ?)"
-    ).bind(JSON.stringify({ since: Number(cov.since) || 0, liveDone: !!cov.liveDone, people: Number(cov.people) || 0 }), Date.now()).run();
+    const covJson = JSON.stringify({ since: Number(cov.since) || 0, liveDone: !!cov.liveDone, people: Number(cov.people) || 0 });
+    if (kv) await kv.put('fan/__ready__', covJson);
+    try {
+      await env.DB.prepare(
+        "INSERT OR REPLACE INTO fans (uid, nick, total, data, updatedAt) VALUES ('__ready__', '', 0, ?, ?)"
+      ).bind(covJson, Date.now()).run();
+    } catch (_) { /* D1 写不动没关系，KV 已经是权威副本 */ }
     if (!rows.length) return json({ ok: true, written: 0, ready: true });
+  }
+
+  // bucket + replace：整桶覆盖写 KV（查询主路径）。D1 只做尽力同步。
+  if (body.bucket) {
+    const b = String(body.bucket).replace(/\D/g, '').slice(0, 4);
+    const map = {};
+    for (const r of rows) { const u = String(r.uid || ''); if (/^\d{1,12}$/.test(u)) map[u] = r; }
+    if (kv) await kv.put('fan/' + b, JSON.stringify(map));
+    let d1 = 0;
+    try {
+      for (let i = 0; i < rows.length; i += 100) {
+        const stmts = rows.slice(i, i + 100).map((r) => env.DB.prepare(
+          'INSERT OR REPLACE INTO fans (uid, nick, total, data, updatedAt) VALUES (?, ?, ?, ?, ?)'
+        ).bind(String(r.uid), String(r.nick || '').slice(0, 64), Number(r.total) || 0, JSON.stringify(r), Date.now()));
+        if (stmts.length) { await env.DB.batch(stmts); d1 += stmts.length; }
+      }
+    } catch (_) { /* 忽略：KV 已写入 */ }
+    return json({ ok: true, bucket: b, written: Object.keys(map).length, d1 });
   }
   if (!rows.length) return json({ ok: true, written: 0 });
   if (rows.length > 2000) return json({ error: '单批最多 2000 条' }, 400);

@@ -327,16 +327,23 @@ async function push(list, coverage) {
     let j = {}; try { j = JSON.parse(t); } catch { j = { raw: t.slice(0, 120) }; }
     return { status: res.status, j };
   };
+  // D1 只是尽力同步（免费版读配额常打满）；查询主路径是 KV，失败就当没这层。
   const init = await post('/api/_fans_init');
-  console.log('建表：', init.status, JSON.stringify(init.j).slice(0, 120));
-  if (init.status !== 200) return;
-  let sent = 0;
-  for (let i = 0; i < list.length; i += 500) {
-    const r = await post('/api/_fans_upsert', { rows: list.slice(i, i + 500) });
-    if (r.status !== 200) { console.log('灌库失败', r.status, JSON.stringify(r.j).slice(0, 160)); return; }
-    sent += Math.min(500, list.length - i);
-    process.stdout.write(`  已灌 ${sent}/${list.length}\r`);
-    await sleep(150);
+  console.log('D1 建表：', init.status, JSON.stringify(init.j).slice(0, 80));
+  // 按 uid 末两位分桶整桶覆盖写 KV：≤100 次写/轮（KV 写上限 1000/天），查询时只读 1 个桶。
+  const buckets = new Map();
+  for (const x of list) {
+    const b = String(x.uid).slice(-2);
+    if (!buckets.has(b)) buckets.set(b, []);
+    buckets.get(b).push(x);
+  }
+  let sent = 0, bNo = 0;
+  for (const [b, rows] of buckets) {
+    const r = await post('/api/_fans_upsert', { bucket: b, rows });
+    if (r.status !== 200) { console.log('灌库失败', b, r.status, JSON.stringify(r.j).slice(0, 160)); return; }
+    sent += rows.length; bNo++;
+    process.stdout.write(`  已灌 ${sent}/${list.length}（${bNo}/${buckets.size} 桶）\r`);
+    await sleep(60);
   }
   // 收尾打就绪标记：在此之前 /api/mine 会明确回「档案正在生成」，
   // 而不是让所有人看到「你没在房间里留过记录」。
