@@ -165,7 +165,7 @@ function isHtmlPath(url) {
  * 若拿到的是压缩响应则跳过——宁可不注入，也不返回一个坏页面。
  */
 const RUM_TOKEN = 'c1ca5ef5789c483fb225ee3015fc3828';
-const RUM_SNIPPET = '<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js"'
+const RUM_SNIPPET = '<script defer src="https://static.cloudflareinsights.com/beacon.min.js"'
   + ` data-cf-beacon='{"token":"${RUM_TOKEN}"}'></script>`;
 class RumHeadHandler {
   element(el) { el.append(RUM_SNIPPET, { html: true }); }
