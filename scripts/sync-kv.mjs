@@ -35,9 +35,9 @@ const CHUNK_BYTES = Number(process.env.SYNC_CHUNK_BYTES || 4 * 1024 * 1024);
 // --rebuild：把 KV 按 archive.js 的现状重建一遍（声明「这份就是权威全集」）。
 // 日常绝不要用：它是唯一会「删数据」的路径，只在数据口径变了、需要清掉历史脏条目时手动跑一次。
 const REBUILD = process.argv.includes('--rebuild') || process.env.SYNC_REBUILD === '1';
-const FULL = REBUILD || REFILL || process.argv.includes('--full');
 // --refill：走 /api/_d1_refill 整月覆盖写回，用于给历史存量补回 sender uid（一次性，不必常跑）
 const REFILL = process.argv.includes('--refill') || process.env.SYNC_REFILL === '1';
+const FULL = REBUILD || REFILL || process.argv.includes('--full');
 const PRIV_DIR = resolve(__dirname, '../scraper/data');
 
 if (!TOKEN && !GH_TOKEN) {

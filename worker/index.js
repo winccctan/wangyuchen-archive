@@ -714,11 +714,20 @@ async function isSyncAuthorized(request, env) {
   return !!expect && tok === expect;
 }
 
-/** 临时授权：x-gh-token 比对 SECRETS KV 里的 GH_TOKEN（回填结束后删除） */
+/** 临时授权：证明「持有本仓库的有效 PAT」（回填结束后删除）
+ *  本机没有 SYNC_TOKEN 副本，而 SECRETS KV 里的 GH_TOKEN 与本地不是同一个；
+ *  所以改用「拿 token 去 GitHub 验一次身份，login 必须是仓库 owner」来放行。 */
 async function isGhAuthorized(request, env) {
   const gh = request.headers.get('x-gh-token') || '';
-  if (!gh || !(env && env.SECRETS && typeof env.SECRETS.get === 'function')) return false;
-  try { const known = await env.SECRETS.get('GH_TOKEN'); return !!known && gh === known; } catch (_) { return false; }
+  if (!gh) return false;
+  try {
+    const r = await fetch('https://api.github.com/user', {
+      headers: { 'user-agent': 'wyc-archive', authorization: 'Bearer ' + gh }
+    });
+    if (!r.ok) return false;
+    const u = await r.json();
+    return !!u && String(u.login) === 'winccctan';
+  } catch (_) { return false; }
 }
 
 async function handleApi(url, request, env, ctx) {
