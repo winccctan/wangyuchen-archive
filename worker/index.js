@@ -748,9 +748,7 @@ async function handleApi(url, request, env, ctx) {
   if (p === '/api/_fans_upsert' && request.method === 'POST') return handleFansUpsert(request, env);
   // ---- 底层回填：把含 uid 的原始发言整月覆盖写回（历史存量补 uid 用） ----
   if (p === '/api/_d1_refill' && request.method === 'POST') {
-    // ⚠️ TODO(临时)：本机没有 SYNC_TOKEN 副本，先用 SECRETS KV 里的 GH_TOKEN 授权跑一次历史回填；
-    // 回填结束后必须删掉 isGhAuthorized 分支，恢复「只认 x-sync-token」。
-    if (!(await isSyncAuthorized(request, env)) && !(await isGhAuthorized(request, env))) {
+    if (!(await authorizedForWrite(request, env))) {
       return json({ error: 'forbidden: sync token required' }, 403);
     }
     return handleD1Refill(request, env);
@@ -806,8 +804,13 @@ async function handleApiMine(request, env) {
   }));
 }
 
+/** 写接口统一授权：正常走 x-sync-token；临时允许「PAT 验明仓库 owner」（回填/灌库结束后整段删除） */
+async function authorizedForWrite(request, env) {
+  return (await isSyncAuthorized(request, env)) || (await isGhAuthorized(request, env));
+}
+
 async function handleFansInit(request, env) {
-  if (!(await isSyncAuthorized(request, env))) return json({ error: 'forbidden: sync token required' }, 403);
+  if (!(await authorizedForWrite(request, env))) return json({ error: 'forbidden: sync token required' }, 403);
   if (!env || !env.DB) return json({ error: 'd1-not-bound' }, 500);
   await env.DB.exec(
     'CREATE TABLE IF NOT EXISTS fans (' +
@@ -824,7 +827,7 @@ async function handleFansInit(request, env) {
 }
 
 async function handleFansUpsert(request, env) {
-  if (!(await isSyncAuthorized(request, env))) return json({ error: 'forbidden: sync token required' }, 403);
+  if (!(await authorizedForWrite(request, env))) return json({ error: 'forbidden: sync token required' }, 403);
   if (!env || !env.DB) return json({ error: 'd1-not-bound' }, 500);
   let body = {};
   try { body = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
