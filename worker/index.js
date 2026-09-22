@@ -1120,6 +1120,10 @@ async function handleD1Refill(request, env) {
       await kv.put('msg/' + m, stableStringify(msgs));
       out.months[m] = msgs.length;
       out.d1[m] = await upsertMonthToD1(env.DB, m, msgs);
+      // 诊断（仅授权调用可见）：该月是否存在第三方 uid，确认底层真的存下来了
+      const s = msgs.find((x) => x && x.sender && String(x.sender.userId) !== SELF_ID);
+      out.sample = out.sample || {};
+      out.sample[m] = s ? String(s.sender.userId) : null;
     } catch (e) { out.errors.push(m + ': ' + (e && e.message)); }
   }
   out.ok = out.errors.length === 0;
