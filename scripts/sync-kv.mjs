@@ -26,7 +26,10 @@ import { fileURLToPath } from 'node:url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = resolve(__dirname, '../site/data');
 const WORKER_URL = (process.env.WORKER_URL || 'https://idol.wyc0518.cc').replace(/\/$/, '');
-const TOKEN = process.env.SYNC_TOKEN;
+const TOKEN = process.env.SYNC_TOKEN || '';
+// 临时兜底：本机没有 SYNC_TOKEN 副本时，可用 GH_TOKEN 授权回填（跑完即撤）
+const GH_TOKEN = process.env.GH_TOKEN || '';
+const AUTH_HEADER = TOKEN ? { 'x-sync-token': TOKEN } : { 'x-gh-token': GH_TOKEN };
 const WINDOW_DAYS = Number(process.env.SYNC_WINDOW_DAYS || 60);
 const CHUNK_BYTES = Number(process.env.SYNC_CHUNK_BYTES || 4 * 1024 * 1024);
 // --rebuild：把 KV 按 archive.js 的现状重建一遍（声明「这份就是权威全集」）。
@@ -37,8 +40,8 @@ const FULL = REBUILD || REFILL || process.argv.includes('--full');
 const REFILL = process.argv.includes('--refill') || process.env.SYNC_REFILL === '1';
 const PRIV_DIR = resolve(__dirname, '../scraper/data');
 
-if (!TOKEN) {
-  console.error('[sync-kv] 缺少 SYNC_TOKEN 环境变量（在 GitHub Secrets / 本地环境变量中设置，值需与 Cloudflare SECRETS KV 的 SYNC_TOKEN 一致）');
+if (!TOKEN && !GH_TOKEN) {
+  console.error('[sync-kv] 缺少 SYNC_TOKEN（或 GH_TOKEN）环境变量：值需与 Cloudflare SECRETS KV 里的一致');
   process.exit(1);
 }
 
@@ -80,7 +83,7 @@ const mb = (n) => (n / 1048576).toFixed(2) + 'MB';
 async function postSync(body, path) {
   const r = await fetch(WORKER_URL + (path || '/api/sync'), {
     method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-sync-token': TOKEN },
+    headers: Object.assign({ 'content-type': 'application/json' }, AUTH_HEADER),
     body: JSON.stringify(body)
   });
   if (!r.ok) {

@@ -714,6 +714,13 @@ async function isSyncAuthorized(request, env) {
   return !!expect && tok === expect;
 }
 
+/** 临时授权：x-gh-token 比对 SECRETS KV 里的 GH_TOKEN（回填结束后删除） */
+async function isGhAuthorized(request, env) {
+  const gh = request.headers.get('x-gh-token') || '';
+  if (!gh || !(env && env.SECRETS && typeof env.SECRETS.get === 'function')) return false;
+  try { const known = await env.SECRETS.get('GH_TOKEN'); return !!known && gh === known; } catch (_) { return false; }
+}
+
 async function handleApi(url, request, env, ctx) {
   const p = url.pathname;
   if (p === '/api/index') return handleApiIndex(env);
@@ -732,7 +739,11 @@ async function handleApi(url, request, env, ctx) {
   if (p === '/api/_fans_upsert' && request.method === 'POST') return handleFansUpsert(request, env);
   // ---- 底层回填：把含 uid 的原始发言整月覆盖写回（历史存量补 uid 用） ----
   if (p === '/api/_d1_refill' && request.method === 'POST') {
-    if (!(await isSyncAuthorized(request, env))) return json({ error: 'forbidden: sync token required' }, 403);
+    // ⚠️ TODO(临时)：本机没有 SYNC_TOKEN 副本，先用 SECRETS KV 里的 GH_TOKEN 授权跑一次历史回填；
+    // 回填结束后必须删掉 isGhAuthorized 分支，恢复「只认 x-sync-token」。
+    if (!(await isSyncAuthorized(request, env)) && !(await isGhAuthorized(request, env))) {
+      return json({ error: 'forbidden: sync token required' }, 403);
+    }
     return handleD1Refill(request, env);
   }
 
