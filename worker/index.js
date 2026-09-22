@@ -98,8 +98,16 @@ export default {
     }
 
     if (env && env.ASSETS) {
-      const res = await env.ASSETS.fetch(request);
-      return applyFreshPolicy(res, url);
+      // HTML 单独用 identity 取回（避免拿到压缩流 → 无法注入 beacon）；
+      // 其余资源（css/js/十几 MB 的数据文件）保持原请求，仍走压缩。
+      let assetReq = request;
+      if (isHtmlPath(url)) {
+        const h = new Headers(request.headers);
+        h.set('accept-encoding', 'identity');
+        assetReq = new Request(request, { headers: h });
+      }
+      const res = await env.ASSETS.fetch(assetReq);
+      return applyFreshPolicy(await injectRum(res), url);
     }
     return new Response('Not Found', { status: 404 });
   },
@@ -144,10 +152,43 @@ function forbiddenNotSameSite() {
 //   HTML 与 /data/ 下的数据文件 → 强制「每次都向服务器校验」（no-cache + must-revalidate），
 //   避免手机浏览器、CDN 长期缓存旧页面/旧数据（否则刷新后仍看到几小时前的内容）。
 //   其余资源（css/js/图片）由构建注入 ?v=<时间戳> 做版本控制，可放心长缓存。
+// 是否 HTML 页面请求（首页 / 目录 / .html）——决定缓存策略与是否注入 RUM beacon
+function isHtmlPath(url) {
+  const p = url.pathname;
+  return p === '/' || p.endsWith('/') || p.endsWith('.html');
+}
+
+/* ---------------- Cloudflare Web Analytics（RUM）beacon 注入 ----------------
+ * 站点跑在 Workers 上（静态资源经 env.ASSETS 提供），Cloudflare 的 RUM 自动注入
+ * 不会作用于 Worker 产生的响应 ⇒ Web Analytics 收不到访客数据，只能手动注入。
+ * 用 HTMLRewriter 流式改写 <head>（比整页 res.text() 省内存、不破坏响应流）；
+ * 若拿到的是压缩响应则跳过——宁可不注入，也不返回一个坏页面。
+ */
+const RUM_TOKEN = 'c1ca5ef5789c483fb225ee3015fc3828';
+const RUM_SNIPPET = '<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js"'
+  + ` data-cf-beacon='{"token":"${RUM_TOKEN}"}'></script>`;
+class RumHeadHandler {
+  element(el) { el.append(RUM_SNIPPET, { html: true }); }
+}
+async function injectRum(res) {
+  if (!res || !res.ok) return res;
+  const ct = (res.headers.get('content-type') || '').toLowerCase();
+  if (!ct.includes('text/html')) return res;
+  if (res.headers.get('content-encoding')) return res;
+  try {
+    const headers = new Headers(res.headers);
+    headers.delete('content-length');   // 内容被改写，原长度失效
+    const src = new Response(res.body, { status: res.status, statusText: res.statusText, headers });
+    return new HTMLRewriter().on('head', new RumHeadHandler()).transform(src);
+  } catch (e) {
+    return res;   // 注入失败就原样返回：宁可没统计，也不能让页面打不开
+  }
+}
+
 function applyFreshPolicy(res, url) {
   if (!res || !res.headers) return res;
   const p = url.pathname;
-  const isHtml = p === '/' || p.endsWith('/') || p.endsWith('.html');
+  const isHtml = isHtmlPath(url);
   const isData = p.startsWith('/data/');
   // 带内容版本号的数据文件（如 /data/archive.js?v=<lastUpdated>）内容不可变：
   //   允许浏览器与 CDN 长期缓存（数据一变版本号就变 → URL 变 → 自动失效），
