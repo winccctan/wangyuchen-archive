@@ -93,6 +93,19 @@ export default {
       return json({ ok: true, month: m, kvCount: arr.length, sent, dbCount: (c && c.n) || 0 });
     }
 
+    // 跨域预检：/api/mine 会从别的域名（演示站 / Pages）被 fetch
+    if (request.method === 'OPTIONS' && url.pathname.startsWith('/api/')) {
+      return new Response(null, {
+        status: 204,
+        headers: {
+          'access-control-allow-origin': '*',
+          'access-control-allow-methods': 'GET, POST, OPTIONS',
+          'access-control-allow-headers': 'content-type',
+          'access-control-max-age': '86400',
+        }
+      });
+    }
+
     if (url.pathname.startsWith('/api/')) {
       return handleApi(url, request, env, ctx);
     }
@@ -765,7 +778,7 @@ async function handleApiMine(request, env) {
   return json(Object.assign({ found: true }, data, {
     nick: row.nick || data.nick || '',
     updatedAt: row.updatedAt || 0,
-  }), 'no-store');
+  }));
 }
 
 async function handleFansInit(request, env) {

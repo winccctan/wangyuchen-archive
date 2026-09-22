@@ -234,7 +234,7 @@ function build(PRICE) {
     if (!uid || uid === '0') return null;
     let f = fans.get(uid);
     if (!f) {
-      f = { uid, nick: '', live: 0, live26: 0, lives: 0, lives26: 0, room: 0, room26: 0, gifts: 0, gifts26: 0, msgs: 0, first: 0, last: 0, days: {} };
+      f = { uid, nick: '', live: 0, live26: 0, lives: 0, lives26: 0, room: 0, room26: 0, gifts: 0, gifts26: 0, msgs: 0, first: 0, last: 0, days: {}, hs: new Array(24).fill(0) };
       fans.set(uid, f);
     }
     if (nick) f.nick = nick;
@@ -257,6 +257,7 @@ function build(PRICE) {
       if (!f.first || r.t < f.first) f.first = r.t;
       if (!f.last || r.t > f.last) f.last = r.t;
       f.days[new Date(r.t + TZ_OFFSET_MS).toISOString().slice(0, 10)] = 1;
+      f.hs[Number(new Date(r.t + TZ_OFFSET_MS).toISOString().slice(11, 13))] += 1;
     }
     if (!r.g) continue;
     if (isScoring(r.g)) continue;                             // 打分道具：非礼物
@@ -267,6 +268,23 @@ function build(PRICE) {
     if (yearOf(r.t) === '2026') { f.room26 += p * c; f.gifts26 += c; }
   }
 
+  // ---- 活跃日历：按「天序号」编成位图再 base64（前端 decodeDayBitmap 直接可用）----
+  const START_MS = Date.parse('2022-11-01T00:00:00Z');       // 与前端 start 字段严格一致
+  const dayIdxOf = (key) => Math.floor((Date.parse(key + 'T00:00:00Z') - START_MS) / 86400e3);
+  const encodeBitmap = (idxs) => {
+    const max = idxs.length ? Math.max(...idxs) : -1;
+    if (max < 0) return '';
+    const bytes = new Uint8Array((max >> 3) + 1);
+    for (const i of idxs) bytes[i >> 3] |= 1 << (i & 7);
+    return Buffer.from(bytes).toString('base64');
+  };
+  const bestStreak = (dayMap) => {
+    const idxs = Object.keys(dayMap).map(dayIdxOf).filter((i) => i >= 0).sort((a, b) => a - b);
+    let best = 0, run = 0, prev = null;
+    for (const i of idxs) { run = prev !== null && i === prev + 1 ? run + 1 : 1; prev = i; if (run > best) best = run; }
+    return best;
+  };
+
   const list = [...fans.values()]
     .map((f) => ({
       uid: f.uid,
@@ -274,9 +292,12 @@ function build(PRICE) {
       live: f.live, live2026: f.live26, lives: f.lives, lives2026: f.lives26,
       room: f.room, room2026: f.room26, gifts: f.gifts, gifts2026: f.gifts26,
       total: f.live + f.room, total2026: f.live26 + f.room26,
-      msgs: f.msgs, first: f.first, last: f.last, days: Object.keys(f.days).length,
+      // 以下字段名沿用旧 room-stats 口径（n/f/l/d/b/h/m），前端渲染逻辑不用改
+      n: f.msgs, f: f.first, l: f.last, d: Object.keys(f.days).length,
+      b: bestStreak(f.days), h: f.hs.join(','), m: encodeBitmap(Object.keys(f.days).map(dayIdxOf)),
+      start: '2022-11-01',
     }))
-    .filter((x) => x.total > 0 || x.msgs > 0)
+    .filter((x) => x.total > 0 || x.n > 0)
     .sort((a, b) => b.total - a.total);
   list.forEach((x, i) => { x.rank = i + 1; });
   return list;
