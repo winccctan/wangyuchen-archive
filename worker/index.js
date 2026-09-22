@@ -639,6 +639,40 @@ function json(obj, status = 200) {
  *     否则每 3 分钟一轮会把 KV 免费额度（1000 写/天）瞬间打爆。
  */
 
+/* ------------------------- 边缘缓存（Cache API） -------------------------
+ * 为什么必须自己缓存：Worker 的响应**不会**自动进 Cloudflare CDN 缓存，
+ * 而前端一次加载要读 44 个月 ≈ 5.5 万条发言。D1 免费版只有 500 万行读/天，
+ * 约 90 次全量访问就打满（打满后虽能回退 KV，但等于白架了 D1）。
+ * 这里在 Worker 内部用 Cache API 兜住：历史月 12h、当月 60s、其余 5min。
+ */
+async function withEdgeCache(key, ttl, make) {
+  let cache = null;
+  try { cache = caches.default; } catch (_) { cache = null; }
+  const ck = 'https://wyc-edge-cache.local' + key;
+  if (cache) {
+    try {
+      const hit = await cache.match(ck);
+      if (hit) {
+        const r = new Response(hit.body, hit);
+        r.headers.set('x-wyc-cache', 'hit');
+        return r;
+      }
+    } catch (_) { /* 命中失败就当没命中 */ }
+  }
+  const res = await make();
+  try {
+    if (cache && res && res.status === 200) {
+      const c = res.clone();
+      c.headers.set('cache-control', 'public, max-age=' + ttl);
+      res.headers.set('x-wyc-cache', 'miss');
+      await cache.put(ck, c);
+      return res;
+    }
+    if (res) res.headers.set('x-wyc-cache', 'bypass');
+  } catch (_) { /* 写缓存失败不影响正常响应 */ }
+  return res;
+}
+
 function apiJson(obj, cacheControl) {
   return new Response(JSON.stringify(obj), {
     status: 200,
@@ -732,13 +766,14 @@ async function isGhAuthorized(request, env) {
 
 async function handleApi(url, request, env, ctx) {
   const p = url.pathname;
-  if (p === '/api/index') return handleApiIndex(env);
+  // index 带 meta.lastUpdated，刷新按钮靠它比对 → 只缓存 15s，不影响「刷新」的即时性
+  if (p === '/api/index') return withEdgeCache('/api/index', 15, () => handleApiIndex(env));
   if (p === '/api/month') return handleApiMonth(url, env);
-  if (p === '/api/live') return handleApiKey('live', env);
-  if (p === '/api/performances') return handleApiKey('performances', env);
-  if (p === '/api/social') return handleApiKey('social', env);
-  if (p === '/api/perf-cuts') return handleApiKey('perf-cuts', env);
-  if (p === '/api/live-cuts') return handleApiKey('live-cuts', env);
+  if (p === '/api/live') return withEdgeCache('/api/live', 300, () => handleApiKey('live', env));
+  if (p === '/api/performances') return withEdgeCache('/api/performances', 300, () => handleApiKey('performances', env));
+  if (p === '/api/social') return withEdgeCache('/api/social', 300, () => handleApiKey('social', env));
+  if (p === '/api/perf-cuts') return withEdgeCache('/api/perf-cuts', 300, () => handleApiKey('perf-cuts', env));
+  if (p === '/api/live-cuts') return withEdgeCache('/api/live-cuts', 300, () => handleApiKey('live-cuts', env));
   // ---- 粉丝个人档案：凭 uid 只取回「你自己」的那一份 ----
   // 隐私红线（站长 2026-09-22 定）：粉丝名单不得以任何静态文件形式上公网；
   // 浏览器download不到全量 ⇒ 无从遍历。真实 uid 是 9~10 位随机数，本身即不可猜测的凭证。
@@ -1005,9 +1040,21 @@ function scrubList(arr) {
   return arr;
 }
 
+/** 当前（UTC+8）月份，形如 2026-09 */
+function tzCurrentMonth() {
+  const now = new Date(Date.now() + 8 * 3600 * 1000);
+  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
 async function handleApiMonth(url, env) {
   const m = url.searchParams.get('m');
   if (!/^\d{4}-\d{2}$/.test(m || '')) return json({ error: 'bad month' }, 400);
+  // 历史月内容永不再变 → 边缘缓存 12h；当月仍在增长 → 只缓存 60s，保证看得到新发言。
+  const ttl = m >= tzCurrentMonth() ? 60 : 12 * 3600;
+  return withEdgeCache('/api/month?m=' + m, ttl, () => readMonthUncached(m, env));
+}
+
+async function readMonthUncached(m, env) {
   // ── 读路径：D1 优先，未绑定或出错时回退 KV ──
   // 发言已迁到 D1（免费 10 万写/天，是 KV 1000 的 100 倍）；KV 里的月份键仍保留作备份，
   // 所以这里任何异常都能无损回退，绝不会「读不到数据」。
@@ -1031,12 +1078,9 @@ async function handleApiMonth(url, env) {
     arr = await kv.get('msg/' + m, { type: 'json' }) || [];
     src = 'kv';
   }
-  // 历史月内容永不再变 → 允许浏览器/CDN 长缓存（前端会后台把 44 个月全拉一遍，
-  // 长缓存能让回访几乎零请求）；当月仍在增长 → 必须不缓存，否则看不到新发言。
-  const now = new Date(Date.now() + 8 * 3600 * 1000);
-  const cur = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
   // 出库前统一脱敏：D1/KV 里可能仍有脱敏之前落库的旧数据
-  const res = apiJson(scrubList(arr), m >= cur ? 'no-store' : 'public, max-age=86400');
+  const cur = tzCurrentMonth();
+  const res = apiJson(scrubList(arr), m >= cur ? 'public, max-age=60' : 'public, max-age=86400');
   res.headers.set('x-data-source', src);
   if (d1err) res.headers.set('x-d1-error', d1err.replace(/[\r\n]+/g, ' '));
   return res;
