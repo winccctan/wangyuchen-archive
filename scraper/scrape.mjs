@@ -18,6 +18,8 @@ import {
 } from './lib/api.mjs';
 // 消息解析统一走 lib/message.mjs（按 msgType 精确提取正文 / 引用 / 媒体 / 卡片）
 import { parseMessage } from './lib/message.mjs';
+// 上线前身份脱敏（红线：第三方 uid / 头像 / 等级不得出现在任何线上数据里）
+import { scrubMessages } from './lib/scrub.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = resolve(__dirname, '../site/data');
@@ -353,7 +355,24 @@ async function run() {
     note: '由 48tools 接口逆向抓取，仅供个人补档 / 学习用途。'
   };
 
-  if (messages) await saveJson(resolve(DATA_DIR, 'messages.json'), { messages });
+  // 发言：落盘前必须脱敏。messages.json 会进公开仓库并同步到 CDN / KV / D1，
+  // 所以这里是源头闸门。全量原始另行备份到 scraper/data/messages-full.json（gitignore）。
+  const selfId = MEMBER.starId || MEMBER.userId;
+  let messagesOut = messages;
+  if (messages) {
+    // 全量原始备份到 gitignore 目录，供 reparse / 重解析用（绝不上lineage）
+    try {
+      const privDir = resolve(__dirname, 'data');
+      await mkdir(privDir, { recursive: true });
+      await writeFile(resolve(privDir, 'messages-full.json'), JSON.stringify({ messages }), 'utf-8');
+    } catch (e) {
+      console.warn('[脱敏] 全量原始备份失败：' + e.message);
+    }
+    const r = scrubMessages(messages, selfId);
+    messagesOut = r.messages;
+    console.log(`[脱敏] 发言 ${r.messages.length} 条，抹掉第三方 sender ${r.removed} 处`);
+  }
+  if (messagesOut) await saveJson(resolve(DATA_DIR, 'messages.json'), { messages: messagesOut });
   if (liveOk) await saveJson(resolve(DATA_DIR, 'live.json'), { live: liveList });
   if (perfOk) await saveJson(resolve(DATA_DIR, 'performances.json'), { performances });
   await saveJson(resolve(DATA_DIR, 'meta.json'), meta);

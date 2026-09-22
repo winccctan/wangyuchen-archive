@@ -15,3 +15,4 @@ scraper/.workbuddy/
 # 补档断点游标（本机状态，不入库）
 scraper/.live-cursor.json
 scraper/.live-cursor.json.tmp
+scraper/data/
