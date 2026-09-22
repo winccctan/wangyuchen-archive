@@ -190,7 +190,7 @@ async function main() {
     totalBytes += b.size;
     if (REFILL) {
       console.log(`[sync-kv] 第 ${i + 1}/${batches.length} 批（${mb(b.size)}）→ D1 写回 `
-        + Object.entries(out.d1 || {}).map(([m, n]) => `${m}:${n}`).join(', ')
+        + Object.entries(out.d1 || {}).map(([m, v]) => `${m}:${v && v.sent}${(v && v.error) ? '(' + v.error + ')' : ''}`).join(', ')
         + (out.errors && out.errors.length ? ` ❌ ${out.errors.join(' | ')}` : ''));
       continue;
     }

@@ -1093,18 +1093,20 @@ async function writeMonthToD1(db, m, msgs) {
 }
 
 /* 全量 upsert（回填专用）：不看 msgTime，整月覆盖写回，用于给历史存量补回 uid */
-async function upsertMonthToD1(db, m, msgs) {
-  if (!db || !Array.isArray(msgs) || !msgs.length) return 0;
+async function upsertMonthToD1(db, m, msgs, size) {
+  const N = Math.max(1, Number(size) || 25);
+  if (!db) return { sent: 0, error: 'db-not-bound' };
+  if (!Array.isArray(msgs) || !msgs.length) return { sent: 0, error: null };
   try {
     let sent = 0;
-    for (let i = 0; i < msgs.length; i += 100) {
-      const stmts = msgs.slice(i, i + 100).map((x) => db.prepare(
+    for (let i = 0; i < msgs.length; i += N) {
+      const stmts = msgs.slice(i, i + N).map((x) => db.prepare(
         'INSERT OR REPLACE INTO messages (mid, month, msgTime, data) VALUES (?, ?, ?, ?)'
       ).bind(msgKeyOf(x), m, Number(x.msgTime) || 0, JSON.stringify(x)));
       if (stmts.length) { await db.batch(stmts); sent += stmts.length; }
     }
-    return sent;
-  } catch (_) { return -1; }
+    return { sent, error: null };
+  } catch (e) { return { sent: -1, error: String(e && e.message || e).slice(0, 160) }; }
 }
 
 /* ---------------- 底层回填（含 uid 的原始发言） ----------------
@@ -1128,7 +1130,7 @@ async function handleD1Refill(request, env) {
     try {
       await kv.put('msg/' + m, stableStringify(msgs));
       out.months[m] = msgs.length;
-      out.d1[m] = await upsertMonthToD1(env.DB, m, msgs);
+      out.d1[m] = await upsertMonthToD1(env.DB, m, msgs, body && body.batch);
       // 诊断（仅授权调用可见）：该月是否存在第三方 uid，确认底层真的存下来了
       const s = msgs.find((x) => x && x.sender && String(x.sender.userId) !== SELF_ID);
       out.sample = out.sample || {};
