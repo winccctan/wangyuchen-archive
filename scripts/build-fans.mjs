@@ -337,14 +337,22 @@ async function push(list, coverage) {
     if (!buckets.has(b)) buckets.set(b, []);
     buckets.get(b).push(x);
   }
-  let sent = 0, bNo = 0;
+  // 只推内容变了的桶：KV 免费版只有 1000 写/天，全量 100 桶刷几次就见底了。
+  const KVDIR = path.join(CACHE, 'kv');
+  fs.mkdirSync(KVDIR, { recursive: true });
+  let sent = 0, bNo = 0, skipped = 0;
   for (const [b, rows] of buckets) {
+    const json = JSON.stringify(rows);
+    const fp = path.join(KVDIR, b + '.json');
+    if (fs.existsSync(fp) && fs.readFileSync(fp, 'utf8') === json) { skipped++; continue; }
     const r = await post('/api/_fans_upsert', { bucket: b, rows });
     if (r.status !== 200) { console.log('灌库失败', b, r.status, JSON.stringify(r.j).slice(0, 160)); return; }
+    fs.writeFileSync(fp, json);
     sent += rows.length; bNo++;
     process.stdout.write(`  已灌 ${sent}/${list.length}（${bNo}/${buckets.size} 桶）\r`);
     await sleep(60);
   }
+  if (skipped) console.log(`  ${skipped} 个桶内容未变，跳过`);
   // 收尾打就绪标记：在此之前 /api/mine 会明确回「档案正在生成」，
   // 而不是让所有人看到「你没在房间里留过记录」。
   const fin = await post('/api/_fans_upsert', { ready: true, coverage: coverage || {} });
