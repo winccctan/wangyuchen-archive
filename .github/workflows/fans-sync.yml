@@ -1,0 +1,68 @@
+# 粉丝档案同步：构建「每个 uid 一份」的数据 → 灌进 Cloudflare D1
+#
+# 隐私红线（站长 2026-09-22 定）：粉丝名单不得以任何静态文件形式上公网。
+# 所以名单不进 git、不进 dist、不进 KV 静态值；只写进 D1，
+# 前端凭本人 uid 调 /api/mine 回取自己那一份（worker/index.js 里 handleApiMine）。
+#
+# 首次要把历史灌满：Actions → Fans sync → Run workflow → back 填 0（全量）。
+# 之后每天只增量补最近 3 天，历史数据由缓存累积。
+name: Fans sync
+
+on:
+  schedule:
+    - cron: '23 17 * * *'        # 北京时间 01:23（避开主抓取任务）
+  workflow_dispatch:
+    inputs:
+      back:
+        description: '只补最近 N 天；0 = 全量重建（2022-11 起）'
+        default: '3'
+      lanes:
+        description: '并发路数'
+        default: '6'
+      skip_live:
+        description: '跳过直播贡献榜'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fans-sync
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    env:
+      POCKET48_TOKEN: ${{ secrets.POCKET48_TOKEN }}
+      SYNC_TOKEN: ${{ secrets.SYNC_TOKEN }}
+      SITE: 'https://idol.wyc0518.cc'
+      SCRAPE_PROXY: ''
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install scraper deps
+        working-directory: scraper
+        run: npm ci
+      - name: 恢复增量缓存（房间/直播原始抓记录）
+        uses: actions/cache@v4
+        with:
+          path: .cache/fans
+          key: fans-cache-v1
+          restore-keys: fans-cache-
+      - name: 构建粉丝档案
+        run: |
+          ARGS="--lanes ${{ inputs.lanes || '6' }}"
+          if [ -n "${{ inputs.back }}" ]; then ARGS="$ARGS --back ${{ inputs.back }}"; else ARGS="$ARGS --back 3"; fi
+          if [ "${{ inputs.skip_live }}" = "true" ]; then ARGS="$ARGS --no-live"; fi
+          node scripts/build-fans.mjs $ARGS --push
+      - name: 报告
+        run: node -e "const j=require('./.cache/fans/fans.json');console.log('共 '+j.people+' 人');" || true
