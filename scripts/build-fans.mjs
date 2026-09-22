@@ -362,7 +362,7 @@ for (const r of readLines(ROOM_JSONL)) if (r.t && (!since || r.t < since)) since
 const coverage = { since, liveDone: readLines(LIVE_JSONL).length > 0, people: list.length };
 console.log(`\n===== 粉丝档案：${list.length} 人 =====（本地产物 ${OUT} 不进 git）`);
 console.log(`直播 ${sum('live').toLocaleString()} / 房间 ${sum('room').toLocaleString()} / 合计 ${sum('total').toLocaleString()} 鸡腿`);
-console.log(`发言 ${sum('msgs').toLocaleString()} 条，2026 年合计 ${sum('total2026').toLocaleString()} 鸡腿`);
+console.log(`发言 ${sum('n').toLocaleString()} 条，2026 年合计 ${sum('total2026').toLocaleString()} 鸡腿`);
 if (since) console.log(`覆盖区间：${new Date(since + TZ_OFFSET_MS).toISOString().slice(0, 10)} 起${coverage.liveDone ? '（含直播榜）' : '（直播榜尚未开跑）'}`);
 if (PUSH || PUSH_ONLY) await push(list, coverage);
 console.log(`耗时 ${((Date.now() - t0) / 60000).toFixed(1)} 分钟`);

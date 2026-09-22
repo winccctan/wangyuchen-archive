@@ -902,18 +902,24 @@ async function handleFansUpsert(request, env) {
   const now = Date.now();
   let written = 0;
   const CH = 100;                       // D1 batch 每批 ≤100 条
-  for (let i = 0; i < rows.length; i += CH) {
-    const stmts = rows.slice(i, i + CH).map((r) => {
-      const uid = String(r.uid || '');
-      if (!/^\d{1,12}$/.test(uid)) return null;
-      return env.DB.prepare(
-        'INSERT OR REPLACE INTO fans (uid, nick, total, data, updatedAt) VALUES (?, ?, ?, ?, ?)'
-      ).bind(uid, String(r.nick || '').slice(0, 64), Number(r.total) || 0, JSON.stringify(r), now);
-    }).filter(Boolean);
-    if (stmts.length) { await env.DB.batch(stmts); written += stmts.length; }
+  try {
+    for (let i = 0; i < rows.length; i += CH) {
+      const stmts = rows.slice(i, i + CH).map((r) => {
+        const uid = String(r.uid || '');
+        if (!/^\d{1,12}$/.test(uid)) return null;
+        return env.DB.prepare(
+          'INSERT OR REPLACE INTO fans (uid, nick, total, data, updatedAt) VALUES (?, ?, ?, ?, ?)'
+        ).bind(uid, String(r.nick || '').slice(0, 64), Number(r.total) || 0, JSON.stringify(r), now);
+      }).filter(Boolean);
+      if (stmts.length) { await env.DB.batch(stmts); written += stmts.length; }
+    }
+  } catch (e) {
+    // D1 抛错在线上只剩一个 1101 页面，根本没法定位 —— 把消息带回去
+    return json({ ok: false, written, d1Error: String((e && e.message) || e).slice(0, 300) }, 500);
   }
-  const c = await env.DB.prepare('SELECT COUNT(*) AS n FROM fans').first();
-  return json({ ok: true, written, rows: (c && c.n) || 0 });
+  let rowsN = 0;
+  try { const c = await env.DB.prepare('SELECT COUNT(*) AS n FROM fans').first(); rowsN = (c && c.n) || 0; } catch (_) {}
+  return json({ ok: true, written, rows: rowsN });
 }
 
 /* ------------------------- 索引（index 键） -------------------------
