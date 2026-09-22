@@ -221,3 +221,26 @@ writeFileSync(OUT, js);
 console.log(
   `✓ 生成 ${OUT}\n  口袋发言 ${archive.messages.length} | 直播/录播 ${archive.live.length} | 公演 ${archive.performances.length}`
 );
+
+/* ---------------- 内部版（含 uid）：仅供底层同步，绝不部署 ----------------
+ * 红线修订（站长 2026-09-23）：脱敏是「出口」职责，不是「入库」职责。
+ * site/data 会进 git、进 dist、被浏览器直接下载 ⇒ 必须脱敏；
+ * 但 D1 / KV 只有 Worker 能读，底层要保留 sender uid，否则以后做身份相关分析无从下手。
+ * 所以这里额外出一份带 uid 的副本到 scraper/data/（.gitignore），sync-kv 优先推它。
+ */
+try {
+  const PRIV_DIR = resolve(__dirname, '..', 'scraper', 'data');
+  const full = JSON.parse(readFileSync(resolve(PRIV_DIR, 'messages-full.json'), 'utf8'));
+  const fm = Array.isArray(full && full.messages) ? full.messages : null;
+  if (fm && fm.length) {
+    const privArchive = Object.assign({}, archive, { messages: fm.map(slimMessage) });
+    const privOut = resolve(PRIV_DIR, 'archive-full.js');
+    writeFileSync(privOut, `/* 内部版：含 sender uid，仅用于同步到 D1/KV 底层，绝不部署、绝不进 git */\nwindow.__ARCHIVE__ = ${JSON.stringify(privArchive)};\n`);
+    console.log(`✓ 生成 ${privOut}（内部版 ${fm.length} 条，含 uid）`);
+    if (fm.length !== archive.messages.length) {
+      console.warn(`⚠️ 内部版 ${fm.length} 条 ≠ 脱敏版 ${archive.messages.length} 条：请重跑抓取再同步`);
+    }
+  }
+} catch (e) {
+  console.warn('[内部版] 未生成（需要 scraper/data/messages-full.json，抓取时自动备份）：' + e.message);
+}

@@ -730,6 +730,11 @@ async function handleApi(url, request, env, ctx) {
   // 写接口（需 SYNC_TOKEN，由 CI / 本地脚本调用）
   if (p === '/api/_fans_init' && request.method === 'POST') return handleFansInit(request, env);
   if (p === '/api/_fans_upsert' && request.method === 'POST') return handleFansUpsert(request, env);
+  // ---- 底层回填：把含 uid 的原始发言整月覆盖写回（历史存量补 uid 用） ----
+  if (p === '/api/_d1_refill' && request.method === 'POST') {
+    if (!(await isSyncAuthorized(request, env))) return json({ error: 'forbidden: sync token required' }, 403);
+    return handleD1Refill(request, env);
+  }
 
   if (p === '/api/sync' && request.method === 'POST') {
     if (!(await isSyncAuthorized(request, env))) return json({ error: 'forbidden: sync token required' }, 403);
@@ -905,6 +910,12 @@ function pathOwnerId(v) {
 }
 
 const ID_KEYS = new Set(['userId', 'uid', 'userid', 'Uid', 'UserId', 'pfUrl', 'level', 'vip', 'vipLevel', 'roleId', 'roleid', 'teamLogo']);
+// 昵称类字段：正常保留（房间里公开说过的话），但值是纯数字时——那往往就是 uid 本身——必须打码
+const NICK_KEYS = new Set(['nickname', 'nickName', 'nick', 'name']);
+function maskNumericNick(v) {
+  if (typeof v !== 'string' || !/^\d{8,12}$/.test(v) || v === SELF_ID) return v;
+  return v.slice(0, 4) + '****' + v.slice(-2);
+}
 
 /** 递归清洗对象里的第三方身份（就地修改） */
 function scrubNode(node, depth) {
@@ -925,6 +936,7 @@ function scrubNode(node, depth) {
         return !(typeof v === 'string' && owner && owner !== SELF_ID);
       });
     }
+    if (NICK_KEYS.has(key) && typeof val === 'string') { node[key] = maskNumericNick(val); continue; }
     if (ID_KEYS.has(key) && String(val) !== SELF_ID) { delete node[key]; continue; }
     if (val && typeof val === 'object') scrubNode(val, (depth || 0) + 1);
   }
@@ -1060,6 +1072,49 @@ async function writeMonthToD1(db, m, msgs) {
   } catch (_) { return 0; }
 }
 
+/* 全量 upsert（回填专用）：不看 msgTime，整月覆盖写回，用于给历史存量补回 uid */
+async function upsertMonthToD1(db, m, msgs) {
+  if (!db || !Array.isArray(msgs) || !msgs.length) return 0;
+  try {
+    let sent = 0;
+    for (let i = 0; i < msgs.length; i += 100) {
+      const stmts = msgs.slice(i, i + 100).map((x) => db.prepare(
+        'INSERT OR REPLACE INTO messages (mid, month, msgTime, data) VALUES (?, ?, ?, ?)'
+      ).bind(msgKeyOf(x), m, Number(x.msgTime) || 0, JSON.stringify(x)));
+      if (stmts.length) { await db.batch(stmts); sent += stmts.length; }
+    }
+    return sent;
+  } catch (_) { return -1; }
+}
+
+/* ---------------- 底层回填（含 uid 的原始发言） ----------------
+ * 红线修订（站长 2026-09-23）：脱敏只在「出口」做，底层 D1 / KV 必须保留 sender uid ——
+ * 否则以后任何身份相关分析（匹配、去重、统计）都无从下手。
+ * D1 / KV 只能被 Worker 读到，而 Worker 的 /api/index、/api/month 出口一律 scrub，
+ * 静态兜底 archive.js 也是脱敏版 ⇒ 浏览器侧仍然零 uid。
+ * 本端点仅供「历史存量补 uid」临时使用，需 x-sync-token。
+ */
+async function handleD1Refill(request, env) {
+  const kv = env && env.KV;
+  if (!kv || typeof kv.put !== 'function') return json({ error: 'kv-not-bound' }, 500);
+  let body;
+  try { body = await request.json(); } catch (_) { return json({ error: 'bad json' }, 400); }
+  const months = (body && body.months) || {};
+  const out = { months: {}, d1: {}, errors: [] };
+  for (const m of Object.keys(months)) {
+    if (!/^\d{4}-\d{2}$/.test(m)) continue;
+    const msgs = months[m];
+    if (!Array.isArray(msgs)) continue;
+    try {
+      await kv.put('msg/' + m, stableStringify(msgs));
+      out.months[m] = msgs.length;
+      out.d1[m] = await upsertMonthToD1(env.DB, m, msgs);
+    } catch (e) { out.errors.push(m + ': ' + (e && e.message)); }
+  }
+  out.ok = out.errors.length === 0;
+  return json(out);
+}
+
 // 直播 / 公演：按 liveId 并集；同键只覆盖「有值且真变化」的字段（空字符串不覆盖，避免抹掉已有的 playUrl）。
 async function mergeById(kv, key, incoming, sortFn) {
   const prevJson = await kv.get(key);
@@ -1157,7 +1212,8 @@ async function handleApiSync(request, env, ctx) {
       const msgs = months[m];
       if (!Array.isArray(msgs)) continue;
       mset.add(m);
-      scrubList(msgs);                     // 入库前脱敏：第三身份永不落库
+      // ⚠️ 这里**不要**脱敏：底层（D1 / KV）必须保留 sender uid，以后做身份相关分析才有依据。
+      // 脱敏统一放在出口（/api/index、/api/month、静态 archive.js），浏览器永远拿不到 uid。
       const r = await mergeMonth(kv, m, msgs);
       // 同步写 D1（只插新增）；KV 继续保留该月数据作为备份/回退
       const d1Sent = await writeMonthToD1(env.DB, m, msgs);

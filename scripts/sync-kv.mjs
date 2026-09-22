@@ -32,7 +32,10 @@ const CHUNK_BYTES = Number(process.env.SYNC_CHUNK_BYTES || 4 * 1024 * 1024);
 // --rebuild：把 KV 按 archive.js 的现状重建一遍（声明「这份就是权威全集」）。
 // 日常绝不要用：它是唯一会「删数据」的路径，只在数据口径变了、需要清掉历史脏条目时手动跑一次。
 const REBUILD = process.argv.includes('--rebuild') || process.env.SYNC_REBUILD === '1';
-const FULL = REBUILD || process.argv.includes('--full');
+const FULL = REBUILD || REFILL || process.argv.includes('--full');
+// --refill：走 /api/_d1_refill 整月覆盖写回，用于给历史存量补回 sender uid（一次性，不必常跑）
+const REFILL = process.argv.includes('--refill') || process.env.SYNC_REFILL === '1';
+const PRIV_DIR = resolve(__dirname, '../scraper/data');
 
 if (!TOKEN) {
   console.error('[sync-kv] 缺少 SYNC_TOKEN 环境变量（在 GitHub Secrets / 本地环境变量中设置，值需与 Cloudflare SECRETS KV 的 SYNC_TOKEN 一致）');
@@ -40,14 +43,18 @@ if (!TOKEN) {
 }
 
 // 读 build-archive.mjs 生成的成品：`window.__ARCHIVE__ = {...};`
-function readArchive() {
-  const code = readFileSync(resolve(DATA_DIR, 'archive.js'), 'utf8');
+function readArchive(file) {
+  const code = readFileSync(file, 'utf8');
   const anchor = 'window.__ARCHIVE__ =';
   const i = code.indexOf(anchor);
   if (i < 0) throw new Error('archive.js 格式不符：未找到 window.__ARCHIVE__（请先跑 node scripts/build-archive.mjs）');
   const start = i + anchor.length;
   const end = code.lastIndexOf(';');
   return JSON.parse(code.slice(start, end));
+}
+
+function tryReadArchive(file) {
+  try { return readArchive(file); } catch (_) { return null; }
 }
 
 // 解析形如 `window.X = {...};` 的自动生成脚本，取出全局对象（SOCIAL_MEDIA / PERF_CUTS）
@@ -70,8 +77,8 @@ function monthOf(ts) {
 
 const mb = (n) => (n / 1048576).toFixed(2) + 'MB';
 
-async function postSync(body) {
-  const r = await fetch(WORKER_URL + '/api/sync', {
+async function postSync(body, path) {
+  const r = await fetch(WORKER_URL + (path || '/api/sync'), {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-sync-token': TOKEN },
     body: JSON.stringify(body)
@@ -84,8 +91,21 @@ async function postSync(body) {
 }
 
 async function main() {
-  const arc = readArchive();
-  const messages = arc.messages || [];
+  const arc = readArchive(resolve(DATA_DIR, 'archive.js'));
+  // 发言源优先用「内部版」（scraper/data/archive-full.js，含 sender uid）：
+  // 底层 D1/KV 要保留 uid，出口由 Worker 统一脱敏，浏览器仍拿不到。
+  let messages = arc.messages || [];
+  const arcFull = tryReadArchive(resolve(PRIV_DIR, 'archive-full.js'));
+  if (arcFull && Array.isArray(arcFull.messages) && arcFull.messages.length) {
+    if (arcFull.messages.length === messages.length) {
+      messages = arcFull.messages;
+      console.log('[sync-kv] 发言源：内部版（含 uid）→ 底层保留第三身份');
+    } else {
+      console.warn(`[sync-kv] ⚠️ 内部版 ${arcFull.messages.length} 条 ≠ 脱敏版 ${messages.length} 条，改用脱敏版（底层将缺 uid）`);
+    }
+  } else {
+    console.warn('[sync-kv] ⚠️ 无 scraper/data/archive-full.js，发言按脱敏版同步（底层将缺 uid）');
+  }
   const live = arc.live || [];
   const performances = arc.performances || [];
   const meta = Object.assign({}, arc.meta || {});
@@ -124,12 +144,15 @@ async function main() {
   for (const [m, arr] of [...byMonth.entries()].sort()) {
     parts.push({ name: 'msg/' + m, body: { months: { [m]: arr } }, size: JSON.stringify(arr).length });
   }
-  if (livePush.length) parts.push({ name: 'live', body: { live: livePush, ...(REBUILD ? { replace: ['live'] } : {}) }, size: JSON.stringify(livePush).length });
-  if (perfPush.length) parts.push({ name: 'performances', body: { performances: perfPush, ...(REBUILD ? { replace: ['live', 'performances'] } : {}) }, size: JSON.stringify(perfPush).length });
-  if (social.length) parts.push({ name: 'social', body: { social }, size: JSON.stringify(social).length });
-  if (perfCuts && (perfCuts.cuts || []).length) parts.push({ name: 'perf-cuts', body: { perfCuts }, size: JSON.stringify(perfCuts).length });
-  if (liveCuts && (liveCuts.cuts || []).length) parts.push({ name: 'live-cuts', body: { liveCuts }, size: JSON.stringify(liveCuts).length });
-  parts.push({ name: 'meta', body: { meta }, size: JSON.stringify(meta).length });
+  // --refill 只回填发言（整月覆盖写回 D1/KV 补 uid），不动直播/公演/社媒等
+  if (!REFILL) {
+    if (livePush.length) parts.push({ name: 'live', body: { live: livePush, ...(REBUILD ? { replace: ['live'] } : {}) }, size: JSON.stringify(livePush).length });
+    if (perfPush.length) parts.push({ name: 'performances', body: { performances: perfPush, ...(REBUILD ? { replace: ['live', 'performances'] } : {}) }, size: JSON.stringify(perfPush).length });
+    if (social.length) parts.push({ name: 'social', body: { social }, size: JSON.stringify(social).length });
+    if (perfCuts && (perfCuts.cuts || []).length) parts.push({ name: 'perf-cuts', body: { perfCuts }, size: JSON.stringify(perfCuts).length });
+    if (liveCuts && (liveCuts.cuts || []).length) parts.push({ name: 'live-cuts', body: { liveCuts }, size: JSON.stringify(liveCuts).length });
+    parts.push({ name: 'meta', body: { meta }, size: JSON.stringify(meta).length });
+  }
 
   const batches = [];
   let cur = null;
@@ -160,8 +183,14 @@ async function main() {
         Object.assign(body, p.body);
       }
     }
-    const out = await postSync(body);
+    const out = await postSync(body, REFILL ? '/api/_d1_refill' : '/api/sync');
     totalBytes += b.size;
+    if (REFILL) {
+      console.log(`[sync-kv] 第 ${i + 1}/${batches.length} 批（${mb(b.size)}）→ D1 写回 `
+        + Object.entries(out.d1 || {}).map(([m, n]) => `${m}:${n}`).join(', ')
+        + (out.errors && out.errors.length ? ` ❌ ${out.errors.join(' | ')}` : ''));
+      continue;
+    }
     console.log(`[sync-kv] 第 ${i + 1}/${batches.length} 批（${mb(b.size)}，含 ${b.parts.map((p) => p.name).join(', ')}）`
       + ` → 索引写入 ${out.indexWritten ? '是' : '否'}`);
     agg.dataChanged = agg.dataChanged || !!out.dataChanged;
