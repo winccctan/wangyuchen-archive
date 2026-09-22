@@ -306,11 +306,13 @@ function build(PRICE) {
 /* ============================ 5. 灌库 ============================ */
 async function push(list) {
   const tok = process.env.SYNC_TOKEN || '';
-  if (!tok) { console.log('未设置 SYNC_TOKEN，跳过灌库（产物在 ' + OUT + '）'); return; }
+  const gh = process.env.GH_TOKEN || '';
+  if (!tok && !gh) { console.log('未设置 SYNC_TOKEN（或 GH_TOKEN），跳过灌库（产物在 ' + OUT + '）'); return; }
+  const authHeader = tok ? { 'x-sync-token': tok } : { 'x-gh-token': gh };
   const post = async (p, body) => {
     const res = await fetch(SITE + p, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-sync-token': tok },
+      headers: Object.assign({ 'content-type': 'application/json' }, authHeader),
       body: JSON.stringify(body || {}),
     });
     const t = await res.text();
