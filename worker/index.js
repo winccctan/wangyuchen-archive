@@ -710,11 +710,104 @@ async function handleApi(url, request, env, ctx) {
   if (p === '/api/social') return handleApiKey('social', env);
   if (p === '/api/perf-cuts') return handleApiKey('perf-cuts', env);
   if (p === '/api/live-cuts') return handleApiKey('live-cuts', env);
+  // ---- 粉丝个人档案：凭 uid 只取回「你自己」的那一份 ----
+  // 隐私红线（站长 2026-09-22 定）：粉丝名单不得以任何静态文件形式上公网；
+  // 浏览器download不到全量 ⇒ 无从遍历。真实 uid 是 9~10 位随机数，本身即不可猜测的凭证。
+  if (p === '/api/mine' && request.method === 'POST') return handleApiMine(request, env);
+  // 写接口（需 SYNC_TOKEN，由 CI / 本地脚本调用）
+  if (p === '/api/_fans_init' && request.method === 'POST') return handleFansInit(request, env);
+  if (p === '/api/_fans_upsert' && request.method === 'POST') return handleFansUpsert(request, env);
+
   if (p === '/api/sync' && request.method === 'POST') {
     if (!(await isSyncAuthorized(request, env))) return json({ error: 'forbidden: sync token required' }, 403);
     return handleApiSync(request, env, ctx);
   }
   return json({ error: 'unknown api: ' + p }, 404);
+}
+
+/* ------------------------- 粉丝档案（fans 表） -------------------------
+ * 为什么必须走服务端查询：只要把「280 人 × 金额」的名单文件放上 CDN，
+ * 别人 curl 一下就全拿走了（哪怕删掉 uid）。所以名单只存 D1，
+ * 前端只能凭 uid 单条回取，且一轮 batches 也只能拿到自己那份。
+ *
+ * D1 表：fans(uid TEXT PRIMARY KEY, nick TEXT, total INTEGER, data TEXT, updatedAt INTEGER)
+ *   data 里是该粉丝自己的完整画像（直播/房间/发言/排名），永远不含他人信息。
+ */
+const MINE_RATE = new Map();   // ip -> { n, reset }（进程内滑动窗口，够挡住批量遍历）
+function mineRateOk(ip, limit = 40, winMs = 10 * 60 * 1000) {
+  const now = Date.now();
+  const r = MINE_RATE.get(ip);
+  if (!r || now > r.reset) { MINE_RATE.set(ip, { n: 1, reset: now + winMs }); return true; }
+  if (r.n >= limit) return false;
+  r.n += 1;
+  return true;
+}
+
+async function handleApiMine(request, env) {
+  const ip = String(request.headers.get('cf-connecting-ip') || 'unknown');
+  if (!mineRateOk(ip)) return json({ error: '稍慢一点再试' }, 429);
+
+  let body = {};
+  try { body = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
+  const uid = String(body.uid || '').trim();
+  if (!/^\d{4,12}$/.test(uid)) return json({ error: 'uid 是 9~10 位纯数字' }, 400);
+  if (!env || !env.DB) return json({ error: 'd1-not-bound' }, 500);
+
+  let row = null;
+  try {
+    row = await env.DB.prepare('SELECT nick, total, data, updatedAt FROM fans WHERE uid = ?').bind(uid).first();
+  } catch {
+    return json({ error: '粉丝档案尚未就绪' }, 503);
+  }
+  if (!row) return json({ found: false });
+  let data = {};
+  try { data = JSON.parse(row.data || '{}'); } catch { data = {}; }
+  return json(Object.assign({ found: true }, data, {
+    nick: row.nick || data.nick || '',
+    updatedAt: row.updatedAt || 0,
+  }), 'no-store');
+}
+
+async function handleFansInit(request, env) {
+  if (!(await isSyncAuthorized(request, env))) return json({ error: 'forbidden: sync token required' }, 403);
+  if (!env || !env.DB) return json({ error: 'd1-not-bound' }, 500);
+  await env.DB.exec(
+    'CREATE TABLE IF NOT EXISTS fans (' +
+    '  uid TEXT PRIMARY KEY,' +
+    '  nick TEXT,' +
+    '  total INTEGER DEFAULT 0,' +
+    '  data TEXT NOT NULL,' +
+    '  updatedAt INTEGER DEFAULT 0' +
+    ');' +
+    'CREATE INDEX IF NOT EXISTS idx_fans_total ON fans(total DESC);'
+  );
+  const c = await env.DB.prepare('SELECT COUNT(*) AS n FROM fans').first();
+  return json({ ok: true, rows: (c && c.n) || 0 });
+}
+
+async function handleFansUpsert(request, env) {
+  if (!(await isSyncAuthorized(request, env))) return json({ error: 'forbidden: sync token required' }, 403);
+  if (!env || !env.DB) return json({ error: 'd1-not-bound' }, 500);
+  let body = {};
+  try { body = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
+  const rows = Array.isArray(body.rows) ? body.rows : [];
+  if (!rows.length) return json({ ok: true, written: 0 });
+  if (rows.length > 2000) return json({ error: '单批最多 2000 条' }, 400);
+  const now = Date.now();
+  let written = 0;
+  const CH = 100;                       // D1 batch 每批 ≤100 条
+  for (let i = 0; i < rows.length; i += CH) {
+    const stmts = rows.slice(i, i + CH).map((r) => {
+      const uid = String(r.uid || '');
+      if (!/^\d{1,12}$/.test(uid)) return null;
+      return env.DB.prepare(
+        'INSERT OR REPLACE INTO fans (uid, nick, total, data, updatedAt) VALUES (?, ?, ?, ?, ?)'
+      ).bind(uid, String(r.nick || '').slice(0, 64), Number(r.total) || 0, JSON.stringify(r), now);
+    }).filter(Boolean);
+    if (stmts.length) { await env.DB.batch(stmts); written += stmts.length; }
+  }
+  const c = await env.DB.prepare('SELECT COUNT(*) AS n FROM fans').first();
+  return json({ ok: true, written, rows: (c && c.n) || 0 });
 }
 
 /* ------------------------- 索引（index 键） -------------------------
