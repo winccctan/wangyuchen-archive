@@ -1,0 +1,74 @@
+# 直播贡献榜「实时快照」——她每场开播时，趁着 uid / 昵称还在，把榜抓下来留档。
+#
+# 为什么挂在云端：本机监听合盖就断；而「直播中」才能拿到真实昵称，直播结束会部分
+# 变成「神秘守护者」。这里每 10 分钟探一次，发现她在播就当场抓一张快照；
+# 下播后再按 +30s / +5min / +30min / +2h 补拍，用来对比匿名是怎么变化的。
+#
+# 产物：不写回仓库，一律走 job artifact（保留 90 天），同时在 Summary 里打印榜单。
+# 手动跑：Actions → Watch live rank → Run workflow
+name: Watch live rank
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: watch-live-rank
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      POCKET48_TOKEN: ${{ secrets.POCKET48_TOKEN }}
+      REPO_ROOT: ${{ github.workspace }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install scraper deps
+        working-directory: scraper
+        run: npm ci
+
+      - name: 探一次直播状态 + 抓快照
+        id: snap
+        run: |
+          mkdir -p /tmp/live-snapshots
+          node scripts/watch-live-rank.mjs --single --out /tmp/live-snapshots 2>&1 | tee /tmp/watch.log
+          echo "--- files ---"
+          ls -la /tmp/live-snapshots || true
+          {
+            echo '## 直播榜快照'
+            echo '```'
+            cat /tmp/watch.log
+            echo '```'
+            for f in /tmp/live-snapshots/*.jsonl; do
+              [ -f "$f" ] || continue
+              echo
+              echo "### $(basename "$f")"
+              echo '```'
+              tail -n 2 "$f"
+              echo '```'
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: 上传快照
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-snapshots-${{ github.run_number }}
+          path: /tmp/live-snapshots
+          if-no-files-found: ignore
+          retention-days: 90
