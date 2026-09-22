@@ -50,15 +50,23 @@ const BACK_DAYS = Number(arg('back', 0));
 const CHUNK_DAYS = Number(arg('chunk', 30));
 const LANES = Math.max(1, Number(arg('lanes', 4)));
 const PUSH = has('push');
+const PUSH_ONLY = has('push-only');   // 跳过抓取，只把现有缓存聚合并灌库（不打断后台扫描）
 const DO_LIVE = !has('no-live');
 const SITE = (process.env.SITE || 'https://idol.wyc0518.cc').replace(/\/$/, '');
 const TZ_OFFSET_MS = 8 * 3600 * 1000;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const yearOf = (ms) => new Date(ms + TZ_OFFSET_MS).toISOString().slice(0, 4);
+// 逐行容错：--push-only 时后台扫描进程可能正在 append，最后一行可能是半行
 const readLines = (p) => {
-  try { return fs.readFileSync(p, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)); }
-  catch { return []; }
+  let raw = '';
+  try { raw = fs.readFileSync(p, 'utf8'); } catch { return []; }
+  const out = [];
+  for (const l of raw.split('\n')) {
+    if (!l.trim()) continue;
+    try { out.push(JSON.parse(l)); } catch { /* 半行，跳过 */ }
+  }
+  return out;
 };
 
 /* ============================ 1. 口袋房间 ============================ */
@@ -304,7 +312,7 @@ function build(PRICE) {
 }
 
 /* ============================ 5. 灌库 ============================ */
-async function push(list) {
+async function push(list, coverage) {
   const tok = process.env.SYNC_TOKEN || '';
   const gh = process.env.GH_TOKEN || '';
   if (!tok && !gh) { console.log('未设置 SYNC_TOKEN（或 GH_TOKEN），跳过灌库（产物在 ' + OUT + '）'); return; }
@@ -332,20 +340,29 @@ async function push(list) {
   }
   // 收尾打就绪标记：在此之前 /api/mine 会明确回「档案正在生成」，
   // 而不是让所有人看到「你没在房间里留过记录」。
-  const fin = await post('/api/_fans_upsert', { ready: true });
+  const fin = await post('/api/_fans_upsert', { ready: true, coverage: coverage || {} });
   console.log(`\n灌库完成：${sent} 条 → ${SITE}（就绪标记 ${fin.status === 200 ? '已打上' : '失败 ' + fin.status}）`);
 }
 
 /* ============================ main ============================ */
 const t0 = Date.now();
-await scanRoom();
-if (DO_LIVE) await scanLive();
+// --push-only：跳过抓取，直接用现有 .cache/fans 聚合并灌库。
+// 用于「后台还在补历史，但想先拿已有的那部分开放测试」——不打断正在跑的扫描进程。
+if (!PUSH_ONLY) {
+  await scanRoom();
+  if (DO_LIVE) await scanLive();
+}
 const PRICE = await priceMap();
 const list = build(PRICE);
 fs.writeFileSync(OUT, JSON.stringify({ builtAt: Date.now(), people: list.length, list }, null, 0));
 const sum = (k) => list.reduce((s, x) => s + x[k], 0);
+// 覆盖区间：房间发言最早到哪一天。用它告诉用户「档案还没补完，查不到不代表没记录」。
+let since = 0;
+for (const r of readLines(ROOM_JSONL)) if (r.t && (!since || r.t < since)) since = r.t;
+const coverage = { since, liveDone: readLines(LIVE_JSONL).length > 0, people: list.length };
 console.log(`\n===== 粉丝档案：${list.length} 人 =====（本地产物 ${OUT} 不进 git）`);
 console.log(`直播 ${sum('live').toLocaleString()} / 房间 ${sum('room').toLocaleString()} / 合计 ${sum('total').toLocaleString()} 鸡腿`);
 console.log(`发言 ${sum('msgs').toLocaleString()} 条，2026 年合计 ${sum('total2026').toLocaleString()} 鸡腿`);
-if (PUSH) await push(list);
+if (since) console.log(`覆盖区间：${new Date(since + TZ_OFFSET_MS).toISOString().slice(0, 10)} 起${coverage.liveDone ? '（含直播榜）' : '（直播榜尚未开跑）'}`);
+if (PUSH || PUSH_ONLY) await push(list, coverage);
 console.log(`耗时 ${((Date.now() - t0) / 60000).toFixed(1)} 分钟`);

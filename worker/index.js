@@ -828,11 +828,13 @@ async function handleApiMine(request, env) {
   // 否则所有人都会看到「你没在房间里留过记录」。用一行 __ready__ 标记位判定。
   let ready = null;
   try {
-    ready = await env.DB.prepare("SELECT 1 AS ok FROM fans WHERE uid = '__ready__'").first();
+    ready = await env.DB.prepare("SELECT data AS d FROM fans WHERE uid = '__ready__'").first();
   } catch {
     return json({ error: '档案还在准备中，过一会儿再来看看～' }, 503);
   }
   if (!ready) return json({ error: '档案正在生成（首次需要跑一段时间），过一会儿再来看看～' }, 503);
+  let cov = {};
+  try { cov = JSON.parse(ready.d || '{}'); } catch { cov = {}; }
 
   let row = null;
   try {
@@ -840,12 +842,18 @@ async function handleApiMine(request, env) {
   } catch {
     return json({ error: '档案还在准备中，过一会儿再来看看～' }, 503);
   }
-  if (!row) return json({ found: false });
+  if (!row) {
+    // 档案只覆盖部分时段时，查不到 ≠ 没记录。带上覆盖起点让前端说实话。
+    const FLOOR = Date.parse('2022-11-01T00:00:00+08:00');
+    if (cov.since && cov.since > FLOOR + 86400e3) return json({ found: false, partial: true, since: cov.since });
+    return json({ found: false });
+  }
   let data = {};
   try { data = JSON.parse(row.data || '{}'); } catch { data = {}; }
   return json(Object.assign({ found: true }, data, {
     nick: row.nick || data.nick || '',
     updatedAt: row.updatedAt || 0,
+    since: cov.since || 0,                       // 档案覆盖起点（0 = 已全量）
   }));
 }
 
@@ -881,9 +889,12 @@ async function handleFansUpsert(request, env) {
   const rows = Array.isArray(body.rows) ? body.rows : [];
   // ready:true → 灌库收尾，打上就绪标记（此后 /api/mine 才对外发档案）
   if (body.ready === true) {
+    // coverage：本批档案实际覆盖到哪天（首次全量要跑很久，中途会先灌一批开放测试）。
+    // /api/mine 查不到人时用它区分「你真的没记录」和「历史还没补到」。
+    const cov = (body.coverage && typeof body.coverage === 'object') ? body.coverage : {};
     await env.DB.prepare(
-      "INSERT OR REPLACE INTO fans (uid, nick, total, data, updatedAt) VALUES ('__ready__', '', 0, '{}', ?)"
-    ).bind(Date.now()).run();
+      "INSERT OR REPLACE INTO fans (uid, nick, total, data, updatedAt) VALUES ('__ready__', '', 0, ?, ?)"
+    ).bind(JSON.stringify({ since: Number(cov.since) || 0, liveDone: !!cov.liveDone, people: Number(cov.people) || 0 }), Date.now()).run();
     if (!rows.length) return json({ ok: true, written: 0, ready: true });
   }
   if (!rows.length) return json({ ok: true, written: 0 });
