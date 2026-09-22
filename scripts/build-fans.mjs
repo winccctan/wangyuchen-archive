@@ -330,7 +330,10 @@ async function push(list) {
     process.stdout.write(`  已灌 ${sent}/${list.length}\r`);
     await sleep(150);
   }
-  console.log(`\n灌库完成：${sent} 条 → ${SITE}`);
+  // 收尾打就绪标记：在此之前 /api/mine 会明确回「档案正在生成」，
+  // 而不是让所有人看到「你没在房间里留过记录」。
+  const fin = await post('/api/_fans_upsert', { ready: true });
+  console.log(`\n灌库完成：${sent} 条 → ${SITE}（就绪标记 ${fin.status === 200 ? '已打上' : '失败 ' + fin.status}）`);
 }
 
 /* ============================ main ============================ */

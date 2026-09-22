@@ -824,11 +824,21 @@ async function handleApiMine(request, env) {
   if (!/^\d{4,12}$/.test(uid)) return json({ error: 'uid 是 9~10 位纯数字' }, 400);
   if (!env || !env.DB) return json({ error: 'd1-not-bound' }, 500);
 
+  // 首次全量灌库要跑很久，期间表存在但没有数据 —— 必须和「查不到这个人」区分开，
+  // 否则所有人都会看到「你没在房间里留过记录」。用一行 __ready__ 标记位判定。
+  let ready = null;
+  try {
+    ready = await env.DB.prepare("SELECT 1 AS ok FROM fans WHERE uid = '__ready__'").first();
+  } catch {
+    return json({ error: '档案还在准备中，过一会儿再来看看～' }, 503);
+  }
+  if (!ready) return json({ error: '档案正在生成（首次需要跑一段时间），过一会儿再来看看～' }, 503);
+
   let row = null;
   try {
     row = await env.DB.prepare('SELECT nick, total, data, updatedAt FROM fans WHERE uid = ?').bind(uid).first();
   } catch {
-    return json({ error: '粉丝档案尚未就绪' }, 503);
+    return json({ error: '档案还在准备中，过一会儿再来看看～' }, 503);
   }
   if (!row) return json({ found: false });
   let data = {};
@@ -857,6 +867,8 @@ async function handleFansInit(request, env) {
     ');' +
     'CREATE INDEX IF NOT EXISTS idx_fans_total ON fans(total DESC);'
   );
+  // 重新灌库 → 先清掉就绪标记，期间 /api/mine 会明确告知「正在生成」
+  await env.DB.prepare("DELETE FROM fans WHERE uid = '__ready__'").run();
   const c = await env.DB.prepare('SELECT COUNT(*) AS n FROM fans').first();
   return json({ ok: true, rows: (c && c.n) || 0 });
 }
@@ -867,6 +879,13 @@ async function handleFansUpsert(request, env) {
   let body = {};
   try { body = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
   const rows = Array.isArray(body.rows) ? body.rows : [];
+  // ready:true → 灌库收尾，打上就绪标记（此后 /api/mine 才对外发档案）
+  if (body.ready === true) {
+    await env.DB.prepare(
+      "INSERT OR REPLACE INTO fans (uid, nick, total, data, updatedAt) VALUES ('__ready__', '', 0, '{}', ?)"
+    ).bind(Date.now()).run();
+    if (!rows.length) return json({ ok: true, written: 0, ready: true });
+  }
   if (!rows.length) return json({ ok: true, written: 0 });
   if (rows.length > 2000) return json({ error: '单批最多 2000 条' }, 400);
   const now = Date.now();
