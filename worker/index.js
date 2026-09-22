@@ -1013,6 +1013,7 @@ async function handleApiMonth(url, env) {
   // 所以这里任何异常都能无损回退，绝不会「读不到数据」。
   let arr = null;
   let src = 'kv';                       // 数据来源：d1 / kv（便于线上核对是否真的走了 D1）
+  let d1err = '';
   if (env && env.DB) {
     try {
       const rs = await env.DB.prepare(
@@ -1022,7 +1023,7 @@ async function handleApiMonth(url, env) {
         .map((r) => { try { return JSON.parse(r.data); } catch (_) { return null; } })
         .filter(Boolean);
       src = 'd1';
-    } catch (_) { arr = null; }
+    } catch (e) { arr = null; d1err = String((e && e.message) || e).slice(0, 160); }
   }
   if (arr === null) {
     const kv = env && env.KV;
@@ -1037,6 +1038,7 @@ async function handleApiMonth(url, env) {
   // 出库前统一脱敏：D1/KV 里可能仍有脱敏之前落库的旧数据
   const res = apiJson(scrubList(arr), m >= cur ? 'no-store' : 'public, max-age=86400');
   res.headers.set('x-data-source', src);
+  if (d1err) res.headers.set('x-d1-error', d1err.replace(/[\r\n]+/g, ' '));
   return res;
 }
 
