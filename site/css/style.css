@@ -441,6 +441,8 @@ body {
 .exp-tag-高飞 { background: #fbf3df; color: #c79a2e; }
 .exp-tag-梦想 { background: #eef6e2; color: #3b6d11; }
 .exp-tag-新人 { background: var(--primary-soft); color: var(--primary-dark); }
+/* 未来日程（还没发生的）用更醒目的粉底，跟已发生的奖项区分开 */
+.exp-tag-预告 { background: linear-gradient(135deg, #ff7aa2, #ff9a62); color: #fff; }
 
 @media (min-width: 720px) {
   .formula-gallery { grid-template-columns: repeat(3, 1fr); }

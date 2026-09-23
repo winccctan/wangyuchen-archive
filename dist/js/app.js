@@ -16,7 +16,9 @@ const panels = {
   messages: $('#panel-messages'),
   live: $('#panel-live'),
   performances: $('#panel-performances'),
-  guide: $('#panel-guide')
+  schedule: $('#panel-schedule'),
+  guide: $('#panel-guide'),
+  mine: $('#panel-mine')
 };
 
 /* ---------------- 新粉指南数据 ---------------- */
@@ -140,8 +142,9 @@ const PROFILE = {
       ]
     }
   ],
-  // 经历备注（SNH48 官网 member-detail，新→旧；tag: 高飞/梦想/新人）
+  // 经历备注（SNH48 官网 member-detail，新→旧；tag: 高飞/梦想/新人/定制/预告）
   experience: [
+    { date: '2026.11.28', tag: '预告', text: '个人年V全场定制公演即将到来' },
     { date: '2026.08.08', tag: '高飞', text: 'SNH48 GROUP 年度青春盛典 NO.22 年度高飞成员奖' },
     { date: '2025.08.02', tag: '梦想', text: 'SNH48 GROUP 年度青春盛典 NO45 年度梦想成员奖' },
     { date: '2024.08.03', tag: '高飞', text: 'SNH48 GROUP 年度青春盛典 NO27 年度高飞成员奖' },
@@ -1085,8 +1088,8 @@ function switchTab(name) {
   state.tab = name;
   document.querySelectorAll('.tab').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
   Object.entries(panels).forEach(([k, el]) => el.classList.toggle('active', k === name));
-  // 「📅 时间」筛选与「搜索」仅对「发言 / 直播录播 / 公演」有意义；新粉指南页自带内容，隐藏这两项
-  const isGuide = name === 'guide';
+  // 「📅 时间」筛选与「搜索」仅对「发言 / 直播 / 公演」有意义；新粉指南、行程页自带内容，隐藏这两项
+  const isGuide = name === 'guide' || name === 'schedule' || name === 'mine';
   const df = $('#dateToggleBtn');
   if (df) df.hidden = isGuide;
   const si = $('#searchInput');
@@ -1133,7 +1136,1244 @@ function renderAll() {
   if (state.tab === 'messages') renderMessages();
   else if (state.tab === 'live') renderLive();
   else if (state.tab === 'guide') renderGuide();
+  else if (state.tab === 'schedule') renderSchedule();
+  else if (state.tab === 'mine') renderMine();
   else renderPerformances();
+}
+
+/* ---------------- 行程（数据源：微博 @GNZ48-王语晨的甜橙小铺「本周行程」） ----------------
+ * ⚠️ 行程是「静态快照」而不是实时接口：数据由脚本抓一次写进 js/schedule.js /
+ * js/theater-schedule.js，不会自己变新。所以必须写明发布时间和来源 ——
+ * 超过 7 天就直说「可能已变动」，别让访客拿着过期行程当真跑去现场。
+ */
+function scSourceNote(src) {
+  if (!src) return '';
+  const day = String(src.pub || '').slice(0, 10);
+  let age = null;
+  if (day) {
+    const a = Date.parse(day + 'T00:00:00Z'), b = Date.parse(fmtDate(Date.now()) + 'T00:00:00Z');
+    if (isFinite(a) && isFinite(b)) age = Math.round((b - a) / 86400000);
+  }
+  const stale = age !== null && age > 7;
+  const name = src.name ? escapeHtml(src.name) : '来源';
+  const link = src.url
+    ? ' <a href="' + escapeHtml(src.url) + '" target="_blank" rel="noopener">看原帖 ↗</a>' : '';
+  const when = day ? '更新于 <b>' + escapeHtml(day) + '</b>'
+    + (age === null ? '' : age <= 0 ? '（今天）' : '（' + age + ' 天前）') : '发布时间未知';
+  return '<div class="sc-note' + (stale ? ' stale' : '') + '">'
+    + (stale ? '⚠️ 这份行程 ' + when + '，可能有变动，出发前请先看原帖确认' : '📌 行程 ' + when)
+    + ' · 来源 ' + name + link + '</div>';
+}
+function renderSchedule() {
+  const S = window.__SCHEDULE__;
+  const box = panels.schedule;
+  if (!box) return;
+  if (!S || (!S.items || !S.items.length) && (!S.future || !S.future.length)) {
+    box.innerHTML = '<div class="empty">暂无行程信息。</div>';
+    return;
+  }
+  const today = fmtDate(Date.now());
+  // 距今几天：今天 0 / 明天 1 …
+  const daysTo = (d) => {
+    if (!d) return null;
+    const a = Date.parse(d + 'T00:00:00Z'), b = Date.parse(today + 'T00:00:00Z');
+    if (!isFinite(a) || !isFinite(b)) return null;
+    return Math.round((a - b) / 86400000);
+  };
+  const dayTag = (d) => {
+    const n = daysTo(d);
+    if (n === null) return '';
+    if (n === 0) return '<span class="sc-tag today">今天</span>';
+    if (n === 1) return '<span class="sc-tag soon">明天</span>';
+    if (n > 1) return `<span class="sc-tag">${n} 天后</span>`;
+    return '<span class="sc-tag done">已结束</span>';
+  };
+  const kindIcon = (k) => (k === '见面会' ? '🤝' : k === '预告' ? '📣' : '🎭');
+
+  // 按日期分组（近的在前）
+  const groups = {}, order = [];
+  (S.items || []).forEach((it) => {
+    if (!groups[it.date]) { groups[it.date] = []; order.push(it.date); }
+    groups[it.date].push(it);
+  });
+  order.sort((a, b) => (a < b ? -1 : 1));
+
+  let html = '<div class="sc-wrap">';
+  html += scSourceNote(S.source);
+  order.forEach((d) => {
+    const arr = groups[d];
+    const passed = (daysTo(d) !== null && daysTo(d) < 0);
+    html += `<section class="sc-day${passed ? ' passed' : ''}">`
+      + `<h2 class="sc-day-h"><span class="sc-date">${escapeHtml(d.slice(5).replace('-', '/'))}</span>`
+      + `<span class="sc-wd">${escapeHtml(arr[0].weekday || '')}</span>${dayTag(d)}</h2><div class="sc-list">`;
+    arr.forEach((it) => {
+      html += `<div class="sc-item"><span class="sc-ic">${kindIcon(it.kind)}</span>`
+        + `<span class="sc-time">${escapeHtml(it.time || '')}</span>`
+        + `<span class="sc-title">${escapeHtml(it.title || '')}</span>`
+        + (it.kind ? `<span class="sc-kind">${escapeHtml(it.kind)}</span>` : '')
+        + '</div>';
+    });
+    html += '</div></section>';
+  });
+
+  if (S.future && S.future.length) {
+    html += '<section class="sc-day future"><h2 class="sc-day-h"><span class="sc-date">更远</span>'
+      + '<span class="sc-wd">已知的安排</span></h2><div class="sc-list">';
+    S.future.forEach((it) => {
+      const n = daysTo(it.date);
+      html += `<div class="sc-item"><span class="sc-ic">${kindIcon(it.kind)}</span>`
+        + `<span class="sc-time">${escapeHtml(it.date || '')}</span>`
+        + `<span class="sc-title">${escapeHtml(it.title || '')}</span>`
+        + (n && n > 0 ? `<span class="sc-kind">还有 ${n} 天</span>` : '')
+        + '</div>';
+    });
+    html += '</div></section>';
+  }
+
+  if (S.ticket) html += `<div class="sc-note">🎟️ 可使用券种：${escapeHtml(S.ticket)}</div>`;
+  if (S.note) html += `<div class="sc-note subtle">${escapeHtml(S.note)}</div>`;
+  html += '<div class="sc-links">';
+  if (S.callUrl) html += `<a class="sc-btn" href="${escapeHtml(S.callUrl)}" target="_blank" rel="noopener">Call 本 ↗</a>`;
+  html += '</div></div>';
+  html += renderTheaterSchedule(daysTo);
+  box.innerHTML = html;
+}
+
+/* ---------------- 行程 · 星梦剧院官方公演安排（只取 NIII / 全团联合） ----------------
+ * 数据：demo 专属 js/theater-schedule.js → window.__THEATER_SCHEDULE__
+ * 官方一帖列出 G / Z / NIII / 全团联合 / 偶像研究计划 全部场次，这里只留王语晨所在队与全团场。
+ */
+function renderTheaterSchedule(daysTo) {
+  const T = window.__THEATER_SCHEDULE__;
+  if (!T || !T.items || !T.items.length) return '';
+  const today = fmtDate(Date.now());
+  const d2 = daysTo || ((d) => {
+    if (!d) return null;
+    const a = Date.parse(d + 'T00:00:00Z'), b = Date.parse(today + 'T00:00:00Z');
+    return (isFinite(a) && isFinite(b)) ? Math.round((a - b) / 86400000) : null;
+  });
+  const dayTag = (d) => {
+    const n = d2(d);
+    if (n === null) return '';
+    if (n === 0) return '<span class="sc-tag today">今天</span>';
+    if (n === 1) return '<span class="sc-tag soon">明天</span>';
+    if (n > 1) return `<span class="sc-tag">${n} 天后</span>`;
+    return '<span class="sc-tag done">已结束</span>';
+  };
+  const groups = {}, order = [];
+  T.items.forEach((it) => { if (!groups[it.date]) { groups[it.date] = []; order.push(it.date); } groups[it.date].push(it); });
+  order.sort();
+
+  const first = order[0], last = order[order.length - 1];
+  const fmt = (x) => x.slice(5).replace('-', '/');
+  const range = first === last ? fmt(first) : fmt(first) + ' - ' + fmt(last);
+
+  let h = '<div class="sc-wrap sc-wrap2">';
+  h += '<h3 class="sc-sec-h">🏛 星梦剧院 · 官方公演安排'
+    + `<span class="sc-range">${escapeHtml(range)}</span>`
+    + '<span class="sc-sec-tag">NIII / 全团联合</span></h3>';
+  h += scSourceNote(T.source);
+  order.forEach((d) => {
+    const arr = groups[d];
+    const passed = (d2(d) !== null && d2(d) < 0);
+    h += `<section class="sc-day${passed ? ' passed' : ''}">`
+      + `<h2 class="sc-day-h"><span class="sc-date">${escapeHtml(fmt(d))}</span>`
+      + `<span class="sc-wd">${escapeHtml(arr[0].weekday || '')}</span>${dayTag(d)}</h2><div class="sc-list">`;
+    arr.forEach((it) => {
+      h += '<div class="sc-item">'
+        + `<span class="sc-ic">${it.kind === '全团联合' ? '🎊' : '🎭'}</span>`
+        + `<span class="sc-time">${escapeHtml(it.time || '')}</span>`
+        + `<span class="sc-title">${escapeHtml(it.title || '')}</span>`
+        + (it.kind ? `<span class="sc-kind">${escapeHtml(it.kind)}</span>` : '')
+        + (it.flags && it.flags.length
+          ? it.flags.map((f) => `<span class="sc-flag">${escapeHtml(f)}</span>`).join('') : '')
+        + '</div>';
+    });
+    h += '</div></section>';
+  });
+  if (T.sales && T.sales.length) {
+    h += `<div class="sc-note">🎫 票务：${T.sales.map((s) => escapeHtml(s)).join('；')}</div>`;
+  }
+  h += '</div>';
+  return h;
+}
+
+/* ---------------- 我和她的房间（陪伴档案 · 只查自己，不做排名） ----------------
+   数据：js/room-stats.js（window.__ROOM_STATS__），由 tools/build-companion.mjs 生成。
+   隐私约定：数据里只有 uid + 统计数字（条数 / 日期位图 / 小时分布），
+   没有昵称、没有留言正文、也没有「她回复了谁」「送了多少礼」这类可比字段。  */
+const MINE_KEY = 'wyc-demo-mine-uid-v1';
+// 鸡腿要不要写进分享图，由本人决定（默认写）
+const GIFT_OPT_KEY = 'wyc-demo-mine-gift-opt-v1';
+const giftOptOn = () => { try { return localStorage.getItem(GIFT_OPT_KEY) !== '0'; } catch (_) { return true; } };
+const giftOptSet = (on) => { try { localStorage.setItem(GIFT_OPT_KEY, on ? '1' : '0'); } catch (_) {} };
+
+function bjDayKey(ts) { return new Date(Number(ts) + 8 * 3600e3).toISOString().slice(0, 10); }
+
+function decodeDayBitmap(b64, total) {
+  try {
+    const bin = atob(b64);
+    const a = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
+    const out = [];
+    for (let i = 0; i < total; i++) if (a[i >> 3] & (1 << (i & 7))) out.push(i);
+    return out;
+  } catch (e) { return []; }
+}
+
+const HOUR_BANDS = [
+  { k: 'late', h: [22, 23, 0, 1, 2], name: '深夜守候型', desc: '晚上 10 点到凌晨 2 点' },
+  { k: 'dawn', h: [5, 6, 7, 8], name: '早起的第一声', desc: '清晨 5 点到 9 点' },
+  { k: 'morn', h: [9, 10, 11], name: '上午常客', desc: '上午 9 点到 12 点' },
+  { k: 'noon', h: [12, 13, 14, 15, 16, 17], name: '午后时光', desc: '中午到傍晚' },
+  { k: 'prime', h: [18, 19, 20, 21], name: '黄金档常驻', desc: '傍晚 6 点到 10 点' }
+];
+
+function mainBand(hs) {
+  let best = HOUR_BANDS[4], bestN = -1;
+  for (const b of HOUR_BANDS) {
+    const n = b.h.reduce((s, i) => s + (Number(hs[i]) || 0), 0);
+    if (n > bestN) { bestN = n; best = b; }
+  }
+  return best;
+}
+
+function mineBadges(u, band, dayKeys) {
+  const out = [];
+  if (u.b >= 30) out.push(['连续 ' + u.b + ' 天', 'amber']);
+  const years = new Set(dayKeys.map((d) => d.slice(0, 4)));
+  if (years.size >= 2) out.push(['陪她跨过 ' + years.size + ' 个年头', 'amber']);
+  if (band.k === 'late') out.push(['深夜常客', 'teal']);
+  if (u.n >= 1000) out.push(['第 1000 句', 'violet']);
+  else if (u.n >= 100) out.push(['第 100 句', 'violet']);
+  if (u.d >= 200) out.push(['来过 ' + u.d + ' 天', 'teal']);
+  return out.slice(0, 5);
+}
+
+function mineCalendar(activeSet, fromKey, toKey, annMap) {
+  const startMs = Date.parse(fromKey + 'T00:00:00Z');
+  const endMs = Date.parse(toKey + 'T00:00:00Z');
+  const s0 = new Date(startMs);
+  const dow = (s0.getUTCDay() + 6) % 7;           // 周一 = 0
+  let html = '<div class="mine-cal-wrap"><div class="mine-cal">';
+  let n = 0;
+  for (let t = startMs - dow * 86400e3; t <= endMs; t += 86400e3) {
+    const k = new Date(t).toISOString().slice(0, 10);
+    const on = activeSet.has(k);
+    // 亮起来的格子按顺序依次放大出现（延迟封顶，避免 400 格排太久）
+    const d = on ? Math.min(n, 90) * 4 : 0;
+    if (on) n++;
+    const ann = annMap && annMap[k];           // 纪念日：金边 + 中心小金点
+    const cls = 'mc' + (on ? ' on' : '') + (ann ? ' ann' : '');
+    const tip = ann ? ' title="认识 ' + ann + ' 天"' : '';
+    html += `<i class="${cls}"${on ? ' style="animation-delay:' + d + 'ms"' : ''}${tip} data-d="${k}"></i>`;
+  }
+  html += '</div></div>'
+    + '<div class="mine-cal-legend"><i class="mc"></i>没来过 <i class="mc on"></i>来过'
+    + (annMap && Object.keys(annMap).length ? ' <i class="mc ann"></i>纪念日' : '') + '</div>';
+  return html;
+}
+
+/* 纪念日：认识那天算第 1 天，所以「认识 N 天」= 起点往后 N-1 天。
+   只认站长定的这几档；已经过去的列出日期，最近的一档给倒计时。 */
+const ANN_DAYS = [100, 365, 500, 1000, 1500, 2000];
+function addDaysKey(key, n) {
+  return new Date(Date.parse(key + 'T00:00:00Z') + n * 86400e3).toISOString().slice(0, 10);
+}
+function mineAnniversaries(firstKey, nowDay, activeSet) {
+  const nowMs = Date.parse(nowDay + 'T00:00:00Z');
+  const passed = [], upcoming = [];
+  ANN_DAYS.forEach((n) => {
+    const k = addDaysKey(firstKey, n - 1);
+    const ms = Date.parse(k + 'T00:00:00Z');
+    if (ms <= nowMs) passed.push({ days: n, key: k, there: !!activeSet.has(k) });
+    else upcoming.push({ days: n, key: k, left: Math.round((ms - nowMs) / 86400e3) });
+  });
+  return { passed, next: upcoming[0] || null, keys: passed.map((p) => p.key) };
+}
+
+/* ==================== 我和她的房间 · 数据来自服务端 ====================
+ * 隐私红线（站长 2026-09-22 定）：粉丝名单不得以任何静态文件形式上公网。
+ * 所以这里**不再有任何本地名单文件**——输入自己的 uid，向 Worker 单条回取属于你的那份数据。
+ * （早年方案是加载 js/room-stats.js + js/gift-stats-2026.js 两份全量名单，已废弃。）
+ */
+// ⚠️ 必须和 API_BASE 用同一套判定：以前是「host 里含 cloudstudio/dev 才指线上」，
+// 结果演示站的 `*.app.workbuddy.host` 不匹配 → 请求打到演示站自己的静态服务 → 404 → 前端只能报「网络问题」。
+const MINE_API = (API_BASE || location.origin) + '/api/mine';
+
+function renderMine() {
+  const box = panels.mine;
+  if (!box) return;
+  buildMineShell(box);
+}
+
+function buildMineShell(box) {
+  if (box.dataset.built === '1') return;   // 只搭一次骨架，避免重复绑定
+  box.dataset.built = '1';
+  box.innerHTML = '<div class="mine-wrap">'
+    + '<div class="mine-head"><h3 class="mine-title">我和她的房间</h3>'
+    + '<p class="mine-sub">输入你的口袋 uid，看看你陪她走了多久。</p></div>'
+    + '<form class="mine-form" id="mineForm" autocomplete="off">'
+    + '<input id="mineUid" class="mine-input" type="text" inputmode="numeric" placeholder="口袋 uid（纯数字）" aria-label="口袋 uid">'
+    + '<button class="mine-btn" type="submit">查我的档案</button></form>'
+    + '<div class="mine-saved" id="mineSaved" hidden>已记住这个 uid，下次打开自动查'
+    + '<button type="button" class="mine-clear" id="mineClear">清除</button></div>'
+    + '<div id="mineResult" class="mine-result"></div></div>';
+
+  const form = document.getElementById('mineForm');
+  const input = document.getElementById('mineUid');
+  const savedRow = document.getElementById('mineSaved');
+  const showSaved = (on) => { if (savedRow) savedRow.hidden = !on; };
+
+  const clearUid = () => {
+    try { localStorage.removeItem(MINE_KEY); } catch (e) {}
+    if (input) input.value = '';
+    showSaved(false);
+    const res = document.getElementById('mineResult');
+    if (res) res.innerHTML = '';
+    mineHint('已清除，下次进来不会再自动带入');
+  };
+  const clearBtn = document.getElementById('mineClear');
+  if (clearBtn) clearBtn.addEventListener('click', clearUid);
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const uid = String(input.value || '').trim();
+    if (!/^\d{4,12}$/.test(uid)) { mineHint('uid 是 9~10 位纯数字，再看一下'); return; }
+    try { localStorage.setItem(MINE_KEY, uid); } catch (e) {}
+    showSaved(true);
+    lookupMine(uid);
+  });
+  let saved = '';
+  try { saved = localStorage.getItem(MINE_KEY) || ''; } catch (e) {}
+  // 旧版本存的是昵称（当时按昵称查），口径换了就丢掉，别拿去当 uid 用
+  if (saved && !/^\d{4,12}$/.test(saved)) { try { localStorage.removeItem(MINE_KEY); } catch (e) {} saved = ''; }
+  if (saved) { input.value = saved; showSaved(true); lookupMine(saved); }
+}
+
+// 「我和她的房间」的即时提示（app.js 里没有 toast，别跨脚本调用）
+function mineHint(msg, ok) {
+  let el = document.getElementById('mineHint');
+  const form = document.getElementById('mineForm');
+  if (!form) return;
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'mineHint';
+    el.className = 'mine-hint';
+    form.parentNode.insertBefore(el, form.nextSibling);
+  }
+  el.className = 'mine-hint' + (ok ? ' ok' : '');
+  el.textContent = msg;
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { if (el) el.textContent = ''; }, 4000);
+}
+
+function mineG(label, val, unit) {
+  return '<div class="mine-g"><div class="mine-g-l">' + escapeHtml(label) + '</div>'
+    + '<div class="mine-g-v">' + escapeHtml(String(val)) + '<small>' + escapeHtml(unit) + '</small></div></div>';
+}
+
+// 大数字从 0 滚上去（网易云年报那种感觉）
+function mineCountUp() {
+  document.querySelectorAll('.mine-report [data-count]').forEach((el) => {
+    const target = Number(el.dataset.count) || 0;
+    if (!target) { el.textContent = '0'; return; }
+    const dur = 950, t0 = performance.now();
+    const tick = (t) => {
+      const p = Math.min(1, (t - t0) / dur);
+      const e = 1 - Math.pow(1 - p, 3);
+      el.textContent = Math.round(target * e).toLocaleString();
+      if (p < 1) requestAnimationFrame(tick); else el.textContent = target.toLocaleString();
+    };
+    requestAnimationFrame(tick);
+  });
+}
+
+/* ---------- 导出分享卡（canvas 手绘一张竖版长图，不依赖任何外部库） ----------
+   卡片里只有「你自己的数字」，不含 uid、不含昵称、不含别人说过的话。 */
+function rr(ctx, x, y, w, h, r) {
+  const rad = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + rad, y);
+  ctx.arcTo(x + w, y, x + w, y + h, rad);
+  ctx.arcTo(x + w, y + h, x, y + h, rad);
+  ctx.arcTo(x, y + h, x, y, rad);
+  ctx.arcTo(x, y, x + w, y, rad);
+  ctx.closePath();
+}
+
+function wrapText(ctx, text, maxW, maxLines) {
+  const out = [];
+  let line = '';
+  for (const ch of String(text)) {
+    const t = line + ch;
+    if (ctx.measureText(t).width > maxW && line) {
+      out.push(line);
+      line = ch;
+      if (out.length === maxLines) break;
+    } else line = t;
+  }
+  if (line && out.length < maxLines) out.push(line);
+  if (out.length === maxLines && ctx.measureText(out[maxLines - 1]).width >= maxW - 1) {
+    out[maxLines - 1] = out[maxLines - 1].slice(0, -1) + '…';
+  }
+  return out;
+}
+
+function drawShareCard(ctx, d, W, PAD, FONT, bgOnly, H) {
+  const CW = W - PAD * 2;
+  const cx = W / 2;
+  const f = (w, s) => { ctx.font = w + ' ' + s + 'px ' + FONT; };
+  ctx.textBaseline = 'top';
+
+  if (bgOnly) {
+    const bg = ctx.createLinearGradient(0, 0, W * .35, H);
+    bg.addColorStop(0, '#1d3f66'); bg.addColorStop(.45, '#172340'); bg.addColorStop(1, '#1b1533');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+    let g = ctx.createRadialGradient(W - 60, 40, 0, W - 60, 40, 330);
+    g.addColorStop(0, 'rgba(53,224,200,.55)'); g.addColorStop(1, 'rgba(53,224,200,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    g = ctx.createRadialGradient(40, H * .45, 0, 40, H * .45, 300);
+    g.addColorStop(0, 'rgba(255,122,184,.34)'); g.addColorStop(1, 'rgba(255,122,184,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  }
+
+  let y = 66;
+  // 头像
+  const r = 48;
+  const ag = ctx.createLinearGradient(cx - r, y, cx + r, y + r * 2);
+  ag.addColorStop(0, '#35e0c8'); ag.addColorStop(.5, '#58a6ff'); ag.addColorStop(1, '#b47aff');
+  ctx.beginPath(); ctx.arc(cx, y + r, r, 0, Math.PI * 2); ctx.fillStyle = ag; ctx.fill();
+  ctx.globalAlpha = .16; ctx.beginPath(); ctx.arc(cx, y + r, r + 8, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill(); ctx.globalAlpha = 1;
+  ctx.textAlign = 'center';
+  f('400', 46); ctx.fillStyle = '#fff'; ctx.fillText('🐟', cx, y + r - 26);
+  y += r * 2 + 32;
+
+  // 标题
+  const tg = ctx.createLinearGradient(PAD, y, W - PAD, y);
+  tg.addColorStop(0, '#7ff0dd'); tg.addColorStop(.55, '#9fc8ff'); tg.addColorStop(1, '#e6b3ff');
+  f('800', 42); ctx.fillStyle = tg; ctx.fillText(d.title || roomTitle(), cx, y);
+  y += 42 + 16;
+  f('400', 20); ctx.fillStyle = '#9fb3d1';
+  ctx.fillText('从 ' + d.firstKey + ' 那天起', cx, y);
+  y += 20 + 48;
+
+  // 大数字
+  f('400', 18); ctx.fillStyle = '#a9bcd8';
+  ctx.fillText('认  识  她', cx, y);
+  y += 30;
+  const hg = ctx.createLinearGradient(PAD, y, W - PAD, y);
+  hg.addColorStop(0, '#6ff2dd'); hg.addColorStop(.45, '#8fc4ff'); hg.addColorStop(1, '#f0a6ff');
+  f('800', 96); const numTxt = String(d.knowDays);
+  f('700', 30); const unitTxt = '天';
+  f('800', 96); const nw = ctx.measureText(numTxt).width;
+  f('700', 30); const uw = ctx.measureText(unitTxt).width;
+  const total = nw + 10 + uw;
+  ctx.textAlign = 'left';
+  f('800', 96); ctx.fillStyle = hg; ctx.fillText(numTxt, cx - total / 2, y);
+  f('700', 30); ctx.fillStyle = '#a9bcd8'; ctx.fillText(unitTxt, cx - total / 2 + nw + 10, y + 56);
+  ctx.textAlign = 'center';
+  y += 96 + 18 + 26;
+
+  // 累计鸡腿（可选：本人可以在分享前关掉，默认写）
+  if (d.showGift && Number(d.giftTotal) > 0) {
+    f('400', 18); ctx.fillStyle = '#a9bcd8'; ctx.textAlign = 'center';
+    ctx.fillText(d.giftLabel || '2 0 2 6 年 送 出', cx, y);
+    y += 28;
+    const gg2 = ctx.createLinearGradient(PAD, y, W - PAD, y);
+    gg2.addColorStop(0, '#ffd98a'); gg2.addColorStop(1, '#ff9ec7');
+    const gNum = Number(d.giftTotal).toLocaleString();
+    const gUnit = '鸡腿';
+    f('800', 58); const gNw = ctx.measureText(gNum).width;
+    f('700', 24); const gUw = ctx.measureText(gUnit).width;
+    const gTw = gNw + 10 + gUw;
+    ctx.textAlign = 'left';
+    f('800', 58); ctx.fillStyle = gg2; ctx.fillText(gNum, cx - gTw / 2, y);
+    f('700', 24); ctx.fillStyle = '#a9bcd8'; ctx.fillText(gUnit, cx - gTw / 2 + gNw + 10, y + 30);
+    ctx.textAlign = 'center';
+    y += 58 + 16 + 26;
+  }
+
+  // 三张玻璃卡
+  const gw = (CW - 32) / 3;
+  const items = [['来过房间', String(d.dayCount), '天'], ['最长连续', String(d.best), '天'], ['留下过', Number(d.msgs).toLocaleString(), '句']];
+  ctx.textAlign = 'center';
+  items.forEach(([l, v, un], k) => {
+    const x = PAD + k * (gw + 16);
+    ctx.fillStyle = 'rgba(255,255,255,.07)'; rr(ctx, x, y, gw, 116, 18); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.12)'; ctx.lineWidth = 2; ctx.stroke();
+    f('400', 17); ctx.fillStyle = '#a3b6d2'; ctx.fillText(l, x + gw / 2, y + 22);
+    f('700', 36); ctx.fillStyle = '#fff';
+    const vw = ctx.measureText(v).width;
+    f('400', 17); const uw2 = ctx.measureText(un).width;
+    const tv = vw + 4 + uw2;
+    f('700', 36); ctx.fillText(v, x + gw / 2 - tv / 2 + vw / 2, y + 52);
+    f('400', 17); ctx.fillStyle = '#9fb3d1'; ctx.fillText(un, x + gw / 2 + tv / 2 - uw2 / 2, y + 70);
+  });
+  y += 116 + 34;
+
+  // 时段
+  f('700', 22); ctx.fillStyle = '#fff'; ctx.textAlign = 'left';
+  ctx.fillText('你最常出现的时段', PAD, y);
+  f('400', 17); ctx.fillStyle = '#93a8c6';
+  ctx.fillText(d.bandDesc, PAD + 186, y + 4);
+  y += 22 + 18;
+  const bx = PAD, bw = CW, bhh = 150;
+  ctx.fillStyle = 'rgba(255,255,255,.055)'; rr(ctx, bx, y, bw, bhh, 20); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,.09)'; ctx.lineWidth = 2; ctx.stroke();
+  const innerX = bx + 20, innerW = bw - 40, hh = 88, baseY = y + bhh - 42;
+  const gap = 4, barW = (innerW - gap * 23) / 24;
+  const maxH = Math.max(1, ...d.hs.map((x) => Number(x) || 0));
+  for (let k = 0; k < 24; k++) {
+    const v = Number(d.hs[k]) || 0;
+    const hp = Math.max(4, Math.round((v / maxH) * hh));
+    const hot = d.bandHours.indexOf(k) >= 0;
+    const x = innerX + k * (barW + gap);
+    if (hot) {
+      const g2 = ctx.createLinearGradient(0, baseY - hp, 0, baseY);
+      g2.addColorStop(0, '#7ff0dd'); g2.addColorStop(1, '#58a6ff');
+      ctx.fillStyle = g2;
+    } else ctx.fillStyle = 'rgba(255,255,255,.18)';
+    rr(ctx, x, baseY - hp, barW, hp, Math.min(4, barW / 2)); ctx.fill();
+  }
+  f('400', 15); ctx.fillStyle = '#879bb8'; ctx.textAlign = 'left';
+  ctx.fillText('0 点', innerX, baseY + 10);
+  ctx.textAlign = 'center';
+  ctx.fillText('6', innerX + innerW * .25, baseY + 10);
+  ctx.fillText('12', innerX + innerW * .5, baseY + 10);
+  ctx.fillText('18', innerX + innerW * .75, baseY + 10);
+  ctx.textAlign = 'right';
+  ctx.fillText('23 点', innerX + innerW, baseY + 10);
+  ctx.textAlign = 'left';
+  y += bhh + 18;
+  const ng = ctx.createLinearGradient(PAD, y, PAD + 260, y + 26);
+  ng.addColorStop(0, '#7ff0dd'); ng.addColorStop(1, '#c9a6ff');
+  f('800', 26); ctx.fillStyle = ng; ctx.fillText(d.bandName, PAD, y);
+  y += 26 + 34;
+
+  // 徽章
+  if (d.badges.length) {
+    let bx2 = PAD; let by = y;
+    d.badges.forEach(([t, col]) => {
+      f('700', 19);
+      const w = ctx.measureText(t).width + 40;
+      if (bx2 + w > W - PAD) { bx2 = PAD; by += 54; }
+      const g3 = ctx.createLinearGradient(bx2, by, bx2 + w, by + 40);
+      if (col === 'amber') { g3.addColorStop(0, '#ffd166'); g3.addColorStop(1, '#ff9e66'); }
+      else if (col === 'violet') { g3.addColorStop(0, '#b47aff'); g3.addColorStop(1, '#ff7ab8'); }
+      else { g3.addColorStop(0, '#35e0c8'); g3.addColorStop(1, '#58a6ff'); }
+      ctx.fillStyle = g3; rr(ctx, bx2, by, w, 40, 20); ctx.fill();
+      ctx.fillStyle = col === 'amber' ? '#4a2c00' : (col === 'violet' ? '#2a0b3d' : '#04292b');
+      ctx.textAlign = 'center'; ctx.fillText(t, bx2 + w / 2, by + 11);
+      ctx.textAlign = 'left';
+      bx2 += w + 12;
+    });
+    y = by + 40 + 34;
+  }
+
+  // 足迹：和页面上同一种「按周排成列」的画法，一排放不下就换一块继续
+  f('700', 22); ctx.fillStyle = '#fff'; ctx.textAlign = 'left';
+  ctx.fillText('我的足迹', PAD, y);
+  f('400', 17); ctx.fillStyle = '#93a8c6'; ctx.textAlign = 'right';
+  ctx.fillText(d.firstKey + ' · 认识她的那天', W - PAD, y + 4);
+  ctx.textAlign = 'left';
+  y += 22 + 20;
+
+  const totalDays = Number(d.dayCount2) || 0;
+  const dayList = d.daySet || [];
+  const fromMs = Date.parse((d.footFrom || d.firstKey) + 'T00:00:00Z');
+  if (totalDays && dayList.length) {
+    const cell = 13, cgap = 4, perRow = Math.floor((CW + cgap) / (cell + cgap));
+    const rowG = ctx.createLinearGradient(PAD, 0, PAD + perRow * (cell + cgap), 0);
+    rowG.addColorStop(0, '#6ff2dd'); rowG.addColorStop(1, '#58a6ff');
+    let blockStart = 0, bi = 0;
+    while (blockStart < totalDays) {
+      const cols = Math.min(perRow, Math.ceil((totalDays - blockStart) / 7));
+      // 每块头顶标一下这块从哪年哪月开始，翻页时看得出时间
+      const headKey = new Date(fromMs + blockStart * 86400e3).toISOString().slice(0, 10);
+      const tailIdx = Math.min(totalDays - 1, blockStart + cols * 7 - 1);
+      const tailKey = new Date(fromMs + tailIdx * 86400e3).toISOString().slice(0, 10);
+      f('500', 12); ctx.fillStyle = 'rgba(163,182,210,.75)'; ctx.textAlign = 'left';
+      ctx.fillText(headKey.slice(0, 7).replace('-', ' 年 ') + ' 月起 · 到 ' + tailKey.slice(0, 7).replace('-', ' 年 ') + ' 月', PAD, y);
+      y += 16;
+      for (let col = 0; col < cols; col++) {
+        for (let row = 0; row < 7; row++) {
+          const idx = blockStart + col * 7 + row;
+          if (idx >= totalDays) break;
+          const x = PAD + col * (cell + cgap);
+          const yy = y + row * (cell + cgap);
+          const on = dayList[idx];
+          ctx.fillStyle = on ? rowG : 'rgba(255,255,255,.09)';
+          rr(ctx, x, yy, cell, cell, 3); ctx.fill();
+          // 纪念日：金边 + 中心小金点
+          if (d.annMap) {
+            const k = new Date(fromMs + idx * 86400e3).toISOString().slice(0, 10);
+            if (d.annMap[k]) {
+              ctx.strokeStyle = '#ffd166'; ctx.lineWidth = 2;
+              rr(ctx, x - 2, yy - 2, cell + 4, cell + 4, 4); ctx.stroke();
+              ctx.fillStyle = '#ffd166';
+              ctx.beginPath(); ctx.arc(x + cell / 2, yy + cell / 2, 3, 0, Math.PI * 2); ctx.fill();
+            }
+          }
+        }
+      }
+      // 起点：第一块第一格（认识她那天）圈出来
+      if (bi === 0) {
+        ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = 2;
+        rr(ctx, PAD - 3, y - 3, cell + 6, cell + 6, 5); ctx.stroke();
+      }
+      y += 7 * (cell + cgap) - cgap + 18;
+      blockStart += cols * 7;
+      bi++;
+    }
+    // 图例
+    y += 2;
+    ctx.fillStyle = rowG; rr(ctx, PAD, y + 2, 11, 11, 3); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.16)'; rr(ctx, PAD + 19, y + 2, 11, 11, 3); ctx.fill();
+    f('400', 14); ctx.fillStyle = '#8ea2bf';
+    const legX = PAD + 38;
+    ctx.fillText('来过 / 没来', legX, y + 2);
+    f('400', 14); const legW = ctx.measureText('来过 / 没来').width;
+    ctx.strokeStyle = '#ffd166'; ctx.lineWidth = 2;
+    rr(ctx, legX + legW + 22, y + 2, 11, 11, 3); ctx.stroke();
+    ctx.fillStyle = '#ffd166';
+    ctx.beginPath(); ctx.arc(legX + legW + 27.5, y + 7.5, 3, 0, Math.PI * 2); ctx.fill();
+    f('400', 14); ctx.fillStyle = '#8ea2bf';
+    ctx.fillText('纪念日', legX + legW + 40, y + 2);
+    y += 11 + 22;
+  }
+
+  // 纪念日
+  const annList = (d.ann || []).filter((p) => p && p.key);
+  if (annList.length || d.annNext) {
+    f('700', 22); ctx.fillStyle = '#fff'; ctx.textAlign = 'left';
+    ctx.fillText('纪念日', PAD, y);
+    f('400', 16); ctx.fillStyle = '#93a8c6'; ctx.textAlign = 'right';
+    ctx.fillText('认识那天算第 1 天', W - PAD, y + 5);
+    ctx.textAlign = 'left';
+    y += 22 + 18;
+    annList.forEach((p, i) => {
+      if (i) {
+        ctx.fillStyle = 'rgba(255,255,255,.08)';
+        ctx.fillRect(PAD, y - 9, CW, 1);
+      }
+      f('700', 18); ctx.fillStyle = '#fff';
+      ctx.fillText('认识 ' + p.days + ' 天', PAD, y);
+      f('400', 17); ctx.fillStyle = '#c9d6ea'; ctx.textAlign = 'center';
+      ctx.fillText(p.key, PAD + CW * .58, y + 1);
+      f('400', 15); ctx.fillStyle = p.there ? 'rgba(127,240,221,.95)' : 'rgba(147,168,198,.9)';
+      ctx.textAlign = 'right';
+      ctx.fillText(p.there ? '那天你在' : '那天没来', W - PAD, y + 3);
+      ctx.textAlign = 'left';
+      y += 18 + 18;
+    });
+    if (d.annNext) {
+      y -= 4;
+      f('400', 16); ctx.fillStyle = 'rgba(255,209,102,.95)';
+      ctx.fillText('距离认识 ' + d.annNext.days + ' 天还有 ' + d.annNext.left + ' 天 · ' + d.annNext.key, PAD, y);
+      y += 16 + 26;
+    } else y += 8;
+  }
+
+  // 共同记忆
+  const memoLines = (() => { f('400', 20); return wrapText(ctx, d.memoText || '', CW - 84, 3); })();
+  if (memoLines.length) {
+    const mh = 34 + memoLines.length * 32 + 22;
+    ctx.fillStyle = 'rgba(255,255,255,.06)'; rr(ctx, PAD, y, CW, mh, 20); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.1)'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.font = '400 40px Georgia, serif'; ctx.fillStyle = 'rgba(127,240,221,.55)';
+    ctx.fillText('\u201C', PAD + 18, y + 6);
+    f('400', 20); ctx.fillStyle = '#dbe6f7';
+    memoLines.forEach((ln, n2) => ctx.fillText(ln, PAD + 58, y + 24 + n2 * 32));
+    y += mh + 30;
+  }
+
+  // 底部
+  y += 6;
+  f('400', 16); ctx.fillStyle = '#8296b3'; ctx.textAlign = 'center';
+  ctx.fillText('王语晨补档站 · ' + d.stamp, cx, y);
+  y += 16 + 46;
+  ctx.textAlign = 'left';
+  return y;
+}
+
+/* ---------- 精简版分享卡（「只送过礼、没在房间说过话」的人也能存一张）----------
+ * 站长 2026-09-23 定：信息少的人同样要能保存到相册。
+ * 这批人（全站 39 位）档案里没有「认识她几天」、没有时段分布、没有足迹日历、
+ * 没有徽章 —— 硬套完整版会画出一张「来过房间 0 天 / 最长连续 0 天 / 留下过 0 句」
+ * 加一排空柱子的图，等于当面说人什么都没留下。所以另画一张小的：
+ * 头像 + 标题 + 那句「心意收到了」+ 鸡腿（可选）。与完整卡共用同一套配色和版式。
+ * -------------------------------------------------------------------------- */
+function drawLiteShareCard(ctx, d, W, PAD, FONT, bgOnly, H) {
+  const cx = W / 2;
+  const f = (w, s) => { ctx.font = w + ' ' + s + 'px ' + FONT; };
+  ctx.textBaseline = 'top';
+
+  if (bgOnly) {
+    const bg = ctx.createLinearGradient(0, 0, W * .35, H);
+    bg.addColorStop(0, '#1d3f66'); bg.addColorStop(.45, '#172340'); bg.addColorStop(1, '#1b1533');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+    let g = ctx.createRadialGradient(W - 60, 40, 0, W - 60, 40, 330);
+    g.addColorStop(0, 'rgba(53,224,200,.55)'); g.addColorStop(1, 'rgba(53,224,200,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    g = ctx.createRadialGradient(40, H * .45, 0, 40, H * .45, 300);
+    g.addColorStop(0, 'rgba(255,122,184,.34)'); g.addColorStop(1, 'rgba(255,122,184,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  }
+
+  let y = 66;
+  const r = 48;
+  const ag = ctx.createLinearGradient(cx - r, y, cx + r, y + r * 2);
+  ag.addColorStop(0, '#35e0c8'); ag.addColorStop(.5, '#58a6ff'); ag.addColorStop(1, '#b47aff');
+  ctx.beginPath(); ctx.arc(cx, y + r, r, 0, Math.PI * 2); ctx.fillStyle = ag; ctx.fill();
+  ctx.globalAlpha = .16; ctx.beginPath(); ctx.arc(cx, y + r, r + 8, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill(); ctx.globalAlpha = 1;
+  ctx.textAlign = 'center';
+  f('400', 46); ctx.fillStyle = '#fff'; ctx.fillText('🐟', cx, y + r - 26);
+  y += r * 2 + 34;
+
+  const tg = ctx.createLinearGradient(PAD, y, W - PAD, y);
+  tg.addColorStop(0, '#7ff0dd'); tg.addColorStop(.55, '#9fc8ff'); tg.addColorStop(1, '#e6b3ff');
+  f('800', 42); ctx.fillStyle = tg; ctx.fillText(d.title || roomTitle(), cx, y);
+  y += 42 + 20;
+
+  f('400', 21); ctx.fillStyle = '#9fb3d1';
+  ctx.fillText('你在房间里还没说过话', cx, y); y += 21 + 10;
+  ctx.fillText('但这些心意她都收到了', cx, y); y += 21 + 46;
+
+  if (d.showGift && Number(d.giftTotal) > 0) {
+    f('400', 18); ctx.fillStyle = '#a9bcd8';
+    ctx.fillText(d.giftLabel || '2 0 2 6 年 送 出', cx, y);
+    y += 30;
+    const gg2 = ctx.createLinearGradient(PAD, y, W - PAD, y);
+    gg2.addColorStop(0, '#ffd98a'); gg2.addColorStop(1, '#ff9ec7');
+    const gNum = Number(d.giftTotal).toLocaleString();
+    const gUnit = '鸡腿';
+    f('800', 78); const gNw = ctx.measureText(gNum).width;
+    f('700', 28); const gUw = ctx.measureText(gUnit).width;
+    const gTw = gNw + 12 + gUw;
+    ctx.textAlign = 'left';
+    f('800', 78); ctx.fillStyle = gg2; ctx.fillText(gNum, cx - gTw / 2, y);
+    f('700', 28); ctx.fillStyle = '#a9bcd8'; ctx.fillText(gUnit, cx - gTw / 2 + gNw + 12, y + 42);
+    ctx.textAlign = 'center';
+    y += 78 + 24;
+    // 不画「2024、2025 年的归档不完整」这句 —— 站长 2026-09-23 定：
+    // 提醒只留在页面上，分享出去的图要保持干净（别人转发时不该带着一句免责声明）。
+  }
+
+  y += 10;
+  f('400', 16); ctx.fillStyle = '#8296b3';
+  ctx.fillText('王语晨补档站 · ' + d.stamp, cx, y);
+  y += 16 + 46;
+  ctx.textAlign = 'left';
+  return y;
+}
+
+function buildShareCard(d) {
+  const W = 900, PAD = 56;
+  const FONT = '"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Heiti SC",sans-serif';
+  // 信息少的人（只送过礼、没说过话）走精简版；两张卡共用同一套量高 → 铺背景 → 画内容流程
+  const draw = d.lite ? drawLiteShareCard : drawShareCard;
+  const measure = document.createElement('canvas').getContext('2d');
+  const h = draw(measure, d, W, PAD, FONT, false, 1800);   // 先量高度
+  const H = Math.ceil(h);
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  draw(ctx, d, W, PAD, FONT, true, H);   // 先铺背景再画内容（一次搞定）
+  return cv;
+}
+
+function dataUrlToBlob(dataUrl) {
+  const [head, b64] = dataUrl.split(',');
+  const bin = atob(b64);
+  const a = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
+  return new Blob([a], { type: (head.match(/:(.*?);/) || [, 'image/png'])[1] });
+}
+
+// 移动端没有「写进相册」的可靠 API，最通用的办法是把图显示出来让用户长按 → 系统菜单「存储到照片」；
+// 支持 Web Share Level 2 的浏览器（iOS/Android）直接调系统分享，里面有「存储到照片」。
+function showAlbumLayer(dataUrl, stamp) {
+  const old = document.getElementById('mineAlbum');
+  if (old) old.remove();
+  const ov = document.createElement('div');
+  ov.id = 'mineAlbum';
+  ov.className = 'mine-overlay';
+  ov.innerHTML = '<div class="ma-bar"><span class="ma-tip">长按图片 → 存储到相册</span>'
+    + '<button type="button" class="ma-close" id="maClose">关闭</button></div>'
+    + '<div class="ma-body"><img src="' + dataUrl + '" alt="' + roomTitle() + '"></div>'
+    + '<div class="ma-foot"><button type="button" class="ma-act" id="maAct">保存或分享</button>'
+    + '<div class="ma-note" id="maNote"></div></div>';
+  document.body.appendChild(ov);
+  document.body.style.overflow = 'hidden';
+  const close = () => { ov.remove(); document.body.style.overflow = ''; };
+  document.getElementById('maClose').addEventListener('click', close);
+  ov.addEventListener('click', (e) => { if (e.target === ov) close(); });
+
+  document.getElementById('maAct').addEventListener('click', async () => {
+    const noteEl = document.getElementById('maNote');
+    try {
+      const file = new File([dataUrlToBlob(dataUrl)], roomTitle() + '-' + stamp + '.png', { type: 'image/png' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file] });
+        return;
+      }
+      // 能分享文件就走系统分享（iOS/Android 的菜单里有「存储到照片」）；否则退回下载
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = roomTitle() + '-' + stamp + '.png';
+      document.body.appendChild(a); a.click(); a.remove();
+      if (noteEl) noteEl.textContent = '已下载到本地';
+    } catch (e) { /* 用户取消分享，忽略 */ }
+  });
+}
+
+function saveShareCard(d) {
+  const btn = document.getElementById('mineDl');
+  const note = (msg) => {
+    const el = document.getElementById('mineDlNote');
+    if (el) el.textContent = msg;
+  };
+  if (btn) btn.disabled = true;
+  note('正在生成图片…');
+  try {
+    const cv = buildShareCard(d);
+    showAlbumLayer(cv.toDataURL('image/png'), d.stamp);
+    note('');
+    if (btn) btn.disabled = false;
+  } catch (e) {
+    note('图片生成失败，稍后再试');
+    if (btn) btn.disabled = false;
+  }
+}
+
+/* ---------- 鸡腿（两档口径，可在档案卡上切换）----------
+ * 站长 2026-09-23 定：
+ *   「2026 年」     —— 2026-01-01 至今。这是完整、干净、能拿来对账的一年。
+ *   「2024 年至今」 —— 2024-01-01 至今。2024/2025 年的归档不完整（早年直播弹幕
+ *                     没全量留存、部分月份房间关闭），所以这一档必须显式提示「可能有缺失」。
+ * 数据上有两条路：上榜的人（src='list'）取站长给的第三方榜单值，没上榜的自己算，
+ * 两边取大值。不过站长 2026-09-23 最终定了：**这行口径说明整个不展示给用户** ——
+ * 档位标题已经写清「2026 年送出 / 2024 年起送出」，再补一句时间范围 + 数据来源
+ * 对粉丝只是噪音。榜单值 / 自算取大值的逻辑照旧，只是不告诉用户。
+ * 两档都是 0 才退回历史累计，并标明「这些年还没有」。
+ * -------------------------------------------------------------------------- */
+let GIFT_PERIOD = '2026';                 // 当前展示档位：'2026' | '2024plus'
+let MINE_GIFT = null;                     // 当前档案的鸡腿数据（切换档位时要重算）
+let MINE_CARD = null;                     // 分享卡数据（切换档位后要同步数字）
+// 2024 档那句提醒：页面上和分享图里是同一句，抽出来免得两处写得不一样
+const GIFT_WARN_2024 = '2024、2025 年的归档不完整，这一档可能比实际少';
+
+/* ---------- 称谓开关：她叫「一只鱼鱼」还是「王语晨」----------
+ * 站长 2026-09-23 定：让访客自己挑。**只作用于档案卡本身** —— 页面上的卡片、
+ * 分享出去的图、存图文件名；站内其它页面（我的面板标题、直播/公演/行程等）一律不动。
+ * 两个叫法都是真的：
+ *   - 「一只鱼鱼」是她自己在口袋用的昵称 —— 查 uid 89653517 在房间里的发言，
+ *     署名就是「一只鱼鱼˚°🐟」，和微博小号「忘记自己是鱼_」、抖音「一只鱼」同路。
+ *   - 「王语晨」是本名，口袋官方资料页显示的则是「GNZ48-王语晨」。
+ * -------------------------------------------------------------------------- */
+const ROOM_NAMES = [{ id: 'fish', label: '一只鱼鱼' }, { id: 'name', label: '王语晨' }];
+const ROOM_NAME_KEY = 'wyc.mine.roomname';
+let ROOM_NAME = 'fish';
+try {
+  const _v = localStorage.getItem(ROOM_NAME_KEY);
+  if (ROOM_NAMES.some((x) => x.id === _v)) ROOM_NAME = _v;
+} catch (e) {}
+const roomName = () => (ROOM_NAME === 'name' ? '王语晨' : '一只鱼鱼');
+const roomTitle = () => '我和' + roomName() + '的房间';
+// 站长 2026-09-23 反馈：原来做成夹在封面标题下的悬浮胶囊，看不出是干嘛的 ——
+// 挪到最下面「保存到相册」那一块，跟「分享图里也写上我送的鸡腿」排成同一族，
+// 左边加一句「称呼她为」把用途说清楚。
+function roomNameTabs() {
+  return '<div class="mine-name-opt">'
+    + '<span class="mine-name-lab">称呼她为</span>'
+    + '<span class="mine-nm-tabs">' + ROOM_NAMES.map((n) =>
+      '<button type="button" class="mine-nm-tab' + (n.id === ROOM_NAME ? ' on' : '') + '" data-nm="' + n.id + '">'
+      + n.label + '</button>').join('') + '</span></div>';
+}
+// 切称谓只改标题文字，别整卡重排（会打断其它区块的入场动画）
+function applyRoomName() {
+  const t = roomTitle();
+  document.querySelectorAll('.mine-cover-t').forEach((el) => { el.textContent = t; });
+  if (MINE_CARD) MINE_CARD.title = t;
+}
+function bindRoomNameTabs() {
+  document.querySelectorAll('.mine-nm-tab').forEach((b) => {
+    b.addEventListener('click', () => {
+      ROOM_NAME = b.getAttribute('data-nm') || 'fish';
+      try { localStorage.setItem(ROOM_NAME_KEY, ROOM_NAME); } catch (e) {}
+      document.querySelectorAll('.mine-nm-tab').forEach((x) => x.classList.toggle('on', x === b));
+      applyRoomName();
+    });
+  });
+}
+
+function giftNums(d) {
+  // 一档 = { live, room, self(自算合计), listed(榜单值), total(max), src }
+  const pack = (live, room, listed, src, rank) => {
+    const L = Number(live) || 0, R = Number(room) || 0, T = Number(listed) || 0;
+    return { live: L, room: R, self: L + R, listed: src === 'list' ? T : 0,
+             total: Math.max(L + R, src === 'list' ? T : 0), src: src || '', rank: Number(rank) || 0 };
+  };
+  const p26 = pack(d.live2026, d.room2026, d.total2026, d.src26, d.rank26);
+  const p24 = pack(d.liveSince2024, d.roomSince2024, d.totalSince2024, d.srcSince2024, d.rankSince2024);
+  // rank 字段保留在数据结构里，但前端不展示排名 ——
+  // 站长 2026-09-23 决定去掉：只有两百来人有、口径又是第三方榜，容易起争议。
+  const liveAll = Number(d.live) || 0, roomAll = Number(d.room) || 0;
+  return { p26, p24, liveAll, roomAll, totalAll: liveAll + roomAll };
+}
+
+// 当前该展示哪一档：
+//   · 选了 2024 且该档有数 → 2024
+//   · 2026 有数 → 2026（默认档）
+//   · 2026 没数但 2024 有数 → 还是给 2024（别把人锁在「累计」档看不到数）
+//   · 两档都没数 → 退回历史累计
+function giftView(g) {
+  const gg = g || {};
+  const p26 = gg.p26 || { live: 0, room: 0, self: 0, listed: 0, total: 0, src: '' };
+  const p24 = gg.p24 || { live: 0, room: 0, self: 0, listed: 0, total: 0, src: '' };
+  const v24 = { id: '2024plus', p: p24, label: '2 0 2 4 年 起 送 出', since: '2024 年 1 月 1 日至今' };
+  const v26 = { id: '2026', p: p26, label: '2 0 2 6 年 送 出', since: '2026 年 1 月 1 日至今' };
+  if (GIFT_PERIOD === '2024plus' && p24.total > 0) return v24;
+  if (p26.total > 0) return v26;
+  if (p24.total > 0) return v24;
+  return { id: 'all', p: { live: gg.liveAll || 0, room: gg.roomAll || 0, self: 0, listed: 0,
+                           total: gg.totalAll || 0, src: '' },
+           label: '累 计 送 出', since: '2022 年 11 月至今' };
+}
+// 分享卡用：取当前档位的数字与标题
+const giftNum = (g) => giftView(g).p.total;
+const giftLabel = (g) => giftView(g).label;
+
+function mineGiftBlock(gg, delay) {
+  const g = gg || {};
+  const v = giftView(g);
+  const tot = v.p.total;
+  // 口径说明这一行**不再展示**（站长 2026-09-23 定）——
+  // 档位标题已经写清「2026 年送出 / 2024 年起送出」，下面再补一句时间范围 + 来源，
+  // 对粉丝是噪音。榜单值 / 自算取大值的逻辑照旧，只是不告诉用户。
+  // 2024 档那句「不完整」的提醒保留 —— 它是防对账争议的，不是口径说明。
+  // 2024 档自带一句「不完整」的提醒 —— 别让人拿这一档去和第三方榜对账
+  const warn = (v.id === '2024plus')
+    ? '<div class="mine-gift-warn">' + GIFT_WARN_2024 + '</div>'
+    : '';
+  // 两个档位都有数才给切换；只有一档就不放空按钮
+  const has26 = (g.p26 && g.p26.total > 0), has24 = (g.p24 && g.p24.total > 0);
+  let tabs = '';
+  if (has26 && has24) {
+    tabs = '<div class="mine-gift-tabs">'
+      + '<button type="button" class="mine-gift-tab' + (GIFT_PERIOD !== '2024plus' ? ' on' : '')
+      + '" data-gp="2026">2026 年</button>'
+      + '<button type="button" class="mine-gift-tab' + (GIFT_PERIOD === '2024plus' ? ' on' : '')
+      + '" data-gp="2024plus">2024 年至今</button></div>';
+  }
+  return '<div class="mine-sec mine-hero mine-hero-gift" style="animation-delay:' + delay + 's">'
+    + tabs
+    + '<div class="mine-hero-l">' + v.label + '</div>'
+    // 单位用 🍗（站长 2026-09-23 定）。分享卡是 canvas 绘制，彩色 emoji 在
+    // Windows / 部分安卓上会变灰或变豆腐块，所以那边仍写「鸡腿」二字（见 gUnit）。
+    + '<div class="mine-hero-v"><span data-count="' + tot + '">0</span><small class="unit">🍗</small></div>'
+    + warn
+    + '</div>';
+}
+
+// 切换档位：只重画鸡腿这一块，别整页重排（会打断其它区块的入场动画）
+function bindGiftTabs() {
+  document.querySelectorAll('.mine-gift-tab').forEach((b) => {
+    b.addEventListener('click', () => {
+      GIFT_PERIOD = b.getAttribute('data-gp') || '2026';
+      const el = document.querySelector('.mine-hero-gift');
+      if (el && MINE_GIFT) {
+        el.outerHTML = mineGiftBlock(MINE_GIFT, 0);
+        bindGiftTabs();
+        mineCountUp();
+      }
+      // 分享卡跟着当前档位走
+      if (MINE_CARD) {
+        MINE_CARD.giftTotal = giftNum(MINE_GIFT);
+        MINE_CARD.giftLabel = giftLabel(MINE_GIFT);
+      }
+    });
+  });
+}
+
+// 只送过礼、没在房间留过言的人
+function renderMineGiftOnly(g, box) {
+  const gg = g || {};
+  const show = (gg.p26 && gg.p26.total > 0) || (gg.p24 && gg.p24.total > 0) || (Number(gg.totalAll) || 0) > 0;
+  let h = '<div class="mine-report">';
+  h += '<div class="mine-cover">'
+    + '<div class="mine-avatar">🐟</div>'
+    + '<div class="mine-cover-t">' + roomTitle() + '</div>'
+    + '<div class="mine-cover-s">你在房间里还没说过话<br>但这些心意她都收到了</div></div>';
+  h += show ? mineGiftBlock(gg, 0.08) : '';
+  // 信息少也照样能存一张（站长 2026-09-23 定）—— 只是走精简版卡片，
+  // 不画那些空着的小时柱、足迹格和「0 天 / 0 句」。见 drawLiteShareCard。
+  h += '<div class="mine-sec mine-dl-wrap" style="animation-delay:.16s">';
+  h += roomNameTabs();
+  if (show) {
+    h += '<label class="mine-share-opt"><input type="checkbox" id="mineGiftOpt"'
+      + (giftOptOn() ? ' checked' : '') + '>分享图里也写上我送的鸡腿</label>';
+  }
+  h += '<button type="button" class="mine-dl" id="mineDl">保存到相册</button>'
+    + '<div class="mine-dl-note" id="mineDlNote"></div></div>';
+  h += '</div>';
+  box.innerHTML = h;
+  MINE_GIFT = gg;
+  bindGiftTabs();
+  bindRoomNameTabs();   // 「一只鱼鱼 / 王语晨」称谓切换（只影响这张卡）
+  mineCountUp();
+
+  MINE_CARD = {
+    lite: true, stamp: bjDayKey(Date.now()),
+    title: roomTitle(),
+    giftTotal: giftNum(gg), giftLabel: giftLabel(gg), showGift: false,   // 导出这一刻才按勾选决定
+  };
+  const giftOpt = document.getElementById('mineGiftOpt');
+  if (giftOpt) giftOpt.addEventListener('change', () => giftOptSet(giftOpt.checked));
+  const dl = document.getElementById('mineDl');
+  if (dl) dl.addEventListener('click', () => {
+    MINE_CARD.showGift = !!(giftOpt && giftOpt.checked) && Number(MINE_CARD.giftTotal) > 0;
+    saveShareCard(MINE_CARD);
+  });
+}
+
+async function lookupMine(uid) {
+  const box = document.getElementById('mineResult');
+  if (!box) return;
+  box.innerHTML = '<div class="mine-empty">正在找你的那一份…</div>';
+  // 每次新查一个人都回到默认档（2026 年），别把上一个人的选择带过来
+  GIFT_PERIOD = '2026';
+  MINE_GIFT = null;
+  MINE_CARD = null;
+
+  let d = null;
+  try {
+    const res = await fetch(MINE_API, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ uid: String(uid) }),
+    });
+    d = await res.json();
+    // 服务端有明确说法（档案生成中 / 查太快 / uid 格式）就照实显示，别一律说「网络问题」
+    if (!res.ok) {
+      box.innerHTML = '<div class="mine-empty">'
+        + escapeHtml((d && d.error) || '服务暂时不可用，一会儿再试试。') + '</div>';
+      return;
+    }
+  } catch (e) {
+    box.innerHTML = '<div class="mine-empty">网络不太顺，一会儿再试试。</div>';
+    return;
+  }
+  if (!d || !d.found) {
+    // 档案还没补完全历史时，查不到 ≠ 没记录 —— 如实说明覆盖区间，别冤枉人
+    if (d && d.partial && d.since) {
+      box.innerHTML = '<div class="mine-empty">目前档案只补到 <b>' + bjDayKey(d.since) + '</b> 之后，'
+        + '更早的历史还在录。<br>你如果只在那之前活跃过，过几天再来看会更完整。</div>';
+      return;
+    }
+    box.innerHTML = '<div class="mine-empty">这个 uid 在房间里没留下过记录。<br>'
+      + '可能是还没说过话，或者 uid 输错了一位。</div>';
+    return;
+  }
+
+  // 服务端返回的就是「他自己那一份」，字段沿用旧口径（n/f/l/d/b/h/m）
+  const startKey = d.start || '2022-11-01';
+  const S = {
+    start: startKey,
+    days: Math.max(1, Math.round((Date.parse(bjDayKey(Date.now()) + 'T00:00:00Z')
+      - Date.parse(startKey + 'T00:00:00Z')) / 86400e3) + 1),
+    from: '',                                   // 全量已回溯到 2022-11，不再需要「至少」措辞
+  };
+  const u = d;
+  // 鸡腿（直播弹幕礼物 + 口袋房间送礼折算），服务端已按「2026 / 2024 年起」分别算好
+  const gAll = giftNums(d);
+  const g = (gAll.p26.total > 0 || gAll.p24.total > 0 || gAll.totalAll > 0) ? gAll : null;
+  // 只送过礼、从没在房间说过话的人：给一张只有鸡腿的简版卡
+  if (!u.n) { renderMineGiftOnly(g, box); return; }
+  const dayIdx = decodeDayBitmap(u.m, S.days);
+  const startMs = Date.parse(S.start + 'T00:00:00Z');
+  const dayKeys = dayIdx.map((i) => new Date(startMs + i * 86400e3).toISOString().slice(0, 10));
+  const activeSet = new Set(dayKeys);
+  const firstKey = bjDayKey(u.f);
+  const hs = String(u.h || '').split(',').map(Number);
+  const band = mainBand(hs);
+  const badges = mineBadges(u, band, dayKeys);
+  const nowDay = bjDayKey(Date.now());
+  const knowDays = Math.max(1, Math.round((Date.parse(nowDay + 'T00:00:00Z') - Date.parse(firstKey + 'T00:00:00Z')) / 86400e3));
+  // 数据还没回溯到底时，首次日期只是「已抓到的最早」，措辞要诚实
+  const atLeast = firstKey <= S.from;
+  const maxH = Math.max(1, ...hs.map((x) => Number(x) || 0));
+
+  let html = '<div class="mine-report">';
+  html += '<div class="mine-cover">'
+    + '<div class="mine-avatar">🐟</div>'
+    + '<div class="mine-cover-t">' + roomTitle() + '</div>'
+    + '<div class="mine-cover-s">从 <b>' + escapeHtml(firstKey) + '</b> 那天起'
+    + '<br>只属于你的陪伴记录，慢慢往下滑</div></div>';
+
+  html += '<div class="mine-sec mine-hero" style="animation-delay:.08s">'
+    + '<div class="mine-hero-l">认 识 她</div>'
+    + '<div class="mine-hero-v"><span data-count="' + knowDays + '">0</span><small>天</small></div>'
+    + '</div>';
+
+  if (g) { html += mineGiftBlock(g, 0.14); MINE_GIFT = g; }
+
+  html += '<div class="mine-sec mine-glass" style="animation-delay:.18s">'
+    + mineG('来过房间', u.d, '天') + mineG('最长连续', u.b, '天') + mineG('留下过', u.n.toLocaleString(), '句')
+    + '</div>';
+
+  let bars = '';
+  for (let i = 0; i < 24; i++) {
+    const v = Number(hs[i]) || 0;
+    const pct = Math.max(4, Math.round((v / maxH) * 100));
+    const hot = band.h.indexOf(i) >= 0;
+    bars += `<i class="mh${hot ? ' hot' : ''}" style="--hh:${pct}%;animation-delay:${120 + i * 24}ms" title="${i} 点 ${v} 条"></i>`;
+  }
+  html += '<div class="mine-sec mine-band" style="animation-delay:.28s">'
+    + '<div class="mine-h"><b>你最常出现的时段</b><span>' + escapeHtml(band.desc) + '</span></div>'
+    + '<div class="mine-hours">' + bars + '</div>'
+    + '<div class="mine-hours-scale"><span>0 点</span><span>6</span><span>12</span><span>18</span><span>23 点</span></div>'
+    + '<div class="mine-band-name">' + escapeHtml(band.name) + '</div></div>';
+
+  if (badges.length) {
+    html += '<div class="mine-sec mine-badges" style="animation-delay:.36s">';
+    badges.forEach(([t, c], k) => {
+      html += `<span class="mine-badge ${c}" style="animation-delay:${360 + k * 70}ms">${escapeHtml(t)}</span>`;
+    });
+    html += '</div>';
+  }
+
+  // 纪念日：从「认识她那天」往后数，认识那天算第 1 天
+  const ann = mineAnniversaries(firstKey, nowDay, activeSet);
+  const annMap = {};
+  ann.passed.forEach((p) => { annMap[p.key] = p.days; });
+
+  html += '<div class="mine-sec" style="animation-delay:.44s"><div class="mine-h"><b>我的足迹</b>'
+    + '<span>' + escapeHtml(firstKey) + ' 至今'
+    + '<span class="mine-cal-hint">，左右滑动看全部</span></span></div>'
+    + mineCalendar(activeSet, dayKeys[0] || firstKey, nowDay, annMap) + '</div>';
+
+  if (ann.passed.length || ann.next) {
+    html += '<div class="mine-sec mine-ann" style="animation-delay:.48s">'
+      + '<div class="mine-h"><b>纪念日</b><span>认识那天算第 1 天</span></div>';
+    ann.passed.forEach((p) => {
+      html += '<div class="mine-ann-row"><span class="mar-l">认识 ' + p.days + ' 天</span>'
+        + '<span class="mar-d">' + p.key + '</span>'
+        + '<span class="mar-t' + (p.there ? ' on' : '') + '">'
+        + (p.there ? '那天你在' : '那天没来') + '</span></div>';
+    });
+    if (ann.next) {
+      html += '<div class="mine-ann-next">距离认识 <b>' + ann.next.days + '</b> 天还有 <b>'
+        + ann.next.left + '</b> 天 · ' + ann.next.key + '</div>';
+    }
+    html += '</div>';
+  }
+
+  html += '<div class="mine-sec" id="mineMemo" style="animation-delay:.52s">'
+    + '<div class="mine-memo"><div class="mine-memo-loading">正在找那天的记忆…</div></div></div>';
+
+  html += '<div class="mine-sec mine-dl-wrap" style="animation-delay:.6s">';
+  html += roomNameTabs();
+  // 鸡腿是隐私敏感度最高的那一项：由本人决定写不写进分享图
+  if (Number(d.total) > 0) {
+    html += '<label class="mine-share-opt"><input type="checkbox" id="mineGiftOpt"'
+      + (giftOptOn() ? ' checked' : '') + '>分享图里也写上我送的鸡腿</label>';
+  }
+  html += '<button type="button" class="mine-dl" id="mineDl">保存到相册</button>'
+    + '<div class="mine-dl-note" id="mineDlNote"></div></div>';
+
+  // 全量历史还没补完时，说清楚数字只覆盖哪一段，别让人以为这就是全部
+  if (d.since && d.since > Date.parse('2022-11-02T00:00:00+08:00')) {
+    html += '<div class="mine-dl-note" style="animation-delay:.66s">历史还在补录中，'
+      + '当前档案覆盖 <b>' + bjDayKey(d.since) + '</b> 之后，更早的随后补上。</div>';
+  }
+
+  html += '</div>';
+  box.innerHTML = html;
+  bindGiftTabs();          // 「2026 年 / 2024 年至今」切换
+  bindRoomNameTabs();      // 「一只鱼鱼 / 王语晨」称谓切换（只影响这张卡）
+  mineCountUp();
+
+  // 分享卡需要的数据（导出时现取 DOM 里的共同记忆文本）
+  const cardData = {
+    firstKey, atLeast, knowDays,
+    title: roomTitle(),
+    dayCount: u.d, best: u.b, msgs: u.n,
+    giftTotal: giftNum(g), giftLabel: giftLabel(g), showGift: false,   // 鸡腿：导出时按勾选决定
+    hs, bandName: band.name, bandDesc: band.desc, bandHours: band.h,
+    badges,
+    dayCount2: Math.max(1, Math.round((Date.parse(nowDay + 'T00:00:00Z') - Date.parse((dayKeys[0] || firstKey) + 'T00:00:00Z')) / 86400e3) + 1),
+    daySet: null,
+    ann: ann.passed, annNext: ann.next, annMap,
+    memoText: '',
+    stamp: nowDay,
+  };
+  {
+    const footFrom = dayKeys[0] || firstKey;
+    const fromMs = Date.parse(footFrom + 'T00:00:00Z');
+    cardData.daySet = [];
+    for (let t = fromMs; t <= Date.parse(nowDay + 'T00:00:00Z'); t += 86400e3) {
+      cardData.daySet.push(activeSet.has(new Date(t).toISOString().slice(0, 10)));
+    }
+    cardData.dayCount2 = cardData.daySet.length;
+    cardData.footFrom = footFrom;
+  }
+  MINE_CARD = cardData;    // 切换鸡腿档位时要同步改这里的数字
+  const giftOpt = document.getElementById('mineGiftOpt');
+  if (giftOpt) giftOpt.addEventListener('change', () => giftOptSet(giftOpt.checked));
+  const dl = document.getElementById('mineDl');
+  if (dl) dl.addEventListener('click', () => {
+    const memoEl = document.querySelector('#mineMemo .mine-memo');
+    const txt = memoEl ? memoEl.innerText.replace(/\s*\n\s*/g, ' ').trim() : '';
+    cardData.memoText = /正在找/.test(txt) ? '' : txt.replace(/^「|」$/g, '');
+    // 勾选状态在导出这一刻才读，改了开关立刻生效
+    cardData.showGift = !!(giftOpt && giftOpt.checked) && Number(cardData.giftTotal) > 0;
+    saveShareCard(cardData);
+  });
+
+  // 共同记忆（异步补，失败就静默去掉这块）
+  try {
+    const memo = await buildMineMemo(u, firstKey, activeSet);
+    const el = document.getElementById('mineMemo');
+    if (el && memo) el.innerHTML = '<div class="mine-memo">' + memo + '</div>';
+    else if (el) el.remove();
+  } catch (e) {
+    const el = document.getElementById('mineMemo');
+    if (el) el.remove();
+  }
+}
+
+async function buildMineMemo(u, firstKey, activeSet) {
+  const month = firstKey.slice(0, 7);
+  let herCount = 0, herLast = '';
+  try {
+    const arr = await fetchApi('/api/month?m=' + encodeURIComponent(month));
+    const day = (Array.isArray(arr) ? arr : []).filter((m) => bjDayKey(m.msgTime) === firstKey);
+    herCount = day.length;
+    const last = day[day.length - 1];
+    if (last) herLast = String(last.text || '').replace(/\s+/g, ' ').trim();
+  } catch (e) { /* 拿不到就不提 */ }
+
+  const since = Number(u.f);
+  const perfs = (DATA.performances || []).filter((p) => Number(p.stime) >= since);
+  const lives = (DATA.live || []).filter((l) => Number(l.ctime) >= since);
+  const perfTogether = perfs.filter((p) => activeSet.has(bjDayKey(p.stime))).length;
+  const liveTogether = lives.filter((l) => activeSet.has(bjDayKey(l.ctime))).length;
+
+  let html = '<div class="mine-memo-t">' + escapeHtml(firstKey) + '，你第一次在这里说话</div>';
+  if (herCount) {
+    html += '<div class="mine-memo-b">那天她写了 ' + herCount + ' 条留言'
+      + (herLast ? '，最后一句是「' + escapeHtml(herLast.slice(0, 60)) + (herLast.length > 60 ? '…' : '') + '」' : '')
+      + '。</div>';
+  }
+  const allPerf = perfs.length > 0 && perfTogether === perfs.length;
+  const allLive = lives.length > 0 && liveTogether === lives.length;
+  html += '<div class="mine-memo-b">从那天起，她开了 ' + perfs.length + ' 场公演、' + lives.length + ' 场直播，'
+    + '其中你在房间的日子赶上了 ' + perfTogether + ' 场公演、' + liveTogether + ' 场直播'
+    + (allPerf && allLive ? ' —— 一场都没落下。' : (allPerf ? ' —— 公演一场没落下。' : (allLive ? ' —— 直播一场没落下。' : '。')))
+    + '</div>';
+  return html;
 }
 
 /* ---------------- 公演（含子标签：公演回放 / 公演cut） ---------------- */
@@ -1158,7 +2398,7 @@ function renderPerformances() {
 function renderPerfSub() {
   const box = $('#perfSub');
   if (!box) return;
-  if (state.perfSub === 'cuts') { box.innerHTML = renderPerfCuts(); return; }
+  if (state.perfSub === 'cuts') { box.innerHTML = renderPerfCuts(state.query); return; }
   // 公演回放（原 renderPerformances 内容）
   let list = DATA.performances;
   if (state.query) list = list.filter((m) => (m.title || '').toLowerCase().includes(state.query));
@@ -1170,7 +2410,11 @@ function renderPerfSub() {
   });
   list = list.map(p => {
     const c = cutByLive[p.liveId];
-    return c ? { ...p, _cutCount: c.n, _cutDate: c.date } : p;
+    const bc = biliCutFor(p);
+    const q = { ...p };
+    if (c) { q._cutCount = c.n; q._cutDate = c.date; }
+    if (bc) { q._biliCutDate = bc.date; q._biliCutTitle = bc.title; }
+    return q;
   });
   if (!list.length) {
     box.innerHTML = filterNote(0) +
@@ -1181,27 +2425,65 @@ function renderPerfSub() {
     `<div class="card-grid">${list.map((m) => renderCard(m, 'stime')).join('')}</div>`;
 }
 
-function renderPerfCuts() {
-  const data = DATA.perfCuts ? DATA.perfCuts.cuts : [];
-  if (!data.length) return '<div class="empty">暂无公演 cut。</div>';
+/* ---------------- 她的公演 cut（B 站合集 season 4752040，UP: Chzhnh） ----------------
+ * 数据来自 demo 专属静态文件 js/bili-cuts.js → window.__BILI_CUTS__ = [[日期, 标题, BV号], ...]
+ * 与微博「公演cut」的区别：那边是应援会的单曲片段（34 条，按曲分），这边是 UP 主整场个人 cut（154 条，按场分）。
+ */
+function biliCutsAll() {
+  return (typeof window !== 'undefined' && Array.isArray(window.__BILI_CUTS__)) ? window.__BILI_CUTS__ : [];
+}
+// 一场公演 → 对应的 B 站个人 cut（同日有多条时用剧目名二次匹配）
+function biliCutFor(p) {
+  const day = fmtDate(p.stime || p.ctime);
+  if (!day) return null;
+  const same = biliCutsAll().filter((c) => c[0] === day);
+  if (!same.length) return null;
+  if (same.length === 1) return { date: day, title: same[0][1], bvid: same[0][2] };
+  // 同日多场（如生日冷餐会 + NIII 常规公演）：拿公演名里的《剧目》去对
+  const m = String(p.subTitle || p.title || '').match(/《([^》]+)》/);
+  const key = m ? m[1] : '';
+  const hit = key && same.find((c) => c[1].includes(key));
+  return { date: day, title: (hit || same[0])[1], bvid: (hit || same[0])[2] };
+}
+/* 「公演cut」页：B 站合集（整场个人 cut）+ 微博应援会（按单曲切）**按日期混排**，
+ * 每张卡片右上角标来源（B站 / 微博），卡片样式统一用封面卡；同一天里 B 站排前面。 */
+function renderPerfCuts(query) {
+  const wb = (DATA.perfCuts ? DATA.perfCuts.cuts : []).map((c) => ({
+    date: c.date, src: 'wb', title: c.song || c.perf || '公演 cut',
+    url: c.url, cover: c.cover ? proxyImg(c.cover) : '', song: c.song || '',
+  }));
+  const bl = biliCutsAll().map((c) => ({
+    date: c[0], src: 'bl', title: c[1],
+    url: 'https://www.bilibili.com/video/' + c[2], cover: c[3] || '', song: '',
+  }));
+  const all = bl.concat(wb);
+  if (!all.length) return '<div class="empty">暂无公演 cut。</div>';
+  const q = (query || '').trim().toLowerCase();
+  const list = all.filter((c) => !q || c.title.toLowerCase().includes(q) || c.date.includes(q));
+  if (!list.length) return '<div class="empty">没有匹配的 cut。</div>';
   const groups = {}, order = [];
-  data.forEach(c => { if (!groups[c.date]) { groups[c.date] = []; order.push(c.date); } groups[c.date].push(c); });
+  list.forEach((c) => { if (!groups[c.date]) { groups[c.date] = []; order.push(c.date); } groups[c.date].push(c); });
   order.sort((a, b) => b.localeCompare(a));
-  let html = '';
-  order.forEach(date => {
+  const nBl = list.filter((c) => c.src === 'bl').length;
+  const nWb = list.length - nBl;
+  let html = `<div class="pc-note">B 站合集 ${nBl} 条（UP 主 Chzhnh，整场个人 cut）+ 微博 ${nWb} 条（应援会，按单曲切），按日期混排 · 角标区分来源</div>`;
+  order.forEach((date) => {
     const arr = groups[date];
-    const perf = arr[0].perf || '';
     html += `<section class="pc-group" id="pc-group-${escapeHtml(date)}">`
       + `<h2 class="pc-group-h"><span class="ym">${escapeHtml(date)}</span>`
-      + `<span class="perf">${escapeHtml(perf)}</span><span class="n">${arr.length} 条</span></h2>`
+      + `<span class="n">${arr.length} 条</span></h2>`
       + '<div class="pc-grid">';
-    arr.forEach(c => {
-      const cover = c.cover ? `<img src="${escapeHtml(proxyImg(c.cover))}" loading="lazy" alt="">` : '<div class="pc-void">▶</div>';
-      html += `<a class="pc-card" href="${escapeHtml(c.url)}" target="_blank" rel="noopener">${cover}`
+    arr.forEach((c) => {
+      const isBl = c.src === 'bl';
+      const cover = c.cover
+        ? `<img src="${escapeHtml(c.cover)}" loading="lazy" referrerpolicy="no-referrer" alt="" onerror="this.style.display='none'">`
+        : '<div class="pc-void">▶</div>';
+      html += `<a class="pc-card${isBl ? ' is-bl' : ' is-wb'}" href="${escapeHtml(c.url)}" target="_blank" rel="noopener">${cover}`
         + '<div class="pc-scrim"></div>'
+        + `<span class="pc-src ${isBl ? 'bl' : 'wb'}">${isBl ? 'B站' : '微博'}</span>`
         + (c.song ? `<span class="pc-ov song">${escapeHtml(c.song)}</span>` : '')
-        + `<span class="pc-ov date">${escapeHtml(c.date)}</span>`
-        + '<span class="pc-ov go">跳转原帖 ↗</span>'
+        + `<span class="pc-ov title">${escapeHtml(c.title)}</span>`
+        + `<span class="pc-ov go">${isBl ? 'B 站观看' : '微博观看'} ↗</span>`
         + '</a>';
     });
     html += '</div></section>';
@@ -1221,6 +2503,7 @@ function gotoPerfCuts(date) {
 /* ---------------- 新粉指南（含子标签：新粉指南 / 公式照 / 经历备注） ---------------- */
 const GUIDE_SUBS = [
   ['guide', '新粉指南'],
+  ['starter', '入坑必看'],
   ['social', '社媒美图'],
   ['gallery', '公式照'],
   ['exp', '经历备注']
@@ -1243,6 +2526,7 @@ function renderGuide() {
 function renderGuideSub() {
   const box = $('#guideSub');
   if (!box) return;
+  if (state.guideSub === 'starter') { box.innerHTML = (typeof renderStarter === 'function') ? renderStarter() : ''; return; }
   if (state.guideSub === 'social') { box.innerHTML = renderSocialGallery(); renderSocialWall(); }
   else if (state.guideSub === 'gallery') box.innerHTML = renderGallery();
   else if (state.guideSub === 'exp') box.innerHTML = renderExperience();
@@ -1462,7 +2746,7 @@ function renderMsgCard(card) {
   const pic = card.pic ? imgHtml(card.pic, 'msg-card-pic') : '';
   // 开播推送：跳站内「直播 / 录播」页（原始 shortPath 无跳转意义）
   const link = card.kind === 'live'
-    ? `<button class="msg-card-link as-btn" type="button" data-goto="live">前往直播 / 录播 ›</button>`
+    ? `<button class="msg-card-link as-btn" type="button" data-goto="live">前往直播 ›</button>`
     : (card.url
       ? (/^https?:/i.test(card.url)
         ? `<a class="msg-card-link" href="${escapeHtml(card.url)}" target="_blank" rel="noopener">查看详情 ›</a>`
@@ -1526,7 +2810,7 @@ function renderMsg(m) {
     </div>`;
   }
 
-  return `<div class="msg${isSelf ? '' : ' from-other'}">
+  return `<div class="msg${isSelf ? '' : ' from-other'}" data-mid="${escapeHtml(msgKey(m))}">
     <div class="msg-head">
       <span class="msg-time">${fmtTime(m.msgTime)}</span>
       <span class="msg-type">${typeLabel}</span>
@@ -1551,8 +2835,6 @@ function liveStatusBadge(status, kind) {
 //     · 现在 < 开始时间        → 0 未开始 / 预告（不看 status）
 //     · 开始后仍在合理时长内且 status=2 → 直播中
 //     · 开播已远超该时长仍挂在 status=2 → 状态没更新，按已结束呈现
-//   （直播结束后若官方未生成回放，条目会从「直播中」「录播」列表同时消失，
-//     抓取端拿不到更新，本地 status 会停在 2 —— 这一条就是为此兜底。）
 const LIVE_STALE_MS = 6 * 3600 * 1000;   // 单场口袋直播极少超过 6 小时
 const PERF_STALE_MS = 5 * 3600 * 1000;   // 公演一般 2.5~3.5 小时，留足富余
 function displayStatus(item, timeKey) {
@@ -1668,11 +2950,17 @@ function renderCard(item, timeKey) {
   const cutBtn = (item._cutCount)
     ? `<button class="cut-btn" type="button" onclick="gotoPerfCuts('${escapeHtml(item._cutDate)}')">🎬 ${item._cutCount} cut</button>`
     : '';
+  // 该场对应的她的个人 cut（B 站合集）：角标跳到「她的cut」栏的对应日期
+  const biliCutBtn = item._biliCutDate
+    ? `<button class="cut-btn bc-btn" type="button" title="${escapeHtml(item._biliCutTitle || '')}" onclick="gotoPerfCuts('${escapeHtml(item._biliCutDate)}')">✂️ B站cut</button>`
+    : '';
   // 该场直播对应的 B 站切片 / 回放：角标跳到「直播切片」栏的对应日期
   const liveCutBtn = (item._liveCutCount)
     ? `<button class="cut-btn" type="button" onclick="gotoLiveCuts('${escapeHtml(item._liveCutId)}')">🎬 ${item._liveCutCount} 切片</button>`
     : '';
-  return `<div class="card">
+  const demoT = timeKey === 'ctime' ? 'live' : 'perf';
+  const demoK = (item.liveId ? demoT + ':' + item.liveId : demoT + ':' + title + ':' + time);
+  return `<div class="card" data-k="${escapeHtml(String(demoK))}" data-t="${demoT}" data-title="${escapeHtml(title)}" data-time="${escapeHtml(time)}">
     ${cover ? `<img class="card-img" loading="lazy" referrerpolicy="no-referrer" src="${escapeHtml(cover)}" alt="" onclick="window.__lightboxShow(this.src)" onerror="this.classList.add('failed')" />` : ''}
     <div class="card-body">
       <p class="card-title">${escapeHtml(title)}</p>
@@ -1682,7 +2970,7 @@ function renderCard(item, timeKey) {
         <span>🕒 ${escapeHtml(time)}</span>
         ${playNum ? `<span>▶ ${escapeHtml(String(playNum))}</span>` : ''}
       </div>
-      <div class="card-actions">${playBtn}${biliBtn}${cutBtn}${liveCutBtn}</div>
+      <div class="card-actions">${playBtn}${biliBtn}${biliCutBtn}${cutBtn}${liveCutBtn}</div>
     </div>
   </div>`;
 }
@@ -1733,7 +3021,7 @@ function renderLiveSub() {
   if (dateFilterActive()) list = list.filter((m) => inDateRange(m.ctime));
   if (!list.length) {
     box.innerHTML = filterNote(0) +
-      `<div class="empty-state">${dateFilterActive() ? '该时间范围内没有直播 / 录播，点上方「清除筛选」看全部。' : '暂无直播 / 录播数据。'}</div>`;
+      `<div class="empty-state">${dateFilterActive() ? '该时间范围内没有直播，点上方「清除筛选」看全部。' : '暂无直播数据。'}</div>`;
     return;
   }
   // 按 liveId 统计该场直播有几个 B 站切片/回放 → 卡片上出现「🎬 N 切片」角标，点了跳到切片栏对应日期
@@ -1827,7 +3115,8 @@ init();
 let socialFilter = 'all';
 
 function proxyImg(url) {
-  try { return '/img?u=' + encodeURIComponent(url); } catch (e) { return url; }
+  // 正式站与 Worker 同域 → 相对路径即可；UAT 预览站在别的域名 → 必须带上 API_BASE，否则图全 404
+  try { return (typeof API_BASE === 'string' ? API_BASE : '') + '/img?u=' + encodeURIComponent(url); } catch (e) { return url; }
 }
 
 function ensureSocialModal() {

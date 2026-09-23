@@ -4,22 +4,24 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>王语晨 · 补档站</title>
-  <meta name="description" content="王语晨（GNZ48 TEAM NIII）口袋发言 / 直播录播 / 公演补档存档站。" />
-  <link rel="stylesheet" href="./css/style.css?v=1790093174100" />
-  <link rel="icon" type="image/png" href="./assets/avatar-round.png?v=1790093174100" />
-  <link rel="apple-touch-icon" href="./assets/avatar-round.png?v=1790093174100" />
+  <meta name="description" content="王语晨（GNZ48 TEAM NIII）口袋发言 / 直播 / 公演 / 行程补档存档站。" />
+  <!-- ?v= 每次改动都要 bump：否则浏览器/预览沙箱会继续用缓存的旧 js/css（曾导致"改了但看起来没变"） -->
+  <link rel="stylesheet" href="./css/style.css?v=20260923a20" />
+  <link rel="stylesheet" href="./css/demo.css?v=20260923a20" />
+  <link rel="icon" type="image/png" href="./assets/avatar-round.png" />
+  <link rel="apple-touch-icon" href="./assets/avatar-round.png" />
 </head>
 <body>
   <header class="site-header">
     <div class="header-inner">
-      <img class="avatar" id="memberAvatar" src="./assets/avatar.png?v=1790093174100" alt="王语晨" width="201" height="304" decoding="async" />
+      <img class="avatar" id="memberAvatar" src="./assets/avatar.png" alt="王语晨" width="201" height="304" decoding="async" />
       <div class="member-meta">
         <h1 id="memberName">王语晨</h1>
         <p id="memberSub">GNZ48 TEAM NIII · 十三期生</p>
       </div>
       <div class="stat" id="statBox">
         <div class="stat-item"><span class="num" id="statMsg">0</span><span class="lbl">口袋发言</span></div>
-        <div class="stat-item"><span class="num" id="statLive">0</span><span class="lbl">直播/录播</span></div>
+        <div class="stat-item"><span class="num" id="statLive">0</span><span class="lbl">直播</span></div>
         <div class="stat-item"><span class="num" id="statPerf">0</span><span class="lbl">公演</span></div>
       </div>
     </div>
@@ -27,9 +29,11 @@
 
   <nav class="tabs">
     <button class="tab active" data-tab="messages">口袋发言</button>
-    <button class="tab" data-tab="live">直播 / 录播</button>
+    <button class="tab" data-tab="live">直播</button>
     <button class="tab" data-tab="performances">公演</button>
+    <button class="tab" data-tab="schedule">行程</button>
     <button class="tab" data-tab="guide">新粉指南</button>
+    <button class="tab" data-tab="mine">我的</button>
   </nav>
 
   <div class="toolbar">
@@ -60,7 +64,9 @@
     <section id="panel-messages" class="panel active"></section>
     <section id="panel-live" class="panel"></section>
     <section id="panel-performances" class="panel"></section>
+    <section id="panel-schedule" class="panel"></section>
     <section id="panel-guide" class="panel"></section>
+    <section id="panel-mine" class="panel"></section>
   </main>
 
   <!-- 视频播放器（hls.js 支持 m3u8 直播/录播播放） -->
@@ -92,10 +98,11 @@
     </div>
   </div>
 
-  <script src="./vendor/hls.min.js?v=1790093174100"></script>
-  <script src="./data/social-media.js?v=1790093174100"></script>
-  <script src="./data/performance-cuts.js?v=1790093174100"></script>
-  <script src="./data/live-cuts.js?v=1790093174100"></script>
-  <script src="./js/app.js?v=1790093174100"></script>
+  <script src="./js/schedule.js?v=20260923a20"></script>
+  <script src="./js/theater-schedule.js?v=20260923a20"></script>
+  <script src="./js/bili-cuts.js?v=20260923a20"></script>
+  <script src="./vendor/hls.min.js?v=20260923a20"></script>
+  <script src="./js/app.js?v=20260923a20"></script>
+  <script src="./js/demo-features.js?v=20260923a20"></script>
 </body>
 </html>
