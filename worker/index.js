@@ -235,7 +235,15 @@ const EVENTS = [
   ['tab:messages', '口袋发言 tab'],
   ['tab:live', '直播·录播 tab'],
   ['tab:performances', '公演 tab'],
+  ['tab:schedule', '行程 tab'],
   ['tab:guide', '新粉指南 tab'],
+  ['tab:mine', '我的·档案卡 tab'],
+  // 档案卡漏斗：查 → 查没查到 → 有没有把卡片存下来。
+  // 只记动作，绝不带上 uid；「没查到」直接反映历史补档的覆盖缺口（越高说明越该补档）。
+  ['mine:query', '档案 查了一次'],
+  ['mine:hit', '档案 查到了'],
+  ['mine:miss', '档案 没查到'],
+  ['mine:save', '档案 保存/分享卡片'],
   ['sub:replay', '公演回放 子标签'],
   ['sub:cuts', '公演cut 子标签'],
   ['sub:social', '社媒美图 子标签'],
@@ -384,8 +392,10 @@ async function handleTrack(url, request, env, ctx) {
         // ── 每日写入总闸 ──
         // 统计是「锦上添花」，绝不能把 KV 每天 1000 次的写入额度抢光、连累数据同步
         // （2026-09-22 事故）。超过上限就不再记录，页面照常用。
+        // 2026-09-23 提到 600：补了档案卡 4 个埋点后事件变多，原 300 太容易在下午就打满、
+        // 导致后半天的动作一个都不记。Workers 已转 Paid（KV 写 100 万/月），600/天很安全。
         const gateKey = 'stat:gate:' + day;
-        const gateMax = 300;
+        const gateMax = 600;
         let used = 0;
         try { used = Number((await kv.get(gateKey)) || 0); } catch (_) { used = 0; }
         if (used >= gateMax) return;
@@ -436,6 +446,9 @@ async function handleStats(url, env) {
   }
   langRows.sort((a, b) => b[1] - a[1]);
 
+  // 「今日独立访客」原先取的是**翻译功能**的 UV，结果翻译没人用就显示 0，
+  // 全站到底来了多少人一直看不到。改成站点级 UV（stat:u:<day>:<hash>，
+  // 每个访客当天首次出现时写一条），7 天各算一次。
   const days = [];
   for (let i = 0; i < 7; i++) {
     const d = bjDay(Date.now() - i * 86400000);
@@ -445,13 +458,19 @@ async function handleStats(url, env) {
       const list = await kv.list({ prefix: `stat:tr:u:${d}:` });
       u = (list && list.keys ? list.keys.length : 0);
     } catch (_) { /* 忽略 */ }
-    days.push([d, n, u]);
+    let su = 0;   // 站点级独立访客
+    try {
+      const sl = await kv.list({ prefix: `stat:u:${d}:`, limit: 1000 });
+      su = (sl && sl.keys ? sl.keys.length : 0);
+    } catch (_) { /* 忽略 */ }
+    days.push([d, n, u, su]);
   }
+  const siteUvToday = days[0][3];
 
   const langHtml = langRows.length
     ? langRows.map(([l, n]) => `<tr><td>${LANG_NAME[l] || l}</td><td class="n">${n}</td></tr>`).join('')
     : '<tr><td colspan="2" class="dim">暂无记录</td></tr>';
-  const dayHtml = days.map(([d, n, u]) => `<tr><td>${d}</td><td class="n">${n}</td><td class="n">${u}</td></tr>`).join('');
+  const dayHtml = days.map(([d, n, u, su]) => `<tr><td>${d}</td><td class="n">${su}</td><td class="n">${n}</td><td class="n">${u}</td></tr>`).join('');
 
   // 站点动作（tab 切换 / 视频播放 / 刷新 / 搜索 …）
   // 除「次数」外还算「独立访客」：累计 = 该功能一共有多少人来用过，今日 = 今天有多少人用过。
@@ -476,9 +495,10 @@ async function handleStats(url, env) {
   if (wantJson) {
     return new Response(JSON.stringify({
       total,
-      today: { day: days[0][0], count: days[0][1], visitors: days[0][2] },
+      today: { day: days[0][0], count: days[0][1], visitors: siteUvToday },
+      siteUvToday,
       langs: langRows.map(([l, n]) => ({ lang: l, name: LANG_NAME[l] || l, count: n })),
-      days: days.map(([d, n, u]) => ({ day: d, count: n, visitors: u })),
+      days: days.map(([d, n, u, su]) => ({ day: d, count: n, visitors: u, siteUv: su })),
       events: evList
     }), {
       headers: {
@@ -506,10 +526,10 @@ async function handleStats(url, env) {
 <p class="dim">累计统计自启用之时；「独立访客」按 IP 短哈希去重估算（不保存明文 IP），同一 WiFi 下多人会算作 1 人，实际人数只会更多。KV 有约 1 分钟同步延迟。</p>
 <div class="cards"><div class="card"><div class="k">累计翻译次数</div><div class="v">${total}</div></div>
 <div class="card"><div class="k">今日次数</div><div class="v">${days[0][1]}</div></div>
-<div class="card"><div class="k">今日独立访客</div><div class="v">${days[0][2]}</div></div></div>
+<div class="card"><div class="k">今日独立访客</div><div class="v">${siteUvToday}</div></div></div>
 <h2>各语言使用次数</h2><table>${langHtml}</table>
 <h2>功能使用（次数 / 独立访客）</h2><table><tr><td>动作</td><td class="n">累计</td><td class="n">今日</td><td class="n">独立累计</td><td class="n">独立今日</td></tr>${evHtml}</table>
-<h2>最近 7 天（翻译）</h2><table><tr><td>日期</td><td class="n">次数</td><td class="n">独立访客</td></tr>${dayHtml}</table>`);
+<h2>最近 7 天（每天来了多少人 / 翻译次数）</h2><table><tr><td>日期</td><td class="n">到访人数</td><td class="n">翻译次数</td><td class="n">翻译访客</td></tr>${dayHtml}</table>`);
 }
 
 // 手动触发抓取：调用 GitHub REST API 触发 scrape.yml 的 workflow_dispatch。
