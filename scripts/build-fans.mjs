@@ -19,6 +19,7 @@
  *   node scripts/build-fans.mjs --back 30       # 只补最近 30 天（日常增量）
  *   node scripts/build-fans.mjs --no-live       # 跳过直播榜（只想刷房间时）
  *   node scripts/build-fans.mjs --push          # 构建完顺手灌进 D1（需 SYNC_TOKEN / SITE）
+ *   node scripts/build-fans.mjs --dry           # 只聚合、不抓取不灌库（改口径后本地校验用）
  *
  * 环境变量：
  *   POCKET48_TOKEN  抓取钥匙（CI 里由 secrets 注入）
@@ -28,6 +29,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+// 昵称 → uid 归户索引：与 build-live-gift-rank.mjs 共用同一实现，
+// 避免两处各写一套导致「同一昵称在档案库里算对、在导出表里为空」这类不一致。
+import { buildNickUidIndex, resolveNick } from './lib/nick-uid.mjs';
+// 榜单覆盖表的脱敏 key（"h:" + sha256(uid) 前 16 位）：CI 读不到明文表时靠它还原
+import { hashUid, isHashed } from './lib/uid-hash.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const A = await import(ROOT + '/scraper/lib/api.mjs');
@@ -51,6 +57,7 @@ const CHUNK_DAYS = Number(arg('chunk', 30));
 const LANES = Math.max(1, Number(arg('lanes', 4)));
 const PUSH = has('push');
 const PUSH_ONLY = has('push-only');   // 跳过抓取，只把现有缓存聚合并灌库（不打断后台扫描）
+const DRY = has('dry');               // 跳过抓取、只聚合、不灌库（本地校验口径用）
 const DO_LIVE = !has('no-live');
 const SITE = (process.env.SITE || 'https://idol.wyc0518.cc').replace(/\/$/, '');
 const TZ_OFFSET_MS = 8 * 3600 * 1000;
@@ -89,9 +96,11 @@ async function scanRoom() {
 
   async function chunk(id, [from, to]) {
     const key = String(from);
-    let cursor = prog.chunks[key] === undefined ? 0 : prog.chunks[key];
+    // ⚠️ 游标初值必须是本片上界 from：用 0 会「从最新一路翻到 to」，第 N 片要翻 N×30 天
+    // → 总工作量 O(n²)，48 片慢 24 倍（越老的片越慢）。实测接口 nextTime=<时刻> 即从该时刻往前翻。
+    let cursor = prog.chunks[key] === undefined ? from : prog.chunks[key];
     if (cursor === null) return;
-    if (prog.chunks[key] === undefined) prog.chunks[key] = 0;
+    if (prog.chunks[key] === undefined) prog.chunks[key] = from;
     for (;;) {
       let r;
       try {
@@ -99,9 +108,19 @@ async function scanRoom() {
           { channelId: MEMBER.channelId, serverId: MEMBER.serverId, nextTime: cursor, limit: 50 },
           { token: TOKEN, retries: 2 });
       } catch { stat.errors++; await sleep(2500); continue; }
-      const list = (r.content && r.content.message) || [];
+      let list = (r.content && r.content.message) || [];
       stat.pages++;
-      if (!list.length) break;
+      if (!list.length) {
+        // 接口偶发返回空（限流/抖动）：重试一次再判定，避免把整片误标完成、永久漏抓这 30 天
+        await sleep(1500);
+        try {
+          r = await A.postJson('/im/api/v1/team/message/list/all',
+            { channelId: MEMBER.channelId, serverId: MEMBER.serverId, nextTime: cursor, limit: 50 },
+            { token: TOKEN, retries: 2 });
+        } catch { stat.errors++; break; }
+        list = (r.content && r.content.message) || [];
+        if (!list.length) break;
+      }
       for (const m of list) {
         const t = Number(m.msgTime) || 0;
         if (!t || !m.msgIdClient || seen.has(m.msgIdClient)) continue;
@@ -224,19 +243,57 @@ async function priceMap() {
     } catch { /* 失败就退回缓存 */ }
   }
   if (!catalog) { try { catalog = JSON.parse(fs.readFileSync(CATALOG, 'utf8')); } catch { catalog = {}; } }
-  for (const g of (catalog && catalog.list) || []) if (g.giftName && !PRICE.has(g.giftName)) PRICE.set(g.giftName, Number(g.money) || 0);
+  // ⚠️ 形态坑（2026-09-23 修）：/gift/list 的 content 是「分类数组」
+  //   [{typeName, giftList:[{giftName, money}]}]，不是 {list:[...]}。
+  //   早期按 catalog.list 取 → 官方在售价目一个都没进表，只剩人工补价的 35 个礼物，
+  //   房间鸡腿被严重低估（2026 年只算出 12.5 万，实际 48.6 万）。
+  const flat = Array.isArray(catalog)
+    ? catalog.flatMap((t) => (t && t.giftList) || [])
+    : ((catalog && catalog.list) || []);
+  for (const g of flat) if (g.giftName && !PRICE.has(g.giftName)) PRICE.set(g.giftName, Number(g.money) || 0);
   try {
     const manual = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/gift-prices.json'), 'utf8'));
     for (const [nm, money] of Object.entries(manual.prices || {})) if (!PRICE.has(nm)) PRICE.set(nm, Number(money) || 0);
     for (const nm of manual._excludeNames || []) PRICE.set(nm, -1);       // -1 = 明确不是礼物
   } catch { /* 价目文件缺失也能跑，只是缺价更多 */ }
+  // 最后兜底：build-gift-dict.mjs 的产物（含「由官方 Top20 总额倒推」出来的限定礼物价）。
+  // 没有这层的话，遇到下架限定礼物会 p==null → 该条礼物被静默丢弃，人就被算小了。
+  try {
+    const dict = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/gift-dict.json'), 'utf8'));
+    for (const [nm, e] of Object.entries(dict.resolved || {})) {
+      if (!PRICE.has(nm) && e && Number(e.price) >= 0) PRICE.set(nm, Number(e.price) || 0);
+    }
+  } catch { /* 字典产物还没生成过也能跑 */ }
   return PRICE;
 }
 
 /* ============================ 4. 聚合 ============================ */
+// 2026 年度第三方礼物榜（前 201 名，含直播间 + 口袋房间）。
+// 明文版 data/fans-2026-gift.json（key = uid，已 gitignore，本机专用）优先；
+// CI 读不到明文版，用脱敏版 data/fans-2026-gift-hashed.json（key = sha256 前缀）。
+// 若两张都缺，191 人的 total2026 会退回自算值——所以这里必须吵一声。
+const OVR_RAW = (() => {
+  for (const f of ['data/fans-2026-gift.json', 'data/fans-2026-gift-hashed.json']) {
+    try { return JSON.parse(fs.readFileSync(path.join(ROOT, f), 'utf8')).map || {}; }
+    catch { /* 试下一张 */ }
+  }
+  return {};
+})();
+const OVR_UID = {};    // 明文 uid -> 覆盖项（只有明文版能建「list 里还没有的人」）
+const OVR_HASH = {};   // sha256 前缀 -> 覆盖项（明文/脱敏两种 key 都能查）
+for (const [k, v] of Object.entries(OVR_RAW)) {
+  if (isHashed(k)) OVR_HASH[k.slice(2)] = v;
+  else { OVR_UID[k] = v; OVR_HASH[hashUid(k).slice(2)] = v; }
+}
+if (!Object.keys(OVR_RAW).length) {
+  console.warn('⚠️ 未找到 2026 榜单覆盖表（data/fans-2026-gift.json 或脱敏版）→ 191 人将退回自算值，数值会变小');
+}
+
 function build(PRICE) {
   const isScoring = (g) => /^888\d{0,3}$/.test(String(g.id || '')) || Number(g.s) === 1 || PRICE.get(g.nm) === -1;
   const fans = new Map();      // uid -> row
+  // 昵称 → uid 归户索引（scripts/lib/nick-uid.mjs：房间发言+礼物 / 官方直播榜 / 口袋动态 @提及 三源合并）
+  const nickUid = buildNickUidIndex(CACHE);
   const touch = (uid, nick) => {
     uid = String(uid);
     if (!uid || uid === '0') return null;
@@ -293,22 +350,98 @@ function build(PRICE) {
     return best;
   };
 
+  /* ---- 直播礼物第二个数据源：弹幕 LRC 里的系统送礼播报 ----
+   * 官方自 2026-04 末起，把「昵称\t送给GNZ48-王语晨 N个礼物」写进每场直播的弹幕文件
+   * （getLiveOne → msgFilePath → source.48.cn 的 .lrc，免签名直取）。
+   * 相比 getLiveRank 的 Top20 榜，它**不受每场前 20 名限制**，能捞到 21 名以后的送礼人。
+   * 交叉验证见 scripts/cmp-live-gift-sources.mjs：同场同人金额对得上 ~88%，
+   * 因此这里按「同一人取两个来源的较大值」合并，不会把谁算小。
+   * 数据由 scripts/diag-live-gifts.mjs 按月分批扫出。
+   */
+  const DM_FILE = path.join(ROOT, '.cache/live-gifts.jsonl');
+  const dmByName = new Map();        // 昵称 -> 2026 鸡腿
+  let dmRows = 0, dmUsed = 0, dmPriceMiss = 0, dmWrongTarget = 0;
+  if (fs.existsSync(DM_FILE)) {
+    for (const line of fs.readFileSync(DM_FILE, 'utf8').trim().split('\n')) {
+      if (!line) continue;
+      let g; try { g = JSON.parse(line); } catch { continue; }
+      dmRows++;
+      if (!/王语晨/.test(g.target || '')) { dmWrongTarget++; continue; }   // 别的成员那场不算
+      const p = PRICE.get(g.gift);
+      if (p == null || p < 0) { dmPriceMiss++; continue; }                 // 打分道具 / 无价目
+      dmByName.set(g.nick, (dmByName.get(g.nick) || 0) + p * (Number(g.num) || 1));
+      dmUsed++;
+    }
+  }
+  const dmByUid = new Map();         // uid -> 2026 鸡腿（只收能归户的）
+  let dmNoUid = 0, dmNoUidLegs = 0, dmAmbiguous = 0;
+  for (const [nick, v] of dmByName) {
+    const res = resolveNick(nickUid, nick);
+    if (!res.uid) { dmNoUid++; dmNoUidLegs += v; continue; }
+    if (res.how !== '唯一') dmAmbiguous++;                  // 昵称被多个 uid 用过，取出现最多的
+    dmByUid.set(res.uid, (dmByUid.get(res.uid) || 0) + v);
+  }
+  if (dmRows) {
+    console.log(`[弹幕礼物] ${dmRows} 条播报 → 采用 ${dmUsed} 条（剔除 ${dmPriceMiss} 打分道具/无价目、${dmWrongTarget} 非本人场次）`);
+    console.log(`[弹幕礼物] 归户 ${dmByUid.size} 人；无法归户 ${dmNoUid} 人（${dmNoUidLegs.toLocaleString()} 鸡腿，未并入）${dmAmbiguous ? `，其中 ${dmAmbiguous} 人昵称重名已按最常出现取` : ''}`);
+  }
+
+  // ---- 2026 年第三方礼物榜（站长提供，前 201 名，含直播间 + 口袋房间）----
+  // 这部分人 2026 年以榜单为准：官方榜接口的鸡腿会混进「神秘守护者」匿名池，
+  // 自算值经常显著偏低。其余所有人仍用自算的 直播+房间。
+  // 两边取较大值，避免把谁的 2026 反而算小。
   const list = [...fans.values()]
-    .map((f) => ({
+    .map((f) => {
+      const dm = dmByUid.get(f.uid) || 0;                 // 弹幕播报出来的直播鸡腿
+      const live = Math.max(f.live, dm);                  // 与 Top20 榜取较大值
+      const live26 = Math.max(f.live26, dm);              // 弹幕数据目前只落在 2026 年
+      if (dm > f.live26) f._dmLifted = true;
+      return ({
       uid: f.uid,
       nick: f.nick,
-      live: f.live, live2026: f.live26, lives: f.lives, lives2026: f.lives26,
+      live, live2026: live26, lives: f.lives, lives2026: f.lives26,
       room: f.room, room2026: f.room26, gifts: f.gifts, gifts2026: f.gifts26,
-      total: f.live + f.room, total2026: f.live26 + f.room26,
+      total: live + f.room, total2026: live26 + f.room26,
       // 以下字段名沿用旧 room-stats 口径（n/f/l/d/b/h/m），前端渲染逻辑不用改
       n: f.msgs, f: f.first, l: f.last, d: Object.keys(f.days).length,
       b: bestStreak(f.days), h: f.hs.join(','), m: encodeBitmap(Object.keys(f.days).map(dayIdxOf)),
       start: '2022-11-01',
-    }))
-    .filter((x) => x.total > 0 || x.n > 0)
-    .sort((a, b) => b.total - a.total);
-  list.forEach((x, i) => { x.rank = i + 1; });
-  return list;
+      });
+    })
+    .filter((x) => x.total > 0 || x.n > 0);
+
+  let ovrApplied = 0, ovrLifted = 0;
+  if (Object.keys(OVR_UID).length) {
+    // 本机：明文表，能找到 uid，连「榜单上有但 list 里还没有的人」也能建出来
+    for (const [uid, o] of Object.entries(OVR_UID)) {
+      let x = list.find((y) => y.uid === uid);
+      if (!x) {
+        x = { uid, nick: o.nick, live: 0, live2026: 0, lives: 0, lives2026: 0, room: 0, room2026: 0,
+              gifts: 0, gifts2026: 0, total: 0, total2026: 0, n: 0, f: 0, l: 0, d: 0, b: 0, h: '', m: '', start: '2022-11-01' };
+        list.push(x);
+      }
+      if (!x.nick) x.nick = o.nick;
+      if (o.v > x.total2026) { ovrLifted++; x.total2026 = o.v; }
+      x.src26 = 'list';            // 前端据此显示「含直播间 · 榜单口径」而不是拆分直播/房间
+      x.rank26 = o.rank;
+      ovrApplied++;
+    }
+  } else {
+    // CI：脱敏表（只有 sha256 前缀），对每个已有粉丝算 hash 查表
+    for (const x of list) {
+      const o = OVR_HASH[hashUid(x.uid).slice(2)];
+      if (!o) continue;
+      if (o.v > x.total2026) { ovrLifted++; x.total2026 = o.v; }
+      x.src26 = 'list';
+      x.rank26 = o.rank;
+      ovrApplied++;
+    }
+  }
+  if (ovrApplied) console.log(`[2026 榜单口径] 采用 ${ovrApplied} 人，其中 ${ovrLifted} 人以榜单为准上调`);
+
+  const ranked = list.sort((a, b) => b.total - a.total);
+  ranked.forEach((x, i) => { x.rank = i + 1; });
+  return ranked;
 }
 
 /* ============================ 5. 灌库 ============================ */
@@ -317,15 +450,27 @@ async function push(list, coverage) {
   const gh = process.env.GH_TOKEN || '';
   if (!tok && !gh) { console.log('未设置 SYNC_TOKEN（或 GH_TOKEN），跳过灌库（产物在 ' + OUT + '）'); return; }
   const authHeader = tok ? { 'x-sync-token': tok } : { 'x-gh-token': gh };
-  const post = async (p, body) => {
-    const res = await fetch(SITE + p, {
-      method: 'POST',
-      headers: Object.assign({ 'content-type': 'application/json' }, authHeader),
-      body: JSON.stringify(body || {}),
-    });
-    const t = await res.text();
-    let j = {}; try { j = JSON.parse(t); } catch { j = { raw: t.slice(0, 120) }; }
-    return { status: res.status, j };
+  // 网络不稳（尤其走代理出口时 ECONNRESET 常见）：单次 20s 超时 + 最多 4 次重试。
+  // 2026-09-23 加：之前推送常在 30 桶前后崩掉，全靠 .cache/fans/kv 断点续传才收得完。
+  const post = async (p, body, tries = 4) => {
+    let last;
+    for (let i = 1; i <= tries; i++) {
+      try {
+        const res = await fetch(SITE + p, {
+          method: 'POST',
+          headers: Object.assign({ 'content-type': 'application/json' }, authHeader),
+          body: JSON.stringify(body || {}),
+          signal: AbortSignal.timeout(20000),
+        });
+        const t = await res.text();
+        let j = {}; try { j = JSON.parse(t); } catch { j = { raw: t.slice(0, 120) }; }
+        return { status: res.status, j };
+      } catch (e) {
+        last = e;
+        if (i < tries) { process.stdout.write(`  [重试 ${i}/${tries}] ${String(e.code || e.message).slice(0, 30)}…\r`); await sleep(1500); }
+      }
+    }
+    return { status: 0, j: { error: String(last && (last.code || last.message)) } };
   };
   // D1 只是尽力同步（免费版读配额常打满）；查询主路径是 KV，失败就当没这层。
   const init = await post('/api/_fans_init');
@@ -363,7 +508,7 @@ async function push(list, coverage) {
 const t0 = Date.now();
 // --push-only：跳过抓取，直接用现有 .cache/fans 聚合并灌库。
 // 用于「后台还在补历史，但想先拿已有的那部分开放测试」——不打断正在跑的扫描进程。
-if (!PUSH_ONLY) {
+if (!PUSH_ONLY && !DRY) {
   await scanRoom();
   if (DO_LIVE) await scanLive();
 }
@@ -379,5 +524,5 @@ console.log(`\n===== 粉丝档案：${list.length} 人 =====（本地产物 ${OU
 console.log(`直播 ${sum('live').toLocaleString()} / 房间 ${sum('room').toLocaleString()} / 合计 ${sum('total').toLocaleString()} 鸡腿`);
 console.log(`发言 ${sum('n').toLocaleString()} 条，2026 年合计 ${sum('total2026').toLocaleString()} 鸡腿`);
 if (since) console.log(`覆盖区间：${new Date(since + TZ_OFFSET_MS).toISOString().slice(0, 10)} 起${coverage.liveDone ? '（含直播榜）' : '（直播榜尚未开跑）'}`);
-if (PUSH || PUSH_ONLY) await push(list, coverage);
+if ((PUSH || PUSH_ONLY) && !DRY) await push(list, coverage);
 console.log(`耗时 ${((Date.now() - t0) / 60000).toFixed(1)} 分钟`);

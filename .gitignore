@@ -19,3 +19,9 @@ scraper/data/
 
 # 粉丝档案原始抓取缓存（含 uid 名单，绝不提交）
 .cache/
+
+# 私有导出与工具（含 uid 明细的榜单 / 匹配表，绝不提交）
+private-data/
+
+# 2026 榜单覆盖表（站长提供的第三方榜单，map 的 key 就是 uid）
+data/fans-2026-gift.json
