@@ -100,7 +100,8 @@ export default {
         headers: {
           'access-control-allow-origin': '*',
           'access-control-allow-methods': 'GET, POST, OPTIONS',
-          'access-control-allow-headers': 'content-type',
+          // 后台接口带 x-admin-token 头：同源 fetch 也会先发 OPTIONS 预检，不放行就一律登录失败
+          'access-control-allow-headers': 'content-type, x-admin-token',
           'access-control-max-age': '86400',
         }
       });
@@ -822,6 +823,28 @@ async function handleApi(url, request, env, ctx) {
     return handleD1Refill(request, env);
   }
 
+  /* ---- 行程存档 / 手机后台（站长专用）----
+   * GET  /api/schedule        公开读，边缘缓存 60s（行程页读它，读不到就回退本地 js 文件）
+   * POST /api/admin/login     密码换 token
+   * GET  /api/admin/schedule  取当前行程 + 最近提交日志（需 token）
+   * POST /api/admin/schedule  发布行程：默认**去重合并（只增不删）**，可传 replace/remove 纠错（需 token）
+   * POST /api/admin/parse     把粘贴的微博正文解析成条目（需 token）
+   * POST /api/admin/pass      改后台密码（需 token）
+   */
+  if (p === '/api/schedule') return withEdgeCache('/api/schedule', 60, () => handleScheduleGet(env));
+  if (p === '/api/admin/login' && request.method === 'POST') return handleAdminLogin(request, env);
+  if (p === '/api/admin/schedule') {
+    if (!(await adminOk(request, env))) return json({ error: 'forbidden: admin token required' }, 403);
+    return (request.method === 'POST') ? handleAdminSchedulePost(request, env) : handleAdminScheduleGet(env);
+  }
+  if (p === '/api/admin/parse' && request.method === 'POST') {
+    if (!(await adminOk(request, env))) return json({ error: 'forbidden: admin token required' }, 403);
+    return handleAdminParse(request, env);
+  }
+  if (p === '/api/admin/pass' && request.method === 'POST') {
+    if (!(await adminOk(request, env))) return json({ error: 'forbidden: admin token required' }, 403);
+    return handleAdminPass(request, env);
+  }
   if (p === '/api/sync' && request.method === 'POST') {
     if (!(await isSyncAuthorized(request, env))) return json({ error: 'forbidden: sync token required' }, 403);
     return handleApiSync(request, env, ctx);
@@ -1586,4 +1609,302 @@ async function handleApiSync(request, env, ctx) {
     },
     wrote: result
   });
+}
+
+/* ===================== 行程存档 + 手机后台（2026-09-23 新增） =====================
+ * 站长诉求：① 行程要存档、以后能回顾 ② 过期的自动归到「已结束」 ③ 手机上就能更新，不用开电脑。
+ * 存储（数据 KV env.KV）：
+ *   schedule      = 当前全量行程（含已过期条目，按日期排序）——「存档」就是它，绝不整份覆盖
+ *   schedule:log  = 每次提交的记录（最近 60 条：新增/更新/删除了什么、来源链接），误操作可回溯
+ * 密码（密钥 KV env.SECRETS）：admin:pass = sha256(盐+密码)；没有就用内置初始口令的哈希。
+ * token：HMAC(sha256(密码哈希), 'sch'+过期时间) —— 密码哈希不上公网，外部伪造不了；改密码后旧 token 自动失效。
+ * 🔴 为什么不用「给微博链接自动抓」：实测 m.weibo.cn 的 statuses/show 与 detail 接口在未登录时
+ *    一律 302 跳登录页，服务端没有 cookie 抓不到正文。所以改成「粘贴正文 → 解析 → 可编辑 → 发布」，
+ *    链接只存在 source.url 里当出处，点得回原文。
+ */
+const SCHED_KEY = 'schedule';
+const SCHED_LOG = 'schedule:log';
+const ADMIN_SALT = 'wyc-sch-2026';
+// 初始口令 Wyc0518@Sch 的 sha256(盐+口令)（后台里可改，改完存 KV 优先）
+const ADMIN_PASS_SHA_DEFAULT = 'b7af23bbdef0bf10fff6fa375cbe2a43c6ae97a4c29aad9acead137115b6db81';
+
+function normTitle(s) {
+  return String(s || '')
+    .replace(/[\s\u3000]/g, '')
+    .replace(/[《》〈〉()（）\[\]【】""''「」『』,，。.、:：;；!！?？~—\-_/|｜]/g, '')
+    .toLowerCase();
+}
+function schedKey(it) { return String(it && it.date || '') + '|' + normTitle(it && it.title); }
+function pad2(n) { return String(n).padStart(2, '0'); }
+function weekdayOf(dateStr) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dateStr || ''));
+  if (!m) return '';
+  const dt = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12));
+  return '周' + '日一二三四五六'[dt.getUTCDay()];
+}
+async function sha256hex(s) {
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+  return Array.prototype.slice.call(new Uint8Array(d)).map((x) => x.toString(16).padStart(2, '0')).join('');
+}
+async function hmacHex(keyStr, msg) {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(keyStr),
+    { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(msg));
+  return Array.prototype.slice.call(new Uint8Array(sig)).map((x) => x.toString(16).padStart(2, '0')).join('');
+}
+async function adminPassHash(env) {
+  try {
+    const v = (env && env.SECRETS) ? await env.SECRETS.get('admin:pass') : null;
+    if (v && /^[0-9a-f]{64}$/.test(v)) return v;
+  } catch (_) { /* 读不到就用内置初始口令 */ }
+  return ADMIN_PASS_SHA_DEFAULT;
+}
+async function makeToken(env, days) {
+  const exp = Date.now() + (days || 7) * 86400000;
+  const sig = await hmacHex(await sha256hex(await adminPassHash(env)), 'sch' + exp);
+  return exp + '.' + sig;
+}
+async function verifyToken(env, token) {
+  const m = /^(\d{10,14})\.([0-9a-f]{64})$/.exec(String(token || ''));
+  if (!m) return false;
+  const exp = Number(m[1]);
+  if (!exp || Date.now() > exp) return false;
+  const want = await hmacHex(await sha256hex(await adminPassHash(env)), 'sch' + exp);
+  return want === m[2];
+}
+async function adminOk(request, env) {
+  const h = request.headers.get('x-admin-token')
+    || String(request.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
+  return await verifyToken(env, h);
+}
+// 口令暴力破解防护：同一 IP 10 分钟内最多 8 次登录尝试
+const ADMIN_RATE = new Map();
+function adminRateOk(ip) {
+  const now = Date.now();
+  const r = ADMIN_RATE.get(ip);
+  if (!r || now > r.reset) { ADMIN_RATE.set(ip, { n: 1, reset: now + 10 * 60 * 1000 }); return true; }
+  if (r.n >= 8) return false;
+  r.n += 1;
+  return true;
+}
+
+async function handleScheduleGet(env) {
+  const kv = env && env.KV;
+  let cur = null;
+  if (kv) { try { cur = await kv.get(SCHED_KEY, { type: 'json' }); } catch (_) { cur = null; } }
+  if (!cur || !Array.isArray(cur.items)) return json({ ok: true, empty: true, items: [] });
+  return json(Object.assign({ ok: true }, cur));
+}
+
+async function handleAdminLogin(request, env) {
+  const ip = String(request.headers.get('cf-connecting-ip') || 'unknown');
+  if (!adminRateOk(ip)) return json({ error: '试太多次了，10 分钟后再来' }, 429);
+  let body = {};
+  try { body = await request.json(); } catch (_) { return json({ error: 'bad json' }, 400); }
+  const pass = String(body.pass || '');
+  if (!pass) return json({ error: '请输入密码' }, 400);
+  const h = await sha256hex(ADMIN_SALT + pass);
+  if (h !== (await adminPassHash(env))) return json({ error: '密码不对' }, 401);
+  const exp = Date.now() + 7 * 86400000;
+  return json({ ok: true, token: await makeToken(env, 7), exp: exp });
+}
+
+async function handleAdminPass(request, env) {
+  let body = {};
+  try { body = await request.json(); } catch (_) { return json({ error: 'bad json' }, 400); }
+  const np = String(body.next || '');
+  if (np.length < 8) return json({ error: '新密码至少 8 位' }, 400);
+  if ((await sha256hex(ADMIN_SALT + String(body.old || ''))) !== (await adminPassHash(env))) {
+    return json({ error: '原密码不对' }, 401);
+  }
+  await env.SECRETS.put('admin:pass', await sha256hex(ADMIN_SALT + np));
+  return json({ ok: true, token: await makeToken(env, 7) });   // 换密码后旧 token 失效，发新的
+}
+
+async function handleAdminScheduleGet(env) {
+  const kv = env && env.KV;
+  let cur = null, log = [];
+  if (kv) {
+    try { cur = await kv.get(SCHED_KEY, { type: 'json' }); } catch (_) { cur = null; }
+    try { log = (await kv.get(SCHED_LOG, { type: 'json' })) || []; } catch (_) { log = []; }
+  }
+  return json({ ok: true, schedule: cur || { items: [] }, log: log });
+}
+
+async function handleAdminSchedulePost(request, env) {
+  let body = {};
+  try { body = await request.json(); } catch (_) { return json({ error: 'bad json' }, 400); }
+  const kv = env && env.KV;
+  if (!kv) return json({ error: 'kv-not-bound' }, 500);
+  let cur = null;
+  try { cur = await kv.get(SCHED_KEY, { type: 'json' }); } catch (_) { cur = null; }
+  const base = (cur && Array.isArray(cur.items)) ? cur : { items: [] };
+
+  const map = new Map();
+  base.items.forEach((it) => map.set(schedKey(it), Object.assign({}, it)));
+  const added = [], updated = [], removed = [];
+
+  // 删除（后台手工纠错用，走 log，可追溯）
+  if (Array.isArray(body.remove)) {
+    body.remove.forEach((r) => {
+      const k = String(r.date || '') + '|' + normTitle(r.title);
+      if (map.has(k)) { removed.push(map.get(k).title); map.delete(k); }
+    });
+  }
+  const incoming = Array.isArray(body.items) ? body.items : [];
+  incoming.forEach((it) => {
+    const date = String((it && it.date) || '').slice(0, 10);
+    const title = String((it && it.title) || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !title) return;
+    const row = {
+      date: date,
+      weekday: it.weekday || weekdayOf(date),
+      time: String(it.time || '').trim(),
+      title: title,
+      kind: (it.kind === '见面会') ? '见面会' : '公演',
+    };
+    const k = schedKey(row);
+    const old = map.get(k);
+    if (Array.isArray(it.flags) && it.flags.length) row.flags = it.flags;
+    else if (old && old.flags) row.flags = old.flags;
+    if (old) { updated.push(title); map.set(k, Object.assign({}, old, row)); }
+    else { added.push(title); map.set(k, row); }
+  });
+
+  let items = Array.from(map.values()).sort((a, b) => String(a.date).localeCompare(String(b.date))
+    || String(a.time || '').localeCompare(String(b.time || '')));
+  if (body.replace === true) {
+    // 整份替换（仅在后台明确点「覆盖」时用）：仍然保留一份进 log，方便回看
+    items = incoming.filter((it) => /^\d{4}-\d{2}-\d{2}$/.test(String(it.date || '')) && it.title)
+      .map((it) => ({
+        date: String(it.date).slice(0, 10),
+        weekday: it.weekday || weekdayOf(it.date),
+        time: String(it.time || '').trim(),
+        title: String(it.title).trim(),
+        kind: (it.kind === '见面会') ? '见面会' : '公演',
+      })).sort((a, b) => String(a.date).localeCompare(String(b.date)));
+    removed.length = 0;
+    removed.push('（整份替换，原 ' + base.items.length + ' 条被覆盖）');
+  }
+
+  const keep = (v, d) => (v === undefined ? d : v);
+  const next = {
+    updatedAt: Date.now(),
+    source: keep(body.source, base.source || null),
+    ticket: keep(body.ticket, base.ticket || ''),
+    callUrl: keep(body.callUrl, base.callUrl || ''),
+    note: keep(body.note, base.note || ''),
+    score: keep(body.score, base.score || null),
+    items: items,
+  };
+  await kv.put(SCHED_KEY, JSON.stringify(next));
+  let log = [];
+  try { log = (await kv.get(SCHED_LOG, { type: 'json' })) || []; } catch (_) { log = []; }
+  log.unshift({
+    at: next.updatedAt,
+    added: added, updated: updated, removed: removed,
+    n: items.length,
+    src: (body.source && body.source.url) || body.srcNote || '',
+  });
+  await kv.put(SCHED_LOG, JSON.stringify(log.slice(0, 60)));
+  return json({ ok: true, added: added, updated: updated, removed: removed, total: items.length });
+}
+
+/* ---------------- 微博正文 → 行程条目 ----------------
+ * 规则解析为主（毫秒级、稳）；规则一条都没解析出来、或后台点了「用 AI 再试」→ 调 Workers AI 兜底。
+ * 识别：日期（9月26日 / 2026-10-03 / 10/3）、时间（14:00、17:30-19:30）、星期、
+ *       类型（含「见面会/握手/签名/合影/答谢」= 见面会，其余 = 公演）、其余文字作标题。
+ */
+function ruleParseSchedule(text, yearHint) {
+  const now = new Date(Date.now() + 8 * 3600 * 1000);
+  const curYear = now.getUTCFullYear(), curMon = now.getUTCMonth() + 1;
+  const lines = String(text || '').replace(/\r/g, '').split('\n');
+  const out = [];
+  let curDate = '';
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    let y = '', mo = '', dd = '';
+    let m = /(\d{4})\s*[-年/.]\s*(\d{1,2})\s*[-月/.]\s*(\d{1,2})/.exec(line);
+    if (m) { y = m[1]; mo = m[2]; dd = m[3]; }
+    else {
+      m = /(\d{1,2})\s*月\s*(\d{1,2})\s*日?/.exec(line);
+      if (m) { mo = m[1]; dd = m[2]; }
+    }
+    if (mo && dd) {
+      let yy = y ? Number(y) : (yearHint ? Number(yearHint) : curYear);
+      if (!y && Number(mo) < curMon - 6) yy = curYear + 1;   // 「1月」出现在 9 月 → 指明年
+      curDate = yy + '-' + pad2(Number(mo)) + '-' + pad2(Number(dd));
+    }
+    const tm = /(\d{1,2}:\d{2})\s*(?:[-–—~至到]\s*(\d{1,2}:\d{2}))?/.exec(line);
+    const time = tm ? (tm[1] + (tm[2] ? '-' + tm[2] : '')) : '';
+    let title = line
+      .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\uFE0F]/gu, ' ')
+      .replace(/(\d{4})\s*[-年/.]\s*(\d{1,2})\s*[-月/.]\s*(\d{1,2})\s*日?/g, ' ')
+      .replace(/(\d{1,2})\s*月\s*(\d{1,2})\s*日?/g, ' ')
+      .replace(/(星期|周)\s*[一二三四五六日天]/g, ' ')
+      .replace(/\d{1,2}:\d{2}\s*(?:[-–—~至到]\s*\d{1,2}:\d{2})?/g, ' ')
+      .replace(/[（(]\s*[)）]/g, ' ')               // 星期被吃掉后剩下的空括号
+      .replace(/\s{2,}/g, ' ')
+      .replace(/^[\s\-—·•|｜、,，:：]+/, '')
+      .replace(/[\s]+$/, '')
+      .trim();
+    if (!curDate || title.length < 2) continue;    // 纯日期行（「10月3日（周六）」）不算条目
+    // 「备注：…」「购票方式」这类说明行不是行程
+    if (/^(?:备注|说明|注意|购票|票价|地点|地址|时间|须知|温馨|提示|ps)\s*[:：]?/i.test(title)) continue;
+    out.push({
+      date: curDate,
+      weekday: weekdayOf(curDate),
+      time: time,
+      title: title,
+      kind: /见面会|握手|签名|合影|答谢|生日会|茶话会|见面/.test(line) ? '见面会' : '公演',
+    });
+  }
+  return out;
+}
+
+async function aiParseSchedule(env, text, yearHint) {
+  if (!env || !env.AI) return null;
+  const sys = '你是行程整理助手。把用户给的中文行程文本解析成 JSON 数组，每项含：'
+    + 'date(YYYY-MM-DD)、weekday(如 周六)、time(如 14:00 或 17:30-19:30，没有就空字符串)、'
+    + 'title(活动名称)、kind(只能是 公演 或 见面会)。只输出 JSON 数组，不要任何解释文字。'
+    + '年份缺失时按 ' + (yearHint || '当前年份') + ' 推断。';
+  const models = ['@cf/meta/llama-3.1-8b-instruct', '@cf/qwen/qwen2.5-7b-instruct'];
+  for (let i = 0; i < models.length; i++) {
+    try {
+      const out = await env.AI.run(models[i], {
+        messages: [{ role: 'system', content: sys }, { role: 'user', content: String(text).slice(0, 4000) }],
+        max_tokens: 1200,
+      });
+      const s = String((out && (out.response || out.text)) || '');
+      const m = /\[[\s\S]*\]/.exec(s);
+      if (!m) continue;
+      const arr = JSON.parse(m[0]);
+      if (!Array.isArray(arr)) continue;
+      const items = arr.filter((x) => x && /\d{4}-\d{2}-\d{2}/.test(String(x.date || '')) && x.title)
+        .map((x) => ({
+          date: String(x.date).slice(0, 10),
+          weekday: x.weekday || weekdayOf(String(x.date).slice(0, 10)),
+          time: String(x.time || '').trim(),
+          title: String(x.title).trim(),
+          kind: (x.kind === '见面会') ? '见面会' : '公演',
+        }));
+      if (items.length) return items;
+    } catch (_) { /* 换下一个模型 */ }
+  }
+  return null;
+}
+
+async function handleAdminParse(request, env) {
+  let body = {};
+  try { body = await request.json(); } catch (_) { return json({ error: 'bad json' }, 400); }
+  const text = String(body.text || '').slice(0, 8000);
+  if (!text.trim()) return json({ error: '没有内容' }, 400);
+  let items = ruleParseSchedule(text, body.year);
+  let via = 'rule';
+  if ((!items.length || body.ai) && env && env.AI) {
+    const ai = await aiParseSchedule(env, text, body.year);
+    if (ai && ai.length) { items = ai; via = 'ai'; }
+  }
+  return json({ ok: true, via: via, items: items });
 }
