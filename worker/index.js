@@ -265,6 +265,23 @@ const LANGS = ['en', 'es', 'fr', 'nl', 'pt', 'ro', 'ja', 'vi', 'ko', 'th'];
 // 可用 KV 里的 STATS_KEY 覆盖（无需改代码）。
 const STATS_KEY = 'wyc-stats-2026';
 const LANG_NAME = { en: '英语', es: '西班牙语', fr: '法语', nl: '荷兰语', pt: '葡萄牙语', ro: '罗马尼亚语', ja: '日语', vi: '越南语', ko: '韩语', th: '泰语' };
+// 访客国家（request.cf.country，ISO 3166-1 alpha-2）→ 中文名。没收录的就原样显示代码。
+// 香港/澳门/台湾按规范写「中国香港 / 中国澳门 / 中国台湾」。
+const CC_NAME = {
+  CN: '中国', HK: '中国香港', MO: '中国澳门', TW: '中国台湾',
+  JP: '日本', KR: '韩国', SG: '新加坡', MY: '马来西亚', TH: '泰国', VN: '越南',
+  ID: '印度尼西亚', PH: '菲律宾', IN: '印度', PK: '巴基斯坦', BD: '孟加拉国',
+  LK: '斯里兰卡', NP: '尼泊尔', KH: '柬埔寨', MM: '缅甸', LA: '老挝', BN: '文莱',
+  MN: '蒙古', KZ: '哈萨克斯坦', UZ: '乌兹别克斯坦',
+  US: '美国', CA: '加拿大', MX: '墨西哥', BR: '巴西', AR: '阿根廷', CL: '智利', CO: '哥伦比亚',
+  GB: '英国', IE: '爱尔兰', FR: '法国', DE: '德国', NL: '荷兰', BE: '比利时', LU: '卢森堡',
+  CH: '瑞士', AT: '奥地利', IT: '意大利', ES: '西班牙', PT: '葡萄牙', GR: '希腊',
+  SE: '瑞典', NO: '挪威', DK: '丹麦', FI: '芬兰', IS: '冰岛', PL: '波兰', CZ: '捷克',
+  HU: '匈牙利', RO: '罗马尼亚', UA: '乌克兰', RU: '俄罗斯', TR: '土耳其', IL: '以色列',
+  AE: '阿联酋', SA: '沙特阿拉伯', QA: '卡塔尔', KW: '科威特', EG: '埃及', ZA: '南非', NG: '尼日利亚',
+  AU: '澳大利亚', NZ: '新西兰',
+  T1: 'Tor 匿名网络', XX: '未知'
+};
 function p2(n) { return String(n).padStart(2, '0'); }
 function bjDay(ts) { // 北京时间日期
   const d = new Date((ts == null ? Date.now() : ts) + 8 * 3600 * 1000);
@@ -414,7 +431,13 @@ async function handleTrack(url, request, env, ctx) {
         await addUniq(kv, `stat:evud:${day}:${ev}`, hash);
         // 站点级「当日独立访客」：原来每次上报都写一遍，改成只在当天首次出现时写（省 KV 写额度）
         const uKey = `stat:u:${day}:${hash}`;
-        if (!(await kv.get(uKey))) await kv.put(uKey, '1');
+        if (!(await kv.get(uKey))) {
+          await kv.put(uKey, '1');
+          // 访客国家：Cloudflare 每个请求都带（request.cf.country），不用前端传、也不碰 IP 明文。
+          // 同样只在当天首次出现时记一次，所以一天最多写「国家数」条，几乎不占额度。
+          const cc = String((request.cf && request.cf.country) || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+          if (cc) await incKV(kv, `stat:ctryu:${day}:${cc}`);
+        }
       } catch (_) { /* 统计失败不影响页面 */ }
     })();
     if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(job);
@@ -479,12 +502,13 @@ async function handleStatsBody(url, env, kv, wantJson) {
   const g = (k) => kv.get(k).catch(() => null);
   const ls = (p, lim) => kv.list(lim ? { prefix: p, limit: lim } : { prefix: p }).catch(() => null);
 
-  const [totalRaw, langVals, dayVals, trUvLists, siteUvLists, evTotals, evDayVals, evUniqT, evUniqD] = await Promise.all([
+  const [totalRaw, langVals, dayVals, trUvLists, siteUvLists, ctryLists, evTotals, evDayVals, evUniqT, evUniqD] = await Promise.all([
     g('stat:tr:total'),
     Promise.all(LANGS.map((l) => g('stat:tr:lang:' + l))),
     Promise.all(days7.map((d) => g('stat:tr:day:' + d))),
     Promise.all(days7.map((d) => ls(`stat:tr:u:${d}:`))),
     Promise.all(days7.map((d) => ls(`stat:u:${d}:`, 1000))),
+    Promise.all(days7.map((d) => ls(`stat:ctryu:${d}:`, 200))),   // 当天都出现过哪些国家
     Promise.all(evDefs.map((e) => g('stat:ev:' + e[0]))),
     Promise.all(evDefs.map((e) => g(`stat:evd:${evToday}:${e[0]}`))),
     Promise.all(evDefs.map((e) => readUniqCount(kv, 'stat:evu:' + e[0]))),
@@ -511,6 +535,25 @@ async function handleStatsBody(url, env, kv, wantJson) {
   ]);
   const siteUvToday = days[0][3];
 
+  // 访客国家：list 只给键名不给值，所以先列出 7 天出现过的国家，再并发把这些键的值读出来
+  const ccSet = new Set();
+  (ctryLists || []).forEach((l) => ((l && l.keys) || []).forEach((k) => {
+    const cc = String((k && k.name) || '').split(':').pop();
+    if (cc) ccSet.add(cc);
+  }));
+  const ccs = Array.from(ccSet);
+  const ctryVals = await Promise.all(days7.map((d) => Promise.all(ccs.map((c) => g(`stat:ctryu:${d}:${c}`)))));
+  const countries = ccs.map((c, ci) => {
+    const per = days7.map((d, di) => Number(ctryVals[di][ci] || 0));
+    return {
+      cc: c,
+      name: CC_NAME[c] || c,
+      today: per[0],
+      d7: per.reduce((a, b) => a + b, 0),
+    };
+  });
+  countries.sort((a, b) => (b.d7 - a.d7) || (b.today - a.today));
+
   const langHtml = langRows.length
     ? langRows.map(([l, n]) => `<tr><td>${LANG_NAME[l] || l}</td><td class="n">${n}</td></tr>`).join('')
     : '<tr><td colspan="2" class="dim">暂无记录</td></tr>';
@@ -530,6 +573,9 @@ async function handleStatsBody(url, env, kv, wantJson) {
     ? evList.map((e) => `<tr><td>${e.name}</td><td class="n">${e.total}</td><td class="n">${e.today}</td>`
       + `<td class="n">${e.uniqTotal}</td><td class="n">${e.uniqToday}</td></tr>`).join('')
     : '<tr><td colspan="5" class="dim">暂无记录</td></tr>';
+  const ctryHtml = countries.length
+    ? countries.map((c) => `<tr><td>${c.name}</td><td class="n">${c.today}</td><td class="n">${c.d7}</td></tr>`).join('')
+    : '<tr><td colspan="3" class="dim">暂无记录（从启用当天开始累计）</td></tr>';
 
   // JSON 模式：给 GitHub Pages 上的统计页面跨域读取（docs/stats.html）
   if (wantJson) {
@@ -539,6 +585,7 @@ async function handleStatsBody(url, env, kv, wantJson) {
       siteUvToday,
       langs: langRows.map(([l, n]) => ({ lang: l, name: LANG_NAME[l] || l, count: n })),
       days: days.map(([d, n, u, su]) => ({ day: d, count: n, visitors: u, siteUv: su })),
+      countries: countries,
       events: evList
     }), {
       headers: {
@@ -568,6 +615,8 @@ async function handleStatsBody(url, env, kv, wantJson) {
 <div class="card"><div class="k">今日次数</div><div class="v">${days[0][1]}</div></div>
 <div class="card"><div class="k">今日独立访客</div><div class="v">${siteUvToday}</div></div></div>
 <h2>各语言使用次数</h2><table>${langHtml}</table>
+<h2>访客来自哪里（今日 / 近 7 天）</h2><table><tr><td>国家·地区</td><td class="n">今日</td><td class="n">近 7 天</td></tr>${ctryHtml}</table>
+<p class="dim">按 Cloudflare 给出的国家（ISO 代码）统计独立访客，不记 IP 明文。近 7 天＝每天独立访客相加，同一个人多天都来会重复计；数据从启用当天开始累计。</p>
 <h2>功能使用（次数 / 独立访客）</h2><table><tr><td>动作</td><td class="n">累计</td><td class="n">今日</td><td class="n">独立累计</td><td class="n">独立今日</td></tr>${evHtml}</table>
 <h2>最近 7 天（每天来了多少人 / 翻译次数）</h2><table><tr><td>日期</td><td class="n">到访人数</td><td class="n">翻译次数</td><td class="n">翻译访客</td></tr>${dayHtml}</table>`);
 }
