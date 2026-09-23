@@ -416,6 +416,12 @@ body.dm-notify-on .dm-tool#dmNotify { background: linear-gradient(135deg, #ff7aa
 @media (max-width: 400px) { .sc-score-grid { grid-template-columns: 1fr; } }
 
 .sc-links { display: flex; gap: 10px; margin-top: 14px; }
+/* 入口挪到顶部（原来只在列表末尾，看不见）；底部那条只在勾选模式下露出，用来就地生成 */
+.sc-links-top { margin: 12px 0 14px; }
+.sc-links-bot { display: none; margin-top: 16px; }
+.sc-picking .sc-links-bot { display: flex; }
+.sc-btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 700; }
+button.sc-btn:disabled { opacity: .5; cursor: not-allowed; }
 .sc-btn {
   display: inline-block; padding: 7px 14px; border-radius: 999px; font-size: 13px;
   background: var(--primary); color: #fff; text-decoration: none;
