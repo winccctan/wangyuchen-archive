@@ -1807,6 +1807,8 @@ async function handleAdminSchedulePost(request, env) {
     src: (body.source && body.source.url) || body.srcNote || '',
   });
   await kv.put(SCHED_LOG, JSON.stringify(log.slice(0, 60)));
+  // 顺手清掉 /api/schedule 的边缘缓存，否则站长手机上发完，访客最多要等 60 秒才看到新行程
+  try { await caches.default.delete('https://wyc-edge-cache.local/api/schedule'); } catch (_) { /* 清不掉就等缓存自己过期 */ }
   return json({ ok: true, added: added, updated: updated, removed: removed, total: items.length });
 }
 

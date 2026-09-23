@@ -1168,7 +1168,7 @@ function renderAll() {
   if (state.tab === 'messages') renderMessages();
   else if (state.tab === 'live') renderLive();
   else if (state.tab === 'guide') renderGuide();
-  else if (state.tab === 'schedule') renderSchedule();
+  else if (state.tab === 'schedule') renderScheduleAsync();
   else if (state.tab === 'mine') renderMine();
   else renderPerformances();
 }
@@ -1207,6 +1207,25 @@ function scSameShow(a, b) {
   const x = scNormTitle(a.title), y = scNormTitle(b.title);
   return !!(x && y && (x.indexOf(y) >= 0 || y.indexOf(x) >= 0));
 }
+/* 行程数据源（2026-09-23 起）：**优先读 Worker 里的存档 /api/schedule** —— 站长在手机后台
+ * 发的新行程就写在那儿，发完刷新页面就能看到，不用等我改 js 文件、推 git、等 CI。
+ * 接口挂了 / 还没灌过数据 → 退回页面自带的 js/schedule.js 快照，页面照常能看。
+ * 每次进这个 tab 都拉一次：接口很轻（边缘缓存 60s），保证你手机上刚发的行程别人马上能看到。 */
+async function renderScheduleAsync() {
+  try {
+    const r = await fetch('/api/schedule', { cache: 'no-store' });
+    if (r.ok) {
+      const j = await r.json();
+      if (j && Array.isArray(j.items) && j.items.length) {
+        const local = window.__SCHEDULE__ || {};
+        // 存档为准；本地那份里「更远」的安排存档还没有，保留下来一起显示
+        window.__SCHEDULE__ = Object.assign({}, local, j, { future: local.future || [] });
+      }
+    }
+  } catch (_) { /* 拿不到就用本地快照，绝不白屏 */ }
+  renderSchedule();
+}
+
 function renderSchedule() {
   const S = window.__SCHEDULE__;
   const box = panels.schedule;
@@ -1270,10 +1289,12 @@ function renderSchedule() {
   if (S.callUrl) html += `<a class="sc-btn" href="${escapeHtml(S.callUrl)}" target="_blank" rel="noopener">Call 本 ↗</a>`;
   html += '<button type="button" class="sc-btn ghost" id="scPosterBtn">🖼 生成行程图</button>';
   html += '</div>';
-  order.forEach((d) => {
+  // 已结束的单独收进折叠区：过完的别跟还没开始的混在一起，但都留在存档里可供回顾
+  const isPast = (d) => (daysTo(d) !== null && daysTo(d) < 0);
+  const dayHtml = (d) => {
     const arr = groups[d];
-    const passed = (daysTo(d) !== null && daysTo(d) < 0);
-    html += `<section class="sc-day${passed ? ' passed' : ''}">`
+    const passed = isPast(d);
+    let s = `<section class="sc-day${passed ? ' passed' : ''}">`
       + `<h2 class="sc-day-h"><span class="sc-date">${escapeHtml(d.slice(5).replace('-', '/'))}</span>`
       + `<span class="sc-wd">${escapeHtml(arr[0].weekday || '')}</span>${dayTag(d)}</h2><div class="sc-list">`;
     arr.forEach((it) => {
@@ -1284,7 +1305,7 @@ function renderSchedule() {
         kind: it.kind || '', icon: kindIcon(it.kind), flags: (t && t.flags ? t.flags.slice() : []),
         passed: !!passed,
       });
-      html += '<div class="sc-item">'
+      s += '<div class="sc-item">'
         + `<span class="sc-pick"><input type="checkbox" data-i="${pi}"${passed ? '' : ' checked'}`
         + ' aria-label="把这一场放进图里"></span>'
         + `<span class="sc-ic">${kindIcon(it.kind)}</span>`
@@ -1295,8 +1316,18 @@ function renderSchedule() {
           ? t.flags.map((f) => `<span class="sc-flag">${escapeHtml(f)}</span>`).join('') : '')
         + '</div>';
     });
-    html += '</div></section>';
-  });
+    return s + '</div></section>';
+  };
+  const soonDays = order.filter((d) => !isPast(d));
+  const pastDays = order.filter(isPast);
+  soonDays.forEach((d) => { html += dayHtml(d); });
+  if (pastDays.length) {
+    const n = pastDays.reduce((s, d) => s + groups[d].length, 0);
+    html += '<details class="sc-past"><summary class="sc-past-h">'
+      + `已结束 · ${n} 场<span class="sc-past-tip">点击展开回顾</span></summary>`;
+    pastDays.slice().reverse().forEach((d) => { html += dayHtml(d); });   // 已结束按倒序：最近的在前
+    html += '</details>';
+  }
 
   if (S.future && S.future.length) {
     html += '<section class="sc-day future"><h2 class="sc-day-h"><span class="sc-date">更远</span>'
