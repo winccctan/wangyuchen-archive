@@ -1599,8 +1599,8 @@ async function preloadEmoji(text) {
     im.src = src;
   })));
 }
-/** 切成 token：{x:'文字'} 或 {e:'assets/emoji/7.gif'} */
-function tokenizeFirstWord(s) {
+/** 切成 token：{x:'文字'} 或 {e:'assets/emoji/7.gif'}（第一句话、发言正文都用它） */
+function tokenizeText(s) {
   const out = [];
   const re = new RegExp(EMOJI_RE.source, 'g');
   let last = 0, m;
@@ -1614,44 +1614,56 @@ function tokenizeFirstWord(s) {
   if (last < s.length) out.push({ x: s.slice(last) });
   return out;
 }
-/** token 断行：文字逐字量宽，表情整体不可断 */
-function layoutFirstWord(ctx, toks, maxW, maxLines) {
+/** 通用 token 断行：文字逐字量宽，表情整体不可断。maxLines=0 → 不限行数
+ *  em = 表情占位边长（不同卡字号不一样，档案卡 25px 字用 30，发言卡 27px 字也用 30） */
+function layoutTokens(ctx, toks, maxW, maxLines, em) {
+  const EM = em || Q_EM;
   const lines = [];
   let line = [], w = 0;
   const flush = () => { lines.push(line); line = []; w = 0; };
   outer:
   for (const tk of toks) {
-    if (lines.length >= maxLines) break;
+    if (maxLines && lines.length >= maxLines) break;
     if (tk.e) {
-      if (w + Q_EM > maxW && line.length) { flush(); if (lines.length === maxLines) break; }
-      line.push(tk); w += Q_EM;
+      if (w + EM > maxW && line.length) { flush(); if (maxLines && lines.length >= maxLines) break; }
+      line.push(tk); w += EM;
       continue;
     }
     for (const ch of tk.x) {
       const cw = ctx.measureText(ch).width;
-      if (w + cw > maxW && line.length) { flush(); if (lines.length === maxLines) break outer; }
+      if (w + cw > maxW && line.length) { flush(); if (maxLines && lines.length >= maxLines) break outer; }
       const lastTk = line[line.length - 1];
       if (lastTk && lastTk.x !== undefined) lastTk.x += ch; else line.push({ x: ch });
       w += cw;
     }
   }
-  if (line.length && lines.length < maxLines) lines.push(line);
+  if (line.length && (!maxLines || lines.length < maxLines)) lines.push(line);
   return lines;
 }
-/** 画一行 token（整行水平居中；文字与表情基线对齐） */
-function drawTokenLine(ctx, line, cx, y, fontSize) {
-  const total = line.reduce((s, tk) => s + (tk.e ? Q_EM : ctx.measureText(tk.x).width), 0);
-  let x = cx - total / 2;
+/** 画一行 token：align='center' 时 x 传行中心，'left' 时 x 传左边界。
+ *  表情垂直居中于这一行的文字可视区（用实测 ascent/descent 算，别目测） */
+function drawTokenLine(ctx, line, x, y, fontSize, align, em) {
+  const EM = em || Q_EM;
+  const total = line.reduce((s, tk) => s + (tk.e ? EM : ctx.measureText(tk.x).width), 0);
+  let px = align === 'left' ? x : x - total / 2;
   const prev = ctx.textAlign;
   ctx.textAlign = 'left';
+  let top = y - (EM - fontSize) / 2 - fontSize * 0.36;   // 兜底：老浏览器没有 actualBoundingBox
+  try {
+    const mt = ctx.measureText('中');
+    if (mt.actualBoundingBoxAscent) {
+      const asc = mt.actualBoundingBoxAscent, desc = mt.actualBoundingBoxDescent;
+      top = y - asc + ((asc + desc) - EM) / 2;
+    }
+  } catch (e) { /* 用兜底值 */ }
   for (const tk of line) {
     if (tk.e) {
       const im = EMOJI_IMG[tk.e];
-      if (im) ctx.drawImage(im, x, y + (fontSize - Q_EM) / 2 + 2, Q_EM, Q_EM);
-      x += Q_EM;
+      if (im) ctx.drawImage(im, px, top, EM, EM);
+      px += EM;
     } else {
-      ctx.fillText(tk.x, x, y);
-      x += ctx.measureText(tk.x).width;
+      ctx.fillText(tk.x, px, y);
+      px += ctx.measureText(tk.x).width;
     }
   }
   ctx.textAlign = prev;
@@ -1718,7 +1730,7 @@ function drawShareCard(ctx, d, W, PAD, FONT, bgOnly, H) {
     const qMaxW = CW - 96;
     f('400', 25);
     // 表情 [敲打] 之类在 canvas 上要画成图，所以走 token 排版而不是纯文本换行
-    const qLines = layoutFirstWord(ctx, tokenizeFirstWord('「' + d.firstWord + '」'), qMaxW, 4);
+    const qLines = layoutTokens(ctx, tokenizeText('「' + d.firstWord + '」'), qMaxW, 4, Q_EM);
     const lh = 40;
     const bh = 52 + qLines.length * lh + 22;
     ctx.fillStyle = 'rgba(255,255,255,.07)';
@@ -1727,7 +1739,7 @@ function drawShareCard(ctx, d, W, PAD, FONT, bgOnly, H) {
     f('400', 16); ctx.fillStyle = '#93a8c6'; ctx.textAlign = 'center';
     ctx.fillText('我 对 她 说 的 第 一 句 话' + (d.firstWordAt ? ' · ' + d.firstWordAt : ''), cx, y + 18);
     ctx.fillStyle = '#eaf1ff';
-    qLines.forEach((line, i) => drawTokenLine(ctx, line, cx, y + 52 + i * lh, 25));
+    qLines.forEach((line, i) => drawTokenLine(ctx, line, cx, y + 52 + i * lh, 25, 'center', Q_EM));
     y += bh + 26;
   }
 
