@@ -426,6 +426,27 @@ body.dm-notify-on .dm-tool#dmNotify { background: linear-gradient(135deg, #ff7aa
   .sc-title { flex: 1 1 100%; order: 3; }
 }
 
+/* 行程 · 勾选几场 → 生成转发图（默认藏着，点「生成行程图」才进这个模式） */
+.sc-bar {
+  display: none; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin: 0 0 14px; padding: 10px 12px; border-radius: 12px;
+  background: var(--primary-soft); border: 1px solid var(--border);
+}
+.sc-wrap.sc-picking .sc-bar, .sc-picking .sc-bar { display: flex; }
+.sc-bar-n { font-size: 13px; font-weight: 700; color: var(--primary-dark); margin-right: auto; }
+.sc-bar-btn {
+  padding: 6px 12px; border-radius: 999px; font-size: 12px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--card); color: var(--text);
+  font-family: inherit; line-height: 1.5;
+}
+.sc-bar-btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 700; }
+.sc-bar-btn:disabled { opacity: .5; cursor: not-allowed; }
+.sc-pick { display: none; flex: 0 0 auto; align-items: center; }
+.sc-picking .sc-pick { display: inline-flex; }
+.sc-pick input { width: 18px; height: 18px; margin: 0; cursor: pointer; accent-color: var(--primary); }
+.sc-item.picked { border-color: var(--primary); background: var(--primary-soft); }
+button.sc-btn { border: 0; cursor: pointer; font-family: inherit; line-height: 1.5; }
+
 /* 行程第二块：星梦剧院官方公演安排 */
 .sc-wrap2 { margin-top: 26px; padding-top: 20px; border-top: 1px dashed var(--border); }
 .sc-sec-h {
