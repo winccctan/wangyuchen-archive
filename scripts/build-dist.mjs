@@ -46,7 +46,14 @@ const files = [
   'data/archive.js',
   'data/social-media.js', // 社媒美图（小号 @忘记自己是鱼_ 本人媒体帖），前端经 Worker 图片代理取图
   'data/performance-cuts.js', // 公演 cut（微博 7794095795 切片），由 app.js 渲染到「公演cut」子标签
-  'data/live-cuts.js' // 直播切片 / 直播回放（B站 忘记自己是猪、Chzhnh 两个号的投稿）
+  'data/live-cuts.js', // 直播切片 / 直播回放（B站 忘记自己是猪、Chzhnh 两个号的投稿）
+  // —— 以下为 2026-09-23 新增（「我的」档案卡 + 「行程」栏 + 候选功能）——
+  'css/demo.css', // 档案卡 / 行程 / 候选功能样式（新 index.html 会加载它）
+  'js/schedule.js',           // 行程快照：微博应援会「本周行程」
+  'js/theater-schedule.js',   // 行程快照：星梦剧院 NIII / 全团联合安排
+  'js/bili-cuts.js',          // 她的公演 cut（B站合集 season 4752040）
+  'js/demo-features.js',      // 候选功能：收藏码 / 搜索筛选 / 分享卡 / 随机考古 / 热力图 / 开播提醒
+  'assets/member-gs3.jpg'     // 2026 官网公式照（补齐，原先漏了）
 ];
 
 let total = 0;
