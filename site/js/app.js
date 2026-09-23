@@ -1252,7 +1252,18 @@ function renderSchedule() {
     return null;
   };
 
+  // 勾选出图的清单：每条行程一个下标，DOM 上只存 data-i，勾选状态由复选框自己维护
+  const pickList = [];
+  const pushPick = (o) => pickList.push(o) - 1;
+
   let html = '<div class="sc-wrap">';
+  html += '<div class="sc-bar" id="scBar">'
+    + '<span class="sc-bar-n" id="scBarN">已选 0 项</span>'
+    + '<button type="button" class="sc-bar-btn" id="scAll">全选</button>'
+    + '<button type="button" class="sc-bar-btn" id="scSoon">只看未开始</button>'
+    + '<button type="button" class="sc-bar-btn" id="scCancel">取消</button>'
+    + '<button type="button" class="sc-bar-btn primary" id="scGo">生成图片</button>'
+    + '</div>';
   html += scSourceNote(S.source);
   order.forEach((d) => {
     const arr = groups[d];
@@ -1262,7 +1273,16 @@ function renderSchedule() {
       + `<span class="sc-wd">${escapeHtml(arr[0].weekday || '')}</span>${dayTag(d)}</h2><div class="sc-list">`;
     arr.forEach((it) => {
       const t = tMatch(it);   // 官方安排里同名的那一场（有就把它带的标记并过来）
-      html += `<div class="sc-item"><span class="sc-ic">${kindIcon(it.kind)}</span>`
+      // 已结束的默认不勾（转发给别人没意义），未开始的默认全勾
+      const pi = pushPick({
+        date: d, weekday: arr[0].weekday || '', time: it.time || '', title: it.title || '',
+        kind: it.kind || '', icon: kindIcon(it.kind), flags: (t && t.flags ? t.flags.slice() : []),
+        passed: !!passed,
+      });
+      html += '<div class="sc-item">'
+        + `<span class="sc-pick"><input type="checkbox" data-i="${pi}"${passed ? '' : ' checked'}`
+        + ' aria-label="把这一场放进图里"></span>'
+        + `<span class="sc-ic">${kindIcon(it.kind)}</span>`
         + `<span class="sc-time">${escapeHtml(it.time || '')}</span>`
         + `<span class="sc-title">${escapeHtml(it.title || '')}</span>`
         + (it.kind ? `<span class="sc-kind">${escapeHtml(it.kind)}</span>` : '')
@@ -1278,8 +1298,17 @@ function renderSchedule() {
       + '<span class="sc-wd">已知的安排</span></h2><div class="sc-list">';
     S.future.forEach((it) => {
       const n = daysTo(it.date);
-      html += `<div class="sc-item"><span class="sc-ic">${kindIcon(it.kind)}</span>`
-        + `<span class="sc-time">${escapeHtml(it.date || '')}</span>`
+      const short = (it.date || '').slice(5).replace('-', '/');
+      // date 留空 → 图上归到「更远」一组，日期只在行内出现一次（否则组头和行内重复显示 11/28）
+      const pi = pushPick({
+        date: '', weekday: '', time: short, title: it.title || '',
+        kind: it.kind || '', icon: kindIcon(it.kind), flags: [], passed: false,
+      });
+      html += '<div class="sc-item">'
+        + `<span class="sc-pick"><input type="checkbox" data-i="${pi}" checked`
+        + ' aria-label="把这一场放进图里"></span>'
+        + `<span class="sc-ic">${kindIcon(it.kind)}</span>`
+        + `<span class="sc-time">${escapeHtml(short)}</span>`
         + `<span class="sc-title">${escapeHtml(it.title || '')}</span>`
         + (n && n > 0 ? `<span class="sc-kind">还有 ${n} 天</span>` : '')
         + '</div>';
@@ -1301,9 +1330,226 @@ function renderSchedule() {
   if (S.note) html += `<div class="sc-note subtle">${escapeHtml(S.note)}</div>`;
   html += '<div class="sc-links">';
   if (S.callUrl) html += `<a class="sc-btn" href="${escapeHtml(S.callUrl)}" target="_blank" rel="noopener">Call 本 ↗</a>`;
+  html += '<button type="button" class="sc-btn ghost" id="scPosterBtn">🖼 生成行程图</button>';
   html += '</div></div>';
   html += renderTheaterSchedule(daysTo, tUsed);
   box.innerHTML = html;
+  bindSchedulePicker(pickList);
+}
+
+function roundRectPath(ctx, x, y, w, h, r) {
+  const rr = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + rr, y);
+  ctx.arcTo(x + w, y, x + w, y + h, rr);
+  ctx.arcTo(x + w, y + h, x, y + h, rr);
+  ctx.arcTo(x, y + h, x, y, rr);
+  ctx.arcTo(x, y, x + w, y, rr);
+  ctx.closePath();
+}
+
+function loadImgOnce(src) {
+  return new Promise((res) => {
+    const im = new Image();
+    im.onload = () => res(im);
+    im.onerror = () => res(null);   // 头像只是锦上添花，拿不到就画 🐟，绝不让出图失败
+    im.src = src;
+  });
+}
+
+/* 行程转发图：配色沿用档案分享卡的同款深色渐变，转发出来一眼认得出是这个站。
+ * 头像素材用站上 favicon 那张（同域、必定存在）；量高一趟 + 画一趟的两段式与 buildShareCard 一致。 */
+function drawSchedulePoster(ctx, d, W, PAD, FONT, bgOnly, H) {
+  const CW = W - PAD * 2;
+  const cx = W / 2;
+  const f = (w, s) => { ctx.font = w + ' ' + s + 'px ' + FONT; };
+  ctx.textBaseline = 'top';
+
+  if (bgOnly) {
+    const bg = ctx.createLinearGradient(0, 0, W * .35, H);
+    bg.addColorStop(0, '#1d3f66'); bg.addColorStop(.45, '#172340'); bg.addColorStop(1, '#1b1533');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+    let g = ctx.createRadialGradient(W - 60, 40, 0, W - 60, 40, 330);
+    g.addColorStop(0, 'rgba(53,224,200,.5)'); g.addColorStop(1, 'rgba(53,224,200,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    g = ctx.createRadialGradient(40, H * .5, 0, 40, H * .5, 300);
+    g.addColorStop(0, 'rgba(255,122,184,.3)'); g.addColorStop(1, 'rgba(255,122,184,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  }
+
+  let y = 64;
+  const R = 46;
+  if (d.avatar) {
+    ctx.save();
+    ctx.beginPath(); ctx.arc(cx, y + R, R, 0, Math.PI * 2); ctx.closePath(); ctx.clip();
+    ctx.drawImage(d.avatar, cx - R, y, R * 2, R * 2);
+    ctx.restore();
+    ctx.beginPath(); ctx.arc(cx, y + R, R, 0, Math.PI * 2);
+    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.stroke();
+  } else {
+    const ag = ctx.createLinearGradient(cx - R, y, cx + R, y + R * 2);
+    ag.addColorStop(0, '#35e0c8'); ag.addColorStop(.5, '#58a6ff'); ag.addColorStop(1, '#b47aff');
+    ctx.beginPath(); ctx.arc(cx, y + R, R, 0, Math.PI * 2); ctx.fillStyle = ag; ctx.fill();
+    ctx.textAlign = 'center'; f('400', 44); ctx.fillStyle = '#fff'; ctx.fillText('🐟', cx, y + R - 24);
+  }
+  y += R * 2 + 28;
+
+  ctx.textAlign = 'center';
+  const tg = ctx.createLinearGradient(PAD, y, W - PAD, y);
+  tg.addColorStop(0, '#7ff0dd'); tg.addColorStop(.55, '#9fc8ff'); tg.addColorStop(1, '#e6b3ff');
+  f('800', 44); ctx.fillStyle = tg; ctx.fillText(d.title, cx, y);
+  y += 44 + 14;
+  f('400', 22); ctx.fillStyle = '#9fb3d1'; ctx.fillText(d.sub, cx, y);
+  y += 22 + 44;
+
+  const IND = PAD + 18;          // 卡片内缩进
+  const TX = IND + 38;           // 图标之后文字起点
+  d.days.forEach((g) => {
+    f('700', 26);
+    const wdt = ctx.measureText(g.label).width;
+    ctx.fillStyle = 'rgba(53,224,200,.16)';
+    roundRectPath(ctx, PAD, y - 5, wdt + 28, 38, 19); ctx.fill();
+    ctx.textAlign = 'left';
+    f('700', 26); ctx.fillStyle = '#7ff0dd'; ctx.fillText(g.label, PAD + 14, y + 2);
+    y += 38 + 18;
+
+    g.items.forEach((it) => {
+      f('500', 28);
+      const lines = wrapText(ctx, it.title, CW - 36 - 38 - 8, 3);
+      let h = 18 + 32 + lines.length * 34 + 18;
+      if (it.flags && it.flags.length) h += 26;
+      ctx.fillStyle = 'rgba(255,255,255,.055)';
+      roundRectPath(ctx, PAD, y, CW, h, 16); ctx.fill();
+      let ty = y + 16;
+      ctx.textAlign = 'left';
+      f('400', 24); ctx.fillStyle = '#fff'; ctx.fillText(it.icon || '🎭', IND, ty + 2);
+      f('800', 26); ctx.fillStyle = '#7ff0dd'; ctx.fillText(it.time || '', TX, ty + 2);
+      if (it.kind) {
+        f('700', 20);
+        const kw = ctx.measureText(it.kind).width;
+        const kx = PAD + CW - 18 - (kw + 24);
+        ctx.fillStyle = 'rgba(255,255,255,.12)';
+        roundRectPath(ctx, kx, ty - 2, kw + 24, 30, 15); ctx.fill();
+        f('700', 20); ctx.fillStyle = '#cfe6f2'; ctx.fillText(it.kind, kx + 12, ty + 3);
+      }
+      ty += 32;
+      f('500', 28); ctx.fillStyle = '#eaf2fb';
+      lines.forEach((ln) => { ctx.fillText(ln, TX, ty); ty += 34; });
+      if (it.flags && it.flags.length) {
+        f('600', 19); ctx.fillStyle = '#93a8c4';
+        ctx.fillText(it.flags.join(' · '), TX, ty + 2);
+      }
+      y += h + 12;
+    });
+    y += 20;
+  });
+
+  ctx.textAlign = 'center';
+  f('400', 20); ctx.fillStyle = '#7c90ad';
+  ctx.fillText(d.footer, cx, y);
+  y += 20 + 44;
+  return y;
+}
+
+async function buildSchedulePoster(picks) {
+  const W = 900, PAD = 56;
+  const FONT = '"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Heiti SC",sans-serif';
+  // picks 已经是页面顺序（渲染时就按日期排过），顺序分组即可，不用再排
+  const days = [], order = [];
+  picks.forEach((it) => {
+    const k = it.date || '更远';
+    let gi = order.indexOf(k);
+    if (gi < 0) { order.push(k); days.push({ label: '', items: [] }); gi = order.length - 1; }
+    days[gi].items.push(it);
+  });
+  days.forEach((g, i) => {
+    const k = order[i];
+    g.label = k === '更远' ? '更远' : k.slice(5).replace('-', '/') + (g.items[0].weekday ? ' ' + g.items[0].weekday : '');
+  });
+  const nPerf = picks.filter((x) => x.kind === '公演').length;
+  const nMeet = picks.filter((x) => x.kind === '见面会').length;
+  const sub = [nPerf ? nPerf + ' 场公演' : '', nMeet ? nMeet + ' 场见面会' : '']
+    .filter(Boolean).join(' · ') || (picks.length + ' 项安排');
+  const d = {
+    title: '王语晨 · 行程', sub: sub, days: days,
+    footer: 'idol.wyc0518.cc · 王语晨补档站', avatar: null,
+  };
+  const measure = document.createElement('canvas').getContext('2d');
+  const H = Math.ceil(drawSchedulePoster(measure, d, W, PAD, FONT, false, 2000));
+  d.avatar = await loadImgOnce('./assets/avatar-round.png');
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  drawSchedulePoster(cv.getContext('2d'), d, W, PAD, FONT, true, H);
+  return cv;
+}
+
+/* ---- 行程 · 勾选几场 → 生成一张转发图 ----
+ * 粉丝要转告别人的往往只有其中几场（比如「周末这两场去不去」），
+ * 所以让他自己勾，而不是整份行程全铺上去。
+ * 出图后走 showAlbumLayer：手机上只走系统分享面板 / 长按，绝不用 a[download]。
+ */
+function bindSchedulePicker(list) {
+  const box = panels.schedule;
+  if (!box || !list.length) return;
+  const btn = box.querySelector('#scPosterBtn');
+  if (!btn) return;
+  const go = box.querySelector('#scGo');
+  const inputs = () => Array.prototype.slice.call(box.querySelectorAll('.sc-pick input'));
+  const picked = () => inputs().filter((i) => i.checked)
+    .map((i) => list[Number(i.getAttribute('data-i'))]).filter(Boolean);
+  const sync = () => {
+    const n = picked().length;
+    const nEl = box.querySelector('#scBarN');
+    const goEl = box.querySelector('#scGo');
+    if (nEl) nEl.textContent = '已选 ' + n + ' 项';
+    if (goEl) goEl.disabled = (n === 0);
+    inputs().forEach((i) => {
+      const row = i.closest('.sc-item');
+      if (row) row.classList.toggle('picked', i.checked);
+    });
+  };
+  // 生成按钮两头都有（顶部工具条 + 列表底部）：条目一多，勾到底部时不用再滚回顶部
+  const doBuild = async () => {
+    const picks = picked();
+    if (!picks.length) return;
+    if (go) { go.disabled = true; go.textContent = '正在生成…'; }
+    btn.disabled = true;
+    try {
+      const cv = await buildSchedulePoster(picks);
+      track('sch:poster');
+      showAlbumLayer(cv.toDataURL('image/png'), '行程', '王语晨行程');
+    } catch (e) {
+      if (window.console) console.warn('行程图生成失败', e);
+      if (go) go.textContent = '生成失败，重试';
+    }
+    btn.disabled = false;
+    if (go) { go.disabled = false; go.textContent = '生成图片'; }
+  };
+  const setMode = (on) => {
+    box.classList.toggle('sc-picking', on);
+    btn.textContent = on ? '✅ 生成图片' : '🖼 生成行程图';
+    if (on) sync();
+  };
+  btn.addEventListener('click', () => {
+    if (box.classList.contains('sc-picking')) { doBuild(); return; }
+    setMode(true);
+    track('sch:pick');
+  });
+  const all = box.querySelector('#scAll');
+  if (all) all.addEventListener('click', () => { inputs().forEach((i) => { i.checked = true; }); sync(); });
+  const soon = box.querySelector('#scSoon');
+  if (soon) soon.addEventListener('click', () => {
+    inputs().forEach((i) => {
+      const it = list[Number(i.getAttribute('data-i'))];
+      i.checked = !!(it && !it.passed);
+    });
+    sync();
+  });
+  const cancel = box.querySelector('#scCancel');
+  if (cancel) cancel.addEventListener('click', () => setMode(false));
+  inputs().forEach((i) => i.addEventListener('change', sync));
+
+  if (go) go.addEventListener('click', doBuild);
 }
 
 /* ---------------- 行程 · 星梦剧院官方公演安排（只取 NIII / 全团联合） ----------------
@@ -2147,7 +2393,8 @@ function isPhoneUA() {
 function isInAppBrowser() {
   return /MicroMessenger|QQ\/|Weibo|QQBrowser|Douban|Alipay|DingTalk/i.test(navigator.userAgent || '');
 }
-function showAlbumLayer(dataUrl, stamp) {
+function showAlbumLayer(dataUrl, stamp, name) {
+  const nm = name || roomTitle();     // 行程图传「王语晨行程」，档案卡沿用房间名
   const old = document.getElementById('mineAlbum');
   if (old) old.remove();
   const phone = isPhoneUA();
@@ -2159,7 +2406,7 @@ function showAlbumLayer(dataUrl, stamp) {
   ov.className = 'mine-overlay';
   ov.innerHTML = '<div class="ma-bar"><span class="ma-tip">' + tip + '</span>'
     + '<button type="button" class="ma-close" id="maClose">关闭</button></div>'
-    + '<div class="ma-body"><img src="' + dataUrl + '" alt="' + roomTitle() + '"></div>'
+    + '<div class="ma-body"><img src="' + dataUrl + '" alt="' + nm + '"></div>'
     + '<div class="ma-foot"><button type="button" class="ma-act" id="maAct">'
     + (phone ? '保存到相册' : '下载图片') + '</button>'
     + '<div class="ma-note" id="maNote"></div></div>';
@@ -2171,7 +2418,7 @@ function showAlbumLayer(dataUrl, stamp) {
 
   document.getElementById('maAct').addEventListener('click', async () => {
     const noteEl = document.getElementById('maNote');
-    const fname = roomTitle() + '-' + stamp + '.png';
+    const fname = nm + '-' + stamp + '.png';
     if (phone) {
       // ① 能调系统分享就调（面板里选「存储到照片」→ 直接进相册）
       try {

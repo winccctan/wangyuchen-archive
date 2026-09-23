@@ -244,6 +244,9 @@ const EVENTS = [
   ['mine:hit', '档案 查到了'],
   ['mine:miss', '档案 没查到'],
   ['mine:save', '档案 保存/分享卡片'],
+  // 行程转发图：进了勾选模式 / 真的把图生成出来了（记了也不显示的老毛病见 EVENTS 是白名单）
+  ['sch:pick', '行程 进入选图'],
+  ['sch:poster', '行程 生成转发图'],
   ['sub:replay', '公演回放 子标签'],
   ['sub:cuts', '公演cut 子标签'],
   ['sub:social', '社媒美图 子标签'],
