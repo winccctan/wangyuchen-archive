@@ -25,6 +25,8 @@
   const esc = (s) => String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  // 分享卡上口袋表情的边长：单条正文 27px 字 / 多条拼图 24px 字，各配一个尺寸
+  const SHARE_EM = 30, SHARE_EM_M = 26;
 
   /** 复制到剪贴板：优先 Clipboard API，失败回退 textarea + execCommand */
   async function copyText(text, okMsg) {
@@ -360,9 +362,10 @@
     const c = document.createElement('canvas');
     const g = c.getContext('2d');
 
-    // 先量正文行数
+    // 先量正文行数：口袋表情 [敲打] 要画成图，所以走 token 排版（不是纯文本换行）
     g.font = '500 27px "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif';
-    const lines = text ? wrapText(g, text, BODY_W) : [];
+    await preloadEmoji(text);
+    const lines = text ? layoutTokens(g, tokenizeText(text), BODY_W, 0, SHARE_EM) : [];
     const LH = 42;
     const headH = 116, bodyH = lines.length * LH, footH = 88;
     const imgTop = headH + bodyH + (imgs.length ? 18 : 0);
@@ -418,7 +421,7 @@
     // 正文
     g.fillStyle = '#26262c';
     g.font = '500 27px "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif';
-    lines.forEach((ln, i) => g.fillText(ln, PAD, headH + LH * (i + 1) - 12));
+    lines.forEach((ln, i) => drawTokenLine(g, ln, PAD, headH + LH * (i + 1) - 12, 27, 'left', SHARE_EM));
 
     // 发言里的图片
     if (imgLay) {
@@ -836,7 +839,8 @@
       const ava = await loadPocketAvatar(m, safe);     // 每条用它自己在口袋的头像
       const rawText = String(m.text || '').trim();
       const text = rawText || (imgs.length ? '' : `［${TYPE_NAME[typeOfMsg(m)]}］`);
-      const lines = text ? wrapText(g0, text, BODY_W) : [];
+      await preloadEmoji(text);
+      const lines = text ? layoutTokens(g0, tokenizeText(text), BODY_W, 0, SHARE_EM_M) : [];
       const imgLay = imgs.length ? layoutImages(imgs, PAD + 16, 0, BODY_W - 32, 420, 0) : null;
       const imgH = imgLay ? imgLay.h + 14 : 0;
       layout.push({ m, lines, imgs, imgLay, imgH, ava, h: headH + lines.length * LH + 28 + imgH });
@@ -873,7 +877,7 @@
       g.fillStyle = '#9a9aa2'; g.font = '400 17px "PingFang SC", sans-serif';
       g.fillText(bjDate(it.m.msgTime) + ' ' + bjTime(it.m.msgTime), PAD + 50, y + 50);
       g.fillStyle = '#26262c'; g.font = '500 24px "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif';
-      it.lines.forEach((ln, i) => g.fillText(ln, PAD + 16, y + headH + LH * (i + 1) - 10));
+      it.lines.forEach((ln, i) => drawTokenLine(g, ln, PAD + 16, y + headH + LH * (i + 1) - 10, 24, 'left', SHARE_EM_M));
       if (it.imgLay) drawImages(g, it.imgLay, 12, y + headH + it.lines.length * LH + 6);
       y += it.h + cardGap;
     }
