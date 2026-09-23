@@ -9,8 +9,12 @@
 name: Fans sync
 
 on:
-  schedule:
-    - cron: '23 17 * * *'        # 北京时间 01:23（避开主抓取任务）
+  # ⚠️ 2026-09-23 停掉定时触发，别急着打开。
+  #    Actions 侧的 .cache/fans 只积累到 2025-02（房间 21.6 万鸡腿），而线上全历史是 253 万；
+  #    整桶覆盖写没有「部分更新」，自动跑会把线上 6200+ 人的档案打回 2400 人。
+  #    需要时在 Actions 页面手动 Run workflow（推送侧还有人数骤降保护兜底）。
+  # schedule:
+  #   - cron: '23 17 * * *'      # 北京时间 01:23（避开主抓取任务）
   workflow_dispatch:
     inputs:
       back:
@@ -21,6 +25,10 @@ on:
         default: '6'
       skip_live:
         description: '跳过直播贡献榜'
+        type: boolean
+        default: false
+      force:
+        description: '跳过人数骤降保护（真的要用这份不完整名单覆盖线上才勾）'
         type: boolean
         default: false
 
@@ -63,6 +71,7 @@ jobs:
           ARGS="--lanes ${{ inputs.lanes || '6' }}"
           if [ -n "${{ inputs.back }}" ]; then ARGS="$ARGS --back ${{ inputs.back }}"; else ARGS="$ARGS --back 3"; fi
           if [ "${{ inputs.skip_live }}" = "true" ]; then ARGS="$ARGS --no-live"; fi
+          if [ "${{ inputs.force }}" = "true" ]; then ARGS="$ARGS --force-push"; fi
           node scripts/build-fans.mjs $ARGS --push
       - name: 报告
         run: node -e "const j=require('./.cache/fans/fans.json');console.log('共 '+j.people+' 人');" || true
