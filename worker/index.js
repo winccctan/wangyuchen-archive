@@ -435,40 +435,80 @@ async function handleStats(url, env) {
   if (url.searchParams.get('k') !== key) {
     return new Response('Not Found', { status: 404 });
   }
+  // 统计读起来很重（上百个 KV 键），缓存 60 秒：站长反复刷新页面不会每次都把 KV 打一遍
+  const cacheKey = 'https://wyc-stats.local/stats?k=' + key + (wantJson ? '&format=json' : '&format=html');
+  try {
+    const hit = await caches.default.match(cacheKey);
+    if (hit) return hit;
+  } catch (_) { /* 没命中就自己算 */ }
+  let res;
+  try {
+    res = await Promise.race([
+      handleStatsBody(url, env, kv, wantJson),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('stats timeout')), 15000)),
+    ]);
+  } catch (_) {
+    // 超时也要给响应，不能让浏览器一直挂着（否则前端等到自己的超时才报「读取失败」）
+    return wantJson
+      ? new Response(JSON.stringify({ error: 'stats-timeout' }), {
+        status: 503,
+        headers: { 'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': '*' }
+      })
+      : new Response('<meta charset="utf-8"><p>统计读取超时，请稍后重试</p>', {
+        status: 503, headers: { 'content-type': 'text/html; charset=utf-8' }
+      });
+  }
+  try { await caches.default.put(cacheKey, res.clone()); } catch (_) { /* 写不进就算了 */ }
+  return res;
+}
+
+async function handleStatsBody(url, env, kv, wantJson) {
+  // 注意：这里必须是可缓存的头（no-store 的话 caches.default.put 存不进去）
   const html = (s) => new Response(s, {
-    headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' }
+    headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, max-age=60' }
   });
   if (!kv || typeof kv.get !== 'function') {
     return html('<meta charset="utf-8"><p>统计未启用：Worker 未绑定 KV 命名空间。</p>');
   }
-  const total = Number((await kv.get('stat:tr:total')) || 0);
+  // 🔴 别再一个一个 await：34 个事件 × 4 + 7 天 × 3 + 10 种语言 … 共 169 次串行 KV 读，
+  // 累计 30s+ 直接把 GitHub Pages 上那个 8 秒超时的统计页拖成「读取失败」。这里全部并发。
+  const days7 = [];
+  for (let i = 0; i < 7; i++) days7.push(bjDay(Date.now() - i * 86400000));
+  const evDefs = EVENTS.concat(LANGS.map((l) => ['lang:' + l, '切换为' + (LANG_NAME[l] || l)]));
+  const evToday = days7[0];
+  const g = (k) => kv.get(k).catch(() => null);
+  const ls = (p, lim) => kv.list(lim ? { prefix: p, limit: lim } : { prefix: p }).catch(() => null);
+
+  const [totalRaw, langVals, dayVals, trUvLists, siteUvLists, evTotals, evDayVals, evUniqT, evUniqD] = await Promise.all([
+    g('stat:tr:total'),
+    Promise.all(LANGS.map((l) => g('stat:tr:lang:' + l))),
+    Promise.all(days7.map((d) => g('stat:tr:day:' + d))),
+    Promise.all(days7.map((d) => ls(`stat:tr:u:${d}:`))),
+    Promise.all(days7.map((d) => ls(`stat:u:${d}:`, 1000))),
+    Promise.all(evDefs.map((e) => g('stat:ev:' + e[0]))),
+    Promise.all(evDefs.map((e) => g(`stat:evd:${evToday}:${e[0]}`))),
+    Promise.all(evDefs.map((e) => readUniqCount(kv, 'stat:evu:' + e[0]))),
+    Promise.all(evDefs.map((e) => readUniqCount(kv, `stat:evud:${evToday}:${e[0]}`))),
+  ]);
+
+  const total = Number(totalRaw || 0);
 
   const langRows = [];
-  for (const l of LANGS) {
-    const n = Number((await kv.get('stat:tr:lang:' + l)) || 0);
+  LANGS.forEach((l, i) => {
+    const n = Number(langVals[i] || 0);
     if (n > 0) langRows.push([l, n]);
-  }
+  });
   langRows.sort((a, b) => b[1] - a[1]);
 
   // 「今日独立访客」原先取的是**翻译功能**的 UV，结果翻译没人用就显示 0，
   // 全站到底来了多少人一直看不到。改成站点级 UV（stat:u:<day>:<hash>，
   // 每个访客当天首次出现时写一条），7 天各算一次。
-  const days = [];
-  for (let i = 0; i < 7; i++) {
-    const d = bjDay(Date.now() - i * 86400000);
-    const n = Number((await kv.get('stat:tr:day:' + d)) || 0);
-    let u = 0;
-    try {
-      const list = await kv.list({ prefix: `stat:tr:u:${d}:` });
-      u = (list && list.keys ? list.keys.length : 0);
-    } catch (_) { /* 忽略 */ }
-    let su = 0;   // 站点级独立访客
-    try {
-      const sl = await kv.list({ prefix: `stat:u:${d}:`, limit: 1000 });
-      su = (sl && sl.keys ? sl.keys.length : 0);
-    } catch (_) { /* 忽略 */ }
-    days.push([d, n, u, su]);
-  }
+  const days = days7.map((d, i) => [
+    d,
+    Number(dayVals[i] || 0),
+    (trUvLists[i] && trUvLists[i].keys) ? trUvLists[i].keys.length : 0,
+    (siteUvLists[i] && siteUvLists[i].keys) ? siteUvLists[i].keys.length : 0,
+  ]);
   const siteUvToday = days[0][3];
 
   const langHtml = langRows.length
@@ -478,17 +518,13 @@ async function handleStats(url, env) {
 
   // 站点动作（tab 切换 / 视频播放 / 刷新 / 搜索 …）
   // 除「次数」外还算「独立访客」：累计 = 该功能一共有多少人来用过，今日 = 今天有多少人用过。
-  const evToday = days[0][0];
-  const evDefs = EVENTS.concat(LANGS.map((l) => ['lang:' + l, '切换为' + (LANG_NAME[l] || l)]));
   const evList = [];
-  for (const [key, name] of evDefs) {
-    const t = Number((await kv.get('stat:ev:' + key)) || 0);
-    const d = Number((await kv.get(`stat:evd:${evToday}:${key}`)) || 0);
-    if (t <= 0 && d <= 0) continue;
-    const uniqTotal = await readUniqCount(kv, 'stat:evu:' + key);
-    const uniqToday = await readUniqCount(kv, `stat:evud:${evToday}:${key}`);
-    evList.push({ key, name, total: t, today: d, uniqTotal, uniqToday });
-  }
+  evDefs.forEach(([key, name], i) => {
+    const t = Number(evTotals[i] || 0);
+    const d = Number(evDayVals[i] || 0);
+    if (t <= 0 && d <= 0) return;
+    evList.push({ key: key, name: name, total: t, today: d, uniqTotal: evUniqT[i] || 0, uniqToday: evUniqD[i] || 0 });
+  });
   evList.sort((a, b) => b.total - a.total);
   const evHtml = evList.length
     ? evList.map((e) => `<tr><td>${e.name}</td><td class="n">${e.total}</td><td class="n">${e.today}</td>`
@@ -507,7 +543,7 @@ async function handleStats(url, env) {
     }), {
       headers: {
         'content-type': 'application/json; charset=utf-8',
-        'cache-control': 'no-store',
+        'cache-control': 'public, max-age=60',
         'access-control-allow-origin': '*'
       }
     });
