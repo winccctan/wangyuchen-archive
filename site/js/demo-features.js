@@ -25,8 +25,8 @@
   const esc = (s) => String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-  // 分享卡上口袋表情的边长：单条正文 27px 字 / 多条拼图 24px 字，各配一个尺寸
-  const SHARE_EM = 30, SHARE_EM_M = 26;
+  // 分享卡上口袋表情的边长：单条正文 40px 字 / 多条拼图 36px 字，各配一个尺寸
+  const SHARE_EM = 44, SHARE_EM_M = 38;
 
   /** 复制到剪贴板：优先 Clipboard API，失败回退 textarea + execCommand */
   async function copyText(text, okMsg) {
@@ -353,7 +353,7 @@
   }
 
   async function makeShareCard(m, safe) {
-    const W = 760, PAD = 44, BODY_W = W - PAD * 2;
+    const W = 880, PAD = 50, BODY_W = W - PAD * 2;
     // safe=true → 不加载任何远程图片（toDataURL 被污染时的兜底重画）
     const imgs = safe ? [] : await loadMsgImages(m, 4);
     const rawText = String(m.text || '').trim();
@@ -363,13 +363,13 @@
     const g = c.getContext('2d');
 
     // 先量正文行数：口袋表情 [敲打] 要画成图，所以走 token 排版（不是纯文本换行）
-    g.font = '500 27px "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif';
+    g.font = '500 40px "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif';
     await preloadEmoji(text);
     const lines = text ? layoutTokens(g, tokenizeText(text), BODY_W, 0, SHARE_EM) : [];
-    const LH = 42;
-    const headH = 116, bodyH = lines.length * LH, footH = 88;
+    const LH = 58;
+    const headH = 150, bodyH = lines.length * LH, footH = 106;
     const imgTop = headH + bodyH + (imgs.length ? 18 : 0);
-    const imgLay = imgs.length ? layoutImages(imgs, PAD, imgTop, BODY_W, 520, 0) : null;
+    const imgLay = imgs.length ? layoutImages(imgs, PAD, imgTop, BODY_W, 660, 0) : null;
     const imgH = imgLay ? imgLay.h + 18 : 0;
     const H = headH + bodyH + imgH + footH + PAD;
 
@@ -389,7 +389,7 @@
     g.beginPath(); g.arc(W - 40, H - 30, 150, 0, Math.PI * 2); g.fill();
 
     // 头像：用她在口袋48发言时用的那张头像（m.sender.avatar）
-    const avaSize = 62, ax = PAD, ay = 40;
+    const avaSize = 88, ax = PAD, ay = 48;
     let drew = false;
     const avatarImg = await loadPocketAvatar(m, safe);
     if (avatarImg) {
@@ -405,23 +405,23 @@
       g.fillStyle = '#ff7aa2';
       g.beginPath(); g.arc(ax + avaSize / 2, ay + avaSize / 2, avaSize / 2, 0, Math.PI * 2); g.fill();
       g.fillStyle = '#fff';
-      g.font = '600 30px "PingFang SC", sans-serif';
+      g.font = '600 42px "PingFang SC", sans-serif';
       g.textAlign = 'center'; g.textBaseline = 'middle';
       g.fillText('鱼', ax + avaSize / 2, ay + avaSize / 2 + 1);
     }
     // 昵称 / 时间
     g.textAlign = 'left'; g.textBaseline = 'alphabetic';
     g.fillStyle = '#1b1b1f';
-    g.font = '600 24px "PingFang SC", sans-serif';
-    g.fillText((m.sender && m.sender.nickname) || 'GNZ48-王语晨', ax + avaSize + 16, ay + 28);
+    g.font = '600 36px "PingFang SC", sans-serif';
+    g.fillText((m.sender && m.sender.nickname) || 'GNZ48-王语晨', ax + avaSize + 20, ay + 40);
     g.fillStyle = '#9a9aa2';
-    g.font = '400 19px "PingFang SC", sans-serif';
-    g.fillText(bjDate(m.msgTime) + ' ' + bjTime(m.msgTime) + ' · ' + (TYPE_NAME[typeOfMsg(m)] || ''), ax + avaSize + 16, ay + 54);
+    g.font = '400 26px "PingFang SC", sans-serif';
+    g.fillText(bjDate(m.msgTime) + ' ' + bjTime(m.msgTime) + ' · ' + (TYPE_NAME[typeOfMsg(m)] || ''), ax + avaSize + 20, ay + 78);
 
     // 正文
     g.fillStyle = '#26262c';
-    g.font = '500 27px "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif';
-    lines.forEach((ln, i) => drawTokenLine(g, ln, PAD, headH + LH * (i + 1) - 12, 27, 'left', SHARE_EM));
+    g.font = '500 40px "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif';
+    lines.forEach((ln, i) => drawTokenLine(g, ln, PAD, headH + LH * (i + 1) - 12, 40, 'left', SHARE_EM));
 
     // 发言里的图片
     if (imgLay) {
@@ -429,10 +429,10 @@
       // 右下角标一下张数
       if (imgs.length > 1) {
         g.fillStyle = 'rgba(0,0,0,.45)';
-        roundRect(g, imgLay.cells[0].dx + imgLay.cells[0].dw - 62, imgLay.cells[0].dy + 10, 52, 26, 13); g.fill();
-        g.fillStyle = '#fff'; g.font = '500 15px "PingFang SC", sans-serif';
+        roundRect(g, imgLay.cells[0].dx + imgLay.cells[0].dw - 80, imgLay.cells[0].dy + 14, 70, 36, 18); g.fill();
+        g.fillStyle = '#fff'; g.font = '500 20px "PingFang SC", sans-serif';
         g.textAlign = 'center'; g.textBaseline = 'middle';
-        g.fillText('共 ' + imgs.length + ' 张', imgLay.cells[0].dx + imgLay.cells[0].dw - 36, imgLay.cells[0].dy + 24);
+        g.fillText('共 ' + imgs.length + ' 张', imgLay.cells[0].dx + imgLay.cells[0].dw - 50, imgLay.cells[0].dy + 32);
         g.textAlign = 'left'; g.textBaseline = 'alphabetic';
       }
     }
@@ -441,10 +441,10 @@
     g.strokeStyle = '#eee'; g.lineWidth = 1;
     g.beginPath(); g.moveTo(PAD, H - footH + 8); g.lineTo(W - PAD, H - footH + 8); g.stroke();
     g.fillStyle = '#b0b0b8';
-    g.font = '400 19px "PingFang SC", sans-serif';
-    g.fillText('王语晨 · 补档站', PAD, H - footH + 44);
+    g.font = '400 26px "PingFang SC", sans-serif';
+    g.fillText('王语晨 · 补档站', PAD, H - footH + 54);
     g.textAlign = 'right';
-    g.fillText('idol.wyc0518.cc', W - PAD, H - footH + 44);
+    g.fillText('idol.wyc0518.cc', W - PAD, H - footH + 54);
     g.textAlign = 'left';
     // （原来这里右侧有根小色条，正好压在网址末尾，看着像网址后面多了一根线 → 去掉）
 
@@ -827,10 +827,10 @@
 
   /** 多张分享卡：把若干发言竖向堆叠成一张长图（每条最多带 2 张图，整体最多 8 张） */
   async function makeShareCardMulti(msgs, safe) {
-    const W = 760, PAD = 44, BODY_W = W - PAD * 2;
+    const W = 880, PAD = 50, BODY_W = W - PAD * 2;
     const g0 = document.createElement('canvas').getContext('2d');
-    g0.font = '500 24px "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif';
-    const LH = 38, cardGap = 22, headH = 64;
+    g0.font = '500 36px "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif';
+    const LH = 54, cardGap = 28, headH = 88;
     let imgBudget = safe ? 0 : 8;                 // 控制总图片数，避免长图太夸张
     const layout = [];
     for (const m of msgs.slice(0, 12)) {
@@ -841,11 +841,11 @@
       const text = rawText || (imgs.length ? '' : `［${TYPE_NAME[typeOfMsg(m)]}］`);
       await preloadEmoji(text);
       const lines = text ? layoutTokens(g0, tokenizeText(text), BODY_W, 0, SHARE_EM_M) : [];
-      const imgLay = imgs.length ? layoutImages(imgs, PAD + 16, 0, BODY_W - 32, 420, 0) : null;
+      const imgLay = imgs.length ? layoutImages(imgs, PAD + 16, 0, BODY_W - 32, 560, 0) : null;
       const imgH = imgLay ? imgLay.h + 14 : 0;
-      layout.push({ m, lines, imgs, imgLay, imgH, ava, h: headH + lines.length * LH + 28 + imgH });
+      layout.push({ m, lines, imgs, imgLay, imgH, ava, h: headH + lines.length * LH + 40 + imgH });
     }
-    const H = PAD * 2 + layout.reduce((a, x) => a + x.h, 0) + cardGap * (layout.length - 1) + 60;
+    const H = PAD * 2 + layout.reduce((a, x) => a + x.h, 0) + cardGap * (layout.length - 1) + 76;
     const c = document.createElement('canvas');
     const g = c.getContext('2d');
     const dpr = 2;
@@ -861,29 +861,29 @@
       if (it.ava) {
         g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
         g.save();
-        g.beginPath(); g.arc(PAD + 22, y + 24, 16, 0, Math.PI * 2); g.clip();
-        drawAvatarCover(g, it.ava, PAD + 6, y + 8, 32);
+        g.beginPath(); g.arc(PAD + 30, y + 34, 24, 0, Math.PI * 2); g.clip();
+        drawAvatarCover(g, it.ava, PAD + 6, y + 10, 48);
         g.restore();
       } else {
         g.fillStyle = '#ff7aa2';
-        g.beginPath(); g.arc(PAD + 22, y + 24, 16, 0, Math.PI * 2); g.fill();
-        g.fillStyle = '#fff'; g.font = '600 18px "PingFang SC", sans-serif';
+        g.beginPath(); g.arc(PAD + 30, y + 34, 24, 0, Math.PI * 2); g.fill();
+        g.fillStyle = '#fff'; g.font = '600 26px "PingFang SC", sans-serif';
         g.textAlign = 'center'; g.textBaseline = 'middle';
-        g.fillText('鱼', PAD + 22, y + 25);
+        g.fillText('鱼', PAD + 30, y + 35);
       }
       g.textAlign = 'left'; g.textBaseline = 'alphabetic';
-      g.fillStyle = '#1b1b1f'; g.font = '600 21px "PingFang SC", sans-serif';
-      g.fillText((it.m.sender && it.m.sender.nickname) || 'GNZ48-王语晨', PAD + 50, y + 30);
-      g.fillStyle = '#9a9aa2'; g.font = '400 17px "PingFang SC", sans-serif';
-      g.fillText(bjDate(it.m.msgTime) + ' ' + bjTime(it.m.msgTime), PAD + 50, y + 50);
-      g.fillStyle = '#26262c'; g.font = '500 24px "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif';
-      it.lines.forEach((ln, i) => drawTokenLine(g, ln, PAD + 16, y + headH + LH * (i + 1) - 10, 24, 'left', SHARE_EM_M));
-      if (it.imgLay) drawImages(g, it.imgLay, 12, y + headH + it.lines.length * LH + 6);
+      g.fillStyle = '#1b1b1f'; g.font = '600 30px "PingFang SC", sans-serif';
+      g.fillText((it.m.sender && it.m.sender.nickname) || 'GNZ48-王语晨', PAD + 66, y + 44);
+      g.fillStyle = '#9a9aa2'; g.font = '400 24px "PingFang SC", sans-serif';
+      g.fillText(bjDate(it.m.msgTime) + ' ' + bjTime(it.m.msgTime), PAD + 66, y + 72);
+      g.fillStyle = '#26262c'; g.font = '500 36px "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif';
+      it.lines.forEach((ln, i) => drawTokenLine(g, ln, PAD + 16, y + headH + LH * (i + 1) - 10, 36, 'left', SHARE_EM_M));
+      if (it.imgLay) drawImages(g, it.imgLay, 12, y + headH + it.lines.length * LH + 10);
       y += it.h + cardGap;
     }
-    g.fillStyle = '#b0b0b8'; g.font = '400 19px "PingFang SC", sans-serif';
-    g.fillText('王语晨 · 补档站  idol.wyc0518.cc', PAD, H - 26);
-    g.textAlign = 'right'; g.fillStyle = grd; g.fillText('共 ' + msgs.length + ' 条', W - PAD, H - 26);
+    g.fillStyle = '#b0b0b8'; g.font = '400 26px "PingFang SC", sans-serif';
+    g.fillText('王语晨 · 补档站  idol.wyc0518.cc', PAD, H - 38);
+    g.textAlign = 'right'; g.fillStyle = grd; g.fillText('共 ' + msgs.length + ' 条', W - PAD, H - 38);
     return c;
   }
 

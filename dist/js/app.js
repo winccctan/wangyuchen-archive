@@ -1265,6 +1265,11 @@ function renderSchedule() {
     + '<button type="button" class="sc-bar-btn primary" id="scGo">生成图片</button>'
     + '</div>';
   html += scSourceNote(S.source);
+  // 入口放最上面：原来只在列表末尾，13 条行程一路滚到底才看得见，等于没有
+  html += '<div class="sc-links sc-links-top">';
+  if (S.callUrl) html += `<a class="sc-btn" href="${escapeHtml(S.callUrl)}" target="_blank" rel="noopener">Call 本 ↗</a>`;
+  html += '<button type="button" class="sc-btn ghost" id="scPosterBtn">🖼 生成行程图</button>';
+  html += '</div>';
   order.forEach((d) => {
     const arr = groups[d];
     const passed = (daysTo(d) !== null && daysTo(d) < 0);
@@ -1343,10 +1348,10 @@ function renderSchedule() {
     });
     html += '</div>';
   }
-  html += '<div class="sc-links">';
-  if (S.callUrl) html += `<a class="sc-btn" href="${escapeHtml(S.callUrl)}" target="_blank" rel="noopener">Call 本 ↗</a>`;
-  html += '<button type="button" class="sc-btn ghost" id="scPosterBtn">🖼 生成行程图</button>';
-  html += '</div></div>';
+  // 底部只留「生成」：勾到底不用再滚回顶部（非勾选模式下隐藏）
+  html += '<div class="sc-links sc-links-bot">'
+    + '<button type="button" class="sc-btn primary" id="scGoBot">✅ 生成图片</button>'
+    + '</div></div>';
   html += renderTheaterSchedule(daysTo, tUsed);
   box.innerHTML = html;
   bindSchedulePicker(pickList);
@@ -1653,6 +1658,7 @@ function bindSchedulePicker(list) {
   const btn = box.querySelector('#scPosterBtn');
   if (!btn) return;
   const go = box.querySelector('#scGo');
+  const bot = box.querySelector('#scGoBot');   // 列表底部那个，只在勾选模式下露出来
   // 两类复选框分开取：行程条目带 data-i，附加信息（计分卡/券种）带 data-x
   const rowInputs = () => Array.prototype.slice.call(box.querySelectorAll('.sc-pick input[data-i]'));
   const xInputs = () => Array.prototype.slice.call(box.querySelectorAll('.sc-extra input[data-x]'));
@@ -1670,6 +1676,10 @@ function bindSchedulePicker(list) {
     const goEl = box.querySelector('#scGo');
     if (nEl) nEl.textContent = '已选 ' + n + ' 项';
     if (goEl) goEl.disabled = (n === 0);
+    if (bot) {
+      bot.disabled = (n === 0);
+      bot.textContent = n ? '✅ 生成图片（已选 ' + n + ' 项）' : '✅ 生成图片';
+    }
     inputs().forEach((i) => {
       const row = i.closest('.sc-item');
       if (row) row.classList.toggle('picked', i.checked);
@@ -1681,6 +1691,7 @@ function bindSchedulePicker(list) {
     if (!picks.length) return;
     if (go) { go.disabled = true; go.textContent = '正在生成…'; }
     btn.disabled = true;
+    if (bot) { bot.disabled = true; bot.textContent = '正在生成…'; }
     try {
       const cv = await buildSchedulePoster(picks, xPicked());
       track('sch:poster');
@@ -1691,6 +1702,7 @@ function bindSchedulePicker(list) {
     }
     btn.disabled = false;
     if (go) { go.disabled = false; go.textContent = '生成图片'; }
+    sync();   // 底部按钮的「已选 N 项」由 sync 统一回写
   };
   const setMode = (on) => {
     box.classList.toggle('sc-picking', on);
@@ -1718,6 +1730,7 @@ function bindSchedulePicker(list) {
   inputs().forEach((i) => i.addEventListener('change', sync));
 
   if (go) go.addEventListener('click', doBuild);
+  if (bot) bot.addEventListener('click', doBuild);
 }
 
 /* ---------------- 行程 · 星梦剧院官方公演安排（只取 NIII / 全团联合） ----------------
