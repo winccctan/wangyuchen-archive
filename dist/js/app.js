@@ -1196,6 +1196,17 @@ function scSourceNote(src) {
     + (stale ? '⚠️ 这份行程 ' + when + '，可能有变动，出发前请先看原帖确认' : '📌 行程 ' + when)
     + ' · 来源 ' + name + link + '</div>';
 }
+/* 行程两来源去重：微博应援会行程（最新）与星梦剧院官方安排会列出同一场公演，
+ * 同一场只显示一次 —— 官方那边的票种标记（实名认证 / 随心拍）并到应援会那一行上。 */
+function scNormTitle(t) {
+  return String(t || '').toLowerCase().replace(/[《》·・:：、，,。.\s\-—_()（）!！]/g, '');
+}
+function scSameShow(a, b) {
+  if (!a || !b || a.date !== b.date) return false;
+  if (a.time && b.time && a.time === b.time) return true;
+  const x = scNormTitle(a.title), y = scNormTitle(b.title);
+  return !!(x && y && (x.indexOf(y) >= 0 || y.indexOf(x) >= 0));
+}
 function renderSchedule() {
   const S = window.__SCHEDULE__;
   const box = panels.schedule;
@@ -1230,6 +1241,17 @@ function renderSchedule() {
   });
   order.sort((a, b) => (a < b ? -1 : 1));
 
+  // 与剧院官方安排去重：命中的官方条目记进 tUsed，剧院那块就不再重复列
+  const tItems = (window.__THEATER_SCHEDULE__ && window.__THEATER_SCHEDULE__.items) || [];
+  const tUsed = new Set();
+  const tMatch = (it) => {
+    for (let i = 0; i < tItems.length; i++) {
+      if (tUsed.has(i)) continue;
+      if (scSameShow(it, tItems[i])) { tUsed.add(i); return tItems[i]; }
+    }
+    return null;
+  };
+
   let html = '<div class="sc-wrap">';
   html += scSourceNote(S.source);
   order.forEach((d) => {
@@ -1239,10 +1261,13 @@ function renderSchedule() {
       + `<h2 class="sc-day-h"><span class="sc-date">${escapeHtml(d.slice(5).replace('-', '/'))}</span>`
       + `<span class="sc-wd">${escapeHtml(arr[0].weekday || '')}</span>${dayTag(d)}</h2><div class="sc-list">`;
     arr.forEach((it) => {
+      const t = tMatch(it);   // 官方安排里同名的那一场（有就把它带的标记并过来）
       html += `<div class="sc-item"><span class="sc-ic">${kindIcon(it.kind)}</span>`
         + `<span class="sc-time">${escapeHtml(it.time || '')}</span>`
         + `<span class="sc-title">${escapeHtml(it.title || '')}</span>`
         + (it.kind ? `<span class="sc-kind">${escapeHtml(it.kind)}</span>` : '')
+        + (t && t.flags && t.flags.length
+          ? t.flags.map((f) => `<span class="sc-flag">${escapeHtml(f)}</span>`).join('') : '')
         + '</div>';
     });
     html += '</div></section>';
@@ -1262,12 +1287,22 @@ function renderSchedule() {
     html += '</div></section>';
   }
 
+  // 运动会计分（有就显示）：橙色卡，和宣传图上的那块一致
+  if (S.score && S.score.rules && S.score.rules.length) {
+    html += '<div class="sc-score">'
+      + '<div class="sc-score-h">🏅 运动会计分时段'
+      + (S.score.period ? ' <b>' + escapeHtml(S.score.period) + '</b>' : '')
+      + '</div><div class="sc-score-grid">'
+      + S.score.rules.map((r) => '<span>' + escapeHtml(r) + '</span>').join('')
+      + '</div></div>';
+  }
+
   if (S.ticket) html += `<div class="sc-note">🎟️ 可使用券种：${escapeHtml(S.ticket)}</div>`;
   if (S.note) html += `<div class="sc-note subtle">${escapeHtml(S.note)}</div>`;
   html += '<div class="sc-links">';
   if (S.callUrl) html += `<a class="sc-btn" href="${escapeHtml(S.callUrl)}" target="_blank" rel="noopener">Call 本 ↗</a>`;
   html += '</div></div>';
-  html += renderTheaterSchedule(daysTo);
+  html += renderTheaterSchedule(daysTo, tUsed);
   box.innerHTML = html;
 }
 
@@ -1275,9 +1310,12 @@ function renderSchedule() {
  * 数据：demo 专属 js/theater-schedule.js → window.__THEATER_SCHEDULE__
  * 官方一帖列出 G / Z / NIII / 全团联合 / 偶像研究计划 全部场次，这里只留王语晨所在队与全团场。
  */
-function renderTheaterSchedule(daysTo) {
+function renderTheaterSchedule(daysTo, skip) {
   const T = window.__THEATER_SCHEDULE__;
   if (!T || !T.items || !T.items.length) return '';
+  // 已经在应援会行程里出现过的场次不再重复列；全被去重掉时整块不显示
+  const items = T.items.filter((_, i) => !(skip && skip.has && skip.has(i)));
+  if (!items.length) return '';
   const today = fmtDate(Date.now());
   const d2 = daysTo || ((d) => {
     if (!d) return null;
@@ -1293,7 +1331,7 @@ function renderTheaterSchedule(daysTo) {
     return '<span class="sc-tag done">已结束</span>';
   };
   const groups = {}, order = [];
-  T.items.forEach((it) => { if (!groups[it.date]) { groups[it.date] = []; order.push(it.date); } groups[it.date].push(it); });
+  items.forEach((it) => { if (!groups[it.date]) { groups[it.date] = []; order.push(it.date); } groups[it.date].push(it); });
   order.sort();
 
   const first = order[0], last = order[order.length - 1];
