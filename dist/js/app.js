@@ -295,6 +295,38 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
+/* ---------------- 口袋表情：[敲打] → 表情图 ---------------- */
+// 口袋48 服务端存的是纯文本（如「这是住在口袋的一个下午[敲打]」），App 里渲染成图片。
+// 表情取自微信/QQ 经典表情表（0~104），已离线托管在 assets/emoji/{序号}.gif，
+// 不依赖任何第三方 CDN，也不受防盗链影响。只替换表里存在的名字，未收录的原样保留文本。
+const EMOJI_NAMES = ('微笑 撇嘴 色 发呆 得意 流泪 害羞 闭嘴 睡 大哭 '
+  + '尴尬 发怒 调皮 呲牙 惊讶 难过 酷 冷汗 抓狂 吐 '
+  + '偷笑 可爱 白眼 傲慢 饥饿 困 惊恐 流汗 憨笑 悠闲 '
+  + '奋斗 咒骂 疑问 嘘 晕 折磨 衰 骷髅 敲打 再见 '
+  + '擦汗 抠鼻 鼓掌 糗大了 坏笑 左哼哼 右哼哼 哈欠 鄙视 委屈 '
+  + '快哭了 阴险 亲亲 吓 可怜 菜刀 西瓜 啤酒 篮球 乒乓 '
+  + '咖啡 饭 猪头 玫瑰 凋谢 示爱 爱心 心碎 蛋糕 闪电 '
+  + '炸弹 刀 足球 瓢虫 便便 月亮 太阳 礼物 拥抱 强 '
+  + '弱 握手 胜利 抱拳 勾引 拳头 差劲 爱你 NO OK '
+  + '爱情 飞吻 跳跳 发抖 怄火 转圈 磕头 回头 跳绳 挥手 '
+  + '激动 街舞 献吻 左太极 右太极').split(/\s+/).filter(Boolean);
+const EMOJI_MAP = Object.create(null);
+EMOJI_NAMES.forEach((n, i) => { EMOJI_MAP[n] = i; });
+EMOJI_MAP['飘虫'] = 73;   // 口袋里的写法，标准名「瓢虫」
+EMOJI_MAP['大汗'] = 40;   // 口袋里的写法，标准名「擦汗」
+
+const EMOJI_RE = /\[([^\[\]\n]{1,8})\]/g;
+/** 传入已 escape 的文本，把其中的方括号表情换成表情图 */
+function withEmoji(escaped) {
+  if (!escaped || escaped.indexOf('[') < 0) return escaped;
+  return escaped.replace(EMOJI_RE, (m0, name) => {
+    const i = EMOJI_MAP[name];
+    if (i === undefined) return m0;   // 未收录 → 保持原文本，不瞎猜
+    return '<img class="msg-emoji" src="assets/emoji/' + i + '.gif" alt="' + m0
+      + '" title="' + m0 + '" loading="lazy" decoding="async">';
+  });
+}
+
 /* ---------------- 多语言翻译（浏览器按需，免费接口 + localStorage 缓存） ---------------- */
 // 目标语言：中 / 英 / 西 / 法 / 荷 / 葡 / 罗 / 日 / 越 / 韩 / 泰（按访客国家分布补：比利时/法国→fr、荷兰→nl、
 // 罗马尼亚→ro、莫桑比克→pt、泰国→th；印度访客通用英语，故不加印地语）。选「中文」时不做任何翻译。
@@ -404,7 +436,7 @@ function trBlocksHtml(m, lang) {
   return trSegs(m).map((s) => {
     const t = trGet(s.text, lang);
     const body = t != null
-      ? escapeHtml(t)
+      ? withEmoji(escapeHtml(t))
       : '<span class="tr-loading">' + trUI('loading', lang) + '</span>';
     const lab = s.label ? `<span class="tr-label">${escapeHtml(s.label)}</span>` : '';
     return `<div class="tr-item">${lab}<span class="tr-text">${body}</span></div>`;
@@ -438,7 +470,7 @@ async function doTranslate(mid) {
       const isErr = typeof s._t === 'string' && s._t.startsWith('__ERR__');
       const body = isErr
         ? `<span class="tr-err">${trUI('fail', lang)}（${escapeHtml(s._t.slice(7))}）</span>`
-        : escapeHtml(s._t);
+        : withEmoji(escapeHtml(s._t));
       return `<div class="tr-item">${s.label ? `<span class="tr-label">${escapeHtml(s.label)}</span>` : ''}` +
         `<span class="tr-text">${body}</span></div>`;
     }).join('');
@@ -2753,7 +2785,7 @@ function renderQuote(reply) {
   const who = reply.name ? `回复 <b>@${escapeHtml(reply.name)}</b>` : '引用';
   return `<div class="msg-quote">
     <div class="msg-quote-who">↩︎ ${who}</div>
-    ${reply.text ? `<div class="msg-quote-text">${escapeHtml(reply.text)}</div>` : ''}
+    ${reply.text ? `<div class="msg-quote-text">${withEmoji(escapeHtml(reply.text))}</div>` : ''}
   </div>`;
 }
 
@@ -2796,7 +2828,7 @@ function renderMsg(m) {
   // 1) 引用块（回复谁 / 什么礼物 / 什么提问）
   body += renderQuote(m.reply);
   // 2) 正文
-  if (m.text) body += `<div class="msg-body">${escapeHtml(m.text)}</div>`;
+  if (m.text) body += `<div class="msg-body">${withEmoji(escapeHtml(m.text))}</div>`;
   // 3) 媒体
   if (m.images?.length) {
     body += `<div class="msg-images">${m.images.map((u) => imgHtml(u, '')).join('')}</div>`;
