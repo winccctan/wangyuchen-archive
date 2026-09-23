@@ -510,6 +510,26 @@ async function push(list, coverage) {
     }
     return { status: 0, j: { error: String(last && (last.code || last.message)) } };
   };
+  // ⚠️ 人数骤降保护（2026-09-23 加）
+  // 为什么需要：整桶覆盖写没有「部分更新」的余地 —— 一旦拿一份不完整的名单去灌
+  // （典型案例：GitHub Actions 的 .cache/fans 只积累到 2025-02，房间 21.6 万鸡腿，
+  //   而线上是全历史 253 万），桶里的人会直接少一大截，别人的档案就此消失。
+  // 所以推送前先和线上人数比一比，骤降就停手。确认真要覆盖时加 --force-push。
+  const FLOOR = 0.85;
+  if (!has('force-push')) {
+    const rd = await post('/api/_fans_ready');
+    const online = (rd.status === 200 && rd.j) ? Number(rd.j.people) || 0 : 0;
+    if (online > 0 && list.length < online * FLOOR) {
+      const low = (100 - (list.length / online) * 100).toFixed(0);
+      console.log(`\n⛔ 拒绝推送：本轮只有 ${list.length} 人，线上已是 ${online} 人（少 ${low}%）。`);
+      console.log('   整桶覆盖会把线上多出来的人抹掉。多半是抓取缓存不完整 ——');
+      console.log('   先补 `--back 0`（全量）或从有全历史的那台机器推；确实要覆盖请加 --force-push。');
+      return;
+    }
+    if (online > 0) console.log(`人数校验：线上 ${online} 人 → 本轮 ${list.length} 人，通过`);
+    else console.log('人数校验：读不到线上就绪标记，跳过（首次灌库属正常）');
+  }
+
   // D1 只是尽力同步（免费版读配额常打满）；查询主路径是 KV，失败就当没这层。
   const init = await post('/api/_fans_init');
   console.log('D1 建表：', init.status, JSON.stringify(init.j).slice(0, 80));

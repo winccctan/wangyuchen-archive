@@ -781,6 +781,7 @@ async function handleApi(url, request, env, ctx) {
   // 写接口（需 SYNC_TOKEN，由 CI / 本地脚本调用）
   if (p === '/api/_fans_init' && request.method === 'POST') return handleFansInit(request, env);
   if (p === '/api/_fans_upsert' && request.method === 'POST') return handleFansUpsert(request, env);
+  if (p === '/api/_fans_ready' && (request.method === 'GET' || request.method === 'POST')) return handleFansReady(request, env);
   // ---- 第三方礼物榜覆盖表：带 uid，只存 D1，读写都要鉴权（绝不进 GitHub 仓库）----
   if (p === '/api/_gift_override') {
     if (!(await authorizedForWrite(request, env))) return json({ error: 'forbidden: sync token required' }, 403);
@@ -901,6 +902,31 @@ async function handleFansInit(request, env) {
   await env.DB.prepare("DELETE FROM fans WHERE uid = '__ready__'").run();
   const c = await env.DB.prepare('SELECT COUNT(*) AS n FROM fans').first();
   return json({ ok: true, rows: (c && c.n) || 0 });
+}
+
+/** 只读：线上档案的就绪标记（人数 / 覆盖起点 / 直播是否已跑）。
+ *  用途是灌库前的「人数骤降保护」—— 整桶覆盖没有部分更新，必须先在本地判断
+ *  这一份是不是比线上还少（少就说明抓取缓存不完整，别灌）。需要写权限，避免
+ *  对外开放人数这种内部指标。 */
+async function handleFansReady(request, env) {
+  if (!(await authorizedForWrite(request, env))) return json({ error: 'forbidden: sync token required' }, 403);
+  let cov = null;
+  const kv = (env && env.KV && typeof env.KV.get === 'function') ? env.KV : null;
+  if (kv) {
+    try { const r = await kv.get('fan/__ready__'); if (r) cov = JSON.parse(r); } catch (_) { cov = null; }
+  }
+  if (!cov && env && env.DB) {
+    try {
+      const row = await env.DB.prepare("SELECT data AS d FROM fans WHERE uid = '__ready__'").first();
+      if (row) cov = JSON.parse(row.d || '{}');
+    } catch (_) { /* 读不到就当没有 */ }
+  }
+  return json({
+    ready: !!cov,
+    people: (cov && Number(cov.people)) || 0,
+    since: (cov && Number(cov.since)) || 0,
+    liveDone: !!(cov && cov.liveDone),
+  });
 }
 
 async function handleFansUpsert(request, env) {
