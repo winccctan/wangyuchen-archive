@@ -1328,6 +1328,21 @@ function renderSchedule() {
 
   if (S.ticket) html += `<div class="sc-note">🎟️ 可使用券种：${escapeHtml(S.ticket)}</div>`;
   if (S.note) html += `<div class="sc-note subtle">${escapeHtml(S.note)}</div>`;
+  // 附加信息（计分卡 / 券种）也能勾进图里 —— 只在勾选模式出现，默认都勾
+  const extras = [];
+  if (S.score && S.score.rules && S.score.rules.length) extras.push(['score', '🏅 运动会计分', S.score.period || '']);
+  if (S.ticket) extras.push(['ticket', '🎟️ 可使用券种', '']);
+  if (extras.length) {
+    html += '<div class="sc-extra">';
+    extras.forEach((x) => {
+      html += '<div class="sc-item">'
+        + `<span class="sc-pick"><input type="checkbox" data-x="${x[0]}" checked aria-label="${escapeHtml(x[1])}"></span>`
+        + `<span class="sc-title">${escapeHtml(x[1])}</span>`
+        + (x[2] ? `<span class="sc-kind">${escapeHtml(x[2])}</span>` : '')
+        + '</div>';
+    });
+    html += '</div>';
+  }
   html += '<div class="sc-links">';
   if (S.callUrl) html += `<a class="sc-btn" href="${escapeHtml(S.callUrl)}" target="_blank" rel="noopener">Call 本 ↗</a>`;
   html += '<button type="button" class="sc-btn ghost" id="scPosterBtn">🖼 生成行程图</button>';
@@ -1357,123 +1372,267 @@ function loadImgOnce(src) {
   });
 }
 
-/* 行程转发图：配色沿用档案分享卡的同款深色渐变，转发出来一眼认得出是这个站。
+/* 行程转发图：**排版与字号对齐 tools/schedule-poster.html 那张手工海报**
+ * ——浅青渐变底 + 白色大圆角卡片 + 她的圆头像，字号照搬海报（日期 40 / 时间 32 / 活动名 34 / 计分 44）。
+ * 之前那版沿用档案分享卡的深色底、900 宽，字偏小、也不像海报，站长明确要「海报那种、清晰蓝底」。
  * 头像素材用站上 favicon 那张（同域、必定存在）；量高一趟 + 画一趟的两段式与 buildShareCard 一致。 */
 function drawSchedulePoster(ctx, d, W, PAD, FONT, bgOnly, H) {
-  const CW = W - PAD * 2;
-  const cx = W / 2;
+  const CW = W - PAD * 2;          // 976
+  const CPAD = 38;                 // 卡片内边距
+  const TX = PAD + CPAD;           // 90，卡片内文字起点
+  const IW = CW - CPAD * 2;        // 900，卡片内可用宽度
+  const INK = '#123a45', INK2 = '#5b7c87';
   const f = (w, s) => { ctx.font = w + ' ' + s + 'px ' + FONT; };
   ctx.textBaseline = 'top';
+  ctx.textAlign = 'left';
 
   if (bgOnly) {
-    const bg = ctx.createLinearGradient(0, 0, W * .35, H);
-    bg.addColorStop(0, '#1d3f66'); bg.addColorStop(.45, '#172340'); bg.addColorStop(1, '#1b1533');
+    const bg = ctx.createLinearGradient(0, 0, W * .55, H);
+    bg.addColorStop(0, '#e6f7fb'); bg.addColorStop(.4, '#d3f0f8'); bg.addColorStop(1, '#c9ecf6');
     ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
-    let g = ctx.createRadialGradient(W - 60, 40, 0, W - 60, 40, 330);
-    g.addColorStop(0, 'rgba(53,224,200,.5)'); g.addColorStop(1, 'rgba(53,224,200,0)');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-    g = ctx.createRadialGradient(40, H * .5, 0, 40, H * .5, 300);
-    g.addColorStop(0, 'rgba(255,122,184,.3)'); g.addColorStop(1, 'rgba(255,122,184,0)');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
   }
 
-  let y = 64;
-  const R = 46;
+  // ── 头部：圆头像 + 称呼 + 渐变大标题 + 汇总 ──
+  let y = PAD;
+  const A = 190;
+  ctx.save();
+  ctx.shadowColor = 'rgba(13,69,86,.16)'; ctx.shadowBlur = 22; ctx.shadowOffsetY = 8;
+  ctx.beginPath(); ctx.arc(PAD + A / 2, y + A / 2, A / 2, 0, Math.PI * 2);
+  ctx.fillStyle = '#dff2f7'; ctx.fill();
+  ctx.restore();
   if (d.avatar) {
     ctx.save();
-    ctx.beginPath(); ctx.arc(cx, y + R, R, 0, Math.PI * 2); ctx.closePath(); ctx.clip();
-    ctx.drawImage(d.avatar, cx - R, y, R * 2, R * 2);
+    ctx.beginPath(); ctx.arc(PAD + A / 2, y + A / 2, A / 2, 0, Math.PI * 2); ctx.clip();
+    ctx.drawImage(d.avatar, PAD, y, A, A);
     ctx.restore();
-    ctx.beginPath(); ctx.arc(cx, y + R, R, 0, Math.PI * 2);
-    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.stroke();
   } else {
-    const ag = ctx.createLinearGradient(cx - R, y, cx + R, y + R * 2);
+    const ag = ctx.createLinearGradient(PAD, y, PAD + A, y + A);
     ag.addColorStop(0, '#35e0c8'); ag.addColorStop(.5, '#58a6ff'); ag.addColorStop(1, '#b47aff');
-    ctx.beginPath(); ctx.arc(cx, y + R, R, 0, Math.PI * 2); ctx.fillStyle = ag; ctx.fill();
-    ctx.textAlign = 'center'; f('400', 44); ctx.fillStyle = '#fff'; ctx.fillText('🐟', cx, y + R - 24);
-  }
-  y += R * 2 + 28;
-
-  ctx.textAlign = 'center';
-  const tg = ctx.createLinearGradient(PAD, y, W - PAD, y);
-  tg.addColorStop(0, '#7ff0dd'); tg.addColorStop(.55, '#9fc8ff'); tg.addColorStop(1, '#e6b3ff');
-  f('800', 44); ctx.fillStyle = tg; ctx.fillText(d.title, cx, y);
-  y += 44 + 14;
-  f('400', 22); ctx.fillStyle = '#9fb3d1'; ctx.fillText(d.sub, cx, y);
-  y += 22 + 44;
-
-  const IND = PAD + 18;          // 卡片内缩进
-  const TX = IND + 38;           // 图标之后文字起点
-  d.days.forEach((g) => {
-    f('700', 26);
-    const wdt = ctx.measureText(g.label).width;
-    ctx.fillStyle = 'rgba(53,224,200,.16)';
-    roundRectPath(ctx, PAD, y - 5, wdt + 28, 38, 19); ctx.fill();
+    ctx.save();
+    ctx.beginPath(); ctx.arc(PAD + A / 2, y + A / 2, A / 2, 0, Math.PI * 2); ctx.clip(); ctx.fillStyle = ag; ctx.fill();
+    ctx.restore();
+    ctx.textAlign = 'center'; f('400', 84); ctx.fillStyle = '#fff';
+    ctx.fillText('🐟', PAD + A / 2, y + A / 2 - 46);
     ctx.textAlign = 'left';
-    f('700', 26); ctx.fillStyle = '#7ff0dd'; ctx.fillText(g.label, PAD + 14, y + 2);
-    y += 38 + 18;
+  }
 
-    g.items.forEach((it) => {
-      f('500', 28);
-      const lines = wrapText(ctx, it.title, CW - 36 - 38 - 8, 3);
-      let h = 18 + 32 + lines.length * 34 + 18;
-      if (it.flags && it.flags.length) h += 26;
-      ctx.fillStyle = 'rgba(255,255,255,.055)';
-      roundRectPath(ctx, PAD, y, CW, h, 16); ctx.fill();
-      let ty = y + 16;
-      ctx.textAlign = 'left';
-      f('400', 24); ctx.fillStyle = '#fff'; ctx.fillText(it.icon || '🎭', IND, ty + 2);
-      f('800', 26); ctx.fillStyle = '#7ff0dd'; ctx.fillText(it.time || '', TX, ty + 2);
-      if (it.kind) {
-        f('700', 20);
-        const kw = ctx.measureText(it.kind).width;
-        const kx = PAD + CW - 18 - (kw + 24);
-        ctx.fillStyle = 'rgba(255,255,255,.12)';
-        roundRectPath(ctx, kx, ty - 2, kw + 24, 30, 15); ctx.fill();
-        f('700', 20); ctx.fillStyle = '#cfe6f2'; ctx.fillText(it.kind, kx + 12, ty + 3);
-      }
-      ty += 32;
-      f('500', 28); ctx.fillStyle = '#eaf2fb';
-      lines.forEach((ln) => { ctx.fillText(ln, TX, ty); ty += 34; });
-      if (it.flags && it.flags.length) {
-        f('600', 19); ctx.fillStyle = '#93a8c4';
-        ctx.fillText(it.flags.join(' · '), TX, ty + 2);
-      }
-      y += h + 12;
-    });
-    y += 20;
+  const hx = PAD + A + 28;
+  f('600', 28); ctx.fillStyle = '#2b7a8d';
+  ctx.fillText('王语晨 · GNZ48 TEAM NIII', hx, y + 10);
+  const gt = ctx.createLinearGradient(hx, 0, W - PAD, 0);
+  gt.addColorStop(0, '#0f7f9b'); gt.addColorStop(.6, '#2fb8cf'); gt.addColorStop(1, '#5fd6e4');
+  f('800', 68); ctx.fillStyle = gt; ctx.fillText(d.h1, hx, y + 54);
+  // 汇总行：「9.26 – 10.7 · 6 场公演 · 6 场见面会」，场次加粗深色（海报里是 <b>）
+  let mx = hx;
+  f('400', 30);
+  d.metaParts.forEach((p) => {
+    ctx.font = (p.b ? '700 ' : '400 ') + '30px ' + FONT;
+    ctx.fillStyle = p.b ? '#0d7f9b' : INK2;
+    ctx.fillText(p.t, mx, y + 150);
+    mx += ctx.measureText(p.t).width;
   });
+  y += A + 30;
 
+  // ── 卡片外壳（白底 + 圆角 + 投影，海报 .card）──
+  const cardBox = (top, h, fill) => {
+    ctx.save();
+    ctx.shadowColor = 'rgba(13,69,86,.10)'; ctx.shadowBlur = 34; ctx.shadowOffsetY = 14;
+    ctx.fillStyle = fill || '#fff';
+    roundRectPath(ctx, PAD, top, CW, h, 32); ctx.fill();
+    ctx.restore();
+    ctx.strokeStyle = 'rgba(13,69,86,.10)'; ctx.lineWidth = 1;
+    roundRectPath(ctx, PAD, top, CW, h, 32); ctx.stroke();
+  };
+  const dashLine = (yy, color) => {
+    ctx.save();
+    ctx.setLineDash([9, 9]); ctx.strokeStyle = color; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(TX, yy); ctx.lineTo(TX + IW, yy); ctx.stroke();
+    ctx.restore();
+  };
+
+  // ── 卡片 1：日程一览 ──
+  const TIME_W = 206;                   // 时间列：够放「17:30–19:30」，再宽就挤得活动名老折行
+  const NAME_W = IW - 88 - TIME_W - 32; // 标签 88 + 时间列 + 两个 gap
+  const nameLines = (t) => { f('500', 34); return wrapText(ctx, t, NAME_W, 3); };
+  let c1 = 36 + 46 + 22 + 2;            // padding-top + 标题行 + 间距 + 虚线
+  d.days.forEach((g) => {
+    c1 += 26 + 48 + 16;                 // day padding-top + 日期行 + 行距
+    g.items.forEach((it) => {
+      c1 += 14 + Math.max(47, nameLines(it.name).length * 48) + 14;
+    });
+    c1 += 8;
+  });
+  c1 += 32;
+  cardBox(y, c1, '#fff');
+  let cy = y + 36;
+  f('800', 38); ctx.fillStyle = INK;
+  ctx.fillText('🗓️ 日程一览', TX, cy);
+  cy += 46 + 22;
+  dashLine(cy, 'rgba(13,69,86,.13)');
+  cy += 2;
+
+  d.days.forEach((g) => {
+    cy += 26;
+    f('700', 40); ctx.fillStyle = INK;
+    ctx.fillText(g.label, TX, cy);
+    const lw = ctx.measureText(g.label).width;
+    if (g.sub) { f('400', 29); ctx.fillStyle = INK2; ctx.fillText(g.sub, TX + lw + 14, cy + 9); }
+    cy += 48 + 16;
+    g.items.forEach((it) => {
+      const lines = nameLines(it.name);
+      const rh = Math.max(47, lines.length * 48);
+      let ry = cy + 14 + (rh - 47) / 2;
+      // 类型标签：公演青、见面粉（海报 .tag）
+      const isMeet = it.kind === '见面会';
+      const tagTxt = it.tag || (isMeet ? '见面' : '公演');
+      ctx.fillStyle = isMeet ? 'rgba(224,122,154,.15)' : 'rgba(62,201,221,.16)';
+      roundRectPath(ctx, TX, ry - 2, 88, 47, 12); ctx.fill();
+      f('700', 26); ctx.fillStyle = isMeet ? '#c9557e' : '#0f8fa8';
+      ctx.textAlign = 'center'; ctx.fillText(tagTxt, TX + 44, ry + 8); ctx.textAlign = 'left';
+      f('700', 32); ctx.fillStyle = '#0b4f61';
+      ctx.fillText(it.time || '', TX + 88 + 16, ry + 6);
+      f('500', 34); ctx.fillStyle = '#16414d';
+      lines.forEach((ln, i) => { ctx.fillText(ln, TX + 88 + 16 + TIME_W + 16, ry + 4 + i * 48); });
+      cy += 14 + rh + 14;
+    });
+    cy += 8;
+  });
+  y += c1 + 28;
+
+  // ── 卡片 2：运动会计分（可勾选，暖橙白卡，海报 .point）──
+  if (d.point) {
+    const P = d.point;
+    const ruleRows = (P.rules || []).map((r) => {
+      const m = /^(\S+)\s+([\s\S]*)$/.exec(r);
+      return m ? [m[1], m[2]] : [r, ''];
+    });
+    f('400', 28);
+    // 券种：补上「可用券种：」小标题（海报里有），🎟️ 只出现在第一行
+    const tkLines = P.ticket ? wrapText(ctx, '🎟️ 可用券种：' + P.ticket, IW - 56, 4) : [];
+    let c2 = 36 + 46 + 22 + 2;
+    if (P.period) c2 += 24 + 60 + 4;
+    if (ruleRows.length) {
+      c2 += 22;
+      ruleRows.forEach((rw) => {
+        f('400', 31);
+        const sl = wrapText(ctx, rw[1], IW - 48 - 104 - 18 - 24, 2);
+        c2 += 18 + Math.max(53, sl.length * 42) + 18 + 14;
+      });
+      c2 += 6;
+    }
+    if (tkLines.length) c2 += 24 + 22 + tkLines.length * 48 + 22;
+    c2 += 32;
+
+    const pg = ctx.createLinearGradient(PAD, y, PAD + CW * .8, y + c2);
+    pg.addColorStop(0, '#fff9f2'); pg.addColorStop(.55, '#fff3f6'); pg.addColorStop(1, '#f3fbff');
+    cardBox(y, c2, null);
+    ctx.save(); roundRectPath(ctx, PAD, y, CW, c2, 32); ctx.clip();
+    ctx.fillStyle = pg; ctx.fillRect(PAD, y, CW, c2); ctx.restore();
+    ctx.strokeStyle = 'rgba(13,69,86,.10)'; ctx.lineWidth = 1;
+    roundRectPath(ctx, PAD, y, CW, c2, 32); ctx.stroke();
+
+    let py = y + 36;
+    f('800', 38); ctx.fillStyle = '#b5651d';
+    ctx.fillText('⚠️ 运动会计分时段', TX, py);
+    py += 46 + 22;
+    dashLine(py, 'rgba(181,101,29,.18)');
+    py += 2;
+    if (P.period) {
+      py += 24;
+      f('800', 50); ctx.fillStyle = '#c2551f';
+      ctx.fillText(P.period, TX, py);
+      const pw = ctx.measureText(P.period).width;
+      f('600', 28); ctx.fillStyle = INK2;
+      ctx.fillText('这段时间内的活动都在计分', TX + pw + 16, py + 18);
+      py += 60 + 4;
+    }
+    if (ruleRows.length) {
+      py += 22;
+      ruleRows.forEach((rw) => {
+        f('400', 31);
+        const sl = wrapText(ctx, rw[1], IW - 48 - 104 - 18 - 24, 2);
+        const rh = Math.max(53, sl.length * 42);
+        ctx.fillStyle = 'rgba(255,255,255,.86)';
+        roundRectPath(ctx, TX, py, IW, rh + 36, 20); ctx.fill();
+        ctx.strokeStyle = 'rgba(181,101,29,.13)'; ctx.lineWidth = 1;
+        roundRectPath(ctx, TX, py, IW, rh + 36, 20); ctx.stroke();
+        f('800', 44); ctx.fillStyle = '#d3691f'; ctx.textAlign = 'right';
+        ctx.fillText(rw[0], TX + 24 + 104, py + 18 + (rh - 53) / 2);
+        ctx.textAlign = 'left';
+        f('400', 31); ctx.fillStyle = '#4d6b74';
+        sl.forEach((ln, i) => { ctx.fillText(ln, TX + 24 + 104 + 24, py + 18 + (rh - 42) / 2 + i * 42); });
+        py += rh + 36 + 14;
+      });
+      py += 6;
+    }
+    if (tkLines.length) {
+      py += 24;
+      ctx.fillStyle = 'rgba(255,255,255,.72)';
+      roundRectPath(ctx, TX, py, IW, 22 + tkLines.length * 48 + 22, 20); ctx.fill();
+      ctx.save(); ctx.setLineDash([7, 7]); ctx.strokeStyle = 'rgba(181,101,29,.28)'; ctx.lineWidth = 1;
+      roundRectPath(ctx, TX, py, IW, 22 + tkLines.length * 48 + 22, 20); ctx.stroke(); ctx.restore();
+      f('400', 28); ctx.fillStyle = '#4d6b74';
+      tkLines.forEach((ln, i) => { ctx.fillText(ln, TX + 24, py + 22 + i * 48); });
+      py += 22 + tkLines.length * 48 + 22;
+    }
+    y += c2 + 28;
+  }
+
+  // ── 页脚 ──
   ctx.textAlign = 'center';
-  f('400', 20); ctx.fillStyle = '#7c90ad';
-  ctx.fillText(d.footer, cx, y);
-  y += 20 + 44;
+  f('600', 26); ctx.fillStyle = '#5b7c87';
+  ctx.fillText('idol.wyc0518.cc · 王语晨补档站', W / 2, y + 8);
+  f('400', 25); ctx.fillStyle = '#8aa7b1';
+  ctx.fillText('行程以官方公告为准，如有变动请关注官方与应援会通知', W / 2, y + 48);
+  ctx.textAlign = 'left';
+  y += 48 + 34 + 30;
   return y;
 }
 
-async function buildSchedulePoster(picks) {
-  const W = 900, PAD = 56;
+async function buildSchedulePoster(picks, extra) {
+  const W = 1080, PAD = 52;
   const FONT = '"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Heiti SC",sans-serif';
+  const S = window.__SCHEDULE__ || {};
   // picks 已经是页面顺序（渲染时就按日期排过），顺序分组即可，不用再排
   const days = [], order = [];
   picks.forEach((it) => {
     const k = it.date || '更远';
     let gi = order.indexOf(k);
-    if (gi < 0) { order.push(k); days.push({ label: '', items: [] }); gi = order.length - 1; }
-    days[gi].items.push(it);
+    if (gi < 0) { order.push(k); days.push({ label: '', sub: '', items: [] }); gi = order.length - 1; }
+    days[gi].items.push({ kind: it.kind, time: it.time, name: it.title });
   });
   days.forEach((g, i) => {
     const k = order[i];
-    g.label = k === '更远' ? '更远' : k.slice(5).replace('-', '/') + (g.items[0].weekday ? ' ' + g.items[0].weekday : '');
+    if (k === '更远') { g.label = '更远的安排'; g.sub = ''; return; }
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(k);
+    g.label = m ? (Number(m[2]) + '月' + Number(m[3]) + '日') : k;
+    const first = picks.find((x) => (x.date || '更远') === k);
+    g.sub = first ? (first.weekday || '') : '';
   });
-  const nPerf = picks.filter((x) => x.kind === '公演').length;
-  const nMeet = picks.filter((x) => x.kind === '见面会').length;
-  const sub = [nPerf ? nPerf + ' 场公演' : '', nMeet ? nMeet + ' 场见面会' : '']
-    .filter(Boolean).join(' · ') || (picks.length + ' 项安排');
-  const d = {
-    title: '王语晨 · 行程', sub: sub, days: days,
-    footer: 'idol.wyc0518.cc · 王语晨补档站', avatar: null,
-  };
+
+  // 汇总行：日期区间 + 各类场次数（场次加粗）
+  const dated = picks.map((x) => x.date).filter(Boolean).sort();
+  const fmt = (s) => { const m = /^\d{4}-(\d{2})-(\d{2})$/.exec(s); return m ? Number(m[1]) + '.' + Number(m[2]) : s; };
+  const parts = [];
+  if (dated.length) parts.push({ t: fmt(dated[0]) + ' – ' + fmt(dated[dated.length - 1]), b: false });
+  const cnt = (k) => picks.filter((x) => x.kind === k).length;
+  const np = cnt('公演'), nm = cnt('见面会');
+  if (np) { if (parts.length) parts.push({ t: ' · ', b: false }); parts.push({ t: np + ' 场公演', b: true }); }
+  if (nm) { parts.push({ t: ' · ', b: false }); parts.push({ t: nm + ' 场见面会', b: true }); }
+  if (!parts.length) parts.push({ t: picks.length + ' 项安排', b: true });
+
+  // 计分卡 / 券种：按勾选决定画不画
+  let point = null;
+  const ex = extra || {};
+  if ((ex.score && S.score) || (ex.ticket && S.ticket)) {
+    point = {
+      period: (ex.score && S.score) ? (S.score.period || '') : '',
+      rules: (ex.score && S.score) ? (S.score.rules || []) : [],
+      ticket: (ex.ticket && S.ticket) ? S.ticket : '',
+    };
+  }
+
+  const d = { h1: '晨晨 · 行程安排', metaParts: parts, days: days, point: point, avatar: null };
   const measure = document.createElement('canvas').getContext('2d');
   const H = Math.ceil(drawSchedulePoster(measure, d, W, PAD, FONT, false, 2000));
   d.avatar = await loadImgOnce('./assets/avatar-round.png');
@@ -1494,9 +1653,17 @@ function bindSchedulePicker(list) {
   const btn = box.querySelector('#scPosterBtn');
   if (!btn) return;
   const go = box.querySelector('#scGo');
-  const inputs = () => Array.prototype.slice.call(box.querySelectorAll('.sc-pick input'));
-  const picked = () => inputs().filter((i) => i.checked)
+  // 两类复选框分开取：行程条目带 data-i，附加信息（计分卡/券种）带 data-x
+  const rowInputs = () => Array.prototype.slice.call(box.querySelectorAll('.sc-pick input[data-i]'));
+  const xInputs = () => Array.prototype.slice.call(box.querySelectorAll('.sc-extra input[data-x]'));
+  const inputs = () => rowInputs().concat(xInputs());
+  const picked = () => rowInputs().filter((i) => i.checked)
     .map((i) => list[Number(i.getAttribute('data-i'))]).filter(Boolean);
+  const xPicked = () => {
+    const o = {};
+    xInputs().forEach((i) => { o[i.getAttribute('data-x')] = i.checked; });
+    return o;
+  };
   const sync = () => {
     const n = picked().length;
     const nEl = box.querySelector('#scBarN');
@@ -1515,7 +1682,7 @@ function bindSchedulePicker(list) {
     if (go) { go.disabled = true; go.textContent = '正在生成…'; }
     btn.disabled = true;
     try {
-      const cv = await buildSchedulePoster(picks);
+      const cv = await buildSchedulePoster(picks, xPicked());
       track('sch:poster');
       showAlbumLayer(cv.toDataURL('image/png'), '行程', '王语晨行程');
     } catch (e) {
@@ -1539,7 +1706,8 @@ function bindSchedulePicker(list) {
   if (all) all.addEventListener('click', () => { inputs().forEach((i) => { i.checked = true; }); sync(); });
   const soon = box.querySelector('#scSoon');
   if (soon) soon.addEventListener('click', () => {
-    inputs().forEach((i) => {
+    // 只看未开始 —— 只动行程条目，附加信息保持原样
+    rowInputs().forEach((i) => {
       const it = list[Number(i.getAttribute('data-i'))];
       i.checked = !!(it && !it.passed);
     });

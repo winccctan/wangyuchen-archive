@@ -441,6 +441,8 @@ body.dm-notify-on .dm-tool#dmNotify { background: linear-gradient(135deg, #ff7aa
 }
 .sc-bar-btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 700; }
 .sc-bar-btn:disabled { opacity: .5; cursor: not-allowed; }
+.sc-extra { display: none; flex-direction: column; gap: 8px; margin-top: 12px; }
+.sc-picking .sc-extra { display: flex; }
 .sc-pick { display: none; flex: 0 0 auto; align-items: center; }
 .sc-picking .sc-pick { display: inline-flex; }
 .sc-pick input { width: 18px; height: 18px; margin: 0; cursor: pointer; accent-color: var(--primary); }
