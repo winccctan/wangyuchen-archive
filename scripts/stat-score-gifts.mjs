@@ -3,11 +3,15 @@
  * 统计某个人「送出过多少打分道具」—— 打分道具不是鸡腿，官方在算鸡腿时要剔除，
  * 但它本身是一种应援行为，站长想知道自己（或某个粉丝）到底打了多少分。
  *
- * 用法：
- *   node scripts/stat-score-gifts.mjs --uid 104006629            # 默认 2026 年
- *   node scripts/stat-score-gifts.mjs --uid 104006629 --year 2025
- *   node scripts/stat-score-gifts.mjs --uid 104006629 --all      # 全历史
- *   node scripts/stat-score-gifts.mjs --uid 104006629 --csv out.csv
+ * 用法（--uid 必填，脚本里不写死任何人的 uid）：
+ *   node scripts/stat-score-gifts.mjs --uid <uid>            # 默认 2026 年
+ *   node scripts/stat-score-gifts.mjs --uid <uid> --year 2025
+ *   node scripts/stat-score-gifts.mjs --uid <uid> --all      # 全历史
+ *   node scripts/stat-score-gifts.mjs --uid <uid> --csv 明细.csv
+ *
+ * ⚠️ 隐私红线（站长 2026-09-23 定）：uid 不得写进任何会进 git 的文件。
+ *    所以本脚本没有默认 uid —— 忘了传就报错退出，绝不拿「某个人的 uid」当默认值；
+ *    --csv 不传时明细落在 private-data/（已 gitignore），传了也别填仓库内的路径。
  *
  * 两个来源：
  *   ① 口袋房间 .cache/fans/room.jsonl   —— 有 uid，最准；礼物在 g 字段 {id,nm,c,s}
@@ -27,10 +31,14 @@ const get = (k, d) => {
   const i = argv.indexOf('--' + k);
   return i >= 0 ? (argv[i + 1] || d) : d;
 };
-const UID = get('uid', '104006629');
+const UID = String(get('uid', '') || '').trim();
 const ALL = argv.includes('--all');
 const YEAR = ALL ? null : Number(get('year', '2026'));
 const CSV = get('csv', '');
+if (!/^\d{4,12}$/.test(UID)) {
+  console.error('必须显式传 --uid <uid>（纯数字）。脚本内不设默认 uid —— 免得把某个人的 uid 写进公开仓库。');
+  process.exit(1);
+}
 
 /* ---------- 打分道具判定 ---------- */
 const gp = JSON.parse(fs.readFileSync(ROOT + '/data/gift-prices.json', 'utf8'));
@@ -102,8 +110,11 @@ if (CSV) {
   const rows = [...room.rows, ...live.rows].sort((a, b) => String(a.at).localeCompare(String(b.at)));
   const head = '来源,月份,道具名,数量,giftId\n';
   const body = rows.map((r) => [r.src, r.at, r.name, r.num, r.id].join(',')).join('\n');
-  fs.writeFileSync(CSV, head + body + '\n');
-  console.log(`\n已写出明细：${CSV}（${rows.length} 行）`);
+  // 默认落在 private-data/（已 gitignore）；显式传的路径也照写，但里面只有道具名，没有 uid。
+  const out = CSV || path.join(ROOT, 'private-data', `打分道具-${ALL ? '全历史' : YEAR + '年'}.csv`);
+  fs.mkdirSync(path.dirname(out), { recursive: true });
+  fs.writeFileSync(out, head + body + '\n');
+  console.log(`\n已写出明细：${out}（${rows.length} 行，不含 uid）`);
 }
 
 function dump(label, o) {

@@ -48,6 +48,27 @@ const CATALOG = path.join(CACHE, 'gift-catalog.json');
 const OUT = path.join(CACHE, 'fans.json');
 fs.mkdirSync(CACHE, { recursive: true });
 
+/* ---- 年度活动「打分道具」分值表（目前只做 2026）----
+ * 这类道具 giftId 888 开头、不是礼物、不产生鸡腿，只累计活动分数，
+ * 所以算鸡腿时必须剔除（见下面 isScoring），但分数要单独累计给档案卡展示。
+ * 分值来源：站长 2026-09-23 提供（午夜调频0.1 / 鎏光碟影1 / 迷迭音浪9 / 云境乐园99 / 告白讯号999）。
+ */
+const SCORE_FILE = path.join(ROOT, 'data/score-2026.json');
+const SCORE = fs.existsSync(SCORE_FILE) ? JSON.parse(fs.readFileSync(SCORE_FILE, 'utf8')) : { byId: {}, byName: {} };
+const SCORE_BY_ID = SCORE.byId || {};
+const SCORE_BY_NAME = SCORE.byName || {};
+// 房间记录有 giftId → 优先按 id 查；直播弹幕只有礼物名 → 按名字查
+const scoreOfGift = (g) => {
+  if (!g) return null;
+  const byId = SCORE_BY_ID[String(g.id)];
+  if (byId != null) return byId;
+  const byName = SCORE_BY_NAME[g.nm];
+  return byName != null ? byName : null;
+};
+// 弹幕只有名字
+const scoreOfName = (nm) => (SCORE_BY_NAME[nm] != null ? SCORE_BY_NAME[nm] : null);
+const round1 = (v) => Math.round(v * 10) / 10;
+
 const argv = process.argv.slice(2);
 const arg = (k, d) => { const i = argv.indexOf('--' + k); return i >= 0 ? argv[i + 1] : d; };
 const has = (k) => argv.includes('--' + k);
@@ -328,6 +349,7 @@ function build(PRICE) {
     if (!f) {
       f = { uid, nick: '', live: 0, live26: 0, live24: 0, lives: 0, lives26: 0, lives24: 0,
             room: 0, room26: 0, room24: 0, gifts: 0, gifts26: 0, gifts24: 0,
+            score26: 0,                                   // 2026 活动打分（房间侧，含小数）
             msgs: 0, first: 0, last: 0, days: {}, hs: new Array(24).fill(0) };
       fans.set(uid, f);
     }
@@ -356,7 +378,12 @@ function build(PRICE) {
       f.hs[Number(new Date(r.t + TZ_OFFSET_MS).toISOString().slice(11, 13))] += 1;
     }
     if (!r.g) continue;
-    if (isScoring(r.g)) continue;                             // 打分道具：非礼物
+    if (isScoring(r.g)) {
+      // 打分道具：不算鸡腿，但要单独累计 2026 活动分数
+      const sv = scoreOfGift(r.g);
+      if (sv != null && yearOf(r.t) === '2026') f.score26 += sv * (Number(r.g.c) || 1);
+      continue;
+    }
     const p = PRICE.get(r.g.nm);
     if (!p || p < 0) continue;
     const c = Number(r.g.c) || 1;
@@ -393,15 +420,26 @@ function build(PRICE) {
    */
   const DM_FILE = path.join(ROOT, '.cache/live-gifts.jsonl');
   const dmByName = new Map();        // 昵称 -> 2026 鸡腿
-  let dmRows = 0, dmUsed = 0, dmPriceMiss = 0, dmWrongTarget = 0;
+  const dmScoreByName = new Map();   // 昵称 -> 2026 活动打分
+  let dmRows = 0, dmUsed = 0, dmPriceMiss = 0, dmWrongTarget = 0, dmScoreUsed = 0;
   if (fs.existsSync(DM_FILE)) {
     for (const line of fs.readFileSync(DM_FILE, 'utf8').trim().split('\n')) {
       if (!line) continue;
       let g; try { g = JSON.parse(line); } catch { continue; }
       dmRows++;
       if (!/王语晨/.test(g.target || '')) { dmWrongTarget++; continue; }   // 别的成员那场不算
+      // 打分道具：不算鸡腿，单独累计 2026 活动分数（弹幕源补齐历史后也要限定 2026）
+      const sv = scoreOfName(g.gift);
+      if (sv != null) {
+        if (yearOf(Number(g.ct) || 0) === '2026') {
+          dmScoreByName.set(g.nick, (dmScoreByName.get(g.nick) || 0) + sv * (Number(g.num) || 1));
+          dmScoreUsed++;
+        }
+        dmPriceMiss++;
+        continue;
+      }
       const p = PRICE.get(g.gift);
-      if (p == null || p < 0) { dmPriceMiss++; continue; }                 // 打分道具 / 无价目
+      if (p == null || p < 0) { dmPriceMiss++; continue; }                 // 无价目
       dmByName.set(g.nick, (dmByName.get(g.nick) || 0) + p * (Number(g.num) || 1));
       dmUsed++;
     }
@@ -414,9 +452,17 @@ function build(PRICE) {
     if (res.how !== '唯一') dmAmbiguous++;                  // 昵称被多个 uid 用过，取出现最多的
     dmByUid.set(res.uid, (dmByUid.get(res.uid) || 0) + v);
   }
+  const dmScoreByUid = new Map();    // uid -> 2026 活动打分（只收能归户的）
+  let dmScoreNoUid = 0;
+  for (const [nick, v] of dmScoreByName) {
+    const res = resolveNick(nickUid, nick);
+    if (!res.uid) { dmScoreNoUid++; continue; }
+    dmScoreByUid.set(res.uid, (dmScoreByUid.get(res.uid) || 0) + v);
+  }
   if (dmRows) {
     console.log(`[弹幕礼物] ${dmRows} 条播报 → 采用 ${dmUsed} 条（剔除 ${dmPriceMiss} 打分道具/无价目、${dmWrongTarget} 非本人场次）`);
     console.log(`[弹幕礼物] 归户 ${dmByUid.size} 人；无法归户 ${dmNoUid} 人（${dmNoUidLegs.toLocaleString()} 鸡腿，未并入）${dmAmbiguous ? `，其中 ${dmAmbiguous} 人昵称重名已按最常出现取` : ''}`);
+    if (dmScoreUsed) console.log(`[弹幕打分] ${dmScoreUsed} 条道具播报 → 归户 ${dmScoreByUid.size} 人，合计 ${round1([...dmScoreByUid.values()].reduce((a, b) => a + b, 0)).toLocaleString()} 分；无法归户 ${dmScoreNoUid} 人（未并入）`);
   }
 
   // ---- 2026 年第三方礼物榜（站长提供，前 201 名，含直播间 + 口袋房间）----
@@ -430,11 +476,14 @@ function build(PRICE) {
       const live26 = Math.max(f.live26, dm);              // 弹幕数据目前只落在 2026 年
       const live24 = Math.max(f.live24, dm);              // 2026 ⊂ 「2024 年起」，同样并入
       if (dm > f.live26) f._dmLifted = true;
+      // 2026 活动打分：口袋房间 + 直播弹幕（两侧都只统计 2026）
+      const score26 = round1(f.score26 + (dmScoreByUid.get(f.uid) || 0));
       return ({
       uid: f.uid,
       nick: f.nick,
       live, live2026: live26, lives: f.lives, lives2026: f.lives26,
       room: f.room, room2026: f.room26, gifts: f.gifts, gifts2026: f.gifts26,
+      score2026: score26,
       total: live + f.room, total2026: live26 + f.room26,
       liveSince2024: live24, roomSince2024: f.room24, totalSince2024: live24 + f.room24,
       // 以下字段名沿用旧 room-stats 口径（n/f/l/d/b/h/m），前端渲染逻辑不用改
@@ -443,7 +492,8 @@ function build(PRICE) {
       start: '2022-11-01',
       });
     })
-    .filter((x) => x.total > 0 || x.n > 0);
+    // 注：只送过打分道具、没送过礼物也没发言的人也要留档（否则档案里查不到他的分）
+    .filter((x) => x.total > 0 || x.n > 0 || (x.score2026 || 0) > 0);
 
   /* ---- 第三方榜单覆盖：2026 档 与 2024 年起档，规则完全一致 ----
    * 两边取较大值（自算 vs 榜单），保证不会把谁算小；
