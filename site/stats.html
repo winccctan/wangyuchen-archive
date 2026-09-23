@@ -85,15 +85,19 @@ function showErr(msg) {
 }
 
 // 带超时 + 自动重试（网络抖动 / 边缘节点偶发挂起时不会一直空白）
+// 超时给 20 秒：服务端要并发读上百个 KV 键，冷启动偶尔要好几秒
 async function load(retry = 2) {
   const el = document.getElementById('body');
+  if (!el.innerHTML) { el.innerHTML = '<p class="dim">读取中…</p>'; el.hidden = false; }
   const ctl = new AbortController();
-  const timer = setTimeout(() => ctl.abort(), 8000);
+  const timer = setTimeout(() => ctl.abort('20 秒没响应'), 20000);
   try {
     const r = await fetch(API, { signal: ctl.signal, cache: 'no-store' });
     clearTimeout(timer);
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    render(await r.json());
+    if (!r.ok) throw new Error('接口返回 HTTP ' + r.status);
+    const j = await r.json();
+    if (j && j.error) throw new Error(j.error === 'stats-timeout' ? '服务端算统计超时' : j.error);
+    render(j);
   } catch (e) {
     clearTimeout(timer);
     if (retry > 0) { setTimeout(() => load(retry - 1), 1200); return; }
