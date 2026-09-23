@@ -1439,7 +1439,7 @@ function buildMineShell(box) {
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     const uid = String(input.value || '').trim();
-    if (!/^\d{4,12}$/.test(uid)) { mineHint('uid 是 9~10 位纯数字，再看一下'); return; }
+    if (!/^\d{4,12}$/.test(uid)) { mineHint('uid 是纯数字，再看一下'); return; }
     try { localStorage.setItem(MINE_KEY, uid); } catch (e) {}
     showSaved(true);
     lookupMine(uid);
