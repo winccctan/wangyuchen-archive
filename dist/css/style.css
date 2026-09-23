@@ -144,6 +144,18 @@ body {
 .msg-body { font-size: 15px; white-space: pre-wrap; word-break: break-word; }
 .msg-body.empty { color: var(--muted); font-style: italic; }
 
+/* 口袋表情（[敲打] 这类方括号表情）：内联显示，尺寸随正文字号 */
+.msg-emoji {
+  width: 1.35em;
+  height: 1.35em;
+  min-width: 18px;
+  min-height: 18px;
+  vertical-align: -0.28em;
+  margin: 0 1px;
+  display: inline-block;
+  object-fit: contain;
+}
+
 /* 回复 / 礼物回复的引用块 */
 .msg-quote {
   border-left: 3px solid var(--primary);

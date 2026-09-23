@@ -2,7 +2,7 @@
 // 目的：site/data 里的 messages.json / live.json / performances.json 是完整存档（十几 MB），
 // 网页实际只需要已合并好的 archive.js，打包进发布目录会拖慢加载甚至超出部署体积限制。
 // 用法：node scripts/build-dist.mjs
-import { mkdirSync, copyFileSync, readFileSync, writeFileSync, rmSync, statSync } from 'node:fs';
+import { mkdirSync, copyFileSync, readFileSync, writeFileSync, rmSync, statSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
 
@@ -20,6 +20,27 @@ function cp(rel) {
   mkdirSync(dirname(dst), { recursive: true });
   copyFileSync(src, dst);
   return statSync(dst).size;
+}
+
+// 整目录复制（表情图这类「很多个小文件」的资源，逐个写白名单不现实，也不好维护）
+function cpDir(rel) {
+  const src = join(SITE, rel);
+  const dst = join(DIST, rel);
+  let n = 0;
+  let bytes = 0;
+  const walk = (from, to) => {
+    mkdirSync(to, { recursive: true });
+    for (const e of readdirSync(from, { withFileTypes: true })) {
+      if (e.isDirectory()) walk(join(from, e.name), join(to, e.name));
+      else if (e.isFile()) {
+        copyFileSync(join(from, e.name), join(to, e.name));
+        n += 1;
+        bytes += statSync(join(to, e.name)).size;
+      }
+    }
+  };
+  walk(src, dst);
+  return { n, bytes };
 }
 
 const files = [
@@ -56,6 +77,11 @@ const files = [
   'assets/member-gs3.jpg'     // 2026 官网公式照（补齐，原先漏了）
 ];
 
+// 整目录复制：口袋表情图（105 张 gif，共 ~300KB），逐个列白名单不现实
+const dirs = [
+  'assets/emoji'
+];
+
 let total = 0;
 for (const f of files) {
   const size = cp(f);
@@ -73,6 +99,12 @@ const bumped = html.replace(
   (_m, attr, url) => `${attr}="${url}?v=${VERSION}"`
 );
 writeFileSync(htmlPath, bumped);
+for (const d of dirs) {
+  const { n, bytes } = cpDir(d);
+  total += bytes;
+  console.log(`  ${(d + '/').padEnd(22)} ${n} 个文件 ${(bytes / 1024).toFixed(1)} KB`);
+}
+
 console.log(`\n  缓存版本号 v=${VERSION}`);
 
 console.log(`\n✓ 发布目录就绪：${DIST}`);
