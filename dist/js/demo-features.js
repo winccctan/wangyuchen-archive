@@ -1221,7 +1221,7 @@
     push({ date: '2026.08.25', k: 'url', u: omUrl('2026.08.25'),
       t: '兼任 GNZ48 Team Z', s: '解锁新副本', g: '成长' });
     push({ date: '2026.09.05', k: 'url', u: omUrl('2026.09.05'),
-      t: 'GROUP 首支电竞女子战队', s: '入选大名单', g: '名场面' });
+      t: 'GROUP 首支电竞女子战队', s: '入选大名单', g: '名场面', noCut: true });
 
     // —— 补档小目标：数据里挑出来的 ——
     if (lastMsg) push({ date: bjDate(lastMsg), k: 'day', d: bjDate(lastMsg),
