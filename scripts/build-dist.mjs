@@ -46,6 +46,7 @@ function cpDir(rel) {
 const files = [
   'index.html',
   'stats.html', // 翻译使用统计（带密码；主站由 Worker 屏蔽该路径，只有 GitHub Pages 备份站能打开）
+  'admin-7f2a.html', // 行程后台（隐藏地址 + 密码；不在站内暴露入口，页面 noindex）
   'css/style.css',
   'js/app.js',
   'vendor/hls.min.js',

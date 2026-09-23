@@ -810,3 +810,13 @@ button.sc-btn { border: 0; cursor: pointer; font-family: inherit; line-height: 1
   .mine-hero-gift .mine-hero-v.duo small.unit { font-size: 17px; }
   .mine-hero-gift .hv-score small.unit { font-size: 14px; }
 }
+
+/* 已结束的行程折叠区（2026-09-23）：过期场次收在这里，不占主列表，但都留着能回顾 */
+.sc-past { margin: 4px 0 18px; border: 1px solid rgba(13,69,86,.14); border-radius: 14px;
+  background: rgba(255,255,255,.5); overflow: hidden; }
+.sc-past-h { cursor: pointer; padding: 13px 14px; font-weight: 600; color: #5b7c87;
+  display: flex; justify-content: space-between; align-items: center; list-style: none; }
+.sc-past-h::-webkit-details-marker { display: none; }
+.sc-past-tip { font-weight: 400; font-size: 12.5px; color: #8aa7b1; }
+.sc-past[open] .sc-past-h { border-bottom: 1px solid rgba(13,69,86,.1); }
+.sc-past .sc-day { margin: 12px; }
