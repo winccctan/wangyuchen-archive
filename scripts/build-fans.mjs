@@ -268,38 +268,67 @@ async function priceMap() {
 }
 
 /* ============================ 4. 聚合 ============================ */
-// 2026 年度第三方礼物榜（前 201 名，含直播间 + 口袋房间）。
-// 明文版 data/fans-2026-gift.json（key = uid，已 gitignore，本机专用）优先；
-// CI 读不到明文版，用脱敏版 data/fans-2026-gift-hashed.json（key = sha256 前缀）。
-// 若两张都缺，191 人的 total2026 会退回自算值——所以这里必须吵一声。
-const OVR_RAW = (() => {
-  for (const f of ['data/fans-2026-gift.json', 'data/fans-2026-gift-hashed.json']) {
-    try { return JSON.parse(fs.readFileSync(path.join(ROOT, f), 'utf8')).map || {}; }
-    catch { /* 试下一张 */ }
+/* 第三方礼物榜覆盖表（2026 年度 / 2024 年起累计）。
+ *
+ * ⚠️ 隐私红线（站长 2026-09-23 定）：榜单带 uid，只能留在 D1，绝不进 GitHub 仓库。
+ *    读取顺序：D1（权威；本机与 CI 都走它）→ 本机明文文件（data/ 下、已 gitignore）→ 都没有就大声告警。
+ *    历史做法：把 sha256 脱敏表 commit 进仓库供 CI 读取 —— 已废弃，仓库里现在一份榜单数据都没有。
+ */
+const PERIODS = ['2026', '2024plus'];
+const OVR_FILE = { '2026': 'data/fans-2026-gift.json', '2024plus': 'data/fans-2024plus-gift.json' };
+const OVR = { '2026': { map: {}, src: '无' }, '2024plus': { map: {}, src: '无' } };
+
+function loadOverrideLocal() {
+  for (const p of PERIODS) {
+    try {
+      const j = JSON.parse(fs.readFileSync(path.join(ROOT, OVR_FILE[p]), 'utf8'));
+      if (j && j.map && Object.keys(j.map).length) OVR[p] = { map: j.map, src: '本机文件' };
+    } catch { /* 本机没有就算了 */ }
   }
-  return {};
-})();
-const OVR_UID = {};    // 明文 uid -> 覆盖项（只有明文版能建「list 里还没有的人」）
-const OVR_HASH = {};   // sha256 前缀 -> 覆盖项（明文/脱敏两种 key 都能查）
-for (const [k, v] of Object.entries(OVR_RAW)) {
-  if (isHashed(k)) OVR_HASH[k.slice(2)] = v;
-  else { OVR_UID[k] = v; OVR_HASH[hashUid(k).slice(2)] = v; }
 }
-if (!Object.keys(OVR_RAW).length) {
-  console.warn('⚠️ 未找到 2026 榜单覆盖表（data/fans-2026-gift.json 或脱敏版）→ 191 人将退回自算值，数值会变小');
+
+/** 从 D1 读覆盖表（需 SYNC_TOKEN / GH_TOKEN）。这是 CI 的唯一来源。 */
+async function loadOverrideD1() {
+  const tok = process.env.SYNC_TOKEN || '';
+  const gh = process.env.GH_TOKEN || '';
+  if (!tok && !gh) return;
+  const H = tok ? { 'x-sync-token': tok } : { 'x-gh-token': gh };
+  for (const p of PERIODS) {
+    try {
+      const res = await fetch(`${SITE}/api/_gift_override?period=${p}`, { headers: H });
+      if (!res.ok) { console.warn(`  · D1 覆盖表 ${p}：HTTP ${res.status}`); continue; }
+      const j = await res.json();
+      const rows = Array.isArray(j.rows) ? j.rows : [];
+      const map = {};
+      for (const r of rows) if (r && r.uid && Number(r.v) > 0) map[String(r.uid)] = { v: Number(r.v), rank: Number(r.rank) || 0, nick: r.nick || '' };
+      if (Object.keys(map).length) OVR[p] = { map, src: 'D1' };
+    } catch (e) {
+      console.warn(`  · 从 D1 读「${p}」覆盖表失败：${String((e && e.message) || e).slice(0, 90)}`);
+    }
+  }
+}
+
+function reportOverride() {
+  for (const p of PERIODS) {
+    const o = OVR[p];
+    if (Object.keys(o.map).length) console.log(`[${p} 榜单覆盖] ${Object.keys(o.map).length} 人，来源：${o.src}`);
+    else console.warn(`⚠️ 拿不到「${p}」榜单覆盖表（D1 和本机都没有）→ 上榜的人会退回自算值，数值会变小`);
+  }
 }
 
 function build(PRICE) {
   const isScoring = (g) => /^888\d{0,3}$/.test(String(g.id || '')) || Number(g.s) === 1 || PRICE.get(g.nm) === -1;
   const fans = new Map();      // uid -> row
   // 昵称 → uid 归户索引（scripts/lib/nick-uid.mjs：房间发言+礼物 / 官方直播榜 / 口袋动态 @提及 三源合并）
-  const nickUid = buildNickUidIndex(CACHE);
+  const nickUid = buildNickUidIndex(CACHE, path.join(ROOT, 'data/nick-uid-pins.json'));
   const touch = (uid, nick) => {
     uid = String(uid);
     if (!uid || uid === '0') return null;
     let f = fans.get(uid);
     if (!f) {
-      f = { uid, nick: '', live: 0, live26: 0, lives: 0, lives26: 0, room: 0, room26: 0, gifts: 0, gifts26: 0, msgs: 0, first: 0, last: 0, days: {}, hs: new Array(24).fill(0) };
+      f = { uid, nick: '', live: 0, live26: 0, live24: 0, lives: 0, lives26: 0, lives24: 0,
+            room: 0, room26: 0, room24: 0, gifts: 0, gifts26: 0, gifts24: 0,
+            msgs: 0, first: 0, last: 0, days: {}, hs: new Array(24).fill(0) };
       fans.set(uid, f);
     }
     if (nick) f.nick = nick;
@@ -311,7 +340,9 @@ function build(PRICE) {
     const f = touch(r.u, r.nick);
     if (!f) continue;
     f.live += r.m; f.lives += 1;
-    if (yearOf(r.ct) === '2026') { f.live26 += r.m; f.lives26 += 1; }
+    const y = yearOf(r.ct);
+    if (y === '2026') { f.live26 += r.m; f.lives26 += 1; }
+    if (y >= '2024') { f.live24 += r.m; f.lives24 += 1; }        // 「2024 年至今」档
   }
 
   for (const r of readLines(ROOM_JSONL)) {
@@ -330,7 +361,9 @@ function build(PRICE) {
     if (!p || p < 0) continue;
     const c = Number(r.g.c) || 1;
     f.room += p * c; f.gifts += c;
-    if (yearOf(r.t) === '2026') { f.room26 += p * c; f.gifts26 += c; }
+    const y = yearOf(r.t);
+    if (y === '2026') { f.room26 += p * c; f.gifts26 += c; }
+    if (y >= '2024') { f.room24 += p * c; f.gifts24 += c; }
   }
 
   // ---- 活跃日历：按「天序号」编成位图再 base64（前端 decodeDayBitmap 直接可用）----
@@ -395,6 +428,7 @@ function build(PRICE) {
       const dm = dmByUid.get(f.uid) || 0;                 // 弹幕播报出来的直播鸡腿
       const live = Math.max(f.live, dm);                  // 与 Top20 榜取较大值
       const live26 = Math.max(f.live26, dm);              // 弹幕数据目前只落在 2026 年
+      const live24 = Math.max(f.live24, dm);              // 2026 ⊂ 「2024 年起」，同样并入
       if (dm > f.live26) f._dmLifted = true;
       return ({
       uid: f.uid,
@@ -402,6 +436,7 @@ function build(PRICE) {
       live, live2026: live26, lives: f.lives, lives2026: f.lives26,
       room: f.room, room2026: f.room26, gifts: f.gifts, gifts2026: f.gifts26,
       total: live + f.room, total2026: live26 + f.room26,
+      liveSince2024: live24, roomSince2024: f.room24, totalSince2024: live24 + f.room24,
       // 以下字段名沿用旧 room-stats 口径（n/f/l/d/b/h/m），前端渲染逻辑不用改
       n: f.msgs, f: f.first, l: f.last, d: Object.keys(f.days).length,
       b: bestStreak(f.days), h: f.hs.join(','), m: encodeBitmap(Object.keys(f.days).map(dayIdxOf)),
@@ -410,34 +445,37 @@ function build(PRICE) {
     })
     .filter((x) => x.total > 0 || x.n > 0);
 
-  let ovrApplied = 0, ovrLifted = 0;
-  if (Object.keys(OVR_UID).length) {
-    // 本机：明文表，能找到 uid，连「榜单上有但 list 里还没有的人」也能建出来
-    for (const [uid, o] of Object.entries(OVR_UID)) {
-      let x = list.find((y) => y.uid === uid);
-      if (!x) {
+  /* ---- 第三方榜单覆盖：2026 档 与 2024 年起档，规则完全一致 ----
+   * 两边取较大值（自算 vs 榜单），保证不会把谁算小；
+   * 并打上 src*='list' —— 前端据此显示「榜单口径」而不是拆开直播/房间。
+   * 覆盖表来自 D1（权威）或本机明文文件，绝不在 GitHub 仓库里。
+   */
+  const uidIdx = new Map(list.map((x) => [x.uid, x]));
+  const applyOvr = (period, valKey, srcKey, rankKey) => {
+    const map = OVR[period].map;
+    if (!Object.keys(map).length) return { applied: 0, lifted: 0 };
+    let applied = 0, lifted = 0;
+    for (const [uid, o] of Object.entries(map)) {
+      let x = uidIdx.get(uid);
+      if (!x) {                                   // 榜单上有、但我们一条记录都没抓到的人
         x = { uid, nick: o.nick, live: 0, live2026: 0, lives: 0, lives2026: 0, room: 0, room2026: 0,
-              gifts: 0, gifts2026: 0, total: 0, total2026: 0, n: 0, f: 0, l: 0, d: 0, b: 0, h: '', m: '', start: '2022-11-01' };
-        list.push(x);
+              gifts: 0, gifts2026: 0, total: 0, total2026: 0,
+              liveSince2024: 0, roomSince2024: 0, totalSince2024: 0,
+              n: 0, f: 0, l: 0, d: 0, b: 0, h: '', m: '', start: '2022-11-01' };
+        list.push(x); uidIdx.set(uid, x);
       }
       if (!x.nick) x.nick = o.nick;
-      if (o.v > x.total2026) { ovrLifted++; x.total2026 = o.v; }
-      x.src26 = 'list';            // 前端据此显示「含直播间 · 榜单口径」而不是拆分直播/房间
-      x.rank26 = o.rank;
-      ovrApplied++;
+      if (o.v > (Number(x[valKey]) || 0)) { lifted++; x[valKey] = o.v; }
+      x[srcKey] = 'list';
+      x[rankKey] = o.rank;
+      applied++;
     }
-  } else {
-    // CI：脱敏表（只有 sha256 前缀），对每个已有粉丝算 hash 查表
-    for (const x of list) {
-      const o = OVR_HASH[hashUid(x.uid).slice(2)];
-      if (!o) continue;
-      if (o.v > x.total2026) { ovrLifted++; x.total2026 = o.v; }
-      x.src26 = 'list';
-      x.rank26 = o.rank;
-      ovrApplied++;
-    }
-  }
-  if (ovrApplied) console.log(`[2026 榜单口径] 采用 ${ovrApplied} 人，其中 ${ovrLifted} 人以榜单为准上调`);
+    return { applied, lifted };
+  };
+  const r26 = applyOvr('2026', 'total2026', 'src26', 'rank26');
+  const r24 = applyOvr('2024plus', 'totalSince2024', 'srcSince2024', 'rankSince2024');
+  if (r26.applied) console.log(`[2026 榜单口径] 采用 ${r26.applied} 人，其中 ${r26.lifted} 人以榜单为准上调`);
+  if (r24.applied) console.log(`[2024 起榜单口径] 采用 ${r24.applied} 人，其中 ${r24.lifted} 人以榜单为准上调`);
 
   const ranked = list.sort((a, b) => b.total - a.total);
   ranked.forEach((x, i) => { x.rank = i + 1; });
@@ -504,8 +542,43 @@ async function push(list, coverage) {
   console.log(`\n灌库完成：${sent} 条 → ${SITE}（就绪标记 ${fin.status === 200 ? '已打上' : '失败 ' + fin.status}）`);
 }
 
+/* 把本机的榜单覆盖表灌进 D1（--push-override）。
+ * 榜单带 uid，只能留在 D1；这份数据从此不再以任何形式进 GitHub 仓库。 */
+async function pushOverride() {
+  const tok = process.env.SYNC_TOKEN || '';
+  const gh = process.env.GH_TOKEN || '';
+  if (!tok && !gh) { console.log('未设置 SYNC_TOKEN / GH_TOKEN，无法写 D1'); return; }
+  const H = Object.assign({ 'content-type': 'application/json' },
+    tok ? { 'x-sync-token': tok } : { 'x-gh-token': gh });
+  for (const p of PERIODS) {
+    let j = null;
+    try { j = JSON.parse(fs.readFileSync(path.join(ROOT, OVR_FILE[p]), 'utf8')); }
+    catch { console.log(`跳过「${p}」：本机没有 ${OVR_FILE[p]}`); continue; }
+    const rows = Object.entries(j.map || {})
+      .map(([uid, o]) => ({ uid: String(uid), nick: o.nick || '', v: Number(o.v) || 0, rank: Number(o.rank) || 0 }))
+      .filter((r) => r.v > 0);
+    if (!rows.length) { console.log(`跳过「${p}」：表是空的`); continue; }
+    const res = await fetch(SITE + '/api/_gift_override', {
+      method: 'POST', headers: H,
+      body: JSON.stringify({ period: p, replace: true, rows }),
+      signal: AbortSignal.timeout(30000),
+    });
+    const t = await res.text();
+    console.log(`「${p}」→ D1：HTTP ${res.status} ${t.slice(0, 120)}`);
+  }
+}
+
 /* ============================ main ============================ */
 const t0 = Date.now();
+
+// 榜单覆盖表：本机明文文件兜底，D1 为准（CI 只有 D1 这一条路）
+loadOverrideLocal();
+await loadOverrideD1();
+reportOverride();
+
+// --push-override：只把榜单表灌进 D1，不抓取、不重建档案
+if (has('push-override')) { await pushOverride(); process.exit(0); }
+
 // --push-only：跳过抓取，直接用现有 .cache/fans 聚合并灌库。
 // 用于「后台还在补历史，但想先拿已有的那部分开放测试」——不打断正在跑的扫描进程。
 if (!PUSH_ONLY && !DRY) {
@@ -523,6 +596,7 @@ const coverage = { since, liveDone: readLines(LIVE_JSONL).length > 0, people: li
 console.log(`\n===== 粉丝档案：${list.length} 人 =====（本地产物 ${OUT} 不进 git）`);
 console.log(`直播 ${sum('live').toLocaleString()} / 房间 ${sum('room').toLocaleString()} / 合计 ${sum('total').toLocaleString()} 鸡腿`);
 console.log(`发言 ${sum('n').toLocaleString()} 条，2026 年合计 ${sum('total2026').toLocaleString()} 鸡腿`);
+console.log(`2024 年起合计 ${sum('totalSince2024').toLocaleString()} 鸡腿（${list.filter((x) => (x.totalSince2024 || 0) > 0).length} 人）`);
 if (since) console.log(`覆盖区间：${new Date(since + TZ_OFFSET_MS).toISOString().slice(0, 10)} 起${coverage.liveDone ? '（含直播榜）' : '（直播榜尚未开跑）'}`);
 if ((PUSH || PUSH_ONLY) && !DRY) await push(list, coverage);
 console.log(`耗时 ${((Date.now() - t0) / 60000).toFixed(1)} 分钟`);

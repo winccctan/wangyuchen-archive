@@ -781,6 +781,15 @@ async function handleApi(url, request, env, ctx) {
   // 写接口（需 SYNC_TOKEN，由 CI / 本地脚本调用）
   if (p === '/api/_fans_init' && request.method === 'POST') return handleFansInit(request, env);
   if (p === '/api/_fans_upsert' && request.method === 'POST') return handleFansUpsert(request, env);
+  // ---- 第三方礼物榜覆盖表：带 uid，只存 D1，读写都要鉴权（绝不进 GitHub 仓库）----
+  if (p === '/api/_gift_override') {
+    if (!(await authorizedForWrite(request, env))) return json({ error: 'forbidden: sync token required' }, 403);
+    return handleGiftOverride(request, env, url);
+  }
+  if (p === '/api/_gift_override_bootstrap' && request.method === 'POST') {
+    if (!(await authorizedForWrite(request, env))) return json({ error: 'forbidden: sync token required' }, 403);
+    return handleGiftOverrideBootstrap(request, env);
+  }
   // ---- 底层回填：把含 uid 的原始发言整月覆盖写回（历史存量补 uid 用） ----
   if (p === '/api/_d1_refill' && request.method === 'POST') {
     if (!(await authorizedForWrite(request, env))) {
@@ -957,6 +966,90 @@ async function handleFansUpsert(request, env) {
   let rowsN = 0;
   try { const c = await env.DB.prepare('SELECT COUNT(*) AS n FROM fans').first(); rowsN = (c && c.n) || 0; } catch (_) {}
   return json({ ok: true, written, rows: rowsN });
+}
+
+/* ------------------------- 第三方礼物榜覆盖表（gift_override） -------------------------
+ * 榜单内容是「uid → 鸡腿」，属于粉丝名单 —— 绝不能出现在 GitHub 仓库或任何静态文件里。
+ * 以前的做法是把 sha256 脱敏表 commit 进仓库给 CI 读；2026-09-23 起改为只存 D1：
+ * 仓库里一份榜单数据都没有，build-fans（本机用 GH_TOKEN、CI 用 SYNC_TOKEN）从 D1 读写。
+ *
+ * D1 表：gift_override(uid, period, v, rank, nick, updatedAt, PRIMARY KEY(uid, period))
+ *   period = '2026'（2026 年度）| '2024plus'（2024 年起累计）
+ */
+const GIFT_OVERRIDE_DDL =
+  'CREATE TABLE IF NOT EXISTS gift_override (' +
+  '  uid TEXT NOT NULL,' +
+  '  period TEXT NOT NULL,' +
+  '  v INTEGER NOT NULL DEFAULT 0,' +
+  '  rank INTEGER NOT NULL DEFAULT 0,' +
+  '  nick TEXT,' +
+  '  updatedAt INTEGER DEFAULT 0,' +
+  '  PRIMARY KEY (uid, period)' +
+  ');';
+
+async function handleGiftOverride(request, env, url) {
+  if (!env || !env.DB) return json({ error: 'd1-not-bound' }, 500);
+  await env.DB.exec(GIFT_OVERRIDE_DDL);
+
+  if (request.method === 'GET') {
+    const period = String(url.searchParams.get('period') || '');
+    if (!period) return json({ error: 'period required' }, 400);
+    const r = await env.DB.prepare('SELECT uid, nick, v, rank FROM gift_override WHERE period = ?').bind(period).all();
+    return json({
+      period,
+      rows: (r.results || []).map((x) => ({
+        uid: String(x.uid), nick: x.nick || '', v: Number(x.v) || 0, rank: Number(x.rank) || 0,
+      })),
+    });
+  }
+
+  let body = {};
+  try { body = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
+  const period = String(body.period || '');
+  const rows = Array.isArray(body.rows) ? body.rows : [];
+  if (!period) return json({ error: 'period required' }, 400);
+  if (!rows.length) return json({ error: 'rows required' }, 400);
+  try {
+    if (body.replace === true) await env.DB.prepare('DELETE FROM gift_override WHERE period = ?').bind(period).run();
+    let n = 0;
+    for (let i = 0; i < rows.length; i += 100) {
+      const stmts = rows.slice(i, i + 100)
+        .filter((r) => /^\d{1,12}$/.test(String(r.uid || '')) && Number(r.v) > 0)
+        .map((r) => env.DB.prepare(
+          'INSERT OR REPLACE INTO gift_override (uid, period, v, rank, nick, updatedAt) VALUES (?, ?, ?, ?, ?, ?)'
+        ).bind(String(r.uid), period, Number(r.v) || 0, Number(r.rank) || 0, String(r.nick || '').slice(0, 64), Date.now()));
+      if (stmts.length) { await env.DB.batch(stmts); n += stmts.length; }
+    }
+    return json({ ok: true, period, written: n });
+  } catch (e) {
+    return json({ ok: false, error: String((e && e.message) || e).slice(0, 200) }, 500);
+  }
+}
+
+/** 一次性回填：把 fans 表里已标 src*='list' 的人抄进 gift_override。
+ *  为什么需要：D1 里本来就有正确的榜单值（本机推过），一条 SQL 抄过来即可，
+ *  不必把带 uid 的榜单文件搬到任何地方 —— 也就永远不用进 GitHub 仓库。 */
+async function handleGiftOverrideBootstrap(request, env) {
+  if (!env || !env.DB) return json({ error: 'd1-not-bound' }, 500);
+  await env.DB.exec(GIFT_OVERRIDE_DDL);
+  const SPEC = {
+    '2026': { src: '$.src26', v: '$.total2026', rank: '$.rank26' },
+    '2024plus': { src: '$.srcSince2024', v: '$.totalSince2024', rank: '$.rankSince2024' },
+  };
+  const out = {};
+  for (const [period, s] of Object.entries(SPEC)) {
+    try {
+      const r = await env.DB.prepare(
+        'INSERT OR REPLACE INTO gift_override (uid, period, v, rank, nick, updatedAt) ' +
+        "SELECT uid, ?, CAST(json_extract(data, ?) AS INTEGER), CAST(COALESCE(json_extract(data, ?), 0) AS INTEGER), nick, ? " +
+        "FROM fans WHERE json_extract(data, ?) = 'list' AND CAST(COALESCE(json_extract(data, ?), 0) AS INTEGER) > 0"
+      ).bind(period, s.v, s.rank, Date.now(), s.src, s.v).run();
+      out[period] = (r && r.meta && (r.meta.rows_written ?? r.meta.changes)) ?? 'ok';
+    } catch (e) {
+      out[period] = 'error: ' + String((e && e.message) || e).slice(0, 120);
+    }
+  }
+  return json({ ok: true, written: out });
 }
 
 /* ------------------------- 索引（index 键） -------------------------
