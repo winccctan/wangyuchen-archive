@@ -2178,6 +2178,7 @@ function showAlbumLayer(dataUrl, stamp) {
         const file = new File([dataUrlToBlob(dataUrl)], fname, { type: 'image/png' });
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
           await navigator.share({ files: [file] });
+          track('mine:save');   // 走到这里说明系统面板真的弹出来了（取消会抛异常、不计）
           return;
         }
       } catch (e) { return; }   // 用户取消或不支持 —— 都不许退回下载
@@ -2194,6 +2195,7 @@ function showAlbumLayer(dataUrl, stamp) {
     a.href = dataUrl;
     a.download = fname;
     document.body.appendChild(a); a.click(); a.remove();
+    track('mine:save');
     if (noteEl) noteEl.textContent = '已下载到本地';
   });
 }
@@ -2445,6 +2447,8 @@ async function lookupMine(uid) {
   MINE_GIFT = null;
   MINE_CARD = null;
 
+  // 只上报「查了一次」这个动作本身，绝不带上 uid
+  track('mine:query');
   let d = null;
   try {
     const res = await fetch(MINE_API, {
@@ -2464,6 +2468,7 @@ async function lookupMine(uid) {
     return;
   }
   if (!d || !d.found) {
+    track('mine:miss');   // 查不到：反映补档覆盖的缺口
     // 档案还没补完全历史时，查不到 ≠ 没记录 —— 如实说明覆盖区间，别冤枉人
     if (d && d.partial && d.since) {
       box.innerHTML = '<div class="mine-empty">目前档案只补到 <b>' + bjDayKey(d.since) + '</b> 之后，'
@@ -2475,6 +2480,7 @@ async function lookupMine(uid) {
     return;
   }
 
+  track('mine:hit');   // 查到了（含「只送过礼」的简版卡）
   // 服务端返回的就是「他自己那一份」，字段沿用旧口径（n/f/l/d/b/h/m）
   const startKey = d.start || '2022-11-01';
   const S = {
