@@ -173,7 +173,9 @@
       .then(function (j) {
         rows = j.items || [];
         if (!rows.length) { msg('parseMsg', '没解析出条目，可以直接点「手动加一条」自己填', true); return; }
-        msg('parseMsg', '解析出 ' + rows.length + ' 条（' + (j.via === 'ai' ? 'AI' : '规则') + '），请核对后再发布');
+        var tip = '解析出 ' + rows.length + ' 条（' + (j.via === 'ai' ? 'AI' : '规则') + '）';
+        if (j.noTime) tip += '，其中 ' + j.noTime + ' 条没认出时间，可在下面表格里补';
+        msg('parseMsg', tip + '，请核对后再发布');
         renderEdit();
         show($('editWrap'), true);
         $('editWrap').scrollIntoView({ behavior: 'smooth', block: 'start' });

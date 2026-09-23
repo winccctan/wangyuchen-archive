@@ -1817,17 +1817,101 @@ async function handleAdminSchedulePost(request, env) {
  * 识别：日期（9月26日 / 2026-10-03 / 10/3）、时间（14:00、17:30-19:30）、星期、
  *       类型（含「见面会/握手/签名/合影/答谢」= 见面会，其余 = 公演）、其余文字作标题。
  */
+/* --- 时间/文本的通用片段：14:00、14：00、14点、14点30、下午5点半 --- */
+const TIME_HALF = '(?:上午|中午|下午|晚上|傍晚|凌晨|早上)?';
+const TIME_ONE = '\\d{1,2}\\s*(?:[:：]\\s*\\d{2}|\\s*点\\s*(?:\\d{1,2}\\s*分?|半)?)';
+const TIME_RE = new RegExp('(上午|中午|下午|晚上|傍晚|凌晨|早上)?\\s*(' + TIME_ONE + ')'
+  + '(?:\\s*[-–—~～至到]\\s*(上午|中午|下午|晚上|傍晚|凌晨|早上)?\\s*(' + TIME_ONE + '))?');
+const TIME_RE_G = new RegExp('(?:上午|中午|下午|晚上|傍晚|凌晨|早上)?\\s*' + TIME_ONE
+  + '(?:\\s*[-–—~～至到]\\s*(?:上午|中午|下午|晚上|傍晚|凌晨|早上)?\\s*' + TIME_ONE + ')?', 'g');
+
+/* 全角归一化：１４：００ → 14:00，全角空格 → 普通空格 */
+function normSchedText(s) {
+  return String(s || '')
+    .replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 65248))
+    .replace(/[：﹕]/g, ':')
+    .replace(/[－−ー]/g, '-')
+    .replace(/[\u3000\u00A0]/g, ' ')
+    .replace(/\r/g, '');
+}
+
+/* 单个时间点 → HH:MM（认不出返回空） */
+function toHHMM(t, half) {
+  if (!t) return '';
+  let h = 0, mi = 0, m = /(\d{1,2})\s*[:：]\s*(\d{2})/.exec(t);
+  if (m) { h = Number(m[1]); mi = Number(m[2]); }
+  else {
+    m = /(\d{1,2})\s*点\s*(?:(\d{1,2})\s*分?|半)?/.exec(t);
+    if (!m) return '';
+    h = Number(m[1]);
+    mi = m[2] ? Number(m[2]) : (/半/.test(t) ? 30 : 0);
+  }
+  if (half === '下午' || half === '晚上' || half === '傍晚' || half === '中午') { if (h < 12) h += 12; }
+  else if ((half === '上午' || half === '早上' || half === '凌晨') && h === 12) h = 0;
+  if (h === 24) h = 0;
+  if (h > 23 || mi > 59) return '';
+  return pad2(h) + ':' + pad2(mi);
+}
+
+/* 一行里的完整时间（支持区间） */
+function schedTimeOf(line) {
+  const m = TIME_RE.exec(normSchedText(line));
+  if (!m) return '';
+  const a = toHHMM(m[2], m[1]);
+  const b = toHHMM(m[4], m[3]);
+  if (!a) return '';
+  return a + (b && b !== a ? '-' + b : '');
+}
+
+/* 不转冒号版：保留《拾忆：TEAM NIII》这类原文标点，标题才不会被改样 */
+function normSchedKeep(s) {
+  return String(s || '')
+    .replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 65248))
+    .replace(/[\u3000\u00A0]/g, ' ')
+    .replace(/\r/g, '');
+}
+
+/* 去掉日期/星期/时间/emoji，剩下当标题 */
+function schedTitleOf(line) {
+  return normSchedKeep(line)
+    .replace(/(\d{1,2})\s*[:：]\s*(\d{2})/g, (x, a, b) => a + ':' + b)   // 只把「时间里的」全角冒号转半角
+    .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\uFE0F]/gu, ' ')
+    .replace(/\d{4}\s*[-年/.]\s*\d{1,2}\s*[-月/.]\s*\d{1,2}\s*日?/g, ' ')
+    .replace(/\d{1,2}\s*月\s*\d{1,2}\s*日?/g, ' ')
+    .replace(/(星期|周)\s*[一二三四五六日天]/g, ' ')
+    .replace(TIME_RE_G, ' ')
+    .replace(/[（(][^（）()]{0,8}[)）]/g, (x) => (/开演|开场|开始|入场|检票|签到|演出/.test(x) ? ' ' : x))
+    .replace(/[（(]\s*[)）]/g, ' ')
+    .replace(/[;；]/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/^[\s\-—·•|｜、,，:：]+/, '')
+    .replace(/[\s\-—·•|｜、,，;；:：（(]+$/, '')
+    .trim();
+}
+
+/* 整段不换行也能拆：在每个日期、每个时间前面补换行（时间区间作为一个整体，不会切断 17:30-19:30） */
+function splitSchedLines(text) {
+  let s = normSchedKeep(text);   // 不转冒号，保住《拾忆：TEAM NIII》这类原文
+  s = s.replace(/(\d{1,2}\s*月\s*\d{1,2}\s*日?)/g, '\n$1');
+  s = s.replace(new RegExp('((?:上午|中午|下午|晚上|傍晚|凌晨|早上)?\\s*' + TIME_ONE
+    + '(?:\\s*[-–—~～至到]\\s*(?:上午|中午|下午|晚上|傍晚|凌晨|早上)?\\s*' + TIME_ONE + ')?)', 'g'), '\n$1');
+  return s.split('\n').map((x) => x.trim()).filter(Boolean);
+}
+
 function ruleParseSchedule(text, yearHint) {
   const now = new Date(Date.now() + 8 * 3600 * 1000);
   const curYear = now.getUTCFullYear(), curMon = now.getUTCMonth() + 1;
-  const lines = String(text || '').replace(/\r/g, '').split('\n');
+  const lines = splitSchedLines(text);
   const out = [];
   let curDate = '';
+  let pendTime = '';     // 时间先出现（或日期行里带时间），等下一行的标题
+  let lastEntry = null;  // 标题先出现，等下一行的时间回填
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
+    const line = normSchedKeep(lines[i]).trim();
     if (!line) continue;
     let y = '', mo = '', dd = '';
-    let m = /(\d{4})\s*[-年/.]\s*(\d{1,2})\s*[-月/.]\s*(\d{1,2})/.exec(line);
+    // 「2026年9-10月行程」是范围不是某一天 → 后面紧跟「月」就不当日期
+    let m = /(\d{4})\s*[-年/.]\s*(\d{1,2})\s*[-月/.]\s*(\d{1,2})\s*日?(?!\s*月)/.exec(line);
     if (m) { y = m[1]; mo = m[2]; dd = m[3]; }
     else {
       m = /(\d{1,2})\s*月\s*(\d{1,2})\s*日?/.exec(line);
@@ -1837,30 +1921,31 @@ function ruleParseSchedule(text, yearHint) {
       let yy = y ? Number(y) : (yearHint ? Number(yearHint) : curYear);
       if (!y && Number(mo) < curMon - 6) yy = curYear + 1;   // 「1月」出现在 9 月 → 指明年
       curDate = yy + '-' + pad2(Number(mo)) + '-' + pad2(Number(dd));
+      pendTime = '';
+      lastEntry = null;
     }
-    const tm = /(\d{1,2}:\d{2})\s*(?:[-–—~至到]\s*(\d{1,2}:\d{2}))?/.exec(line);
-    const time = tm ? (tm[1] + (tm[2] ? '-' + tm[2] : '')) : '';
-    let title = line
-      .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\uFE0F]/gu, ' ')
-      .replace(/(\d{4})\s*[-年/.]\s*(\d{1,2})\s*[-月/.]\s*(\d{1,2})\s*日?/g, ' ')
-      .replace(/(\d{1,2})\s*月\s*(\d{1,2})\s*日?/g, ' ')
-      .replace(/(星期|周)\s*[一二三四五六日天]/g, ' ')
-      .replace(/\d{1,2}:\d{2}\s*(?:[-–—~至到]\s*\d{1,2}:\d{2})?/g, ' ')
-      .replace(/[（(]\s*[)）]/g, ' ')               // 星期被吃掉后剩下的空括号
-      .replace(/\s{2,}/g, ' ')
-      .replace(/^[\s\-—·•|｜、,，:：]+/, '')
-      .replace(/[\s]+$/, '')
-      .trim();
-    if (!curDate || title.length < 2) continue;    // 纯日期行（「10月3日（周六）」）不算条目
+    const tm = schedTimeOf(line);
+    if (tm) {
+      if (lastEntry && !lastEntry.time) { lastEntry.time = tm; lastEntry = null; pendTime = ''; continue; }
+      pendTime = tm;
+    }
+    const title = schedTitleOf(line);
+    if (!curDate || title.length < 2) continue;              // 纯日期行 / 纯时间行不算条目
+    if (!/[一-龥A-Za-z0-9《]/.test(title)) continue;          // 只剩符号
+    if (/^[#＃]/.test(title) || /#[^#]{1,20}#/.test(title)) continue;   // 微博话题标签行不是行程
+    if (/^(?:开演|开场|开始|入场|检票|签到|演出|待定|以上|暂无|上午|中午|下午|晚上|早上|凌晨|傍晚)$/.test(title)) continue;
     // 「备注：…」「购票方式」这类说明行不是行程
     if (/^(?:备注|说明|注意|购票|票价|地点|地址|时间|须知|温馨|提示|ps)\s*[:：]?/i.test(title)) continue;
-    out.push({
+    const e = {
       date: curDate,
       weekday: weekdayOf(curDate),
-      time: time,
+      time: tm || pendTime,
       title: title,
       kind: /见面会|握手|签名|合影|答谢|生日会|茶话会|见面/.test(line) ? '见面会' : '公演',
-    });
+    };
+    out.push(e);
+    pendTime = '';
+    lastEntry = e.time ? null : e;
   }
   return out;
 }
@@ -1904,9 +1989,16 @@ async function handleAdminParse(request, env) {
   if (!text.trim()) return json({ error: '没有内容' }, 400);
   let items = ruleParseSchedule(text, body.year);
   let via = 'rule';
-  if ((!items.length || body.ai) && env && env.AI) {
+  const ruleFilled = items.filter((x) => x.time).length;
+  // 一条都没出、或一半以上没认出时间、或后台点了「用 AI 再试」→ 走 AI 兜底
+  const needAi = !items.length || body.ai || (items.length > 0 && ruleFilled < items.length / 2);
+  if (needAi && env && env.AI) {
     const ai = await aiParseSchedule(env, text, body.year);
-    if (ai && ai.length) { items = ai; via = 'ai'; }
+    if (ai && ai.length) {
+      const aiFilled = ai.filter((x) => x.time).length;
+      if (!items.length || aiFilled > ruleFilled) { items = ai; via = 'ai'; }
+    }
   }
-  return json({ ok: true, via: via, items: items });
+  const noTime = items.filter((x) => !x.time).length;
+  return json({ ok: true, via: via, items: items, noTime: noTime });
 }
