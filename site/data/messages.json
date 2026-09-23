@@ -1,6 +1,75 @@
 {
   "messages": [
     {
+      "msgIdServer": "7406900174",
+      "msgTime": 1790148116800,
+      "msgType": "TEXT",
+      "text": "[敲打]",
+      "reply": null,
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "self": true,
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟"
+      },
+      "raw": {
+        "bodys": "[敲打]",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "TEXT"
+      }
+    },
+    {
+      "msgIdServer": "7406916209",
+      "msgTime": 1790148110200,
+      "msgType": "TEXT",
+      "text": "额已经在排练了",
+      "reply": null,
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "self": true,
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟"
+      },
+      "raw": {
+        "bodys": "额已经在排练了",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "TEXT"
+      }
+    },
+    {
+      "msgIdServer": "7406916207",
+      "msgTime": 1790148100098,
+      "msgType": "TEXT",
+      "text": "爪哇～",
+      "reply": null,
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "self": true,
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟"
+      },
+      "raw": {
+        "bodys": "爪哇～",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "TEXT"
+      }
+    },
+    {
       "msgIdServer": "7406227504",
       "msgTime": 1790089260541,
       "msgType": "TEXT",

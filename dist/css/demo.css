@@ -401,6 +401,20 @@ body.dm-notify-on .dm-tool#dmNotify { background: linear-gradient(135deg, #ff7aa
   background: rgba(255, 176, 32, .12); border: 1px solid rgba(255, 176, 32, .28);
   color: #ffd08a; font-weight: 500;
 }
+/* 运动会计分卡（和宣传图那块同款暖橙，四宫格） */
+.sc-score {
+  margin: 16px 0 0; padding: 12px 14px; border-radius: 14px;
+  background: rgba(255, 176, 32, .12); border: 1px solid rgba(255, 176, 32, .35);
+}
+.sc-score-h { font-size: 13px; font-weight: 700; color: #b06f00; margin-bottom: 8px; }
+.sc-score-h b { font-weight: 800; }
+.sc-score-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.sc-score-grid span {
+  font-size: 12px; line-height: 1.5; color: var(--text);
+  padding: 7px 10px; border-radius: 10px; background: rgba(255, 255, 255, .72);
+}
+@media (max-width: 400px) { .sc-score-grid { grid-template-columns: 1fr; } }
+
 .sc-links { display: flex; gap: 10px; margin-top: 14px; }
 .sc-btn {
   display: inline-block; padding: 7px 14px; border-radius: 999px; font-size: 13px;

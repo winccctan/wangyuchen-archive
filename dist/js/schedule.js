@@ -1,12 +1,14 @@
-/* 行程 · 数据来自微博 @GNZ48-王语晨的甜橙小铺（uid 7794095795，应援会）的「本周行程」微博
+/* 行程 · 数据来自微博 @GNZ48-王语晨的甜橙小铺（uid 7794095795，应援会）的行程微博
  * ⚠️ demo(UAT) 专属数据，只存在于 demo-wyc/js/schedule.js，正式站没有。
- * 由 tools/fetch-schedule.mjs 生成（2026-09-22 14:42 北京时间）。
+ * 生成脚本 tools/fetch-schedule.mjs 只在本机 private-data/tools/，不在仓库 ——
+ *   改这个文件就是「手工更新快照」，改完记得同步 site/ 与 dist/。
+ * 2026-09-23 由站长直接提供「中秋 & 国庆完整行程」重写：6 场公演 + 5 场见面会 + 运动会计分。
  */
 window.__SCHEDULE__ = {
   "source": {
     "name": "@GNZ48-王语晨的甜橙小铺",
     "url": "https://weibo.com/7794095795/RjfmhxxlE",
-    "pub": "2026-09-22 09:00"
+    "pub": "2026-09-23"
   },
   "ticket": "《终极殿堂》握手券；《Forever Young》《热恋专属(Love Ver.)》握手券、签名券、合影券",
   "callUrl": "http://t.cn/AXXF7x2l",
@@ -39,6 +41,55 @@ window.__SCHEDULE__ = {
       "time": "17:30-19:30",
       "title": "中秋特殊古风见面会",
       "kind": "见面会"
+    },
+    {
+      "date": "2026-10-03",
+      "weekday": "周六",
+      "time": "14:30-16:30",
+      "title": "国庆专场答谢见面会",
+      "kind": "见面会"
+    },
+    {
+      "date": "2026-10-03",
+      "weekday": "周六",
+      "time": "19:00",
+      "title": "《Nexu3》Team NIII 周年庆特别公演",
+      "kind": "公演"
+    },
+    {
+      "date": "2026-10-05",
+      "weekday": "周一",
+      "time": "15:30-17:30",
+      "title": "国庆专场答谢见面会",
+      "kind": "见面会"
+    },
+    {
+      "date": "2026-10-05",
+      "weekday": "周一",
+      "time": "19:00",
+      "title": "四八班联合公演",
+      "kind": "公演"
+    },
+    {
+      "date": "2026-10-06",
+      "weekday": "周二",
+      "time": "19:00",
+      "title": "《拾忆：TEAM NIII》第二十九场",
+      "kind": "公演"
+    },
+    {
+      "date": "2026-10-07",
+      "weekday": "周三",
+      "time": "14:30-16:30",
+      "title": "国庆专场答谢见面会",
+      "kind": "见面会"
+    },
+    {
+      "date": "2026-10-07",
+      "weekday": "周三",
+      "time": "19:00",
+      "title": "《CALL爆你3008》",
+      "kind": "公演"
     }
   ],
   "future": [
@@ -47,5 +98,14 @@ window.__SCHEDULE__ = {
       "title": "个人年V全场定制公演",
       "kind": "预告"
     }
-  ]
+  ],
+  "score": {
+    "period": "9.11 – 10.11",
+    "rules": [
+      "1 握手券 = 1 分",
+      "1 签名券 = 2 分",
+      "1 合影券 = 3 分",
+      "24 握手券可合影 = 24 分"
+    ]
+  }
 };
