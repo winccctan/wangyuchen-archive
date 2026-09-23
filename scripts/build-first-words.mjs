@@ -33,6 +33,8 @@ const argv = process.argv.slice(2);
 const arg = (k, d) => { const i = argv.indexOf('--' + k); return i >= 0 ? argv[i + 1] : d; };
 const has = (k) => argv.includes('--' + k);
 const BACK_DAYS = Number(arg('back', 0));
+// --stop YYYY-MM-DD：只扫 [FLOOR, 该日期] 这段（补扫旧区间用；网格锚点固定，可反复复用）
+const STOP = arg('stop', '');
 const CHUNK_DAYS = Number(arg('chunk', 30));
 const LANES = Math.max(1, Number(arg('lanes', 4)));
 const MAXLEN = 120;                                    // 正文截断（分享卡画得下就够）
@@ -58,11 +60,23 @@ function pickText(m) {
 
 async function scan() {
   const FLOOR = Date.parse('2022-11-01T00:00:00+08:00');
-  const START = Date.now();
-  const end = BACK_DAYS ? START - BACK_DAYS * 86400e3 : FLOOR;
   const CH = CHUNK_DAYS * 86400e3;
+  /* ⚠️ 分片网格必须锚在固定日期上（这里用 FLOOR），不能用 Date.now()：
+     用 Date.now() 时每次启动的片边界都会整体平移几小时，progress 里的 key 对不上，
+     等于每次重启都从头重扫一遍（踩过：白跑 40 分钟）。
+     锚定后 key = FLOOR + k*30d，跨天、跨次启动都能接着扫。 */
+  const GRID = FLOOR;
+  const top = STOP ? Date.parse(STOP + 'T00:00:00+08:00') : Date.now();
+  const end = BACK_DAYS ? top - BACK_DAYS * 86400e3 : FLOOR;
+  // 从 top 往下按网格切：k 号片 = [GRID+k*CH, GRID+(k+1)*CH)，最新那片是不满 30 天的零头
+  const K = Math.floor((top - GRID) / CH);
   const queue = [];
-  for (let s = START; s > end; s -= CH) queue.push([s, Math.max(end, s - CH)]);
+  for (let k = K; k >= 0; k--) {
+    const from = Math.min(top, GRID + (k + 1) * CH);
+    const to = Math.max(end, GRID + k * CH);
+    if (from <= end) break;                 // 已经比 back 窗口更旧，不用再往下
+    queue.push([from, to, String(GRID + k * CH), k === K]);   // 第 4 位：最新零头片，不吃断点
+  }
 
   let prog = { chunks: {} };
   try { prog = JSON.parse(fs.readFileSync(PROG, 'utf8')); if (!prog.chunks) prog.chunks = {}; } catch {}
@@ -71,10 +85,10 @@ async function scan() {
   const stat = { new: 0, kept: 0, pages: 0, errors: 0 };
   let idx = 0;
 
-  async function chunk(id, [from, to]) {
-    const key = String(from);
+  async function chunk(id, [from, to, key, fresh]) {
     // ⚠️ 游标初值必须是本片上界 from（用 0 会一路翻到底，O(n²)）
-    let cursor = prog.chunks[key] === undefined ? from : prog.chunks[key];
+    // fresh = 最新那片零头：它的上界每次运行都在变，吃旧断点会漏掉中间的新消息
+    let cursor = (prog.chunks[key] === undefined || fresh) ? from : prog.chunks[key];
     if (cursor === null) return;
     if (prog.chunks[key] === undefined) prog.chunks[key] = from;
     for (;;) {
