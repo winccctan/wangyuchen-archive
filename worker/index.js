@@ -831,7 +831,7 @@ async function handleApiMine(request, env) {
   let body = {};
   try { body = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
   const uid = String(body.uid || '').trim();
-  if (!/^\d{4,12}$/.test(uid)) return json({ error: 'uid 是 9~10 位纯数字' }, 400);
+  if (!/^\d{4,12}$/.test(uid)) return json({ error: 'uid 是纯数字' }, 400);
   if (!env || !env.DB) return json({ error: 'd1-not-bound' }, 500);
 
   const kv = (env && env.KV && typeof env.KV.get === 'function') ? env.KV : null;
