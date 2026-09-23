@@ -1378,30 +1378,37 @@ function loadImgOnce(src) {
 }
 
 /* 行程转发图：**排版与字号对齐 tools/schedule-poster.html 那张手工海报**
- * ——浅青渐变底 + 白色大圆角卡片 + 她的圆头像，字号照搬海报（日期 40 / 时间 32 / 活动名 34 / 计分 44）。
+ * ——浅青渐变底 + 白色大圆角卡片 + 她的圆头像，配色与排版照搬那张手工海报。
  * 之前那版沿用档案分享卡的深色底、900 宽，字偏小、也不像海报，站长明确要「海报那种、清晰蓝底」。
  * 头像素材用站上 favicon 那张（同域、必定存在）；量高一趟 + 画一趟的两段式与 buildShareCard 一致。 */
-function drawSchedulePoster(ctx, d, W, PAD, FONT, bgOnly, H) {
-  const CW = W - PAD * 2;          // 976
+function drawSchedulePoster(ctx, d, W, PAD, FONT, bgOnly, H, SC) {
+  /* SC = 整图放大倍率（默认 1）。排版一律按 900 基准写，出图时 ctx.scale(SC) 等比放大，
+   * 字号、圆角、间距全都跟着走，不用逐个常量乘一遍。返回的高度仍是基准值，由调用方 ×SC。
+   * 之所以基准取 900 而不是海报的 1080：同样出到 2160 宽，基准越窄 = 字在图里占比越大，
+   * 手机上缩到屏幕宽时字才真的看着大（等比放大只是变清晰，视觉大小不会变）。 */
+  SC = SC || 1;
+  ctx.save();
+  ctx.scale(SC, SC);
+  const CW = W - PAD * 2;          // 808
   const CPAD = 38;                 // 卡片内边距
-  const TX = PAD + CPAD;           // 90，卡片内文字起点
-  const IW = CW - CPAD * 2;        // 900，卡片内可用宽度
+  const TX = PAD + CPAD;           // 84，卡片内文字起点
+  const IW = CW - CPAD * 2;        // 732，卡片内可用宽度
   const INK = '#123a45', INK2 = '#5b7c87';
   const f = (w, s) => { ctx.font = w + ' ' + s + 'px ' + FONT; };
   ctx.textBaseline = 'top';
   ctx.textAlign = 'left';
 
   if (bgOnly) {
-    const bg = ctx.createLinearGradient(0, 0, W * .55, H);
+    const bg = ctx.createLinearGradient(0, 0, W * .55, H / SC);
     bg.addColorStop(0, '#e6f7fb'); bg.addColorStop(.4, '#d3f0f8'); bg.addColorStop(1, '#c9ecf6');
-    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H / SC);
   }
 
   // ── 头部：圆头像 + 称呼 + 渐变大标题 + 汇总 ──
   let y = PAD;
   const A = 190;
   ctx.save();
-  ctx.shadowColor = 'rgba(13,69,86,.16)'; ctx.shadowBlur = 22; ctx.shadowOffsetY = 8;
+  ctx.shadowColor = 'rgba(13,69,86,.16)'; ctx.shadowBlur = 22 * SC; ctx.shadowOffsetY = 8;
   ctx.beginPath(); ctx.arc(PAD + A / 2, y + A / 2, A / 2, 0, Math.PI * 2);
   ctx.fillStyle = '#dff2f7'; ctx.fill();
   ctx.restore();
@@ -1441,7 +1448,7 @@ function drawSchedulePoster(ctx, d, W, PAD, FONT, bgOnly, H) {
   // ── 卡片外壳（白底 + 圆角 + 投影，海报 .card）──
   const cardBox = (top, h, fill) => {
     ctx.save();
-    ctx.shadowColor = 'rgba(13,69,86,.10)'; ctx.shadowBlur = 34; ctx.shadowOffsetY = 14;
+    ctx.shadowColor = 'rgba(13,69,86,.10)'; ctx.shadowBlur = 34 * SC; ctx.shadowOffsetY = 14;
     ctx.fillStyle = fill || '#fff';
     roundRectPath(ctx, PAD, top, CW, h, 32); ctx.fill();
     ctx.restore();
@@ -1456,14 +1463,26 @@ function drawSchedulePoster(ctx, d, W, PAD, FONT, bgOnly, H) {
   };
 
   // ── 卡片 1：日程一览 ──
-  const TIME_W = 206;                   // 时间列：够放「17:30–19:30」，再宽就挤得活动名老折行
+  const TIME_W = 200;                   // 时间列：够放「17:30–19:30」，再宽就挤得活动名老折行
   const NAME_W = IW - 88 - TIME_W - 32; // 标签 88 + 时间列 + 两个 gap
-  const nameLines = (t) => { f('500', 34); return wrapText(ctx, t, NAME_W, 3); };
+  /* 活动名自适应：先按 34 试一行，放不下就降一档字号再试，最后还是放不下才折行。
+   * 基准从 1080 收到 900 之后名称列窄了，长戏名（《拾忆：TEAM NIII》第二十八场）会折成
+   * 「第二 / 十八场」这种难看的断法，缩一号往往就能整行放下。 */
+  const nameFit = (t) => {
+    for (let i = 0; i < 3; i++) {
+      const size = [34, 30, 27][i];
+      f('500', size);
+      const lines = wrapText(ctx, t, NAME_W, 3);
+      if (lines.length <= 1 || i === 2) return { lines: lines, size: size, lh: Math.round(size * 1.4) };
+    }
+    return { lines: [t], size: 34, lh: 48 };
+  };
   let c1 = 36 + 46 + 22 + 2;            // padding-top + 标题行 + 间距 + 虚线
   d.days.forEach((g) => {
     c1 += 26 + 48 + 16;                 // day padding-top + 日期行 + 行距
     g.items.forEach((it) => {
-      c1 += 14 + Math.max(47, nameLines(it.name).length * 48) + 14;
+      const nf = nameFit(it.name);
+      c1 += 14 + Math.max(47, nf.lines.length * nf.lh) + 14;
     });
     c1 += 8;
   });
@@ -1484,8 +1503,8 @@ function drawSchedulePoster(ctx, d, W, PAD, FONT, bgOnly, H) {
     if (g.sub) { f('400', 29); ctx.fillStyle = INK2; ctx.fillText(g.sub, TX + lw + 14, cy + 9); }
     cy += 48 + 16;
     g.items.forEach((it) => {
-      const lines = nameLines(it.name);
-      const rh = Math.max(47, lines.length * 48);
+      const nf = nameFit(it.name);
+      const rh = Math.max(47, nf.lines.length * nf.lh);
       let ry = cy + 14 + (rh - 47) / 2;
       // 类型标签：公演青、见面粉（海报 .tag）
       const isMeet = it.kind === '见面会';
@@ -1496,8 +1515,8 @@ function drawSchedulePoster(ctx, d, W, PAD, FONT, bgOnly, H) {
       ctx.textAlign = 'center'; ctx.fillText(tagTxt, TX + 44, ry + 8); ctx.textAlign = 'left';
       f('700', 32); ctx.fillStyle = '#0b4f61';
       ctx.fillText(it.time || '', TX + 88 + 16, ry + 6);
-      f('500', 34); ctx.fillStyle = '#16414d';
-      lines.forEach((ln, i) => { ctx.fillText(ln, TX + 88 + 16 + TIME_W + 16, ry + 4 + i * 48); });
+      f('500', nf.size); ctx.fillStyle = '#16414d';
+      nf.lines.forEach((ln, i) => { ctx.fillText(ln, TX + 88 + 16 + TIME_W + 16, ry + 4 + i * nf.lh); });
       cy += 14 + rh + 14;
     });
     cy += 8;
@@ -1591,11 +1610,19 @@ function drawSchedulePoster(ctx, d, W, PAD, FONT, bgOnly, H) {
   ctx.fillText('行程以官方公告为准，如有变动请关注官方与应援会通知', W / 2, y + 48);
   ctx.textAlign = 'left';
   y += 48 + 34 + 30;
-  return y;
+  ctx.restore();
+  return y;   // 基准高度（未乘 SC）
 }
 
 async function buildSchedulePoster(picks, extra) {
-  const W = 1080, PAD = 52;
+  const BASE_W = 900, PAD = 46;
+  /* 出图宽度对齐手工海报那张（2160 = 900 基准 ×2.4），站长嫌 1080 太窄、在手机上还得
+   * 双指放大到屏幕宽才看得清。基准取 900 而不是海报的 1080，是为了顺手把字在图里的
+   * 占比也提上去（日期行 / 活动名的像素都更大），不然只是图变清晰、字一点没变大。
+   * iOS Safari 的 canvas 上限约 1600 万像素，勾太多场会把高度顶爆（出图变空白），
+   * 所以按实测高度把倍率收回来，最低 1 倍。 */
+  const MAXPX = 16000000;
+  const SC_MAX = 2160 / 900;   // 2.4 → 出图正好 2160 宽，与手工海报同宽
   const FONT = '"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Heiti SC",sans-serif';
   const S = window.__SCHEDULE__ || {};
   // picks 已经是页面顺序（渲染时就按日期排过），顺序分组即可，不用再排
@@ -1639,12 +1666,28 @@ async function buildSchedulePoster(picks, extra) {
 
   const d = { h1: '晨晨 · 行程安排', metaParts: parts, days: days, point: point, avatar: null };
   const measure = document.createElement('canvas').getContext('2d');
-  const H = Math.ceil(drawSchedulePoster(measure, d, W, PAD, FONT, false, 2000));
+  const BH = Math.ceil(drawSchedulePoster(measure, d, BASE_W, PAD, FONT, false, 2000, 1));
+  // 先按面积算出安全倍率，再排一串递减候选：真画出来要是被系统判超限（iOS Safari
+  // 上超限的 canvas 会直接变空白、toDataURL 返回空串），就退一档重画，宁可小一点也不给白图。
+  const safe = Math.min(SC_MAX, Math.sqrt(MAXPX / Math.max(1, BASE_W * BH)));
+  const cands = [];
+  [safe, 2, 1.7, 1.45, 1.2, 1].forEach((s) => {
+    const v = Math.round(s * 100) / 100;
+    if (v > 0 && v <= safe + .001 && cands.indexOf(v) < 0) cands.push(v);
+  });
+  cands.sort((a, b) => b - a);
   d.avatar = await loadImgOnce('./assets/avatar-round.png');
-  const cv = document.createElement('canvas');
-  cv.width = W; cv.height = H;
-  drawSchedulePoster(cv.getContext('2d'), d, W, PAD, FONT, true, H);
-  return cv;
+  for (let i = 0; i < cands.length; i++) {
+    const SC = cands[i];
+    const W = Math.round(BASE_W * SC), H = Math.ceil(BH * SC);
+    const cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    drawSchedulePoster(cv.getContext('2d'), d, BASE_W, PAD, FONT, true, H, SC);
+    let url = '';
+    try { url = cv.toDataURL('image/png'); } catch (e) { url = ''; }
+    if (url && url.length > 2000) return { canvas: cv, url: url };
+  }
+  return null;
 }
 
 /* ---- 行程 · 勾选几场 → 生成一张转发图 ----
@@ -1693,9 +1736,10 @@ function bindSchedulePicker(list) {
     btn.disabled = true;
     if (bot) { bot.disabled = true; bot.textContent = '正在生成…'; }
     try {
-      const cv = await buildSchedulePoster(picks, xPicked());
+      const res = await buildSchedulePoster(picks, xPicked());
+      if (!res) throw new Error('canvas 超限');
       track('sch:poster');
-      showAlbumLayer(cv.toDataURL('image/png'), '行程', '王语晨行程');
+      showAlbumLayer(res.url, '行程', '王语晨行程');
     } catch (e) {
       if (window.console) console.warn('行程图生成失败', e);
       if (go) go.textContent = '生成失败，重试';
