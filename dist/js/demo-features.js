@@ -468,22 +468,25 @@
   }
 
   async function saveShareImage(dataUrl, filename) {
-    if (isMobile() && navigator.canShare) {
+    // ⚠️ 手机上 a[download] 只会落到「文件」App 的下载文件夹，进不了相册（站长 2026-09-23 定）。
+    // 所以手机端只有两条路：① Web Share 面板里的「存储图像」；② 长按图片保存。绝不退回下载。
+    if (isMobile()) {
       try {
         const file = dataUrlToFile(dataUrl, filename);
-        if (file && navigator.canShare({ files: [file] })) {
+        if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
           await navigator.share({ files: [file] });
           return true;
         }
       } catch (e) {
         if (e && e.name === 'AbortError') return true;      // 用户自己取消了，不算失败
-        // 其它异常 → 落到下面的下载兜底
       }
+      toast('请在上方图片上长按 → 选「存储图像」存进相册');
+      return true;
     }
     const a = document.createElement('a');
     a.href = dataUrl; a.download = filename;
     document.body.appendChild(a); a.click(); a.remove();
-    toast(isMobile() ? '已下载；若没进相册，可长按图片选「存储图像」' : '已下载');
+    toast('已下载');
     return true;
   }
 
