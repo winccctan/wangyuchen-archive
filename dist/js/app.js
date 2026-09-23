@@ -1891,18 +1891,34 @@ function dataUrlToBlob(dataUrl) {
   return new Blob([a], { type: (head.match(/:(.*?);/) || [, 'image/png'])[1] });
 }
 
-// 移动端没有「写进相册」的可靠 API，最通用的办法是把图显示出来让用户长按 → 系统菜单「存储到照片」；
-// 支持 Web Share Level 2 的浏览器（iOS/Android）直接调系统分享，里面有「存储到照片」。
+/* ⚠️ 站长 2026-09-23 定：按钮写的是「保存到相册」，点了就必须进相册 ——
+ * 绝不能落进「文件」App 的下载文件夹（手机上 a[download] 只会存到那里，进不了相册）。
+ * 手机上能进相册的只有两条路：① Web Share 系统面板里的「存储到照片」；② 长按图片 → 保存图片。
+ * 所以手机端一律不走 a[download]：能分享就分享，不能分享就引导长按。
+ * 桌面端下载到本地文件夹本来就是正确行为，保留。
+ */
+function isPhoneUA() {
+  return /iPhone|iPad|iPod|Android|Mobile|HarmonyOS/i.test(navigator.userAgent || '');
+}
+/** 微信 / QQ / 微博等内置浏览器：没有 Web Share，只能靠长按 */
+function isInAppBrowser() {
+  return /MicroMessenger|QQ\/|Weibo|QQBrowser|Douban|Alipay|DingTalk/i.test(navigator.userAgent || '');
+}
 function showAlbumLayer(dataUrl, stamp) {
   const old = document.getElementById('mineAlbum');
   if (old) old.remove();
+  const phone = isPhoneUA();
+  const tip = phone
+    ? (isInAppBrowser() ? '长按图片 → 保存图片' : '长按图片 → 存储到相册')
+    : '点下面按钮下载到本地';
   const ov = document.createElement('div');
   ov.id = 'mineAlbum';
   ov.className = 'mine-overlay';
-  ov.innerHTML = '<div class="ma-bar"><span class="ma-tip">长按图片 → 存储到相册</span>'
+  ov.innerHTML = '<div class="ma-bar"><span class="ma-tip">' + tip + '</span>'
     + '<button type="button" class="ma-close" id="maClose">关闭</button></div>'
     + '<div class="ma-body"><img src="' + dataUrl + '" alt="' + roomTitle() + '"></div>'
-    + '<div class="ma-foot"><button type="button" class="ma-act" id="maAct">保存或分享</button>'
+    + '<div class="ma-foot"><button type="button" class="ma-act" id="maAct">'
+    + (phone ? '保存到相册' : '下载图片') + '</button>'
     + '<div class="ma-note" id="maNote"></div></div>';
   document.body.appendChild(ov);
   document.body.style.overflow = 'hidden';
@@ -1912,19 +1928,30 @@ function showAlbumLayer(dataUrl, stamp) {
 
   document.getElementById('maAct').addEventListener('click', async () => {
     const noteEl = document.getElementById('maNote');
-    try {
-      const file = new File([dataUrlToBlob(dataUrl)], roomTitle() + '-' + stamp + '.png', { type: 'image/png' });
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file] });
-        return;
+    const fname = roomTitle() + '-' + stamp + '.png';
+    if (phone) {
+      // ① 能调系统分享就调（面板里选「存储到照片」→ 直接进相册）
+      try {
+        const file = new File([dataUrlToBlob(dataUrl)], fname, { type: 'image/png' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file] });
+          return;
+        }
+      } catch (e) { return; }   // 用户取消或不支持 —— 都不许退回下载
+      // ② 不支持（微信 / 微博内置浏览器等）→ 引导长按，绝不写进文件夹
+      if (noteEl) noteEl.textContent = '请在上方图片上长按 → 选「保存图片」';
+      const img = ov.querySelector('.ma-body img');
+      if (img) {
+        img.scrollIntoView({ block: 'center' });
+        img.classList.remove('ma-flash'); void img.offsetWidth; img.classList.add('ma-flash');
       }
-      // 能分享文件就走系统分享（iOS/Android 的菜单里有「存储到照片」）；否则退回下载
-      const a = document.createElement('a');
-      a.href = dataUrl;
-      a.download = roomTitle() + '-' + stamp + '.png';
-      document.body.appendChild(a); a.click(); a.remove();
-      if (noteEl) noteEl.textContent = '已下载到本地';
-    } catch (e) { /* 用户取消分享，忽略 */ }
+      return;
+    }
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = fname;
+    document.body.appendChild(a); a.click(); a.remove();
+    if (noteEl) noteEl.textContent = '已下载到本地';
   });
 }
 
