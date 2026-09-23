@@ -23,5 +23,11 @@ scraper/data/
 # 私有导出与工具（含 uid 明细的榜单 / 匹配表，绝不提交）
 private-data/
 
-# 2026 榜单覆盖表（站长提供的第三方榜单，map 的 key 就是 uid）
+# 第三方榜单覆盖表（map 的 key 就是 uid）。
+# ⚠️ 2026-09-23 起这些表只存 D1（gift_override），仓库里一份都不留 —— CI 从 D1 读。
 data/fans-2026-gift.json
+data/fans-2024plus-gift.json
+data/fans-2026-gift-hashed.json
+
+# 人工锁定的昵称→uid 归属表（含 uid，绝不提交）
+data/nick-uid-pins.json

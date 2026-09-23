@@ -25,8 +25,25 @@ export function readJsonl(p) {
     .map((x) => { try { return JSON.parse(x); } catch { return null; } }).filter(Boolean);
 }
 
-/** 建立 昵称 → Map(uid → 次数) 索引 */
-export function buildNickUidIndex(cacheDir) {
+/**
+ * 人工锁定表：昵称 → uid。站长在 App 内核实过的归属，优先级高于统计。
+ * 为什么需要：模糊匹配会把「王语晨的歌迷」串到「王语晨的狗」这种相似昵称上
+ * （2026-09-23 实测踩到）。文件含 uid，只存本地（已 gitignore）。
+ */
+export function loadPins(pinsPath) {
+  try {
+    const raw = JSON.parse(fs.readFileSync(pinsPath, 'utf8'));
+    const pins = new Map();
+    for (const [k, v] of Object.entries(raw)) {
+      if (k.startsWith('_')) continue;                 // _note / _cases 等注释键
+      if (/^\d{4,12}$/.test(String(v))) pins.set(k, String(v));
+    }
+    return pins;
+  } catch { return new Map(); }
+}
+
+/** 建立 昵称 → Map(uid → 次数) 索引（pinsPath 存在时套用人工锁定，优先级最高） */
+export function buildNickUidIndex(cacheDir, pinsPath) {
   const index = new Map();
   const add = (nick, uid) => {
     if (!nick || !uid) return;
@@ -40,6 +57,12 @@ export function buildNickUidIndex(cacheDir) {
   }
   for (const p of readJsonl(cacheDir + '/posts.jsonl')) {
     for (const m of (p.mentions || [])) add(m.n, m.u);
+  }
+  // 人工锁定最后套用，直接压倒统计结果（次数给一个大值，保证「占优 100%」）
+  if (pinsPath) {
+    for (const [nick, uid] of loadPins(pinsPath)) {
+      index.set(nick, new Map([[uid, 1e9]]));
+    }
   }
   return index;
 }

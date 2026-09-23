@@ -58,7 +58,7 @@ const priceOf = (name) => {
 const isScoring = (name) => excludeNames.has(name) || /^\d+(\.\d+)?分$/.test(name);
 
 /* ---------- 2. 昵称 → uid 索引（共用模块，与 build-fans.mjs 口径一致） ---------- */
-const NICK_UID = buildNickUidIndex(ROOT + '/.cache/fans');
+const NICK_UID = buildNickUidIndex(ROOT + '/.cache/fans', ROOT + '/data/nick-uid-pins.json');
 
 /* ---------- 3. 聚合 ---------- */
 const rows = readJsonl(ROOT + '/.cache/live-gifts.jsonl');
