@@ -56,8 +56,10 @@ function render(d) {
   const langRows = (d.langs && d.langs.length)
     ? d.langs.map(l => '<tr><td>' + l.name + '</td><td class="n">' + l.count + '</td></tr>').join('')
     : '<tr><td colspan="2" class="dim">暂无记录</td></tr>';
+  // 到访人数＝站点级独立访客（stat:u:<day>:），比翻译 UV 更能反映今天来了多少人
   const dayRows = (d.days || [])
-    .map(x => '<tr><td>' + x.day + '</td><td class="n">' + x.count + '</td><td class="n">' + x.visitors + '</td></tr>').join('');
+    .map(x => '<tr><td>' + x.day + '</td><td class="n">' + (x.siteUv == null ? '-' : x.siteUv) + '</td>'
+      + '<td class="n">' + x.count + '</td><td class="n">' + x.visitors + '</td></tr>').join('');
   const evRows = (d.events && d.events.length)
     ? d.events.map(e => '<tr><td>' + e.name + '</td><td class="n">' + e.total + '</td><td class="n">' + e.today + '</td>'
         + '<td class="n">' + (e.uniqTotal == null ? '-' : e.uniqTotal) + '</td>'
@@ -70,7 +72,7 @@ function render(d) {
     cards +
     '<h2>功能使用（次数 / 独立访客）</h2><table class="wide"><tr><td>动作</td><td class="n">累计</td><td class="n">今日</td><td class="n">独立累计</td><td class="n">独立今日</td></tr>' + evRows + '</table>' +
     '<h2>各语言翻译次数</h2><table>' + langRows + '</table>' +
-    '<h2>最近 7 天（翻译）</h2><table><tr><td>日期</td><td class="n">次数</td><td class="n">独立访客</td></tr>' + dayRows + '</table>';
+    '<h2>最近 7 天（到访人数 / 翻译）</h2><table><tr><td>日期</td><td class="n">到访人数</td><td class="n">翻译次数</td><td class="n">翻译访客</td></tr>' + dayRows + '</table>';
   el.hidden = false;
 }
 
