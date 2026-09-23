@@ -74,7 +74,8 @@ const files = [
   'js/theater-schedule.js',   // 行程快照：星梦剧院 NIII / 全团联合安排
   'js/bili-cuts.js',          // 她的公演 cut（B站合集 season 4752040）
   'js/demo-features.js',      // 候选功能：收藏码 / 搜索筛选 / 分享卡 / 随机考古 / 热力图 / 开播提醒
-  'assets/member-gs3.jpg'     // 2026 官网公式照（补齐，原先漏了）
+  'assets/member-gs3.jpg',    // 2026 官网公式照（补齐，原先漏了）
+  'og.png'                    // 分享卡片（og:image / twitter:image，1200×630，走根目录短链接）
 ];
 
 // 整目录复制：口袋表情图（105 张 gif，共 ~300KB），逐个列白名单不现实
