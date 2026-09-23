@@ -337,6 +337,19 @@ function reportOverride() {
   }
 }
 
+/* ---- 「我在房间里说的第一句话」 ----
+ * 由 scripts/build-first-words.mjs 单独扫一遍房间 IM 得到（本脚本扫房间时只留元数据、
+ * 没存正文，所以第一句话要另抓一次）。产物落在 .cache/fans/first-words.json，
+ * key 是 uid —— 和档案库一样只在服务端，只有本人经 /api/mine 能看到自己那句。
+ * 文件不存在就静默跳过（档案卡那一块不显示），不影响鸡腿/活跃度统计。
+ */
+const FW_FILE = path.join(CACHE, 'first-words.json');
+let FW = {};
+if (fs.existsSync(FW_FILE)) {
+  try { FW = JSON.parse(fs.readFileSync(FW_FILE, 'utf8')).map || {}; } catch { FW = {}; }
+  if (Object.keys(FW).length) console.log(`[第一句话] 读到 ${Object.keys(FW).length} 人的首条留言`);
+}
+
 function build(PRICE) {
   const isScoring = (g) => /^888\d{0,3}$/.test(String(g.id || '')) || Number(g.s) === 1 || PRICE.get(g.nm) === -1;
   const fans = new Map();      // uid -> row
@@ -490,6 +503,8 @@ function build(PRICE) {
       n: f.msgs, f: f.first, l: f.last, d: Object.keys(f.days).length,
       b: bestStreak(f.days), h: f.hs.join(','), m: encodeBitmap(Object.keys(f.days).map(dayIdxOf)),
       start: '2022-11-01',
+      // 第一句话：只有真的抓到正文才带上（没有就整块不显示，不写空串占位）
+      ...(FW[f.uid] ? { fw: String(FW[f.uid].x || '').slice(0, 120), fwt: Number(FW[f.uid].t) || 0 } : {}),
       });
     })
     // 注：只送过打分道具、没送过礼物也没发言的人也要留档（否则档案里查不到他的分）

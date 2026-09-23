@@ -1350,6 +1350,14 @@ const fmtScore = (v) => {
   if (!n) return '0';
   return Number.isInteger(n) ? n.toLocaleString() : n.toFixed(1);
 };
+/* 「我对她说的第一句话」也要能关（站长 2026-09-23 定：可以分享，但由本人决定）。
+   默认写进分享图 —— 这句话是档案里最有感情的一项，多数人愿意晒。 */
+const FIRST_OPT_KEY = 'wyc-demo-mine-first-opt-v1';
+const firstOptOn = () => { try { return localStorage.getItem(FIRST_OPT_KEY) !== '0'; } catch (_) { return true; } };
+const firstOptSet = (on) => { try { localStorage.setItem(FIRST_OPT_KEY, on ? '1' : '0'); } catch (_) {} };
+/* ⚠️ canvas 换行用下面已有的 wrapText(ctx, text, maxW, maxLines) ——
+   注意它必须传 maxLines：不传时内部 `out.length < undefined` 恒为 false，
+   会一行都不返回（2026-09-23 踩过：分享卡上「第一句话」只剩标题、正文空白）。 */
 
 function bjDayKey(ts) { return new Date(Number(ts) + 8 * 3600e3).toISOString().slice(0, 10); }
 
@@ -1566,6 +1574,89 @@ function wrapText(ctx, text, maxW, maxLines) {
   return out;
 }
 
+/* ---- 分享卡上的「第一句话」把口袋表情 [敲打] 也画成图 ----
+ * 页面上用 withEmoji() 换成 <img> 就行，canvas 得自己排：先把句子切成
+ * 「文字 / 表情图」token，再逐 token 断行，最后每行居中摆开。
+ * 表情是动图，canvas 只画第一帧 —— 静态不影响识别，总比露出 [敲打] 原文好。
+ */
+const EMOJI_IMG = Object.create(null);          // 序号 -> HTMLImageElement（加载一次长期复用）
+const Q_EM = 30;                                // 表情在卡上的边长
+function emojiSrcOf(name) {
+  const i = EMOJI_MAP[name];
+  return i === undefined ? null : 'assets/emoji/' + i + '.gif';
+}
+/** 预加载句子里的表情图（saveShareCard 是 async 的，await 完再画） */
+async function preloadEmoji(text) {
+  const names = [];
+  const re = new RegExp(EMOJI_RE.source, 'g');
+  let m;
+  while ((m = re.exec(String(text || '')))) names.push(m[1]);
+  await Promise.all(names.map((n) => new Promise((res) => {
+    const src = emojiSrcOf(n);
+    if (!src || EMOJI_IMG[src]) return res();
+    const im = new Image();
+    im.onload = im.onerror = () => { EMOJI_IMG[src] = im; res(); };
+    im.src = src;
+  })));
+}
+/** 切成 token：{x:'文字'} 或 {e:'assets/emoji/7.gif'} */
+function tokenizeFirstWord(s) {
+  const out = [];
+  const re = new RegExp(EMOJI_RE.source, 'g');
+  let last = 0, m;
+  while ((m = re.exec(s))) {
+    if (m.index > last) out.push({ x: s.slice(last, m.index) });
+    const src = emojiSrcOf(m[1]);
+    if (src && EMOJI_IMG[src]) out.push({ e: src });     // 图没加载上就退回原文
+    else out.push({ x: m[0] });
+    last = m.index + m[0].length;
+  }
+  if (last < s.length) out.push({ x: s.slice(last) });
+  return out;
+}
+/** token 断行：文字逐字量宽，表情整体不可断 */
+function layoutFirstWord(ctx, toks, maxW, maxLines) {
+  const lines = [];
+  let line = [], w = 0;
+  const flush = () => { lines.push(line); line = []; w = 0; };
+  outer:
+  for (const tk of toks) {
+    if (lines.length >= maxLines) break;
+    if (tk.e) {
+      if (w + Q_EM > maxW && line.length) { flush(); if (lines.length === maxLines) break; }
+      line.push(tk); w += Q_EM;
+      continue;
+    }
+    for (const ch of tk.x) {
+      const cw = ctx.measureText(ch).width;
+      if (w + cw > maxW && line.length) { flush(); if (lines.length === maxLines) break outer; }
+      const lastTk = line[line.length - 1];
+      if (lastTk && lastTk.x !== undefined) lastTk.x += ch; else line.push({ x: ch });
+      w += cw;
+    }
+  }
+  if (line.length && lines.length < maxLines) lines.push(line);
+  return lines;
+}
+/** 画一行 token（整行水平居中；文字与表情基线对齐） */
+function drawTokenLine(ctx, line, cx, y, fontSize) {
+  const total = line.reduce((s, tk) => s + (tk.e ? Q_EM : ctx.measureText(tk.x).width), 0);
+  let x = cx - total / 2;
+  const prev = ctx.textAlign;
+  ctx.textAlign = 'left';
+  for (const tk of line) {
+    if (tk.e) {
+      const im = EMOJI_IMG[tk.e];
+      if (im) ctx.drawImage(im, x, y + (fontSize - Q_EM) / 2 + 2, Q_EM, Q_EM);
+      x += Q_EM;
+    } else {
+      ctx.fillText(tk.x, x, y);
+      x += ctx.measureText(tk.x).width;
+    }
+  }
+  ctx.textAlign = prev;
+}
+
 function drawShareCard(ctx, d, W, PAD, FONT, bgOnly, H) {
   const CW = W - PAD * 2;
   const cx = W / 2;
@@ -1620,6 +1711,25 @@ function drawShareCard(ctx, d, W, PAD, FONT, bgOnly, H) {
   f('700', 30); ctx.fillStyle = '#a9bcd8'; ctx.fillText(unitTxt, cx - total / 2 + nw + 10, y + 56);
   ctx.textAlign = 'center';
   y += 96 + 18 + 26;
+
+  /* 「我对她说的第一句话」（可选，默认写）—— 放在认识天数之后、鸡腿之前：
+     这是整张卡最有感情的一项，一打开就该看见，别被数字压在后面。 */
+  if (d.showFirst && d.firstWord) {
+    const qMaxW = CW - 96;
+    f('400', 25);
+    // 表情 [敲打] 之类在 canvas 上要画成图，所以走 token 排版而不是纯文本换行
+    const qLines = layoutFirstWord(ctx, tokenizeFirstWord('「' + d.firstWord + '」'), qMaxW, 4);
+    const lh = 40;
+    const bh = 52 + qLines.length * lh + 22;
+    ctx.fillStyle = 'rgba(255,255,255,.07)';
+    rr(ctx, PAD + 12, y, CW - 24, bh, 20); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.13)'; ctx.lineWidth = 2; ctx.stroke();
+    f('400', 16); ctx.fillStyle = '#93a8c6'; ctx.textAlign = 'center';
+    ctx.fillText('我 对 她 说 的 第 一 句 话' + (d.firstWordAt ? ' · ' + d.firstWordAt : ''), cx, y + 18);
+    ctx.fillStyle = '#eaf1ff';
+    qLines.forEach((line, i) => drawTokenLine(ctx, line, cx, y + 52 + i * lh, 25));
+    y += bh + 26;
+  }
 
   // 累计鸡腿（可选：本人可以在分享前关掉，默认写）
   if (d.showGift && Number(d.giftTotal) > 0) {
@@ -2038,7 +2148,7 @@ function showAlbumLayer(dataUrl, stamp) {
   });
 }
 
-function saveShareCard(d) {
+async function saveShareCard(d) {
   const btn = document.getElementById('mineDl');
   const note = (msg) => {
     const el = document.getElementById('mineDlNote');
@@ -2047,6 +2157,8 @@ function saveShareCard(d) {
   if (btn) btn.disabled = true;
   note('正在生成图片…');
   try {
+    // 第一句话里可能有口袋表情：gif 得先加载好，canvas 才画得出来
+    if (d.showFirst && d.firstWord) await preloadEmoji(d.firstWord);
     const cv = buildShareCard(d);
     showAlbumLayer(cv.toDataURL('image/png'), d.stamp);
     note('');
@@ -2353,6 +2465,15 @@ async function lookupMine(uid) {
     + '<div class="mine-hero-v"><span data-count="' + knowDays + '">0</span><small>天</small></div>'
     + '</div>';
 
+  // 我对她说的第一句话（服务端按 uid 取的是他自己在房间里的第一条留言正文）
+  const firstWord = String(u.fw || '').trim();
+  const firstWordAt = firstWord ? bjDayKey(Number(u.fwt) || u.f || Date.now()) : '';
+  if (firstWord) {
+    html += '<div class="mine-sec mine-first" style="animation-delay:.12s">'
+      + '<div class="mine-h"><b>我对她说的第一句话</b><span>' + escapeHtml(firstWordAt) + '</span></div>'
+      + '<div class="mine-first-q">「' + withEmoji(escapeHtml(firstWord)) + '」</div></div>';
+  }
+
   if (g) { html += mineGiftBlock(g, 0.14); MINE_GIFT = g; }
 
   html += '<div class="mine-sec mine-glass" style="animation-delay:.18s">'
@@ -2411,6 +2532,11 @@ async function lookupMine(uid) {
 
   html += '<div class="mine-sec mine-dl-wrap" style="animation-delay:.6s">';
   html += roomNameTabs();
+  // 「第一句话」默认写进分享图（感情价值最高的一项），但一样可以自己关掉
+  if (firstWord) {
+    html += '<label class="mine-share-opt"><input type="checkbox" id="mineFirstOpt"'
+      + (firstOptOn() ? ' checked' : '') + '>分享图里也写上我的第一句话</label>';
+  }
   // 鸡腿是隐私敏感度最高的那一项：由本人决定写不写进分享图
   if (Number(d.total) > 0) {
     html += '<label class="mine-share-opt"><input type="checkbox" id="mineGiftOpt"'
@@ -2424,11 +2550,6 @@ async function lookupMine(uid) {
   html += '<button type="button" class="mine-dl" id="mineDl">保存到相册</button>'
     + '<div class="mine-dl-note" id="mineDlNote"></div></div>';
 
-  // 全量历史还没补完时，说清楚数字只覆盖哪一段，别让人以为这就是全部
-  if (d.since && d.since > Date.parse('2022-11-02T00:00:00+08:00')) {
-    html += '<div class="mine-dl-note" style="animation-delay:.66s">历史还在补录中，'
-      + '当前档案覆盖 <b>' + bjDayKey(d.since) + '</b> 之后，更早的随后补上。</div>';
-  }
 
   html += '</div>';
   box.innerHTML = html;
@@ -2443,6 +2564,7 @@ async function lookupMine(uid) {
     dayCount: u.d, best: u.b, msgs: u.n,
     giftTotal: giftNum(g), giftLabel: giftLabel(g), showGift: false,   // 鸡腿：导出时按勾选决定
     score26: giftScore(g), showScore: false,                           // 活动打分：另一个开关
+    firstWord, firstWordAt, showFirst: false,                          // 第一句话：第三个开关
     hs, bandName: band.name, bandDesc: band.desc, bandHours: band.h,
     badges,
     dayCount2: Math.max(1, Math.round((Date.parse(nowDay + 'T00:00:00Z') - Date.parse((dayKeys[0] || firstKey) + 'T00:00:00Z')) / 86400e3) + 1),
@@ -2466,6 +2588,8 @@ async function lookupMine(uid) {
   if (giftOpt) giftOpt.addEventListener('change', () => giftOptSet(giftOpt.checked));
   const scoreOpt = document.getElementById('mineScoreOpt');
   if (scoreOpt) scoreOpt.addEventListener('change', () => scoreOptSet(scoreOpt.checked));
+  const firstOpt = document.getElementById('mineFirstOpt');
+  if (firstOpt) firstOpt.addEventListener('change', () => firstOptSet(firstOpt.checked));
   const dl = document.getElementById('mineDl');
   if (dl) dl.addEventListener('click', () => {
     const memoEl = document.querySelector('#mineMemo .mine-memo');
@@ -2474,6 +2598,7 @@ async function lookupMine(uid) {
     // 勾选状态在导出这一刻才读，改了开关立刻生效
     cardData.showGift = !!(giftOpt && giftOpt.checked) && Number(cardData.giftTotal) > 0;
     cardData.showScore = !!(scoreOpt && scoreOpt.checked) && Number(cardData.score26) > 0;
+    cardData.showFirst = !!(firstOpt && firstOpt.checked) && !!cardData.firstWord;
     saveShareCard(cardData);
   });
 
