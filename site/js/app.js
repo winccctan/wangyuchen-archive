@@ -1339,6 +1339,17 @@ const MINE_KEY = 'wyc-demo-mine-uid-v1';
 const GIFT_OPT_KEY = 'wyc-demo-mine-gift-opt-v1';
 const giftOptOn = () => { try { return localStorage.getItem(GIFT_OPT_KEY) !== '0'; } catch (_) { return true; } };
 const giftOptSet = (on) => { try { localStorage.setItem(GIFT_OPT_KEY, on ? '1' : '0'); } catch (_) {} };
+// 活动打分同上，且**和鸡腿分开控制**（站长 2026-09-23 定：两个是不同的东西，
+// 有人愿意晒分数但不愿晒金额，也可能反过来，所以各给一个开关，互不牵连）
+const SCORE_OPT_KEY = 'wyc-demo-mine-score-opt-v1';
+const scoreOptOn = () => { try { return localStorage.getItem(SCORE_OPT_KEY) !== '0'; } catch (_) { return true; } };
+const scoreOptSet = (on) => { try { localStorage.setItem(SCORE_OPT_KEY, on ? '1' : '0'); } catch (_) {} };
+// 打分有 0.1 这种小数位：整数就不带小数点，有小数才保留 1 位
+const fmtScore = (v) => {
+  const n = Number(v) || 0;
+  if (!n) return '0';
+  return Number.isInteger(n) ? n.toLocaleString() : n.toFixed(1);
+};
 
 function bjDayKey(ts) { return new Date(Number(ts) + 8 * 3600e3).toISOString().slice(0, 10); }
 
@@ -1510,12 +1521,15 @@ function mineCountUp() {
   document.querySelectorAll('.mine-report [data-count]').forEach((el) => {
     const target = Number(el.dataset.count) || 0;
     if (!target) { el.textContent = '0'; return; }
+    // data-dec="1" 的是活动打分（可能是 2518.5 这种带小数的），按 fmtScore 走
+    const dec = el.dataset.dec === '1';
+    const show = (v) => (dec ? fmtScore(v) : Math.round(v).toLocaleString());
     const dur = 950, t0 = performance.now();
     const tick = (t) => {
       const p = Math.min(1, (t - t0) / dur);
       const e = 1 - Math.pow(1 - p, 3);
-      el.textContent = Math.round(target * e).toLocaleString();
-      if (p < 1) requestAnimationFrame(tick); else el.textContent = target.toLocaleString();
+      el.textContent = show(target * e);
+      if (p < 1) requestAnimationFrame(tick); else el.textContent = show(target);
     };
     requestAnimationFrame(tick);
   });
@@ -1624,6 +1638,25 @@ function drawShareCard(ctx, d, W, PAD, FONT, bgOnly, H) {
     f('700', 24); ctx.fillStyle = '#a9bcd8'; ctx.fillText(gUnit, cx - gTw / 2 + gNw + 10, y + 30);
     ctx.textAlign = 'center';
     y += 58 + 16 + 26;
+  }
+  // 2026 活动打分（可选，和鸡腿是两个开关）—— 打分道具不是礼物、不算鸡腿，
+  // 所以必须单独成块，绝不能和上面的金额并成一个数。
+  if (d.showScore && Number(d.score26) > 0) {
+    f('400', 18); ctx.fillStyle = '#a9bcd8'; ctx.textAlign = 'center';
+    ctx.fillText('2 0 2 6 年 打 出', cx, y);
+    y += 26;
+    const gs2 = ctx.createLinearGradient(PAD, y, W - PAD, y);
+    gs2.addColorStop(0, '#8ef0d4'); gs2.addColorStop(1, '#7ec9ff');
+    const sNum = fmtScore(d.score26);
+    const sUnit = '分';
+    f('800', 52); const sNw = ctx.measureText(sNum).width;
+    f('700', 24); const sUw = ctx.measureText(sUnit).width;
+    const sTw = sNw + 10 + sUw;
+    ctx.textAlign = 'left';
+    f('800', 52); ctx.fillStyle = gs2; ctx.fillText(sNum, cx - sTw / 2, y);
+    f('700', 24); ctx.fillStyle = '#a9bcd8'; ctx.fillText(sUnit, cx - sTw / 2 + sNw + 10, y + 28);
+    ctx.textAlign = 'center';
+    y += 52 + 14 + 26;
   }
 
   // 三张玻璃卡
@@ -1891,6 +1924,24 @@ function drawLiteShareCard(ctx, d, W, PAD, FONT, bgOnly, H) {
     // 不画「2024、2025 年的归档不完整」这句 —— 站长 2026-09-23 定：
     // 提醒只留在页面上，分享出去的图要保持干净（别人转发时不该带着一句免责声明）。
   }
+  // 2026 活动打分（独立开关，和鸡腿互不影响）
+  if (d.showScore && Number(d.score26) > 0) {
+    f('400', 18); ctx.fillStyle = '#a9bcd8';
+    ctx.fillText('2 0 2 6 年 打 出', cx, y);
+    y += 28;
+    const gs2 = ctx.createLinearGradient(PAD, y, W - PAD, y);
+    gs2.addColorStop(0, '#8ef0d4'); gs2.addColorStop(1, '#7ec9ff');
+    const sNum = fmtScore(d.score26);
+    const sUnit = '分';
+    f('800', 62); const sNw = ctx.measureText(sNum).width;
+    f('700', 26); const sUw = ctx.measureText(sUnit).width;
+    const sTw = sNw + 12 + sUw;
+    ctx.textAlign = 'left';
+    f('800', 62); ctx.fillStyle = gs2; ctx.fillText(sNum, cx - sTw / 2, y);
+    f('700', 26); ctx.fillStyle = '#a9bcd8'; ctx.fillText(sUnit, cx - sTw / 2 + sNw + 12, y + 36);
+    ctx.textAlign = 'center';
+    y += 62 + 20;
+  }
 
   y += 10;
   f('400', 16); ctx.fillStyle = '#8296b3';
@@ -2079,7 +2130,9 @@ function giftNums(d) {
   // rank 字段保留在数据结构里，但前端不展示排名 ——
   // 站长 2026-09-23 决定去掉：只有两百来人有、口径又是第三方榜，容易起争议。
   const liveAll = Number(d.live) || 0, roomAll = Number(d.room) || 0;
-  return { p26, p24, liveAll, roomAll, totalAll: liveAll + roomAll };
+  // 2026 年度活动「打分道具」累计分（口袋房间 + 直播，只有 2026 一档）
+  const score26 = Number(d.score2026) || 0;
+  return { p26, p24, score26, liveAll, roomAll, totalAll: liveAll + roomAll };
 }
 
 // 当前该展示哪一档：
@@ -2091,18 +2144,22 @@ function giftView(g) {
   const gg = g || {};
   const p26 = gg.p26 || { live: 0, room: 0, self: 0, listed: 0, total: 0, src: '' };
   const p24 = gg.p24 || { live: 0, room: 0, self: 0, listed: 0, total: 0, src: '' };
-  const v24 = { id: '2024plus', p: p24, label: '2 0 2 4 年 起 送 出', since: '2024 年 1 月 1 日至今' };
-  const v26 = { id: '2026', p: p26, label: '2 0 2 6 年 送 出', since: '2026 年 1 月 1 日至今' };
+  // 打分只统计 2026 那一档（分值表目前也只有 2026 的），别的档位一律不带分
+  const sc26 = Number(gg.score26) || 0;
+  const v24 = { id: '2024plus', p: p24, score: 0, label: '2 0 2 4 年 起 送 出', since: '2024 年 1 月 1 日至今' };
+  const v26 = { id: '2026', p: p26, score: sc26, label: '2 0 2 6 年 送 出', since: '2026 年 1 月 1 日至今' };
   if (GIFT_PERIOD === '2024plus' && p24.total > 0) return v24;
   if (p26.total > 0) return v26;
   if (p24.total > 0) return v24;
   return { id: 'all', p: { live: gg.liveAll || 0, room: gg.roomAll || 0, self: 0, listed: 0,
                            total: gg.totalAll || 0, src: '' },
-           label: '累 计 送 出', since: '2022 年 11 月至今' };
+           score: 0, label: '累 计 送 出', since: '2022 年 11 月至今' };
 }
 // 分享卡用：取当前档位的数字与标题
 const giftNum = (g) => giftView(g).p.total;
 const giftLabel = (g) => giftView(g).label;
+// 分享卡用：当前档位的活动打分（只在 2026 档有值；与鸡腿分开控制，不能混进 giftNum）
+const giftScore = (g) => giftView(g).score;
 
 function mineGiftBlock(gg, delay) {
   const g = gg || {};
@@ -2126,12 +2183,19 @@ function mineGiftBlock(gg, delay) {
       + '<button type="button" class="mine-gift-tab' + (GIFT_PERIOD === '2024plus' ? ' on' : '')
       + '" data-gp="2024plus">2024 年至今</button></div>';
   }
+  // 活动打分：只在 2026 档出现，和鸡腿并排展示（两个不同的东西，别合并成一个数）
+  const sc = v.score || 0;
+  const duo = sc > 0;
   return '<div class="mine-sec mine-hero mine-hero-gift" style="animation-delay:' + delay + 's">'
     + tabs
     + '<div class="mine-hero-l">' + v.label + '</div>'
     // 单位用 🍗（站长 2026-09-23 定）。分享卡是 canvas 绘制，彩色 emoji 在
     // Windows / 部分安卓上会变灰或变豆腐块，所以那边仍写「鸡腿」二字（见 gUnit）。
-    + '<div class="mine-hero-v"><span data-count="' + tot + '">0</span><small class="unit">🍗</small></div>'
+    + '<div class="mine-hero-v' + (duo ? ' duo' : '') + '">'
+    + '<span class="hv-gift"><span data-count="' + tot + '">0</span><small class="unit">🍗</small></span>'
+    + (duo ? '<span class="hv-score"><small class="hv-sc-lab">打出</small>'
+           + '<span data-count="' + sc + '" data-dec="1">0</span><small class="unit">分</small></span>' : '')
+    + '</div>'
     + warn
     + '</div>';
 }
@@ -2151,6 +2215,7 @@ function bindGiftTabs() {
       if (MINE_CARD) {
         MINE_CARD.giftTotal = giftNum(MINE_GIFT);
         MINE_CARD.giftLabel = giftLabel(MINE_GIFT);
+        MINE_CARD.score26 = giftScore(MINE_GIFT);   // 打分只在 2026 档有值
       }
     });
   });
@@ -2159,7 +2224,10 @@ function bindGiftTabs() {
 // 只送过礼、没在房间留过言的人
 function renderMineGiftOnly(g, box) {
   const gg = g || {};
-  const show = (gg.p26 && gg.p26.total > 0) || (gg.p24 && gg.p24.total > 0) || (Number(gg.totalAll) || 0) > 0;
+  const sc26 = Number(gg.score26) || 0;
+  // 只送过打分道具、一件礼物都没送的人也要有卡（分数得让人看见）
+  const show = (gg.p26 && gg.p26.total > 0) || (gg.p24 && gg.p24.total > 0)
+    || (Number(gg.totalAll) || 0) > 0 || sc26 > 0;
   let h = '<div class="mine-report">';
   h += '<div class="mine-cover">'
     + '<div class="mine-avatar">🐟</div>'
@@ -2170,9 +2238,14 @@ function renderMineGiftOnly(g, box) {
   // 不画那些空着的小时柱、足迹格和「0 天 / 0 句」。见 drawLiteShareCard。
   h += '<div class="mine-sec mine-dl-wrap" style="animation-delay:.16s">';
   h += roomNameTabs();
+  // 鸡腿和打分各一个开关：有人愿意晒分数但不愿晒金额，也可能反过来
   if (show) {
     h += '<label class="mine-share-opt"><input type="checkbox" id="mineGiftOpt"'
       + (giftOptOn() ? ' checked' : '') + '>分享图里也写上我送的鸡腿</label>';
+  }
+  if (sc26 > 0) {
+    h += '<label class="mine-share-opt"><input type="checkbox" id="mineScoreOpt"'
+      + (scoreOptOn() ? ' checked' : '') + '>分享图里也写上我打的分</label>';
   }
   h += '<button type="button" class="mine-dl" id="mineDl">保存到相册</button>'
     + '<div class="mine-dl-note" id="mineDlNote"></div></div>';
@@ -2187,12 +2260,16 @@ function renderMineGiftOnly(g, box) {
     lite: true, stamp: bjDayKey(Date.now()),
     title: roomTitle(),
     giftTotal: giftNum(gg), giftLabel: giftLabel(gg), showGift: false,   // 导出这一刻才按勾选决定
+    score26: sc26, showScore: false,
   };
   const giftOpt = document.getElementById('mineGiftOpt');
   if (giftOpt) giftOpt.addEventListener('change', () => giftOptSet(giftOpt.checked));
+  const scoreOpt = document.getElementById('mineScoreOpt');
+  if (scoreOpt) scoreOpt.addEventListener('change', () => scoreOptSet(scoreOpt.checked));
   const dl = document.getElementById('mineDl');
   if (dl) dl.addEventListener('click', () => {
     MINE_CARD.showGift = !!(giftOpt && giftOpt.checked) && Number(MINE_CARD.giftTotal) > 0;
+    MINE_CARD.showScore = !!(scoreOpt && scoreOpt.checked) && Number(MINE_CARD.score26) > 0;
     saveShareCard(MINE_CARD);
   });
 }
@@ -2339,6 +2416,11 @@ async function lookupMine(uid) {
     html += '<label class="mine-share-opt"><input type="checkbox" id="mineGiftOpt"'
       + (giftOptOn() ? ' checked' : '') + '>分享图里也写上我送的鸡腿</label>';
   }
+  // 活动打分是另一回事（不是鸡腿），单独给开关
+  if ((Number(d.score2026) || 0) > 0) {
+    html += '<label class="mine-share-opt"><input type="checkbox" id="mineScoreOpt"'
+      + (scoreOptOn() ? ' checked' : '') + '>分享图里也写上我打的分</label>';
+  }
   html += '<button type="button" class="mine-dl" id="mineDl">保存到相册</button>'
     + '<div class="mine-dl-note" id="mineDlNote"></div></div>';
 
@@ -2360,6 +2442,7 @@ async function lookupMine(uid) {
     title: roomTitle(),
     dayCount: u.d, best: u.b, msgs: u.n,
     giftTotal: giftNum(g), giftLabel: giftLabel(g), showGift: false,   // 鸡腿：导出时按勾选决定
+    score26: giftScore(g), showScore: false,                           // 活动打分：另一个开关
     hs, bandName: band.name, bandDesc: band.desc, bandHours: band.h,
     badges,
     dayCount2: Math.max(1, Math.round((Date.parse(nowDay + 'T00:00:00Z') - Date.parse((dayKeys[0] || firstKey) + 'T00:00:00Z')) / 86400e3) + 1),
@@ -2381,6 +2464,8 @@ async function lookupMine(uid) {
   MINE_CARD = cardData;    // 切换鸡腿档位时要同步改这里的数字
   const giftOpt = document.getElementById('mineGiftOpt');
   if (giftOpt) giftOpt.addEventListener('change', () => giftOptSet(giftOpt.checked));
+  const scoreOpt = document.getElementById('mineScoreOpt');
+  if (scoreOpt) scoreOpt.addEventListener('change', () => scoreOptSet(scoreOpt.checked));
   const dl = document.getElementById('mineDl');
   if (dl) dl.addEventListener('click', () => {
     const memoEl = document.querySelector('#mineMemo .mine-memo');
@@ -2388,6 +2473,7 @@ async function lookupMine(uid) {
     cardData.memoText = /正在找/.test(txt) ? '' : txt.replace(/^「|」$/g, '');
     // 勾选状态在导出这一刻才读，改了开关立刻生效
     cardData.showGift = !!(giftOpt && giftOpt.checked) && Number(cardData.giftTotal) > 0;
+    cardData.showScore = !!(scoreOpt && scoreOpt.checked) && Number(cardData.score26) > 0;
     saveShareCard(cardData);
   });
 
