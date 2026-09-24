@@ -1,18 +1,24 @@
-# 粉丝档案同步：构建「每个 uid 一份」的数据 → 灌进 Cloudflare D1
+# 粉丝档案同步：构建「每个 uid 一份」的数据 → 灌进 Cloudflare KV + D1
 #
 # 隐私红线（站长 2026-09-22 定）：粉丝名单不得以任何静态文件形式上公网。
 # 所以名单不进 git、不进 dist、不进 KV 静态值；只写进 D1，
 # 前端凭本人 uid 调 /api/mine 回取自己那一份（worker/index.js 里 handleApiMine）。
 #
-# 首次要把历史灌满：Actions → Fans sync → Run workflow → back 填 0（全量）。
-# 之后每天只增量补最近 3 天，历史数据由缓存累积。
+# ── 2026-09-24 改造：历史缓存从 Actions cache 改成 Cloudflare R2 ──────────
+# 为什么必须改：Actions 的 `.cache/fans` 缓存只积累到 2025-02（房间 21.6 万鸡腿），
+#   而线上全历史是 253 万；`build-fans` 是「整桶覆盖写」没有部分更新，
+#   用一份不完整的历史跑自动任务，会把线上 6200+ 人的档案打回 2400 人。
+#   所以之前只能停掉定时、靠本机跑（本机有完整历史）。
+# 现在：R2 私有桶 `wyc-archive-raw` 存着本机那份完整历史（114MB / 10 个文件），
+#   CI 每次先 `aws s3 sync` 拉下来 → 增量补最近 N 天 → 跑完再 `sync` 回传。
+#   R2 只存原始抓取记录（含粉丝 uid），桶是私有的，永远不进 git / dist / 公开 KV。
+# 首次/重置：Actions → Fans sync → Run workflow → back 填 0（全量重建）。
 name: Fans sync
 
 on:
-  # ⚠️ 2026-09-23 停掉定时触发，别急着打开。
-  #    Actions 侧的 .cache/fans 只积累到 2025-02（房间 21.6 万鸡腿），而线上全历史是 253 万；
-  #    整桶覆盖写没有「部分更新」，自动跑会把线上 6200+ 人的档案打回 2400 人。
-  #    需要时在 Actions 页面手动 Run workflow（推送侧还有人数骤降保护兜底）。
+  # ⚠️ 仍保持关闭，等 R2 版流程实测跑通、站长确认后再打开。
+  #    打开前请先关掉本机那个每天 00:30 的 automation —— 两边同时跑会互相抢推送
+  #    （推送侧有人数骤降保护兜底，不会毁数据，但会产生重复 commit 与无谓告警）。
   # schedule:
   #   - cron: '23 17 * * *'      # 北京时间 01:23（避开主抓取任务）
   workflow_dispatch:
@@ -48,6 +54,14 @@ jobs:
       SYNC_TOKEN: ${{ secrets.SYNC_TOKEN }}
       SITE: 'https://idol.wyc0518.cc'
       SCRAPE_PROXY: ''
+      # R2（S3 兼容）——ubuntu runner 自带 aws CLI v2，不需要额外安装
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: auto
+      AWS_EC2_METADATA_DISABLED: 'true'   # 否则 aws CLI 会去探 169.254.169.254 白等 1 秒
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      R2_ENDPOINT: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+      R2_BUCKET: ${{ secrets.R2_BUCKET }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -60,12 +74,30 @@ jobs:
       - name: Install scraper deps
         working-directory: scraper
         run: npm ci
-      - name: 恢复增量缓存（房间/直播原始抓记录）
-        uses: actions/cache@v4
-        with:
-          path: .cache/fans
-          key: fans-cache-v1
-          restore-keys: fans-cache-
+
+      - name: 从 R2 拉取历史缓存
+        run: |
+          if [ -z "$R2_BUCKET" ] || [ -z "$R2_ACCOUNT_ID" ] || [ -z "$AWS_ACCESS_KEY_ID" ]; then
+            echo "::error::R2 secrets 没配（需要 R2_ACCOUNT_ID / R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY / R2_BUCKET）"
+            exit 1
+          fi
+          mkdir -p .cache/fans
+          # --exact-timestamps：把本地 mtime 设成 R2 对象的 LastModified，
+          # 这样跑完回传时只有真正变过的文件会被上传（否则每次白传 114MB）。
+          aws s3 sync "s3://$R2_BUCKET/" .cache/fans/ \
+            --endpoint-url "$R2_ENDPOINT" --exact-timestamps --only-show-errors
+          echo "--- 拉下来的文件 ---"
+          ls -la .cache/fans/
+          # 🔴 闸门：拿不到完整历史就必须停，否则 build-fans 会从零重建 →
+          #    线上人数从 6200+ 掉到 2400 → 就算被骤降保护拦住，这一轮也是白跑。
+          SIZE=$(stat -c%s .cache/fans/room.jsonl 2>/dev/null || echo 0)
+          LINES=$(wc -l < .cache/fans/room.jsonl 2>/dev/null || echo 0)
+          echo "room.jsonl: $SIZE 字节 / $LINES 行"
+          if [ "$SIZE" -lt 5000000 ]; then
+            echo "::error::room.jsonl 只有 $SIZE 字节（完整基线约 4600 万），R2 没取到历史，终止"
+            exit 1
+          fi
+
       - name: 构建粉丝档案
         run: |
           ARGS="--lanes ${{ inputs.lanes || '6' }}"
@@ -73,5 +105,19 @@ jobs:
           if [ "${{ inputs.skip_live }}" = "true" ]; then ARGS="$ARGS --no-live"; fi
           if [ "${{ inputs.force }}" = "true" ]; then ARGS="$ARGS --force-push"; fi
           node scripts/build-fans.mjs $ARGS --push
+
+      - name: 回传 R2（只在构建成功后）
+        run: |
+          # 不回传 kv/（本机发布用的 102 个断点分片，与 CI 无关）、
+          # 本机备份 .bak-*、以及一次性调试产物。
+          aws s3 sync .cache/fans/ "s3://$R2_BUCKET/" \
+            --endpoint-url "$R2_ENDPOINT" --only-show-errors \
+            --exclude "kv/*" --exclude "*.bak-*" --exclude "melee-probe.json"
+          echo "--- R2 现有对象 ---"
+          aws s3 ls "s3://$R2_BUCKET/" --endpoint-url "$R2_ENDPOINT" --only-show-errors
+
       - name: 报告
-        run: node -e "const j=require('./.cache/fans/fans.json');console.log('共 '+j.people+' 人');" || true
+        if: always()
+        run: |
+          node -e "const j=require('./.cache/fans/fans.json');console.log('共 '+j.people+' 人，起始 '+j.since);" || true
+          du -sh .cache/fans/ || true
