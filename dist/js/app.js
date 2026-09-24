@@ -3101,12 +3101,7 @@ async function lookupMine(uid) {
   const atLeast = firstKey <= S.from;
   const maxH = Math.max(1, ...hs.map((x) => Number(x) || 0));
 
-  // 查到之后出现两个子页：档案 / 去年今日（票根）。都是同一份 uid 数据，页签只负责切换显示
-  let html = '<div class="mine-subtabs">'
-    + '<button type="button" class="mine-subtab on" data-mtab="archive">我的档案</button>'
-    + '<button type="button" class="mine-subtab" data-mtab="ticket">我的去年今日</button>'
-    + '</div>'
-    + '<div class="mine-report" id="minePaneArchive">';
+  let html = '<div class="mine-report">';
   html += '<div class="mine-cover">'
     + '<div class="mine-avatar">🐟</div>'
     + '<div class="mine-cover-t">' + roomTitle() + '</div>'
@@ -3204,26 +3199,8 @@ async function lookupMine(uid) {
     + '<div class="mine-dl-note" id="mineDlNote"></div></div>';
 
 
-  html += '</div>';   // minePaneArchive（我的档案）结束
-  // 票根独立成第二个子页：同样只有查到自己档案的人才能看到
-  if (typeof renderTicket === 'function') {
-    html += '<div class="mine-report" id="minePaneTicket" hidden>'
-      + '<div class="mine-sec" style="animation-delay:.08s">'
-      + '<div class="mine-h"><b>我的陪伴票根</b><span>去年今日 · 演示数据</span></div>'
-      + renderTicket({ start: firstKey, days: knowDays }) + '</div></div>';
-  }
+  html += '</div>';
   box.innerHTML = html;
-  // 档案 / 去年今日 子页切换
-  box.querySelectorAll('.mine-subtab').forEach((b) => {
-    b.addEventListener('click', () => {
-      box.querySelectorAll('.mine-subtab').forEach((x) => x.classList.toggle('on', x === b));
-      const arc = document.getElementById('minePaneArchive');
-      const tkt = document.getElementById('minePaneTicket');
-      if (arc) arc.hidden = b.dataset.mtab !== 'archive';
-      if (tkt) tkt.hidden = b.dataset.mtab !== 'ticket';
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-  });
   bindGiftTabs();          // 「2026 年 / 2024 年至今」切换
   bindRoomNameTabs();      // 「一只鱼鱼 / 王语晨」称谓切换（只影响这张卡）
   mineCountUp();
@@ -3378,15 +3355,17 @@ function biliCutFor(p) {
   const day = fmtDate(p.stime || p.ctime);
   if (!day) return null;
   const same = biliCutsAll().filter((c) => c[0] === day);
-  if (!same.length) return null;
   if (same.length === 1) return { date: day, title: same[0][1], bvid: same[0][2] };
-  // 同日多场（如生日冷餐会 + NIII 常规公演）：拿公演名里的《剧目》去对
-  const m = String(p.subTitle || p.title || '').match(/《([^》]+)》/);
-  const key = m ? m[1] : '';
-  const hit = key && same.find((c) => c[1].includes(key));
-  if (hit || same.length) return { date: day, title: (hit || same[0])[1], bvid: (hit || same[0])[2] };
-  // 兜底：bili-cuts.js（Chzhnh 合集 2024+）未覆盖的老公演 cut，可能以 kind:"cut"、
-  // 无合集形式躺在 live-cuts.js（标题含「公演cut」，已随抓取进 KV）。按公演日期兜底匹配。
+  if (same.length > 1) {
+    // 同日多场（如生日冷餐会 + NIII 常规公演）：拿公演名里的《剧目》去对
+    const m = String(p.subTitle || p.title || '').match(/《([^》]+)》/);
+    const key = m ? m[1] : '';
+    const hit = key && same.find((c) => c[1].includes(key));
+    return { date: day, title: (hit || same[0])[1], bvid: (hit || same[0])[2] };
+  }
+  // same.length === 0：bili-cuts.js（Chzhnh 合集 2024+）未覆盖的老公演 cut，
+  // 可能以 kind:"cut"、无合集形式躺在 live-cuts.js（标题含「公演cut」，已随抓取进 KV）。
+  // 按公演日期兜底匹配，命中则让「公演回放」卡片显示「✂️ B站cut」入口。
   const lcHits = (DATA.liveCuts && DATA.liveCuts.cuts ? DATA.liveCuts.cuts : [])
     .filter((c) => /公演\s*cut/i.test(c.title || '') && (c.titleDate || c.date) === day);
   if (lcHits.length) {
