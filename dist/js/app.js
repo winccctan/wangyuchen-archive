@@ -1721,6 +1721,39 @@ async function buildSchedulePoster(picks, extra) {
   return null;
 }
 
+/* 行程「文字版」——图给别人看，这段给别人粘贴（群 / 超话 / 私信直接用）。
+ * 只拼勾中的那几场，顺序和图上一致；附加信息也跟着决定是否带上。 */
+function scheduleText(picks, ex) {
+  const S = window.__SCHEDULE__ || {};
+  const WD = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+  const wdOf = (ds) => {
+    const t = Date.parse(ds + 'T00:00:00+08:00');
+    return isNaN(t) ? '' : WD[new Date(t).getUTCDay()];
+  };
+  const byDay = new Map();
+  (picks || []).forEach((d) => {
+    if (!d || !d.date) return;
+    if (!byDay.has(d.date)) byDay.set(d.date, []);
+    byDay.get(d.date).push(d);
+  });
+  const L = ['【王语晨 · 近期行程】', ''];
+  Array.from(byDay.keys()).sort().forEach((k) => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(k);
+    const head = m ? (Number(m[2]) + '月' + Number(m[3]) + '日') : k;
+    L.push(head + '（' + ((byDay.get(k)[0].weekday) || wdOf(k) || '') + '）');
+    byDay.get(k).forEach((d) => { L.push((d.time ? d.time + '  ' : '') + d.title); });
+    L.push('');
+  });
+  if (ex && ex.score && S.score && S.score.rules && S.score.rules.length) {
+    L.push('🏅 运动会计分' + (S.score.period ? '（' + S.score.period + '）' : ''));
+    S.score.rules.forEach((r) => { L.push('· ' + r); });
+    L.push('');
+  }
+  if (ex && ex.ticket && S.ticket) { L.push('🎟️ 可使用券种：' + S.ticket, ''); }
+  L.push('—— 王语晨应援补档站 idol.wyc0518.cc');
+  return L.join('\n');
+}
+
 /* ---- 行程 · 勾选几场 → 生成一张转发图 ----
  * 粉丝要转告别人的往往只有其中几场（比如「周末这两场去不去」），
  * 所以让他自己勾，而不是整份行程全铺上去。
@@ -1770,7 +1803,7 @@ function bindSchedulePicker(list) {
       const res = await buildSchedulePoster(picks, xPicked());
       if (!res) throw new Error('canvas 超限');
       track('sch:poster');
-      showAlbumLayer(res.url, '行程', '王语晨行程');
+      showAlbumLayer(res.url, '行程', '王语晨行程', scheduleText(picks, xPicked()));
     } catch (e) {
       if (window.console) console.warn('行程图生成失败', e);
       if (go) go.textContent = '生成失败，重试';
@@ -2649,7 +2682,7 @@ function isPhoneUA() {
 function isInAppBrowser() {
   return /MicroMessenger|QQ\/|Weibo|QQBrowser|Douban|Alipay|DingTalk/i.test(navigator.userAgent || '');
 }
-function showAlbumLayer(dataUrl, stamp, name) {
+function showAlbumLayer(dataUrl, stamp, name, copyText) {
   const nm = name || roomTitle();     // 行程图传「王语晨行程」，档案卡沿用房间名
   const old = document.getElementById('mineAlbum');
   if (old) old.remove();
@@ -2660,11 +2693,14 @@ function showAlbumLayer(dataUrl, stamp, name) {
   const ov = document.createElement('div');
   ov.id = 'mineAlbum';
   ov.className = 'mine-overlay';
+  // 行程图额外给一个「复制文案」：图发给别人看，文字版适合直接粘进群 / 超话 / 私信
+  const copyBtn = copyText ? '<button type="button" class="ma-act ma-act2" id="maCopy">📋 复制文案</button>' : '';
   ov.innerHTML = '<div class="ma-bar"><span class="ma-tip">' + tip + '</span>'
     + '<button type="button" class="ma-close" id="maClose">关闭</button></div>'
     + '<div class="ma-body"><img src="' + dataUrl + '" alt="' + nm + '"></div>'
     + '<div class="ma-foot"><button type="button" class="ma-act" id="maAct">'
     + (phone ? '保存到相册' : '下载图片') + '</button>'
+    + copyBtn
     + '<div class="ma-note" id="maNote"></div></div>';
   document.body.appendChild(ov);
   document.body.style.overflow = 'hidden';
@@ -2701,6 +2737,42 @@ function showAlbumLayer(dataUrl, stamp, name) {
     track('mine:save');
     if (noteEl) noteEl.textContent = '已下载到本地';
   });
+
+  const copyEl = document.getElementById('maCopy');
+  if (copyEl) copyEl.addEventListener('click', async () => {
+    const noteEl = document.getElementById('maNote');
+    const ok = await copyPlainText(copyText);
+    track('sch:copy');
+    if (noteEl) noteEl.textContent = ok ? '文案已复制，去群里粘贴就行' : '这台设备不支持复制，请长按图片发给对方';
+  });
+}
+
+/* 复制到剪贴板：优先新接口，老 Safari / 非安全上下文退回 execCommand。
+ * iOS 上必须给临时 textarea 设 contentEditable + select + setSelectionRange 才肯复制。 */
+async function copyPlainText(text) {
+  const s = String(text || '');
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(s);
+      return true;
+    }
+  } catch (e) { /* 落到下面的降级 */ }
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = s;
+    ta.setAttribute('readonly', '');
+    ta.contentEditable = 'true';
+    ta.style.position = 'fixed';
+    ta.style.top = '-1000px';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    ta.setSelectionRange(0, s.length);
+    const ok = document.execCommand('copy');
+    ta.remove();
+    return !!ok;
+  } catch (e) { return false; }
 }
 
 async function saveShareCard(d) {

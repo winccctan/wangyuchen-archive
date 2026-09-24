@@ -38,6 +38,11 @@
   .muted { color:var(--ink2); font-size:13px; }
   .hide { display:none; }
   .head { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .addrow { margin-top:8px; }
+  .li { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+  .li input { margin:0; flex:1; }
+  .li .mini { flex:none; }
+  .ed input, .ed select { margin-bottom:6px; }
 </style>
 </head>
 <body>
@@ -73,25 +78,34 @@
     <div class="card">
       <div id="editList"></div>
       <button id="btnAdd" class="gray">＋ 手动加一条</button>
-      <label for="ticket">可用券种（选填，留空不改）</label>
-      <input id="ticket" placeholder="《终极殿堂》握手券；…">
-      <label for="scorePeriod">计分时段（选填）</label>
-      <input id="scorePeriod" placeholder="9月26日 - 10月7日">
-      <label for="scoreRules">计分规则（一行一条，选填）</label>
-      <textarea id="scoreRules" style="min-height:80px" placeholder="1分 每场公演 1 分&#10;2分 每场见面会 2 分"></textarea>
       <button id="btnPublish">合并发布（只加新的，不删旧的）</button>
       <button id="btnReplace" class="ghost">整份覆盖（谨慎）</button>
       <div id="pubMsg"></div>
     </div>
   </div>
 
-  <h2>3 · 当前存档</h2>
+  <h2>3 · 券种 / 计分</h2>
+  <div class="card">
+    <label>可用券种（一行一个）</label>
+    <div id="ticketList"></div>
+    <button id="btnTicketAdd" class="mini gray addrow">＋ 加一个券种</button>
+    <label for="scorePeriod">计分时段</label>
+    <input id="scorePeriod" placeholder="9月26日 - 10月7日">
+    <label>计分规则（一行一条）</label>
+    <div id="scoreList"></div>
+    <button id="btnScoreAdd" class="mini gray addrow">＋ 加一条规则</button>
+    <p class="hint">这一块不用发行程也能单独保存。全部删掉再保存 = 清空，前端就不再显示它。</p>
+    <button id="btnMeta">保存券种 / 计分</button>
+    <div id="metaMsg"></div>
+  </div>
+
+  <h2>4 · 当前存档</h2>
   <div class="card" id="curWrap"><p class="muted">读取中…</p></div>
 
-  <h2>4 · 提交历史</h2>
+  <h2>5 · 提交历史</h2>
   <div class="card" id="logWrap"><p class="muted">读取中…</p></div>
 
-  <h2>5 · 改密码</h2>
+  <h2>6 · 改密码</h2>
   <div class="card">
     <label for="oldP">当前密码</label><input id="oldP" type="password" autocomplete="current-password">
     <label for="newP">新密码（至少 8 位）</label><input id="newP" type="password" autocomplete="new-password">
@@ -107,8 +121,14 @@
   var EXP = Number(localStorage.getItem('wyc.admin.exp') || 0);
   var cur = null;                    // 当前存档（KV 里的全量）
   var rows = [];                     // 待发布条目（可编辑）
+  var tks = [];                      // 可用券种（一行一个）
+  var scrs = [];                     // 计分规则（一行一条）
 
   var $ = function (id) { return document.getElementById(id); };
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
   function show(el, ok) { el.classList[ok ? 'remove' : 'add']('hide'); }
   function msg(id, text, bad) {
     var el = $(id);
@@ -212,6 +232,42 @@
     });
   }
 
+  // ---- 券种 / 计分（可单独保存，不用发行程也能改）----
+  function renderLists() {
+    function draw(box, arr, key, delKey, empty, ph) {
+      box.innerHTML = '';
+      if (!arr.length) { box.innerHTML = '<p class="muted">' + empty + '</p>'; return; }
+      arr.forEach(function (v, i) {
+        var d = document.createElement('div');
+        d.className = 'li';
+        d.innerHTML = '<input value="' + esc(v) + '" placeholder="' + esc(ph) + '" data-' + key + '="' + i + '">'
+          + '<button class="mini gray" data-' + delKey + '="' + i + '">×</button>';
+        box.appendChild(d);
+      });
+      box.querySelectorAll('[data-' + key + ']').forEach(function (el) {
+        el.oninput = function () { arr[Number(el.getAttribute('data-' + key))] = el.value; };
+      });
+      box.querySelectorAll('[data-' + delKey + ']').forEach(function (el) {
+        el.onclick = function () { arr.splice(Number(el.getAttribute('data-' + delKey)), 1); renderLists(); };
+      });
+    }
+    draw($('ticketList'), tks, 'tk', 'tkdel', '还没填券种', '如《终极殿堂》握手券');
+    draw($('scoreList'), scrs, 'sc', 'scdel', '还没填计分规则', '如 每场公演 1 分');
+  }
+  $('btnTicketAdd').onclick = function () { tks.push(''); renderLists(); };
+  $('btnScoreAdd').onclick = function () { scrs.push(''); renderLists(); };
+  $('btnMeta').onclick = function () {
+    var tk = tks.map(function (s) { return String(s).trim(); }).filter(Boolean).join('；');
+    var per = $('scorePeriod').value.trim();
+    var rules = scrs.map(function (s) { return String(s).trim(); }).filter(Boolean);
+    var body = { ticket: tk, score: (rules.length || per) ? { period: per, rules: rules } : null };
+    msg('metaMsg', '保存中…');
+    call('/api/admin/schedule', body).then(function (j) {
+      msg('metaMsg', '已保存（行程仍为 ' + j.total + ' 条，没动）');
+      loadCur();
+    }).catch(function (e) { msg('metaMsg', e.message, true); });
+  };
+
   // ---- 发布 ----
   function publish(replace) {
     var items = rows.filter(function (r) { return r.date && r.title; });
@@ -220,11 +276,6 @@
     var body = { items: items, replace: !!replace };
     var src = $('src').value.trim();
     if (src) body.source = { name: '微博', url: src, pub: new Date().toISOString().slice(0, 10) };
-    var tk = $('ticket').value.trim(); if (tk) body.ticket = tk;
-    var per = $('scorePeriod').value.trim(), rules = $('scoreRules').value.trim();
-    if (per || rules) {
-      body.score = { period: per, rules: rules ? rules.split('\n').map(function (s) { return s.trim(); }).filter(Boolean) : [] };
-    }
     msg('pubMsg', '发布中…');
     call('/api/admin/schedule', body).then(function (j) {
       var t = '已发布：新增 ' + (j.added || []).length + ' 条，更新 ' + (j.updated || []).length + ' 条，现在共 ' + j.total + ' 条';
@@ -238,32 +289,99 @@
   $('btnPublish').onclick = function () { publish(false); };
   $('btnReplace').onclick = function () { publish(true); };
 
-  // ---- 当前存档 ----
+  // ---- 当前存档（可就地编辑 / 删除）----
+  var curEd = -1;            // 正在编辑的行号
+  var curDraft = null;       // 编辑中的副本
+
+  function renderMeta() {
+    var tk = (cur && cur.ticket) ? String(cur.ticket) : '';
+    tks = tk ? tk.split(/[；;，,、\n]+/).map(function (s) { return s.trim(); }).filter(Boolean) : [];
+    var sc = (cur && cur.score) || {};
+    $('scorePeriod').value = sc.period || '';
+    scrs = (sc.rules || []).slice();
+    renderLists();
+  }
+
+  function renderCur() {
+    var box = $('curWrap');
+    if (!cur.items || !cur.items.length) { box.innerHTML = '<p class="muted">存档还是空的</p>'; return; }
+    box.innerHTML = '';
+    cur.items.forEach(function (it, i) {
+      var d = document.createElement('div');
+      d.className = 'item';
+      if (curEd === i) {
+        var t = curDraft;
+        d.className = 'item ed';
+        d.innerHTML = '<div class="top"><span class="kind' + (t.kind === '见面会' ? ' meet' : '') + '">'
+          + (t.kind === '见面会' ? '见面会' : '公演') + '</span>'
+          + '<button class="mini" data-save="' + i + '" style="margin-left:auto">保存</button>'
+          + '<button class="mini gray" data-cancel="1">取消</button></div>'
+          + '<input type="date" value="' + esc(t.date) + '" data-ef="date">'
+          + '<input value="' + esc(t.time) + '" placeholder="时间，如 14:00 或 17:30-19:30" data-ef="time">'
+          + '<input value="' + esc(t.title) + '" placeholder="活动名称" data-ef="title">'
+          + '<select data-ef="kind"><option' + (t.kind === '公演' ? ' selected' : '') + '>公演</option>'
+          + '<option' + (t.kind === '见面会' ? ' selected' : '') + '>见面会</option></select>';
+      } else {
+        d.innerHTML = '<div class="top"><span class="kind' + (it.kind === '见面会' ? ' meet' : '') + '">'
+          + (it.kind === '见面会' ? '见面会' : '公演') + '</span>'
+          + '<span class="muted">' + esc(it.date) + ' ' + esc(it.weekday || '') + ' ' + esc(it.time || '') + '</span>'
+          + '<button class="mini gray" data-ed="' + i + '" style="margin-left:auto">编辑</button>'
+          + '<button class="mini gray" data-rm="' + i + '">删除</button></div>'
+          + '<div>' + esc(it.title) + '</div>';
+      }
+      box.appendChild(d);
+    });
+    box.querySelectorAll('[data-ef]').forEach(function (el) {
+      var fn = function () { curDraft[el.getAttribute('data-ef')] = el.value; };
+      el.oninput = fn; el.onchange = fn;
+    });
+    box.querySelectorAll('[data-ed]').forEach(function (el) {
+      el.onclick = function () {
+        curEd = Number(el.getAttribute('data-ed'));
+        curDraft = Object.assign({}, cur.items[curEd]);
+        renderCur();
+      };
+    });
+    box.querySelectorAll('[data-cancel]').forEach(function (el) {
+      el.onclick = function () { curEd = -1; curDraft = null; renderCur(); };
+    });
+    box.querySelectorAll('[data-save]').forEach(function (el) {
+      el.onclick = function () { saveItem(Number(el.getAttribute('data-save'))); };
+    });
+    box.querySelectorAll('[data-rm]').forEach(function (el) {
+      el.onclick = function () {
+        var i = Number(el.getAttribute('data-rm'));
+        if (!confirm('删除「' + cur.items[i].title + '」？')) return;
+        call('/api/admin/schedule', { remove: [{ date: cur.items[i].date, title: cur.items[i].title }] })
+          .then(function () { loadCur(); }).catch(function (e) { alert(e.message); });
+      };
+    });
+  }
+
+  // 改了日期或标题 = 换了一把主键，所以「先删旧键、再加新条目」一次提交
+  // （worker 里 remove 先于 items 处理，顺序安全）；同键改动走更新路径，能保住 flags 标记。
+  function saveItem(i) {
+    var old = cur.items[i], t = curDraft;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(t.date))) { alert('日期没选'); return; }
+    if (!String(t.title).trim()) { alert('活动名称不能为空'); return; }
+    var row = {
+      date: String(t.date), time: String(t.time || '').trim(),
+      title: String(t.title).trim(), kind: (t.kind === '见面会') ? '见面会' : '公演',
+    };
+    if (old.flags) row.flags = old.flags;
+    var body = { items: [row] };
+    if (row.date !== old.date || row.title !== old.title) body.remove = [{ date: old.date, title: old.title }];
+    call('/api/admin/schedule', body)
+      .then(function () { curEd = -1; curDraft = null; loadCur(); })
+      .catch(function (e) { alert(e.message); });
+  }
+
   function loadCur() {
     call('/api/admin/schedule').then(function (j) {
       cur = j.schedule || { items: [] };
-      var box = $('curWrap');
-      if (!cur.items || !cur.items.length) { box.innerHTML = '<p class="muted">存档还是空的</p>'; }
-      else {
-        box.innerHTML = '';
-        cur.items.forEach(function (it) {
-          var d = document.createElement('div');
-          d.className = 'item';
-          d.innerHTML = '<div class="top"><span class="kind' + (it.kind === '见面会' ? ' meet' : '') + '">' + (it.kind === '见面会' ? '见面会' : '公演') + '</span>'
-            + '<span class="muted">' + it.date + ' ' + (it.weekday || '') + ' ' + (it.time || '') + '</span>'
-            + '<button class="mini gray" data-rm="' + encodeURIComponent(it.date + '|' + it.title) + '" style="margin-left:auto">删除</button></div>'
-            + '<div>' + it.title + '</div>';
-          box.appendChild(d);
-        });
-        box.querySelectorAll('[data-rm]').forEach(function (el) {
-          el.onclick = function () {
-            var v = decodeURIComponent(el.getAttribute('data-rm')).split('|');
-            if (!confirm('删除「' + v[1] + '」？')) return;
-            call('/api/admin/schedule', { remove: [{ date: v[0], title: v[1] }] })
-              .then(function () { loadCur(); }).catch(function (e) { alert(e.message); });
-          };
-        });
-      }
+      curEd = -1; curDraft = null;
+      renderMeta();
+      renderCur();
       // 提交历史
       var lw = $('logWrap');
       var log = j.log || [];
