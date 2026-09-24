@@ -288,14 +288,17 @@ const EVENTS = [
   ['bili', 'B 站跳转'],
   ['search', '搜索'],
 ];
-// 明确不再记录的事件（worker 层直接丢弃，0 写入）。留着是给「页面缓存还没更新、仍在发老事件」兜底：
-// 只要这里拦一道，就算有人拿着旧版页面也不会往 KV 里写。
+// 已明确不再记录的事件（`lang:` 前缀另算，见 isStoppedEv）
 const STOP_EVENTS = new Set([
   'sub:replay', 'sub:cuts', 'sub:social', 'sub:gallery', 'sub:exp',
   'sch:pick', 'mine:query', 'mine:miss', 'refresh', 'filter:date',
 ]);
 // lang:* 前缀一律不记（切换界面语言）
 const isStoppedEv = (ev) => STOP_EVENTS.has(ev) || ev.startsWith('lang:');
+// 单个玩法的「每日上限」（2026-09-24 站长选的方案）：盲盒一天能点 280+ 次，占全天动作的四成，
+// 总闸压到 800 之后它会把 tab / 行程 / 档案这些更要看的指标一起挤掉。
+// 给它单独设一条 300/天的子闸：超过之后**只停记盲盒**，其余事件照常记录。
+const EV_DAY_CAP = { 'box:open': 300 };
 const LANGS = ['en', 'es', 'fr', 'nl', 'pt', 'ro', 'ja', 'vi', 'ko', 'th'];
 // 统计数据的读取密钥：只有带这个 key 才拿得到，避免统计接口挂在主域名上被随手访问。
 // 可用 KV 里的 STATS_KEY 覆盖（无需改代码）。
@@ -490,6 +493,15 @@ async function handleTrack(url, request, env, ctx) {
         const kv = env && env.SECRETS;
         if (!kv || typeof kv.get !== 'function') return;
         const day = bjDay();
+        // ── 单个玩法的「每日子闸」（放在总闸之前）────────────────────────
+        // 盲盒天天 280+ 次，占全天动作的四成，会把 tab / 行程 / 档案挤到没额度。
+        // 超过子闸就**只停记这一个事件**，其余事件完全不受影响。
+        // 检查用的 kv.get 不计写入配额 ⇒ 这一层判断本身不花钱、也不占总闸额度。
+        const evCap = EV_DAY_CAP[ev];
+        if (evCap) {
+          const cur = Number((await kv.get('stat:evd:' + day + ':' + ev)) || 0);
+          if (cur >= evCap) return;
+        }
         // ── 每日写入总闸 ──
         // 统计是「锦上添花」，绝不能把 KV 写入额度抢光、连累数据同步（2026-09-22 事故）。
         // 超过上限就不再记录，页面照常用；第二天零点自动恢复。
