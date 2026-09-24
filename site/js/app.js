@@ -3423,6 +3423,7 @@ const GUIDE_SUBS = [
   ['guide', '新粉指南'],
   ['starter', '入坑必看'],
   ['social', '社媒美图'],
+  ['cards', '生写小卡'],
   ['gallery', '公式照'],
   ['exp', '经历备注']
 ];
@@ -3444,6 +3445,7 @@ function renderGuide() {
 function renderGuideSub() {
   const box = $('#guideSub');
   if (!box) return;
+  if (state.guideSub === 'cards') { box.innerHTML = (typeof renderCards === 'function') ? renderCards() : ''; return; }
   if (state.guideSub === 'starter') { box.innerHTML = (typeof renderStarter === 'function') ? renderStarter() : ''; return; }
   if (state.guideSub === 'social') { box.innerHTML = renderSocialGallery(); renderSocialWall(); }
   else if (state.guideSub === 'gallery') box.innerHTML = renderGallery();

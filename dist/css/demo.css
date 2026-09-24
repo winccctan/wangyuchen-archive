@@ -913,3 +913,42 @@ button.sc-btn { border: 0; cursor: pointer; font-family: inherit; line-height: 1
 @media (max-width: 420px) {
   .bm-acts .dm-btn { padding: 8px 12px; font-size: 13px; }
 }
+/* ═══ 功能 ⑪ 生写小卡图鉴（新粉指南 tab） ═══ */
+.cardx-intro { margin: 6px 0 12px; font-size: 13px; color: #7a8296; line-height: 1.7; }
+.cardx-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.card-chip { padding: 6px 14px; font-size: 13px; }
+.cardx-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+.cardx { background: #fff; border: 1px solid #e8eaf2; border-radius: 14px; overflow: hidden;
+         display: flex; flex-direction: column; transition: .2s; }
+.cardx:hover { box-shadow: 0 10px 26px rgba(43,120,160,.12); transform: translateY(-2px); }
+.cardx-thumb { position: relative; aspect-ratio: 4/3; background: #eef0f6; overflow: hidden; cursor: zoom-in; }
+.cardx-thumb.tall { aspect-ratio: 3/4; }
+.cardx-thumb img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.cardx-cnt { position: absolute; right: 9px; top: 9px; background: rgba(20,20,40,.62); color: #fff;
+             font-size: 11.5px; padding: 2px 9px; border-radius: 999px; backdrop-filter: blur(4px); }
+.cardx-body { padding: 11px 13px 13px; display: flex; flex-direction: column; gap: 7px; flex: 1; }
+.cardx-name { font-size: 14px; font-weight: 600; line-height: 1.45; }
+.cardx-tag { align-self: flex-start; font-size: 11px; padding: 2px 9px; border-radius: 6px; font-weight: 600; }
+.cardx-desc { font-size: 12.5px; color: #7a8296; line-height: 1.65; }
+@media (max-width: 480px) { .cardx-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+                            .cardx-desc { display: none; } }
+
+/* 生写小卡筛选 chip：不能复用 .subtab（会被 app.js 的子标签委托劫持），自带同款胶囊样式 */
+.card-chip { flex: 0 1 auto; padding: 7px 15px; border: 1px solid var(--border, #dfe6ee);
+  background: var(--card, #fff); color: var(--muted, #7a8296); border-radius: 999px;
+  font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;
+  transition: background .15s, color .15s, border-color .15s; }
+.card-chip:hover { color: var(--text, #22303c); border-color: var(--primary, #2bc4e0); }
+.card-chip.active { background: var(--primary, #2bc4e0); color: #fff; border-color: var(--primary, #2bc4e0); }
+
+/* 生写小卡查看器：旋转 + 保存 */
+.cv-stage { width: 100%; height: min(66vh, 560px); display: flex; align-items: center; justify-content: center;
+            background: #0d1b2a; border-radius: 10px; overflow: hidden; }
+.cv-stage img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px;
+                transition: transform .25s ease; }
+.cv-bar { display: flex; gap: 10px; justify-content: center; margin-top: 12px; }
+.cv-btn { padding: 9px 22px; border: 1px solid var(--border, #dfe6ee); background: var(--card, #fff);
+          color: var(--text, #22303c); border-radius: 999px; font-size: 14px; font-weight: 600; cursor: pointer;
+          transition: background .15s, color .15s; }
+.cv-btn:hover { background: var(--primary, #2bc4e0); color: #fff; border-color: var(--primary, #2bc4e0); }
+.cv-btn:disabled { opacity: .55; cursor: wait; }
