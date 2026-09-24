@@ -246,14 +246,11 @@ const EVENTS = [
   ['tab:schedule', '行程 tab'],
   ['tab:guide', '新粉指南 tab'],
   ['tab:mine', '我的·档案卡 tab'],
-  // 档案卡漏斗：查 → 查没查到 → 有没有把卡片存下来。
-  // 只记动作，绝不带上 uid；「没查到」直接反映历史补档的覆盖缺口（越高说明越该补档）。
-  ['mine:query', '档案 查了一次'],
+  // 档案卡漏斗：查 → 有没有把卡片存下来。只记动作，绝不带上 uid。
+  // （2026-09-24 站长裁掉「查了一次 / 没查到」两条：她看不懂、也没用。）
   ['mine:hit', '档案 查到了'],
-  ['mine:miss', '档案 没查到'],
   ['mine:save', '档案 保存/分享卡片'],
-  // 行程转发图：进了勾选模式 / 真的把图生成出来了（记了也不显示的老毛病见 EVENTS 是白名单）
-  ['sch:pick', '行程 进入选图'],
+  // 行程转发图：真的把图生成出来了 / 复制了文案
   ['sch:poster', '行程 生成转发图'],
   ['sch:copy', '行程 复制文案'],
   // 盲盒（2026-09-24 上正式站）：抽到照片 / 生成分享卡 / 复制文案 —— 看这个玩法有没有人玩
@@ -281,18 +278,24 @@ const EVENTS = [
   ['share:card', '单条 生成分享图'],
   ['share:text', '单条 复制文字'],
   ['filter:type', '类型筛选 chips'],
-  ['sub:replay', '公演回放 子标签'],
-  ['sub:cuts', '公演cut 子标签'],
-  ['sub:social', '社媒美图 子标签'],
-  ['sub:gallery', '公式照 子标签'],
-  ['sub:exp', '经历备注 子标签'],
+  // 2026-09-24 站长裁定「没用的别统计了」→ 下面这些已从白名单移除（统计页不再显示），
+  // 同时在 STOP_EVENTS 里直接拒收（连一次 KV 写都不发生）：
+  //   子标签 sub:* ×5、行程 进入选图 sch:pick、档案 查了一次 mine:query、档案 没查到 mine:miss、
+  //   切换语言 lang:*、手动刷新 refresh、时间筛选 filter:date。
+  // 它们合计只占全天动作的 ~12%，真正的节流手段是把 STAT_WRITE_CAP 从 3000 压到 800。
   ['play', '视频播放'],
-  ['refresh', '手动刷新'],
   ['social:open', '美图点开大图'],
   ['bili', 'B 站跳转'],
   ['search', '搜索'],
-  ['filter:date', '时间筛选']
 ];
+// 明确不再记录的事件（worker 层直接丢弃，0 写入）。留着是给「页面缓存还没更新、仍在发老事件」兜底：
+// 只要这里拦一道，就算有人拿着旧版页面也不会往 KV 里写。
+const STOP_EVENTS = new Set([
+  'sub:replay', 'sub:cuts', 'sub:social', 'sub:gallery', 'sub:exp',
+  'sch:pick', 'mine:query', 'mine:miss', 'refresh', 'filter:date',
+]);
+// lang:* 前缀一律不记（切换界面语言）
+const isStoppedEv = (ev) => STOP_EVENTS.has(ev) || ev.startsWith('lang:');
 const LANGS = ['en', 'es', 'fr', 'nl', 'pt', 'ro', 'ja', 'vi', 'ko', 'th'];
 // 统计数据的读取密钥：只有带这个 key 才拿得到，避免统计接口挂在主域名上被随手访问。
 // 可用 KV 里的 STATS_KEY 覆盖（无需改代码）。
@@ -323,7 +326,7 @@ function bjDay(ts) { // 北京时间日期
 // 统计每天最多允许多少次 KV 写入（闸门逻辑见 handleTrack 内的注释）。
 // 2026-09-24 精简后的开销：一次动作 = **1 次必写**（当天计数 stat:evd:<day>:<ev>），
 // 另外只有「某人当天第一次做某件事 / 某人当天第一次进站」才写。实测一天约 500~900 次写入。
-const STAT_WRITE_CAP = 3000;
+const STAT_WRITE_CAP = 800;
 async function shortHash(s) {
   const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(s)));
   return Array.from(new Uint8Array(d)).slice(0, 8).map((x) => x.toString(16).padStart(2, '0')).join('');
@@ -479,19 +482,20 @@ async function handleTrack(url, request, env, ctx) {
   // 只接受 [a-z0-9:_-]，避免任意键写进 KV
   const ev = raw.replace(/[^a-z0-9:_-]/g, '').slice(0, 40);
   if (ev) {
+    // 2026-09-24 站长裁定「没用的别统计了」：命中停用名单的事件一个字节都不写，
+    // 直接返回图片（0 次 KV 写）。放在记账之前 ⇒ 连每日配额都不占。
+    if (isStoppedEv(ev)) return gif();
     const job = (async () => {
       try {
         const kv = env && env.SECRETS;
         if (!kv || typeof kv.get !== 'function') return;
         const day = bjDay();
         // ── 每日写入总闸 ──
-        // 统计是「锦上添花」，绝不能把 KV 每天 1000 次的写入额度抢光、连累数据同步
-        // （2026-09-22 事故）。超过上限就不再记录，页面照常用。
-        // 2026-09-23 提到 600：补了档案卡 4 个埋点后事件变多，原 300 太容易在下午就打满、
-        // 导致后半天的动作一个都不记。Workers 已转 Paid（KV 写 100 万/月），600/天很安全。
-        // 2026-09-24 提到 3000：口袋 7 个小功能补齐埋点后事件数翻倍（盲盒一天就 250+ 次点击，
-        // 每次命中 2 次 KV 写），600 当天上午就打满 → 后面的动作全丢。3000/天 ≈ 9 万/月，
-        // 离 100 万/月还很远；数据同步走的是另一个 KV 命名空间（KV binding），互不影响。
+        // 统计是「锦上添花」，绝不能把 KV 写入额度抢光、连累数据同步（2026-09-22 事故）。
+        // 超过上限就不再记录，页面照常用；第二天零点自动恢复。
+        // 300 → 600（2026-09-23，补了档案卡埋点）→ 3000（2026-09-24，补齐口袋 7 个小功能后翻倍）
+        // → **800（2026-09-24 站长要求收紧）**：同时停掉了 10 类低频事件（子标签/语言/刷新等），
+        // 常态一天约 490 次动作，留了约 300 的余量。若哪天下午起数字不再增长 = 打满，改这个常量即可。
         const gateKey = 'stat:gate:' + day;
         const gateMax = STAT_WRITE_CAP;
         let used = 0;
@@ -578,7 +582,8 @@ async function handleStatsBody(url, env, kv, wantJson) {
   // 累计 30s+ 直接把 GitHub Pages 上那个 8 秒超时的统计页拖成「读取失败」。这里全部并发。
   const days7 = [];
   for (let i = 0; i < 7; i++) days7.push(bjDay(Date.now() - i * 86400000));
-  const evDefs = EVENTS.concat(LANGS.map((l) => ['lang:' + l, '切换为' + (LANG_NAME[l] || l)]));
+  // lang:*（切换界面语言）2026-09-24 起不再统计，所以不拼进展列表；LANGS 仍用于「翻译用量」那张表。
+  const evDefs = EVENTS;
   const evToday = days7[0];
   const g = (k) => kv.get(k).catch(() => null);
   const ls = (p, lim) => kv.list(lim ? { prefix: p, limit: lim } : { prefix: p }).catch(() => null);

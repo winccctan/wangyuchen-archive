@@ -793,7 +793,6 @@ async function checkForUpdates() {
   if (!btn || btn.disabled) return;
   const oldText = btn.textContent;
   const beforeTs = String((DATA.meta && DATA.meta.lastUpdated) || '');
-  track('refresh');
   btn.disabled = true;
   btn.textContent = '刷新中…';
 
@@ -912,7 +911,6 @@ function bindEvents() {
       const trAll = document.getElementById('trAllBtn');
       if (trAll) { trAll.hidden = state.lang === 'zh'; trAll.textContent = trUI('page', state.lang); }
       if (state.tab === 'messages') renderMessages();
-      track('lang:' + state.lang);
     });
   }
   const trAllBtn = document.getElementById('trAllBtn');
@@ -967,7 +965,6 @@ function bindEvents() {
       });
     });
     document.getElementById('dateConfirm').addEventListener('click', () => {
-      track('filter:date');
       const f = $('#dateFrom').value, t = $('#dateTo').value;
       // 固定按北京时间 0 点（+08:00）取边界，避免访客本地时区导致前后差一天
       state.dateFrom = f ? new Date(f + 'T00:00:00+08:00').getTime() : null;          // 当天 0 点
@@ -1084,7 +1081,6 @@ function bindEvents() {
     const subBtn = e.target.closest('.subtab');
     if (subBtn) {
       e.stopPropagation();
-      track('sub:' + subBtn.dataset.sub);
       if (state.tab === 'performances') {
         state.perfSub = subBtn.dataset.sub;
         panels.performances.querySelectorAll('.subtab').forEach((b) =>
@@ -1843,7 +1839,6 @@ function bindSchedulePicker(list) {
   btn.addEventListener('click', () => {
     if (box.classList.contains('sc-picking')) { doBuild(); return; }
     setMode(true);
-    track('sch:pick');
   });
   const all = box.querySelector('#scAll');
   if (all) all.addEventListener('click', () => { inputs().forEach((i) => { i.checked = true; }); sync(); });
@@ -3047,8 +3042,6 @@ async function lookupMine(uid) {
   MINE_GIFT = null;
   MINE_CARD = null;
 
-  // 只上报「查了一次」这个动作本身，绝不带上 uid
-  track('mine:query');
   let d = null;
   try {
     const res = await fetch(MINE_API, {
@@ -3068,7 +3061,6 @@ async function lookupMine(uid) {
     return;
   }
   if (!d || !d.found) {
-    track('mine:miss');   // 查不到：反映补档覆盖的缺口
     // 档案还没补完全历史时，查不到 ≠ 没记录 —— 如实说明覆盖区间，别冤枉人
     if (d && d.partial && d.since) {
       box.innerHTML = '<div class="mine-empty">目前档案只补到 <b>' + bjDayKey(d.since) + '</b> 之后，'
