@@ -151,6 +151,20 @@ jobs:
           if [ "${{ inputs.force }}" = "true" ]; then ARGS="$ARGS --force-push"; fi
           node scripts/build-fans.mjs $ARGS --push
 
+      - name: 补抓最近发言正文（陪伴票根用）
+        # 票根主视图是「去年今日」的固定历史日期，fw-raw 缺最近几天不影响主场景；
+        # 但手动翻到最近的日子要有正文 → 每天增量补 10 天（fw-raw 追加，build-ticket 按 id 去重）。
+        run: |
+          node scripts/build-first-words.mjs --back 10 --lanes ${{ inputs.lanes || '6' }} \
+            || echo "⚠️ 正文补抓失败，票根沿用已有 fw-raw（历史日期不受影响）"
+
+      - name: 构建陪伴票根数据并灌 KV
+        # 产出 tk/<uid末两位> 桶（发言全文按天 + 鸡腿按天），经 /api/_fans_upsert kind:tk 灌 KV。
+        # 非致命：失败只影响票根数据新鲜度，不影响档案主流程。
+        run: |
+          node scripts/build-ticket.mjs --push \
+            || echo "⚠️ 票根数据构建/灌库失败，线上沿用上一轮 tk 桶"
+
       - name: 回传 R2（只在构建成功后）
         run: |
           # 不回传 kv/（本机发布用的 102 个断点分片，与 CI 无关）、
