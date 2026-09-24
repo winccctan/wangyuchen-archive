@@ -2414,6 +2414,7 @@
   window._tkCfg = null;                                /* 档案页传入的 uid + 真实起止（start/days） */
   const TK_DAY = new Map();                            /* 'YYYY-MM-DD' -> {n,dk,ms} | null（查过，没来） */
   let tkSeq = 0;                                       /* 竞态令牌：快速翻页时只让最后一次落版 */
+  let tktOpenedUid = null;                             /* 埋点防重：同一 uid 这次进站只记一次 tkt:open */
   const TK_API = (typeof API_BASE !== 'undefined' ? API_BASE : location.origin) + '/api/mineDay';
 
   function tkRerender() {
@@ -2466,6 +2467,9 @@
     if (cfg && cfg.uid !== (window._tkCfg && window._tkCfg.uid)) TK_DAY.clear();  // 换了 uid，缓存作废
     window._tkCfg = cfg || window._tkCfg || null;
     const uid = window._tkCfg && window._tkCfg.uid;
+    /* 埋点：只看「有多少人用」，不带任何日期/uid 信息。
+       renderTicket 翻页时会重跑，所以同一 uid 这次进站只记一次。 */
+    if (uid && tktOpenedUid !== uid) { tktOpenedUid = uid; trk('tkt:open'); }
     const start = (window._tkCfg && window._tkCfg.start) || '2022.11.07';
     const startIso = start.replace(/\./g, '-');
     const days = (window._tkCfg && window._tkCfg.days) || Math.floor((Date.now() - new Date(2022, 10, 7)) / 86400000) + 1;
@@ -2598,6 +2602,7 @@
     c.fillText('idol.wyc0518.cc', 375, cardBot + 86);
     const fname = '陪伴票根-' + dateVal.replace(/\./g, '') + '.png';
     cv.toBlob((bl) => {
+      trk('tkt:save');   /* 图真的生成出来了才记 */
       const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) || (navigator.userAgentData && navigator.userAgentData.mobile);
       const file = new File([bl], fname, { type: 'image/png' });
       if (isMobile && navigator.canShare && navigator.canShare({ files: [file] })) {
