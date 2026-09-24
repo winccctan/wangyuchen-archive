@@ -84,8 +84,15 @@ jobs:
           mkdir -p .cache/fans
           # --exact-timestamps：把本地 mtime 设成 R2 对象的 LastModified，
           # 这样跑完回传时只有真正变过的文件会被上传（否则每次白传 114MB）。
+          # --exclude live-gifts.jsonl：它属于 .cache 根目录，不能落进 fans/（下面单独取）。
           aws s3 sync "s3://$R2_BUCKET/" .cache/fans/ \
-            --endpoint-url "$R2_ENDPOINT" --exact-timestamps --only-show-errors
+            --endpoint-url "$R2_ENDPOINT" --exact-timestamps --only-show-errors \
+            --exclude "live-gifts.jsonl"
+          # 🔴 build-fans 的**计分第二来源**：直播弹幕 LRC 里的系统送礼播报。
+          # 漏掉它 → score2026 少算一半（2026-09-24 实测 122 人受影响：ccczzz 2518→652，
+          # 王语晨本人被整条剔除）。它必须落在 .cache/ 根，不能塞进 .cache/fans/。
+          aws s3 cp "s3://$R2_BUCKET/live-gifts.jsonl" .cache/live-gifts.jsonl \
+            --endpoint-url "$R2_ENDPOINT" --only-show-errors
           echo "--- 拉下来的文件 ---"
           ls -la .cache/fans/
           # 🔴 闸门：拿不到完整历史就必须停，否则 build-fans 会从零重建 →
@@ -95,6 +102,13 @@ jobs:
           echo "room.jsonl: $SIZE 字节 / $LINES 行"
           if [ "$SIZE" -lt 5000000 ]; then
             echo "::error::room.jsonl 只有 $SIZE 字节（完整基线约 4600 万），R2 没取到历史，终止"
+            exit 1
+          fi
+          # 🔴 第二个闸门：缺 live-gifts.jsonl 不会报错，只会静默把计分砍半 —— 必须拦住。
+          DM=$(stat -c%s .cache/live-gifts.jsonl 2>/dev/null || echo 0)
+          echo "live-gifts.jsonl: $DM 字节"
+          if [ "$DM" -lt 50000 ]; then
+            echo "::error::live-gifts.jsonl 只有 $DM 字节（完整约 30 万），缺它 2026 活动计分会少算一半，终止"
             exit 1
           fi
 
@@ -113,6 +127,9 @@ jobs:
           aws s3 sync .cache/fans/ "s3://$R2_BUCKET/" \
             --endpoint-url "$R2_ENDPOINT" --only-show-errors \
             --exclude "kv/*" --exclude "*.bak-*" --exclude "melee-probe.json"
+          # 同一个道理：计分第二来源也要回传（否则下轮 CI 又缺它）
+          aws s3 cp .cache/live-gifts.jsonl "s3://$R2_BUCKET/live-gifts.jsonl" \
+            --endpoint-url "$R2_ENDPOINT" --only-show-errors
           echo "--- R2 现有对象 ---"
           # ⚠️ `aws s3 ls` 不支持 --only-show-errors（只有 cp/sync/mv/rm 有），加上会 exit 252
           aws s3 ls "s3://$R2_BUCKET/" --endpoint-url "$R2_ENDPOINT" --human-readable
