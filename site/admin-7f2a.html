@@ -251,11 +251,13 @@
         el.onclick = function () { arr.splice(Number(el.getAttribute('data-' + delKey)), 1); renderLists(); };
       });
     }
-    draw($('ticketList'), tks, 'tk', 'tkdel', '还没填券种', '如《终极殿堂》握手券');
-    draw($('scoreList'), scrs, 'sc', 'scdel', '还没填计分规则', '如 每场公演 1 分');
+    // 数据还没回来时显示「读取中…」，别让站长误以为真的没有、顺手点了「加一条」
+    var wait = '读取中…';
+    draw($('ticketList'), tks, 'tk', 'tkdel', loaded ? '还没填券种' : wait, '如《终极殿堂》握手券');
+    draw($('scoreList'), scrs, 'sc', 'scdel', loaded ? '还没填计分规则' : wait, '如 每场公演 1 分');
   }
-  $('btnTicketAdd').onclick = function () { tks.push(''); renderLists(); };
-  $('btnScoreAdd').onclick = function () { scrs.push(''); renderLists(); };
+  $('btnTicketAdd').onclick = function () { if (!loaded) return; tks.push(''); renderLists(); };
+  $('btnScoreAdd').onclick = function () { if (!loaded) return; scrs.push(''); renderLists(); };
   $('btnMeta').onclick = function () {
     var tk = tks.map(function (s) { return String(s).trim(); }).filter(Boolean).join('；');
     var per = $('scorePeriod').value.trim();
@@ -293,12 +295,19 @@
   var curEd = -1;            // 正在编辑的行号
   var curDraft = null;       // 编辑中的副本
 
+  var loaded = false;                // 服务端数据是否已回填（回填后就别再覆盖站长正在改的内容）
+
   function renderMeta() {
-    var tk = (cur && cur.ticket) ? String(cur.ticket) : '';
-    tks = tk ? tk.split(/[；;，,、\n]+/).map(function (s) { return s.trim(); }).filter(Boolean) : [];
-    var sc = (cur && cur.score) || {};
-    $('scorePeriod').value = sc.period || '';
-    scrs = (sc.rules || []).slice();
+    // 只在第一次回填。之后无论「删了一条行程」「发布了新行程」触发几次 loadCur，
+    // 都不再动站长手上的券种 / 计分 —— 否则他改到一半会被服务端数据冲掉。
+    if (!loaded) {
+      var tk = (cur && cur.ticket) ? String(cur.ticket) : '';
+      tks = tk ? tk.split(/[；;，,、\n]+/).map(function (s) { return s.trim(); }).filter(Boolean) : [];
+      var sc = (cur && cur.score) || {};
+      $('scorePeriod').value = sc.period || '';
+      scrs = (sc.rules || []).slice();
+      loaded = true;
+    }
     renderLists();
   }
 
