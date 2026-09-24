@@ -202,6 +202,13 @@ async function injectRum(res) {
 function applyFreshPolicy(res, url) {
   if (!res || !res.headers) return res;
   const p = url.pathname;
+  // 后台页（会重定向到无扩展名的 /admin-7f2a，绕开下面 HTML 的判定）：
+  // 改完必须立刻能用，且 CDN 上也不该留一份拷贝 —— 直接 no-store。
+  if (p.indexOf('/admin') === 0) {
+    const ah = new Headers(res.headers);
+    ah.set('Cache-Control', 'no-store');
+    return new Response(res.body, { status: res.status, statusText: res.statusText, headers: ah });
+  }
   const isHtml = isHtmlPath(url);
   const isData = p.startsWith('/data/');
   // 带内容版本号的数据文件（如 /data/archive.js?v=<lastUpdated>）内容不可变：
