@@ -16,11 +16,13 @@
 name: Fans sync
 
 on:
-  # ⚠️ 仍保持关闭，等 R2 版流程实测跑通、站长确认后再打开。
-  #    打开前请先关掉本机那个每天 00:30 的 automation —— 两边同时跑会互相抢推送
-  #    （推送侧有人数骤降保护兜底，不会毁数据，但会产生重复 commit 与无谓告警）。
-  # schedule:
-  #   - cron: '23 17 * * *'      # 北京时间 01:23（避开主抓取任务）
+  # 北京时间每天 01:23（UTC 17:23）。挑这个点是因为：
+  #   ① 前一天的直播基本已结束，弹幕 LRC 文件已生成
+  #   ② 错开 GitHub 的整点高峰（定时本身就有 5~15 分钟调度延迟）
+  # 🔴 本机那个 automation（天 00:30 跑 build-fans）已于 2026-09-24 停用 ——
+  #    两边同时跑会互相抢推送，且各自的 .cache 不是同一份（会互相覆盖对方的历史）。
+  schedule:
+    - cron: '23 17 * * *'
   workflow_dispatch:
     inputs:
       back:
@@ -93,6 +95,11 @@ jobs:
           # 王语晨本人被整条剔除）。它必须落在 .cache/ 根，不能塞进 .cache/fans/。
           aws s3 cp "s3://$R2_BUCKET/live-gifts.jsonl" .cache/live-gifts.jsonl \
             --endpoint-url "$R2_ENDPOINT" --only-show-errors
+          # 🔴 弹幕**断点**（已扫过的 liveId）。build-live-gifts.mjs 是 appendFileSync 追加写，
+          # 场次去重全靠它；不同步 → 每轮从头扫全部场次 + 同一条礼物反复追加，
+          # 而 build-fans 读取时没有去重（直接 +=），2026 鸡腿和活动分会逐天翻倍。
+          aws s3 cp "s3://$R2_BUCKET/live-gifts-progress.json" .cache/live-gifts-progress.json \
+            --endpoint-url "$R2_ENDPOINT" --only-show-errors || echo "⚠️ R2 上没有断点文件，本轮将全量重扫（后面有去重兜底）"
           echo "--- 拉下来的文件 ---"
           ls -la .cache/fans/
           # 🔴 闸门：拿不到完整历史就必须停，否则 build-fans 会从零重建 →
@@ -112,6 +119,44 @@ jobs:
             exit 1
           fi
 
+      - name: 刷新直播场次列表
+        # 🔴 为什么要有这一步：弹幕抓取脚本 build-live-gifts.mjs 的场次来源是
+        #   `site/data/live.json`，而这个文件**只由本机的 auto-update.sh 提交**
+        #   （scrape.yml / watch-live.yml 都不写它）。云端的 copies 停在本机最后一次提交，
+        #   没有这一步 → 新开播的场次永远进不了列表 → 新直播的弹幕永远抓不到。
+        # backfill-live.mjs 按 liveId 合并去重、可用 MAX_PAGES 限量，天然幂等。
+        # 每页 20 条全团直播（她占约 2%），MAX_PAGES=20 ≈ 400 条全团 ≈ 覆盖最近若干天，够用。
+        env:
+          MAX_PAGES: '20'
+          MAX_DETAILS: '0'      # 跳过补播放地址（对计分无用，且慢）
+        run: |
+          node scripts/backfill-live.mjs || echo "⚠️ 直播列表刷新失败，退回仓库现有 live.json"
+          node -e "const j=require('./site/data/live.json');const a=j.live||[];const n=a.slice().sort((x,y)=>+y.ctime-+x.ctime);console.log('live.json 场次:',a.length,'| 最新:',n[0]?new Date(+n[0].ctime).toISOString().slice(0,10):'-')" || true
+
+      - name: 抓取直播弹幕（2026 活动计分第二来源）
+        run: |
+          # 断点里没有的场次才会被扫；--limit 是上限保护，防止某次断点丢失后一口气扫 787 场
+          node scripts/build-live-gifts.mjs --limit 80 || echo "⚠️ 弹幕抓取异常，继续用已有数据"
+          # 🛡️ 去重自愈：appendFileSync 遇到断点缺失/并发会写出重复行，
+          # 而 build-fans 读取时 **不做去重**（第 456 行直接 +=），重复会让分数翻倍。
+          # 所以每次抓完都按「场次+时刻+昵称+礼物+件数」压一遍。
+          node -e "
+            const fs=require('fs');
+            const P='.cache/live-gifts.jsonl';
+            if(!fs.existsSync(P)) { console.log('无弹幕文件，跳过去重'); process.exit(0); }
+            const lines=fs.readFileSync(P,'utf8').split('\n').filter(Boolean);
+            const seen=new Set(), out=[];
+            for(const l of lines){
+              let o; try{o=JSON.parse(l);}catch{continue;}
+              const k=[o.liveId,o.time,o.nick,o.gift,o.num].join('|');
+              if(seen.has(k)) continue;
+              seen.add(k); out.push(l);
+            }
+            const dup=lines.length-out.length;
+            if(dup){ fs.writeFileSync(P,out.join('\n')+'\n'); console.log('去重：'+lines.length+' → '+out.length+'（去掉重复 '+dup+' 条）'); }
+            else console.log('无需去重（'+out.length+' 条）');
+          "
+
       - name: 构建粉丝档案
         run: |
           ARGS="--lanes ${{ inputs.lanes || '6' }}"
@@ -129,6 +174,9 @@ jobs:
             --exclude "kv/*" --exclude "*.bak-*" --exclude "melee-probe.json"
           # 同一个道理：计分第二来源也要回传（否则下轮 CI 又缺它）
           aws s3 cp .cache/live-gifts.jsonl "s3://$R2_BUCKET/live-gifts.jsonl" \
+            --endpoint-url "$R2_ENDPOINT" --only-show-errors
+          # 🔴 弹幕断点必须回传：不传的话下轮 CI 没有「已扫过」记录 → 全량重扫 + 重复 append
+          aws s3 cp .cache/live-gifts-progress.json "s3://$R2_BUCKET/live-gifts-progress.json" \
             --endpoint-url "$R2_ENDPOINT" --only-show-errors
           echo "--- R2 现有对象 ---"
           # ⚠️ `aws s3 ls` 不支持 --only-show-errors（只有 cp/sync/mv/rm 有），加上会 exit 252
