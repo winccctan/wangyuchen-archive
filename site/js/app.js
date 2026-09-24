@@ -3384,7 +3384,16 @@ function biliCutFor(p) {
   const m = String(p.subTitle || p.title || '').match(/《([^》]+)》/);
   const key = m ? m[1] : '';
   const hit = key && same.find((c) => c[1].includes(key));
-  return { date: day, title: (hit || same[0])[1], bvid: (hit || same[0])[2] };
+  if (hit || same.length) return { date: day, title: (hit || same[0])[1], bvid: (hit || same[0])[2] };
+  // 兜底：bili-cuts.js（Chzhnh 合集 2024+）未覆盖的老公演 cut，可能以 kind:"cut"、
+  // 无合集形式躺在 live-cuts.js（标题含「公演cut」，已随抓取进 KV）。按公演日期兜底匹配。
+  const lcHits = (DATA.liveCuts && DATA.liveCuts.cuts ? DATA.liveCuts.cuts : [])
+    .filter((c) => /公演\s*cut/i.test(c.title || '') && (c.titleDate || c.date) === day);
+  if (lcHits.length) {
+    const c0 = lcHits[0];
+    return { date: day, title: c0.title || day, bvid: c0.bvid };
+  }
+  return null;
 }
 /* 「公演cut」页：B 站合集（整场个人 cut）+ 微博应援会（按单曲切）**按日期混排**，
  * 每张卡片右上角标来源（B站 / 微博），卡片样式统一用封面卡；同一天里 B 站排前面。 */
