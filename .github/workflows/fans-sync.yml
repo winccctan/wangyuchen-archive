@@ -137,25 +137,11 @@ jobs:
         run: |
           # 断点里没有的场次才会被扫；--limit 是上限保护，防止某次断点丢失后一口气扫 787 场
           node scripts/build-live-gifts.mjs --limit 80 || echo "⚠️ 弹幕抓取异常，继续用已有数据"
-          # 🛡️ 去重自愈：appendFileSync 遇到断点缺失/并发会写出重复行，
-          # 而 build-fans 读取时 **不做去重**（第 456 行直接 +=），重复会让分数翻倍。
-          # 所以每次抓完都按「场次+时刻+昵称+礼物+件数」压一遍。
-          node -e "
-            const fs=require('fs');
-            const P='.cache/live-gifts.jsonl';
-            if(!fs.existsSync(P)) { console.log('无弹幕文件，跳过去重'); process.exit(0); }
-            const lines=fs.readFileSync(P,'utf8').split('\n').filter(Boolean);
-            const seen=new Set(), out=[];
-            for(const l of lines){
-              let o; try{o=JSON.parse(l);}catch{continue;}
-              const k=[o.liveId,o.time,o.nick,o.gift,o.num].join('|');
-              if(seen.has(k)) continue;
-              seen.add(k); out.push(l);
-            }
-            const dup=lines.length-out.length;
-            if(dup){ fs.writeFileSync(P,out.join('\n')+'\n'); console.log('去重：'+lines.length+' → '+out.length+'（去掉重复 '+dup+' 条）'); }
-            else console.log('无需去重（'+out.length+' 条）');
-          "
+          # 🛡️ 必须去重的理由 + 算法见 scripts/dedup-live-gifts.mjs 顶部注释。
+          #   简版：抓取是 appendFileSync，断点丢了会重复追加；build-fans 读取时不倒去重（直接 +=），
+          #   重复行会让 2026 鸡腿与活动分翻倍。2026-09-24 实验验证：重扫一场得到 129 条副本，
+          #   去重后 2353 → 2224，与原始文件逐字节一致。
+          node scripts/dedup-live-gifts.mjs
 
       - name: 构建粉丝档案
         run: |
