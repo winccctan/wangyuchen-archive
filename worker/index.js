@@ -320,6 +320,10 @@ function bjDay(ts) { // 北京时间日期
   const d = new Date((ts == null ? Date.now() : ts) + 8 * 3600 * 1000);
   return `${d.getUTCFullYear()}-${p2(d.getUTCMonth() + 1)}-${p2(d.getUTCDate())}`;
 }
+// 统计每天最多允许多少次 KV 写入（闸门逻辑见 handleTrack 内的注释）。
+// 2026-09-24 精简后的开销：一次动作 = **1 次必写**（当天计数 stat:evd:<day>:<ev>），
+// 另外只有「某人当天第一次做某件事 / 某人当天第一次进站」才写。实测一天约 500~900 次写入。
+const STAT_WRITE_CAP = 3000;
 async function shortHash(s) {
   const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(s)));
   return Array.from(new Uint8Array(d)).slice(0, 8).map((x) => x.toString(16).padStart(2, '0')).join('');
@@ -351,6 +355,43 @@ async function readUniqCount(kv, key) {
     const p = JSON.parse(raw);
     return Array.isArray(p) ? p.length : 0;
   } catch (_) { return 0; }
+}
+// 事件「累计次数」汇总：自 2026-09-24 起写侧不再维护 stat:ev:<ev>（那要每次动作多写一次 KV），
+// 改在这里把所有 stat:evd:<day>:<ev> 加起来。取值和列取都不占写入配额。
+// 返回 Map<事件名, 累计次数>；读不到就返回空 Map（统计页那一列会显示 0，不影响别的数）。
+async function evTotalsByListing(kv) {
+  const out = new Map();
+  if (!kv || typeof kv.list !== 'function') return out;
+  const keys = [];
+  try {
+    let cursor = null;
+    for (let guard = 0; guard < 20; guard++) {
+      const page = await kv.list(cursor ? { prefix: 'stat:evd:', limit: 1000, cursor } : { prefix: 'stat:evd:', limit: 1000 });
+      if (!page || !Array.isArray(page.keys)) break;
+      page.keys.forEach((k) => { if (k && k.name) keys.push(k.name); });
+      if (page.list_complete || !page.cursor) break;
+      cursor = page.cursor;
+    }
+  } catch (_) { return out; }
+  // 键形如 stat:evd:2026-09-24:tab:mine → 去掉前缀(9)和日期(11)就是事件名
+  const group = new Map();
+  keys.forEach((k) => {
+    const ev = k.slice(20);
+    if (!ev) return;
+    if (!group.has(ev)) group.set(ev, []);
+    group.get(ev).push(k);
+  });
+  const rows = Array.from(group.entries());
+  for (let i = 0; i < rows.length; i += 100) {
+    const chunk = rows.slice(i, i + 100);
+    try {
+      const vals = await Promise.all(chunk.map(([, ks]) => Promise.all(ks.map((k) => kv.get(k).catch(() => null)))));
+      vals.forEach((vs, ci) => {
+        out.set(rows[i + ci][0], vs.reduce((s, v) => s + Number(v || 0), 0));
+      });
+    } catch (_) { /* 读失败就跳过这部分 */ }
+  }
+  return out;
 }
 async function bumpStat(env, tl, request) {
   try {
@@ -452,7 +493,7 @@ async function handleTrack(url, request, env, ctx) {
         // 每次命中 2 次 KV 写），600 当天上午就打满 → 后面的动作全丢。3000/天 ≈ 9 万/月，
         // 离 100 万/月还很远；数据同步走的是另一个 KV 命名空间（KV binding），互不影响。
         const gateKey = 'stat:gate:' + day;
-        const gateMax = 3000;
+        const gateMax = STAT_WRITE_CAP;
         let used = 0;
         try { used = Number((await kv.get(gateKey)) || 0); } catch (_) { used = 0; }
         if (used >= gateMax) return;
@@ -460,7 +501,11 @@ async function handleTrack(url, request, env, ctx) {
         if (Math.random() < 0.2) { try { await kv.put(gateKey, String(used + 5)); } catch (_) {} }
         const ip = (request.headers.get('cf-connecting-ip') || request.headers.get('x-forwarded-for') || '?').split(',')[0].trim();
         const hash = await shortHash(ip);
-        await incKV(kv, 'stat:ev:' + ev);
+        // ── 精简（2026-09-24）──────────────────────────────────────────────
+        // 以前这一步还要额外写「累计次数」stat:ev:<ev>，那是一条**每次动作都必写**的记录，
+        // 光它一项就占了全部 KV 写入的一半。而「累计」完全可以在看统计的时候把各天的数加起来
+        // （见 handleStatsBody 的 evTotalsByListing，只有读和列取、不算写入配额），页面看到的数字一样。
+        // 所以这里只写当天计数。
         await incKV(kv, 'stat:evd:' + day + ':' + ev);
         // 该动作的独立访客（累计 / 当日）：按 IP 短哈希去重，重复访客不重复写盘
         await addUniq(kv, 'stat:evu:' + ev, hash);
@@ -545,13 +590,21 @@ async function handleStatsBody(url, env, kv, wantJson) {
     Promise.all(days7.map((d) => ls(`stat:tr:u:${d}:`))),
     Promise.all(days7.map((d) => ls(`stat:u:${d}:`, 1000))),
     Promise.all(days7.map((d) => ls(`stat:ctryu:${d}:`, 200))),   // 当天都出现过哪些国家
-    Promise.all(evDefs.map((e) => g('stat:ev:' + e[0]))),
+    null, // 事件的「累计次数」不再单独存键（省一半写入），改用下面的 evTotalsByListing 汇总
     Promise.all(evDefs.map((e) => g(`stat:evd:${evToday}:${e[0]}`))),
     Promise.all(evDefs.map((e) => readUniqCount(kv, 'stat:evu:' + e[0]))),
     Promise.all(evDefs.map((e) => readUniqCount(kv, `stat:evud:${evToday}:${e[0]}`))),
   ]);
 
   const total = Number(totalRaw || 0);
+
+  // 累计次数 = 各天相加（详情见 evTotalsByListing）；顺手把当天统计写进 KV 的次数读出来，
+  // 让站长能直接看到「今天用了多少 / 上限多少」，不用再担心统计把额度吃掉。
+  const [evTotalsMap, gateUsedRaw] = await Promise.all([
+    evTotalsByListing(kv),
+    g('stat:gate:' + days7[0]).catch(() => null),
+  ]);
+  const gateUsed = Number(gateUsedRaw || 0);
 
   const langRows = [];
   LANGS.forEach((l, i) => {
@@ -599,7 +652,7 @@ async function handleStatsBody(url, env, kv, wantJson) {
   // 除「次数」外还算「独立访客」：累计 = 该功能一共有多少人来用过，今日 = 今天有多少人用过。
   const evList = [];
   evDefs.forEach(([key, name], i) => {
-    const t = Number(evTotals[i] || 0);
+    const t = Number(evTotalsMap.get(key) || 0);
     const d = Number(evDayVals[i] || 0);
     if (t <= 0 && d <= 0) return;
     evList.push({ key: key, name: name, total: t, today: d, uniqTotal: evUniqT[i] || 0, uniqToday: evUniqD[i] || 0 });
@@ -622,6 +675,8 @@ async function handleStatsBody(url, env, kv, wantJson) {
       langs: langRows.map(([l, n]) => ({ lang: l, name: LANG_NAME[l] || l, count: n })),
       days: days.map(([d, n, u, su]) => ({ day: d, count: n, visitors: u, siteUv: su })),
       countries: countries,
+      kvWritesToday: gateUsed,
+      kvWriteCap: STAT_WRITE_CAP,
       events: evList
     }), {
       headers: {
@@ -649,7 +704,8 @@ async function handleStatsBody(url, env, kv, wantJson) {
 <p class="dim">累计统计自启用之时；「独立访客」按 IP 短哈希去重估算（不保存明文 IP），同一 WiFi 下多人会算作 1 人，实际人数只会更多。KV 有约 1 分钟同步延迟。</p>
 <div class="cards"><div class="card"><div class="k">累计翻译次数</div><div class="v">${total}</div></div>
 <div class="card"><div class="k">今日次数</div><div class="v">${days[0][1]}</div></div>
-<div class="card"><div class="k">今日独立访客</div><div class="v">${siteUvToday}</div></div></div>
+<div class="card"><div class="k">今日独立访客</div><div class="v">${siteUvToday}</div></div>
+<div class="card"><div class="k">今日写入 KV / 上限</div><div class="v" style="font-size:18px">${gateUsed} / ${STAT_WRITE_CAP}</div></div></div>
 <h2>各语言使用次数</h2><table>${langHtml}</table>
 <h2>访客来自哪里（今日 / 近 7 天）</h2><table><tr><td>国家·地区</td><td class="n">今日</td><td class="n">近 7 天</td></tr>${ctryHtml}</table>
 <p class="dim">按 Cloudflare 给出的国家（ISO 代码）统计独立访客，不记 IP 明文。<b>统计的是「IP 所在国家/地区」，不是成员的国籍</b>：用加速器 / VPN 的访客会算成出口国家（国内粉丝挂日本节点 → 记为日本），同一个 IP 当天只算 1 人、换 WiFi↔流量或换节点会多算 1 人。近 7 天＝每天独立访客相加，同一个人多天都来会重复计；数据从启用当天开始累计。</p>
