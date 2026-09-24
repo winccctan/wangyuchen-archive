@@ -2710,11 +2710,13 @@ function showAlbumLayer(dataUrl, stamp, name, copyText) {
 
   document.getElementById('maAct').addEventListener('click', async () => {
     const noteEl = document.getElementById('maNote');
-    const fname = nm + '-' + stamp + '.png';
+    // 文件名后缀跟着 dataURL 的实际格式走（档案卡/行程图 PNG、盲盒卡 JPEG），别让 .png 里装 JPEG
+    const fmt = (((/^data:image\/(\w+)/.exec(dataUrl) || [])[1]) || 'png').toLowerCase();
+    const fname = nm + '-' + stamp + (fmt === 'jpeg' ? '.jpg' : '.' + fmt);
     if (phone) {
       // ① 能调系统分享就调（面板里选「存储到照片」→ 直接进相册）
       try {
-        const file = new File([dataUrlToBlob(dataUrl)], fname, { type: 'image/png' });
+        const file = new File([dataUrlToBlob(dataUrl)], fname, { type: fmt === 'jpeg' ? 'image/jpeg' : 'image/png' });
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
           await navigator.share({ files: [file] });
           track('mine:save');   // 走到这里说明系统面板真的弹出来了（取消会抛异常、不计）

@@ -825,3 +825,91 @@ button.sc-btn { border: 0; cursor: pointer; font-family: inherit; line-height: 1
 .sc-past-tip { font-weight: 400; font-size: 12.5px; color: #8aa7b1; }
 .sc-past[open] .sc-past-h { border-bottom: 1px solid rgba(13,69,86,.1); }
 .sc-past .sc-day { margin: 12px; }
+/* ---------- 功能 ⑩ 今日盲盒（随机照片 + 心动指数） ---------- */
+/* 右下角悬浮入口：任何 tab 都能玩（demo 用；正式上线再决定挪进 tab） */
+.bm-fab {
+  position: fixed; z-index: 70; right: 14px;
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 9px 15px 9px 12px; border: none; border-radius: 999px; cursor: pointer;
+  background: linear-gradient(135deg, #ff7aa2, #ff9a62); color: #fff;
+  font-size: 14px; font-weight: 600; line-height: 1.2;
+  box-shadow: 0 6px 18px rgba(255, 122, 162, .38);
+}
+.bm-fab-ico { font-size: 17px; }
+.bm-fab:active { transform: scale(.95); }
+/* 一圈脉冲，提示这是个新玩法（不挡点击） */
+.bm-fab::after {
+  content: ''; position: absolute; inset: -4px; border-radius: 999px; pointer-events: none;
+  border: 2px solid rgba(255, 122, 162, .55); animation: bmPulse 2.6s ease-out infinite;
+}
+@keyframes bmPulse {
+  0% { transform: scale(.92); opacity: .85; }
+  70% { transform: scale(1.16); opacity: 0; }
+  100% { opacity: 0; }
+}
+.bm-card { max-width: 400px; margin: 0 auto; }
+/* 照片完整显示、不裁脸：宽度占满、高度随图；超高才用 max-height 兜住（contain 保比例、两侧留白） */
+.bm-shot {
+  position: relative; width: 100%; border-radius: 16px; overflow: hidden;
+  background: #f6f1f3;
+  box-shadow: 0 8px 24px rgba(255, 122, 162, .18);
+}
+.bm-img {
+  display: block; width: 100%; height: auto; max-height: min(56vh, 480px);
+  object-fit: contain; margin: 0 auto; cursor: zoom-in;
+}
+.bm-shot .bm-badge {
+  position: absolute; top: 10px; left: 10px; padding: 3px 10px; border-radius: 999px;
+  font-size: 12px; font-weight: 800; letter-spacing: .5px; color: #fff;
+  background: rgba(0, 0, 0, .38); backdrop-filter: blur(4px);
+}
+.bm-shot .bm-badge.bm-ssr { background: linear-gradient(135deg, #ffb53d, #ff7a2f); }
+.bm-shot .bm-badge.bm-sr { background: linear-gradient(135deg, #ff7aa2, #ff5f7e); }
+.bm-shot .bm-badge.bm-r { background: rgba(43, 196, 224, .9); }
+.bm-shot .bm-badge.bm-n { background: rgba(0, 0, 0, .38); }
+.bm-flag {
+  position: absolute; top: 10px; right: 10px; padding: 3px 10px; border-radius: 999px;
+  font-size: 12px; color: #fff; background: rgba(0, 0, 0, .32); backdrop-filter: blur(4px);
+}
+.bm-heart { margin-top: 14px; }
+.bm-hrow { display: flex; align-items: baseline; justify-content: space-between; }
+.bm-hlbl { font-size: 13px; color: var(--muted, #8a8a92); }
+.bm-hval { font-size: 30px; font-weight: 800; line-height: 1.1; color: var(--primary, #2bc4e0); }
+.bm-hval i { font-size: 15px; font-style: normal; margin-left: 1px; }
+.bm-hval.bm-ssr { color: #ff8a3d; }
+.bm-hval.bm-sr { color: #ff5f7e; }
+.bm-bar {
+  margin-top: 6px; height: 8px; border-radius: 999px; background: #f0f3f5; overflow: hidden;
+}
+.bm-bar i {
+  display: block; height: 100%; border-radius: 999px; width: 0;
+  background: linear-gradient(90deg, #ffd08a, #ff7aa2);
+  transition: width .9s cubic-bezier(.22, 1, .36, 1);
+}
+.bm-tier { margin-top: 9px; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.bm-tier b { font-size: 15px; color: var(--text, #26262c); }
+.bm-tier span { font-size: 12.5px; color: var(--muted, #8a8a92); }
+.bm-meta { margin-top: 10px; font-size: 12.5px; color: var(--muted, #8a8a92); }
+.bm-text {
+  margin-top: 7px; font-size: 13px; color: var(--text, #26262c); line-height: 1.55;
+  background: #faf7f9; border-radius: 10px; padding: 8px 11px;
+}
+.bm-hint { margin-top: 10px; font-size: 12px; color: #b3b3bb; text-align: center; }
+@media (max-width: 420px) {
+  .bm-fab-txt { display: none; }
+  .bm-fab { padding: 11px 13px; }
+}
+
+/* 盲盒弹窗底部按钮：只管本弹窗，不污染 .dm-modal-f 的其它用法 */
+.bm-acts { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.bm-acts .dm-btn {
+  display: inline-flex; align-items: center; text-decoration: none;
+  padding: 8px 16px; font-size: 13.5px;
+}
+.bm-loading { padding: 64px 0; text-align: center; font-size: 14px; color: var(--muted, #8a8a92); }
+
+/* 盲盒弹窗按钮变多（换一张 / 生成分享图 / 复制文案 / 看原帖），窄屏收一点间距好换行 */
+@media (max-width: 420px) {
+  .bm-acts .dm-btn { padding: 8px 12px; font-size: 13px; }
+}

@@ -256,6 +256,10 @@ const EVENTS = [
   ['sch:pick', '行程 进入选图'],
   ['sch:poster', '行程 生成转发图'],
   ['sch:copy', '行程 复制文案'],
+  // 盲盒（2026-09-24 上正式站）：抽到照片 / 生成分享卡 / 复制文案 —— 看这个玩法有没有人玩
+  ['box:open', '盲盒 抽到一张'],
+  ['box:card', '盲盒 生成分享图'],
+  ['box:copy', '盲盒 复制文案'],
   ['sub:replay', '公演回放 子标签'],
   ['sub:cuts', '公演cut 子标签'],
   ['sub:social', '社媒美图 子标签'],
@@ -688,16 +692,18 @@ async function handleScrape(env) {
   }
 }
 
-// 图片代理：把微博图床（sinaimg.cn / weibocdn.com）图片转发给浏览器。
+// 图片代理：把微博图床（sinaimg.cn / weibocdn.com）+ 口袋房间图床（云信 nosdn）图片转发给浏览器。
 // 关键：用非浏览器 UA（如 curl）取图，绕过新浪 Tengine 对浏览器 UA 的 403；
-// 仅放行这两个图床域名，避免变成开放代理；边缘缓存 1 年（图片 URL 含尺寸后缀，内容不可变）。
+// 仅放行这几个图床域名，避免变成开放代理；边缘缓存 1 年（图片 URL 含尺寸后缀，内容不可变）。
+// 云信那两个（kd48-nosdn.yunxinsvr.com / nim-nosdn.netease.im）是 2026-09-24 盲盒上正式站时加的：
+// 口袋图直链没有 CORS 头，盲盒要把照片画进 canvas 出分享卡，必须借自家代理拿到跨域安全的响应。
 async function handleImageProxy(url, ctx) {
   const target = url.searchParams.get('u');
   if (!target) return new Response('missing u', { status: 400 });
   let t;
   try { t = new URL(target); } catch (e) { return new Response('bad url', { status: 400 }); }
   if (!/^https?:$/i.test(t.protocol)) return new Response('bad protocol', { status: 400 });
-  if (!/(^|\.)sinaimg\.cn$|(^|\.)weibocdn\.com$/.test(t.hostname)) {
+  if (!/(^|\.)sinaimg\.cn$|(^|\.)weibocdn\.com$|(^|\.)kd48-nosdn\.yunxinsvr\.com$|(^|\.)nim-nosdn\.netease\.im$|(^|\.)nosdn\.netease\.im$/.test(t.hostname)) {
     return new Response('forbidden host', { status: 403 });
   }
 
