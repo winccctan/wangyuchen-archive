@@ -3333,7 +3333,9 @@ function renderPerfSub() {
     if (c) { q._cutCount = c.n; q._cutDate = c.date; }
     // 「✂️ B站cut」与公演主回放(biliUrl)是同一视频时（当天无完整回放、cut 即主回放，如 2022-10-02），
     // 不再重复显示该按钮，避免同一条 cut 既当主回放又当 cut 入口。
-    const mainBvid = (p.biliUrl || '').match(/BV1[0-9A-Za-z]{8}/);
+    // 注意：B 站 BV 号是「BV + 10 位」共 12 位，正则必须取满 10 位，
+    // 否则只会匹配到前缀，与主回放比较时永远不等、去重判断失效。
+    const mainBvid = (p.biliUrl || '').match(/BV[0-9A-Za-z]{10}/);
     if (bc && (!mainBvid || bc.bvid !== mainBvid[0])) { q._biliCutDate = bc.date; q._biliCutTitle = bc.title; }
     return q;
   });
@@ -3402,7 +3404,7 @@ function renderPerfCuts(query) {
   const seen = new Set();
   const all = [];
   for (const it of bl.concat(lc, wb)) {
-    const bv = (it.url.match(/BV1[0-9A-Za-z]{8}/) || [])[0];
+    const bv = (it.url.match(/BV[0-9A-Za-z]{10}/) || [])[0];
     if (bv) { if (seen.has(bv)) continue; seen.add(bv); }
     all.push(it);
   }
