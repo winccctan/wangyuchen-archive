@@ -3101,7 +3101,12 @@ async function lookupMine(uid) {
   const atLeast = firstKey <= S.from;
   const maxH = Math.max(1, ...hs.map((x) => Number(x) || 0));
 
-  let html = '<div class="mine-report">';
+  // 查到之后出现两个子页：档案 / 去年今日（票根）。都是同一份 uid 数据，页签只负责切换显示
+  let html = '<div class="mine-subtabs">'
+    + '<button type="button" class="mine-subtab on" data-mtab="archive">我的档案</button>'
+    + '<button type="button" class="mine-subtab" data-mtab="ticket">我的去年今日</button>'
+    + '</div>'
+    + '<div class="mine-report" id="minePaneArchive">';
   html += '<div class="mine-cover">'
     + '<div class="mine-avatar">🐟</div>'
     + '<div class="mine-cover-t">' + roomTitle() + '</div>'
@@ -3199,8 +3204,26 @@ async function lookupMine(uid) {
     + '<div class="mine-dl-note" id="mineDlNote"></div></div>';
 
 
-  html += '</div>';
+  html += '</div>';   // minePaneArchive（我的档案）结束
+  // 票根独立成第二个子页：同样只有查到自己档案的人才能看到（真数据：uid 传给 /api/mineDay）
+  if (typeof renderTicket === 'function') {
+    html += '<div class="mine-report" id="minePaneTicket" hidden>'
+      + '<div class="mine-sec" style="animation-delay:.08s">'
+      + '<div class="mine-h"><b>我的陪伴票根</b></div>'
+      + renderTicket({ uid, start: firstKey, days: knowDays }) + '</div></div>';
+  }
   box.innerHTML = html;
+  // 档案 / 去年今日 子页切换
+  box.querySelectorAll('.mine-subtab').forEach((b) => {
+    b.addEventListener('click', () => {
+      box.querySelectorAll('.mine-subtab').forEach((x) => x.classList.toggle('on', x === b));
+      const arc = document.getElementById('minePaneArchive');
+      const tkt = document.getElementById('minePaneTicket');
+      if (arc) arc.hidden = b.dataset.mtab !== 'archive';
+      if (tkt) tkt.hidden = b.dataset.mtab !== 'ticket';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  });
   bindGiftTabs();          // 「2026 年 / 2024 年至今」切换
   bindRoomNameTabs();      // 「一只鱼鱼 / 王语晨」称谓切换（只影响这张卡）
   mineCountUp();

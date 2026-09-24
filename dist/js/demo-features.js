@@ -2403,23 +2403,19 @@
     }
   });
 
-  /* ═══ 功能 ⑫ 陪伴纪念票根（demo 假数据版） ═══
-     去年今日 × 票根：那天你在她房间说了几句话、送了几个鸡腿，选一句留底。
-     真版数据=口袋房间发言 + 鸡腿礼物记录（离线按天聚合）；demo 用按日期稳定伪随机。 */
-  const TK_QUOTES = [
-    '今天也要好好吃饭，早点休息。',
-    '舞台上的灯光真好，你站在中间发光。',
-    '唱到第二段的时候我鸡皮疙瘩都起来了。',
-    '今天下班路上一直在循环你的 solo。',
-    '辛苦啦，记得喝水，我们都在。',
-    '今天的直拍我看了八遍。',
-    '睡了睡了，明天见。'
-  ];
+  /* ═══ 功能 ⑫ 陪伴纪念票根（真数据版） ═══
+     数据链路：scripts/build-ticket.mjs 把房间发言全文 + 房间/直播鸡腿按 uid×日期
+     聚合进 KV tk/<uid末两位>；worker /api/mineDay 凭 uid+日期回「你自己那天」。
+     与 /api/mine 同一隐私口径：uid 即凭证，只回本人那一份。 */
   function tkHash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
   function tkFmt(d) { return d.getFullYear() + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.' + String(d.getDate()).padStart(2, '0'); }
   const tkCur = (() => { const t = new Date(); return new Date(t.getFullYear() - 1, t.getMonth(), t.getDate()); })();
   let tkHideLeg = LS.get('wyc-tk-hideleg') === '1';   /* 分享图里不显示鸡腿（默认显示） */
-  window._tkCfg = null;                                /* 档案页传入的真实起止（start/days） */
+  window._tkCfg = null;                                /* 档案页传入的 uid + 真实起止（start/days） */
+  const TK_DAY = new Map();                            /* 'YYYY-MM-DD' -> {n,dk,ms} | null（查过，没来） */
+  let tkSeq = 0;                                       /* 竞态令牌：快速翻页时只让最后一次落版 */
+  const TK_API = (typeof API_BASE !== 'undefined' ? API_BASE : location.origin) + '/api/mineDay';
+
   function tkRerender() {
     const slot = document.getElementById('tkSlot');
     if (slot) slot.outerHTML = window.renderTicket(window._tkCfg);
@@ -2428,48 +2424,75 @@
   window.tkShift = function (n) { tkCur.setDate(tkCur.getDate() + n); tkRerender(); };
   window.tkLastYear = function () { const t = new Date(); tkCur.setFullYear(t.getFullYear() - 1); tkCur.setMonth(t.getMonth()); tkCur.setDate(t.getDate()); tkRerender(); };
 
-  /* 那年今天 · 你说的话（demo 假数据：按日期哈希稳定生成，翻回去数字不变）
-     真版数据源：房间全量发言按 uid + 日期过滤，worker 加个按天查的口子即可 */
-  function tkMsgList(key, h, msgs) {
-    if (!msgs) {
+  async function tkFetch(key) {
+    const iso = key.replace(/\./g, '-');
+    if (TK_DAY.has(iso)) return TK_DAY.get(iso);
+    const seq = ++tkSeq;
+    let row = null;
+    try {
+      const r = await fetch(TK_API, {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ uid: window._tkCfg && window._tkCfg.uid, date: iso }),
+      });
+      const d = await r.json();
+      row = (d && d.found) ? { n: d.n, dk: d.dk, ms: d.ms || [] } : null;
+    } catch (_) { row = null; }
+    TK_DAY.set(iso, row);
+    if (seq === tkSeq) tkRerender();     // 数据回来后整块重渲（只影响票根区）
+    return row;
+  }
+
+  /* 那年今天 · 你说的话：全部真实发言（服务端已按时间升序、单条截断 120 字） */
+  function tkMsgList(row, iso, start) {
+    const head = '<div class="tkmsgs-h">那年今天 · 你说的话</div>';
+    if (row === undefined) {
       return `<div class="tkmsgs"><div class="tkmsgs-h">那年今天 · 你说的话</div>
-        <div class="tkmsgs-empty">那天你没有留言。<br>别遗憾，点「前一天」看看别的日子也好。</div></div>`;
+        <div class="tkmsgs-empty">正在翻那天的记录…</div></div>`;
     }
-    let s = h >>> 3;
-    const rnd = () => { s = Math.imul(s, 48271) % 2147483647; return s / 2147483647; };
-    const items = [];
-    let base = 17.5 + rnd() * 3;                    // 傍晚开场，越聊越晚
-    for (let i = 0; i < Math.min(msgs, 8); i++) {
-      base += 0.3 + rnd() * 2.2;
-      if (base >= 24) base -= 24;
-      const hh = Math.floor(base), mm = Math.floor((base - hh) * 60);
-      const txt = TK_QUOTES[(h + i * 97) % TK_QUOTES.length];
-      items.push({ t: String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0'), txt });
+    if (!row || !row.ms) {
+      const notyet = start && iso < start;
+      return `<div class="tkmsgs">${head}
+        <div class="tkmsgs-empty">${notyet ? '那天你还没来到她的房间。<br>往后翻翻，故事就要开始了。' : '那天你没有留言。<br>别遗憾，点「前一天」看看别的日子也好。'}</div></div>`;
     }
-    const more = msgs - items.length;
-    items.sort((a, b) => (a.t < b.t ? -1 : 1));   // 跨零点回绕会乱序，按时间排回去
-    return `<div class="tkmsgs"><div class="tkmsgs-h">那年今天 · 你说的 ${msgs} 句话</div>`
-      + items.map((it) => `<div class="tkmsg"><span class="tm">${it.t}</span><span class="tx">${esc(it.txt)}</span></div>`).join('')
-      + (more > 0 ? `<div class="tkmsgs-more">……还有 ${more} 句，真版会全部展示</div>` : '')
-      + `</div>`;
+    return `<div class="tkmsgs"><div class="tkmsgs-h">那年今天 · 你说的 ${row.n} 句话</div>`
+      + row.ms.map(([t, x]) => {
+        const d = new Date(Number(t) + 8 * 3600e3);
+        const tm = d.toISOString().slice(11, 16);
+        return `<div class="tkmsg"><span class="tm">${tm}</span><span class="tx">${esc(x)}</span></div>`;
+      }).join('') + `</div>`;
   }
 
   window.renderTicket = function (cfg) {
+    if (cfg && cfg.uid !== (window._tkCfg && window._tkCfg.uid)) TK_DAY.clear();  // 换了 uid，缓存作废
     window._tkCfg = cfg || window._tkCfg || null;
+    const uid = window._tkCfg && window._tkCfg.uid;
     const start = (window._tkCfg && window._tkCfg.start) || '2022.11.07';
+    const startIso = start.replace(/\./g, '-');
     const days = (window._tkCfg && window._tkCfg.days) || Math.floor((Date.now() - new Date(2022, 10, 7)) / 86400000) + 1;
-    const key = tkFmt(tkCur), h = tkHash(key);
-    const msgs = h % 26, leg = msgs > 0 ? (h >>> 4) % 40 : 0;
+    const key = tkFmt(tkCur), iso = key.replace(/\./g, '-');
+    const row = TK_DAY.get(iso);                        // undefined=没查过  null=查过（没来）
+    const h = tkHash(key + '|' + (uid || 'demo'));
+    const ms = (row && row.ms) || [];
+    const msgs = row ? row.n : null;                    // null → 加载中
+    const leg = row ? row.dk : 0;
     const wk = '日一二三四五六'[tkCur.getDay()];
-    const quote = msgs > 0 ? TK_QUOTES[h % TK_QUOTES.length] : '没关系，第二天你回来就好。';
-    const line = msgs > 0
-      ? `你那天在她的房间<br>留下了 <b>${msgs}</b> 句话`
-      : `那天你没来留言<br>但她一直在房间里发光`;
-    const meta = (!tkHideLeg && leg > 0) ? `<span>来过房间</span><i></i><span>送出 <b>${leg}</b> 个鸡腿</span>`
-      : (leg > 0 && tkHideLeg) ? `<span>来过房间</span><i></i><span>看了直播</span>`
-      : `<span>来过房间</span><i></i><span>安静地看完了直播</span>`;
-    let bars = ''; let s = h;
-    for (let i = 0; i < 24; i++) { s = Math.imul(s, 48271) % 2147483647; bars += `<i style="width:${2 + s % 3}px;height:${62 + s % 38}%"></i>`; }
+    const quote = ms.length ? ms[0][1] : (row ? '没关系，第二天你回来就好。' : '');
+    const line = row === undefined
+      ? `正在翻那天的记录…`
+      : (msgs > 0
+        ? `你那天在她的房间<br>留下了 <b>${msgs}</b> 句话`
+        : (iso < startIso ? `那天你还没来到她的房间` : `那天你没来留言<br>但她一直在房间里发光`));
+    /* 这一行只在「那天送了鸡腿」且没开隐私开关时出现，其余情况整行不显示 */
+    const meta = (leg > 0 && !tkHideLeg)
+      ? `<span>来过房间</span><i></i><span>送出 <b>${leg}</b> 个鸡腿</span>`
+      : '';
+    /* 存根小条形图：直接用当天真实发言的小时分布 */
+    const hh = new Array(24).fill(0);
+    ms.forEach(([t]) => { hh[Number(new Date(Number(t) + 8 * 3600e3).toISOString().slice(11, 13))]++; });
+    const mh = Math.max(1, ...hh);
+    let bars = '';
+    for (let i = 0; i < 24; i++) bars += `<i style="width:3px;height:${ms.length ? Math.max(8, Math.round(hh[i] / mh * 100)) : 30 + (tkHash(key + i) % 30)}%"></i>`;
+    if (row === undefined) tkFetch(key);
     return `
     <div class="tkwrap" id="tkSlot">
       <div class="tkt" id="tkt">
@@ -2477,8 +2500,8 @@
           <div class="tkt-head"><span class="tkt-brand">陪伴纪念票根</span><span class="tkt-no">NO.${key.replace(/\./g, '')}-${h % 900 + 100}</span></div>
           <div class="tkt-date"><div class="lab">去 年 今 日</div><div class="val">${key}</div><div class="sub">星期${wk} · 一年前的今天</div></div>
           <div class="tkt-line">${line}</div>
-          <div class="tkt-quote"><p>${esc(quote)}</p><span>—— 你当时说的话</span></div>
-          <div class="tkt-meta">${meta}</div>
+          ${quote ? `<div class="tkt-quote"><p>${esc(quote)}</p><span>—— 你当时说的话</span></div>` : ''}
+          ${meta ? `<div class="tkt-meta">${meta}</div>` : ''}
         </div>
         <div class="tkt-perf"></div>
         <div class="tkt-stub">
@@ -2494,52 +2517,86 @@
         </div>
         <div class="tkt-row"><button class="tkt-btn tkt-primary" id="tkSave">⬇ 保存 / 分享图片</button></div>
         <div class="tkt-row"><button class="tkt-btn tkt-priv" id="tkPriv">${tkHideLeg ? '🫥 图里显示鸡腿：关' : '🫥 图里显示鸡腿：开'}</button></div>
-        <p class="tkt-hint">demo 假数据版：日期随便翻，条数 / 台词 / 鸡腿每天不一样；<br>真版会接你自己的口袋房间发言和鸡腿记录。</p>
+        <p class="tkt-hint">来自你自己的口袋房间发言与鸡腿记录，<br>只有查到你的 uid 才能看到。</p>
       </div>
-      ${tkMsgList(key, h, msgs)}
+      ${tkMsgList(row, iso, startIso)}
     </div>`;
   };
 
   function tkSaveImage() {
-    const W = 750, H = 1080, cv = document.createElement('canvas');
+    const W = 750;
+    const $id = (id) => document.getElementById(id);
+    const tkt = $id('tkt');
+    if (!tkt) return;
+    const el = (sel) => tkt.querySelector(sel);
+    /* 先把内容取出来：票根高度按内容自适应，那天没留言/没鸡腿就不留大片空白 */
+    const noTxt = el('.tkt-no').textContent;
+    const dateVal = el('.tkt-date .val').textContent;
+    const subTxt = el('.tkt-date .sub').textContent;
+    const lineArr = el('.tkt-line').innerText.split('\n');
+    const qEl = el('.tkt-quote p');
+    const qTxt = qEl ? qEl.textContent.trim() : '';
+    const mEl = el('.tkt-meta');
+    const metaTxt = mEl ? mEl.innerText.replace(/\n/g, ' ').trim() : '';
+    const stubTxt = el('.tkt-stubinfo').innerText.split('\n')[1] || '';
+
+    let cur = 435 + (lineArr.length - 1) * 46;        // 正文最后一行
+    const quoteTop = qTxt ? cur + 54 : 0;
+    if (qTxt) cur = quoteTop + 150;                   // 引文框高 150
+    const metaY = metaTxt ? cur + 90 : 0;
+    if (metaTxt) cur = metaY;
+    const dashY = cur + (metaTxt ? 60 : 90);          // 撕票虚线
+    const cardTop = 70, cardBot = dashY + 175;
+    const H = cardBot + 130;
+
+    const cv = document.createElement('canvas');
     cv.width = W; cv.height = H;
     const c = cv.getContext('2d');
-    const $id = (id) => document.getElementById(id);
-    if (!$id('tkt')) return;
     c.fillStyle = '#eef3f7'; c.fillRect(0, 0, W, H);
     c.fillStyle = '#fbf7ee';
-    c.beginPath(); c.moveTo(71, 70); c.arcTo(705, 70, 705, 1010, 26); c.arcTo(705, 1010, 45, 1010, 26); c.arcTo(45, 1010, 45, 70, 26); c.arcTo(45, 70, 705, 70, 26); c.closePath(); c.fill();
+    c.beginPath(); c.moveTo(71, cardTop); c.arcTo(705, cardTop, 705, cardBot, 26); c.arcTo(705, cardBot, 45, cardBot, 26); c.arcTo(45, cardBot, 45, cardTop, 26); c.arcTo(45, cardTop, 705, cardTop, 26); c.closePath(); c.fill();
     c.textAlign = 'left'; c.fillStyle = '#8a97a4'; c.font = '600 24px sans-serif';
     c.fillText('陪 伴 纪 念 票 根', 90, 138);
     c.textAlign = 'right'; c.fillStyle = '#b3bcc4'; c.font = '20px Menlo, monospace';
-    c.fillText($id('tkt').querySelector('.tkt-no').textContent, 660, 136);
+    c.fillText(noTxt, 660, 136);
     c.textAlign = 'center';
     c.fillStyle = '#8a97a4'; c.font = '22px sans-serif'; c.fillText('去 年 今 日', 375, 205);
-    c.fillStyle = '#17364f'; c.font = '700 92px sans-serif';
-    c.fillText($id('tkt').querySelector('.tkt-date .val').textContent, 375, 305);
-    c.fillStyle = '#9aa6b1'; c.font = '24px sans-serif';
-    c.fillText($id('tkt').querySelector('.tkt-date .sub').textContent, 375, 350);
-    const m = $id('tkt').querySelector('.tkt-line').innerText.split('\n');
+    c.fillStyle = '#17364f'; c.font = '700 92px sans-serif'; c.fillText(dateVal, 375, 305);
+    c.fillStyle = '#9aa6b1'; c.font = '24px sans-serif'; c.fillText(subTxt, 375, 350);
     c.fillStyle = '#2c4a63'; c.font = '30px sans-serif';
-    m.forEach((t, i) => c.fillText(t, 375, 435 + i * 46));
-    c.fillStyle = '#f3ecdd';
-    c.beginPath(); c.moveTo(131, 535); c.arcTo(619, 535, 619, 685, 20); c.arcTo(619, 685, 131, 685, 20); c.arcTo(131, 685, 131, 535, 20); c.arcTo(131, 535, 619, 535, 20); c.closePath(); c.fill();
-    c.fillStyle = '#3d5166'; c.font = '27px sans-serif';
-    c.fillText($id('tkt').querySelector('.tkt-quote p').textContent, 375, 612);
-    c.fillStyle = '#a39a86'; c.font = '20px sans-serif'; c.fillText('—— 你当时说的话', 375, 656);
-    c.fillStyle = '#4a5c6d'; c.font = '26px sans-serif';
-    c.fillText($id('tkt').querySelector('.tkt-meta').innerText.replace(/\n/g, ' '), 375, 775);
+    lineArr.forEach((t, i) => c.fillText(t, 375, 435 + i * 46));
+    if (qTxt) {
+      // 引言框：只有当天真说了话才画（否则会留一个空白框）
+      c.fillStyle = '#f3ecdd';
+      c.beginPath(); c.moveTo(131, quoteTop); c.arcTo(619, quoteTop, 619, quoteTop + 150, 20); c.arcTo(619, quoteTop + 150, 131, quoteTop + 150, 20); c.arcTo(131, quoteTop + 150, 131, quoteTop, 20); c.arcTo(131, quoteTop, 619, quoteTop, 20); c.closePath(); c.fill();
+      // 真实发言可能很长：按像素宽折行，最多两行，超出加省略号
+      c.fillStyle = '#3d5166'; c.font = '27px sans-serif';
+      const lines = []; let buf = '';
+      for (const ch of qTxt) {
+        if (c.measureText(buf + ch).width > 440) { lines.push(buf); buf = ch; if (lines.length === 2) break; }
+        else buf += ch;
+      }
+      if (lines.length < 2 && buf) lines.push(buf);
+      if (lines.length === 2 && (lines.join('').length < qTxt.length)) lines[1] = lines[1].slice(0, -1) + '…';
+      lines.forEach((t, i) => c.fillText(t, 375, quoteTop + 61 + i * 40));
+      c.fillStyle = '#a39a86'; c.font = '20px sans-serif';
+      c.fillText('—— 你当时说的话', 375, quoteTop + (lines.length === 2 ? 137 : 121));
+    }
+    if (metaTxt) { c.fillStyle = '#4a5c6d'; c.font = '26px sans-serif'; c.fillText(metaTxt, 375, metaY); }
     c.strokeStyle = '#d5cbb6'; c.setLineDash([12, 10]); c.lineWidth = 3;
-    c.beginPath(); c.moveTo(70, 835); c.lineTo(680, 835); c.stroke(); c.setLineDash([]);
+    c.beginPath(); c.moveTo(70, dashY); c.lineTo(680, dashY); c.stroke(); c.setLineDash([]);
     c.textAlign = 'left'; c.fillStyle = '#8a97a4'; c.font = '22px sans-serif';
-    c.fillText('一只鱼鱼', 90, 900);
-    c.fillText($id('tkt').querySelector('.tkt-stubinfo').innerText.split('\n')[1], 90, 940);
-    let x = 470; const key = $id('tkt').querySelector('.tkt-date .val').textContent;
-    let s = tkHash(key); c.fillStyle = '#17364f';
-    for (let i = 0; i < 40; i++) { s = Math.imul(s, 48271) % 2147483647; const bw = 2 + s % 4, bh = 30 + s % 25; c.fillRect(x, 945 - bh, bw, bh); x += bw + 3; }
-    c.textAlign = 'center'; c.fillStyle = '#b3bcc4'; c.font = '20px sans-serif';
-    c.fillText('idol.wyc0518.cc', 375, 1015);
-    const fname = '陪伴票根-' + key.replace(/\./g, '') + '.png';
+    c.fillText('一只鱼鱼', 90, dashY + 65);
+    c.fillText(stubTxt, 90, dashY + 105);
+    let x = 470, s = tkHash(dateVal); c.fillStyle = '#17364f';
+    for (let i = 0; i < 40; i++) { s = Math.imul(s, 48271) % 2147483647; const bw = 2 + s % 4, bh = 30 + s % 25; c.fillRect(x, dashY + 110 - bh, bw, bh); x += bw + 3; }
+    // 底部品牌行：放在票根卡片外面（原来贴在最底边线上，和边线重叠）
+    c.textAlign = 'center';
+    c.fillStyle = '#8a97a4'; c.font = '600 23px sans-serif';
+    c.fillText('王语晨补档站', 375, cardBot + 52);
+    c.fillStyle = '#b3bcc4'; c.font = '20px Menlo, monospace';
+    c.fillText('idol.wyc0518.cc', 375, cardBot + 86);
+    const fname = '陪伴票根-' + dateVal.replace(/\./g, '') + '.png';
     cv.toBlob((bl) => {
       const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) || (navigator.userAgentData && navigator.userAgentData.mobile);
       const file = new File([bl], fname, { type: 'image/png' });
