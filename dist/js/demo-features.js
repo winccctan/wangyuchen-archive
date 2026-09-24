@@ -1485,7 +1485,7 @@
   const BOX_JUNK_MAX = 2500;
   // 站长 2026-09-24 定：口袋房间发的图只收 2023-09 之后（更早的那批又小又杂，不适合当盲盒主图）
   const PK_SINCE = Date.UTC(2023, 7, 31, 16, 0, 0);        // = 北京时间 2023-09-01 00:00
-  /** ★ 站长点名的照片白名单（2026-09-24 从候选库里挑的 58 张）。
+  /** ★ 站长点名的照片白名单（2026-09-24 从候选库里挑的 60 张）。
    *  这些确实是正常照片（自拍 / 对镜自拍 / 舞台 / 食物），只是分辨率偏低，
    *  被下面 boxOk() 的「小图」规则和 2023-09 时间门槛误挡 → 这里直接放行，
    *  跳过时间、体积、尺寸、比例全部关卡。键 = 图片链接的最后一段。
@@ -1549,6 +1549,8 @@
     'bmltYV8xMTMzMjAyNjQ4MDBfMTcyODkxNTAwNTEwNl84NTNjYjBhMi05NTIwLTQ0NTktYjIxMy0yYzQyYmNhNDQ2NGQ=',
     'bmltYV8xMTMzMjAyNjQ4MDBfMTcwMTY3MTY0MDM2OV83MWUzZjE0OS1hNTlmLTQxZWYtYmMwNC1jZmE4ZGYzOTRiODk=',
     'bmltYV8xMTMzMjAyNjQ4MDBfMTcyMzI5MTI1MDcyOF9mZmIwNmJmZi0wMGY0LTRiOGQtOTI2ZC1hZjVlMGNkMWVlNzk=',
+    'bmltYV8xMTMzMjAyNjQ4MDBfMTcyODkxNTAwNTEwNl84YWM5Y2UzMS02NzQyLTQyN2MtYTM5Ni1jZWY3NDRiMTUwOWQ=',
+    'bmltYV8xMTMzMjAyNjQ4MDBfMTY3NDM4NzcxNzM1Ml84Mzc2OTkzNS02NzJmLTRjMjgtYmExNC0zNzBkZTMzMjJhNjU=',
   ];
   function isPkOk(src) {
     if (!src) return false;
