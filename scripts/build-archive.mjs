@@ -89,15 +89,44 @@ function attachBiliAndPruneDead(list) {
       const key = shDate(p.stime).replace(/-/g, '');
       const cands = biliByDate.get(key) || [];
       const teams = (p.teamList || []).map((t) => t.teamName).filter(Boolean);
-      // 账号口径（站长 2026-09-25 明确）：
-      //   企鹅大帝(2086351451) = 公演完整回放 → 作为主回放 biliUrl（绝不能进切片）；
-      //   Chzhnh/忘记自己是猪 = 切片，仅在当天没有完整回放时兜底当主回放（如 2022-10-02 只有 cut）。
-      // 故优先选企鹅大帝的完整回放（按 mid 或「含《剧目》公演、无 cut、无 王语晨」标题特征识别），
-      // 其次兜底任何含 王语晨/niii/gnz48 的当天视频（多为 cut），再兜底其余。
+      /* 账号口径（站长 2026-09-25 明确）：
+       *   企鹅大帝(2086351451) = 公演完整回放 → 作为主回放 biliUrl（绝不能进切片）；
+       *   Chzhnh/忘记自己是猪 = 切片，仅在当天没有完整回放时兜底当主回放（如 2022-10-02 只有 cut）。
+       * ★ 关键（站长 2026-09-25 再明确）：企鹅大帝**同一天会传多个队伍**的回放
+       *   （NIII / Z / G 各一场，135 个日期有 2 条以上），只按日期必然串队（实测曾串队 37 场）。
+       *   故必须「日期 + 队伍 + 剧目名」全部对上；队伍对不上直接排除——
+       *   宁可这场不挂完整回放，也不能把别队的回放挂到她的场次上，此时退回她本人的 cut。
+       * 注：公演的 teamList 常为空，队伍信息只在 subTitle 里（如「拾忆：TEAM NIII·第二十六场」）。 */
+      const teamOf = (s) => {
+        const m = String(s || '').match(/TEAM\s*(NIII|NII|Z|G|H|X|SII)/i);
+        return m ? m[1].toUpperCase() : '';
+      };
+      const playOf = (s) => {
+        const t = String(s || '');
+        const m = t.match(/《([^》]+)》/) || t.match(/^([^：:·]+)/);
+        return norm(String(m ? m[1] : '').split(/[：:]/)[0]);
+      };
+      const pTeam = teamOf(p.subTitle) || teamOf(p.title) || (teams.length ? teamOf(teams[0]) : '');
+      const pPlay = playOf(p.subTitle || p.title);
       const isFullReplay = (v) => /公演/.test(v.title) && !/cut/i.test(v.title) && !/王语晨/.test(v.title);
-      const hit = cands.find((v) => (v.mid === '2086351451' || isFullReplay(v)) && /王语晨|niii|gnz48/i.test(v.title))
-        || cands.find((v) => /(公演cut|公演)/.test(v.title) && /王语晨|niii|gnz48/i.test(v.title))
-        || cands.find((v) => /王语晨|niii|gnz48/i.test(v.title));
+      // 打分：队伍对不上 → -1（直接排除）；队+剧全中最高，其次队中/剧目中，完整回放优先于 cut
+      const scoreOf = (v) => {
+        const vt = teamOf(v.title);
+        const vp = playOf(v.title);
+        if (pTeam && vt && pTeam !== vt) return -1;
+        let s = 0;
+        if (pTeam && vt) s += 2;
+        if (pPlay && vp && pPlay === vp) s += 2;
+        if (v.mid === '2086351451' || isFullReplay(v)) s += 1;
+        if (/王语晨/.test(v.title)) s += 0.5;
+        return s;
+      };
+      const scored = cands
+        .filter((v) => /王语晨|niii|gnz48/i.test(v.title))
+        .map((v) => ({ v, s: scoreOf(v) }))
+        .filter((x) => x.s > 0)
+        .sort((a, b) => b.s - a.s);
+      const hit = scored.length ? scored[0].v : null;
       if (hit) {
         p.biliUrl = `https://www.bilibili.com/video/${hit.bvid}`;
         p.biliTitle = hit.title;
