@@ -297,8 +297,9 @@ const STOP_EVENTS = new Set([
 const isStoppedEv = (ev) => STOP_EVENTS.has(ev) || ev.startsWith('lang:');
 // 单个玩法的「每日上限」（2026-09-24 站长选的方案）：盲盒一天能点 280+ 次，占全天动作的四成，
 // 总闸压到 800 之后它会把 tab / 行程 / 档案这些更要看的指标一起挤掉。
-// 给它单独设一条 300/天的子闸：超过之后**只停记盲盒**，其余事件照常记录。
-const EV_DAY_CAP = { 'box:open': 300 };
+// 给它单独设一条自适应子闸：超过之后**只停记盲盒**，其余事件照常记录。
+// 2026-09-24 晚：确认「停记」只是不再计数、抽卡功能照常 ⇒ 站长放宽到 500/天（原 300）。
+const EV_DAY_CAP = { 'box:open': 500 };
 const LANGS = ['en', 'es', 'fr', 'nl', 'pt', 'ro', 'ja', 'vi', 'ko', 'th'];
 // 统计数据的读取密钥：只有带这个 key 才拿得到，避免统计接口挂在主域名上被随手访问。
 // 可用 KV 里的 STATS_KEY 覆盖（无需改代码）。
@@ -329,7 +330,7 @@ function bjDay(ts) { // 北京时间日期
 // 统计每天最多允许多少次 KV 写入（闸门逻辑见 handleTrack 内的注释）。
 // 2026-09-24 精简后的开销：一次动作 = **1 次必写**（当天计数 stat:evd:<day>:<ev>），
 // 另外只有「某人当天第一次做某件事 / 某人当天第一次进站」才写。实测一天约 500~900 次写入。
-const STAT_WRITE_CAP = 800;
+const STAT_WRITE_CAP = 1000;
 async function shortHash(s) {
   const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(s)));
   return Array.from(new Uint8Array(d)).slice(0, 8).map((x) => x.toString(16).padStart(2, '0')).join('');
@@ -506,8 +507,8 @@ async function handleTrack(url, request, env, ctx) {
         // 统计是「锦上添花」，绝不能把 KV 写入额度抢光、连累数据同步（2026-09-22 事故）。
         // 超过上限就不再记录，页面照常用；第二天零点自动恢复。
         // 300 → 600（2026-09-23，补了档案卡埋点）→ 3000（2026-09-24，补齐口袋 7 个小功能后翻倍）
-        // → **800（2026-09-24 站长要求收紧）**：同时停掉了 10 类低频事件（子标签/语言/刷新等），
-        // 常态一天约 490 次动作，留了约 300 的余量。若哪天下午起数字不再增长 = 打满，改这个常量即可。
+        // → 800（2026-09-24 站长要求收紧）→ **1000（同日晚上站长改回）**：确认超限只影响计数、
+        // 页面功能不受损之后放宽。常态一天约 700~800 次动作，留了约 200 的余量。若哪天下午起数字不再增长 = 打满，改这个常量即可。
         const gateKey = 'stat:gate:' + day;
         const gateMax = STAT_WRITE_CAP;
         let used = 0;
