@@ -1005,6 +1005,10 @@ async function handleApi(url, request, env, ctx) {
   // 隐私红线（站长 2026-09-22 定）：粉丝名单不得以任何静态文件形式上公网；
   // 浏览器download不到全量 ⇒ 无从遍历。真实 uid 是 9~10 位随机数，本身即不可猜测的凭证。
   if (p === '/api/mine' && request.method === 'POST') return handleApiMine(request, env);
+  // ---- 陪伴票根：凭 uid + 日期只取回「你自己那天」的发言与鸡腿 ----
+  // 数据来自 KV tk/<uid末两位> 桶（scripts/build-ticket.mjs 构建、经 _fans_upsert kind:tk 灌入）。
+  // 隐私口径与 /api/mine 完全一致：uid 即凭证，只回本人那一份，无任何列出接口。
+  if (p === '/api/mineDay' && request.method === 'POST') return handleApiMineDay(request, env);
   // 写接口（需 SYNC_TOKEN，由 CI / 本地脚本调用）
   if (p === '/api/_fans_init' && request.method === 'POST') return handleFansInit(request, env);
   if (p === '/api/_fans_upsert' && request.method === 'POST') return handleFansUpsert(request, env);
@@ -1130,6 +1134,34 @@ async function handleApiMine(request, env) {
   }));
 }
 
+/** 陪伴票根「去年今日」：POST { uid, date } → 当天 { n 发言数, dk 鸡腿, ms [[时间戳, 正文], ...] }。
+ *  与 /api/mine 同一套限流与隐私口径；KV 读不占写配额，翻一天就是一次 get。 */
+async function handleApiMineDay(request, env) {
+  const ip = String(request.headers.get('cf-connecting-ip') || 'unknown');
+  if (!mineRateOk(ip)) return json({ error: '稍慢一点再试' }, 429);
+
+  let body = {};
+  try { body = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
+  const uid = String(body.uid || '').trim();
+  const date = String(body.date || '').trim();
+  if (!/^\d{4,12}$/.test(uid)) return json({ error: 'uid 是纯数字' }, 400);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return json({ error: 'date 需要 YYYY-MM-DD' }, 400);
+
+  const kv = (env && env.KV && typeof env.KV.get === 'function') ? env.KV : null;
+  if (!kv) return json({ error: 'kv-not-bound' }, 500);
+  let bucket = null;
+  try { bucket = await kv.get('tk/' + uid.slice(-2)); } catch (_) { bucket = null; }
+  if (!bucket) return json({ found: false, date });
+  let map = {};
+  try { map = JSON.parse(bucket) || {}; } catch { map = {}; }
+  const row = map[uid] && map[uid][date];
+  if (!row) return json({ found: false, date });
+  const n = Number(row[0]) || 0;
+  const dk = Number(row[1]) || 0;
+  const ms = Array.isArray(row[2]) ? row[2] : [];
+  return json({ found: true, date, n, dk, ms });
+}
+
 /** 写接口统一授权：正常走 x-sync-token；临时允许「PAT 验明仓库 owner」（回填/灌库结束后整段删除） */
 async function authorizedForWrite(request, env) {
   return (await isSyncAuthorized(request, env)) || (await isGhAuthorized(request, env));
@@ -1200,6 +1232,15 @@ async function handleFansUpsert(request, env) {
       ).bind(covJson, Date.now()).run();
     } catch (_) { /* D1 写不动没关系，KV 已经是权威副本 */ }
     if (!rows.length) return json({ ok: true, written: 0, ready: true });
+  }
+
+  // kind:'tk' → 陪伴票根桶（tk/<uid末两位>）：整桶覆盖写 KV，不进 D1。
+  // body.data 形如 { [uid]: { [YYYY-MM-DD]: [n, dk, ms] } }，由 scripts/build-ticket.mjs 产出。
+  if (body.kind === 'tk') {
+    const b = String(body.bucket || '').replace(/\D/g, '').slice(-2);
+    if (!b) return json({ error: 'bad bucket' }, 400);
+    if (kv) await kv.put('tk/' + b, JSON.stringify(body.data || {}));
+    return json({ ok: true, tk: b, uids: Object.keys(body.data || {}).length });
   }
 
   // bucket + replace：整桶覆盖写 KV（查询主路径）。D1 只做尽力同步。
