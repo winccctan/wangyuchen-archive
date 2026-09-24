@@ -952,3 +952,81 @@ button.sc-btn { border: 0; cursor: pointer; font-family: inherit; line-height: 1
           transition: background .15s, color .15s; }
 .cv-btn:hover { background: var(--primary, #2bc4e0); color: #fff; border-color: var(--primary, #2bc4e0); }
 .cv-btn:disabled { opacity: .55; cursor: wait; }
+.tkwrap { max-width: 400px; margin: 0 auto; }
+.tkt { border-radius: 18px; overflow: hidden; background: #fbf7ee;
+       box-shadow: 0 14px 34px rgba(14,58,92,.16); }
+.tkt-main { padding: 26px 24px 20px; }
+.tkt-head { display: flex; justify-content: space-between; align-items: baseline; }
+.tkt-brand { font-size: 12px; letter-spacing: 3px; color: #8a97a4; font-weight: 600; }
+.tkt-no { font-size: 11px; color: #b3bcc4; font-family: Menlo, monospace; }
+.tkt-date { margin-top: 18px; text-align: center; }
+.tkt-date .lab { font-size: 12px; color: #8a97a4; letter-spacing: 2px; }
+.tkt-date .val { font-size: 44px; font-weight: 700; color: #17364f; line-height: 1.15; letter-spacing: 1px; }
+.tkt-date .sub { font-size: 12px; color: #9aa6b1; margin-top: 2px; }
+.tkt-line { margin: 18px 0 0; text-align: center; font-size: 15px; color: #2c4a63; line-height: 1.7; }
+.tkt-line b { color: #12405f; }
+.tkt-quote { margin: 14px auto 0; max-width: 300px; text-align: center; position: relative;
+             padding: 14px 18px; background: #f3ecdd; border-radius: 12px; }
+.tkt-quote p { font-size: 14px; color: #3d5166; line-height: 1.8; }
+.tkt-quote span { font-size: 11px; color: #a39a86; margin-top: 6px; display: block; }
+.tkt-meta { display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 16px;
+            font-size: 13px; color: #4a5c6d; }
+.tkt-meta i { width: 4px; height: 4px; border-radius: 50%; background: #c9bfa8; }
+.tkt-perf { position: relative; height: 0; border-top: 2px dashed #d5cbb6; margin: 0 14px; }
+.tkt-perf::before, .tkt-perf::after { content: ""; position: absolute; top: -9px; width: 18px; height: 18px;
+             border-radius: 50%; background: var(--bg, #eef3f7); }
+.tkt-perf::before { left: -23px; } .tkt-perf::after { right: -23px; }
+.tkt-stub { padding: 14px 24px 20px; display: flex; justify-content: space-between; align-items: center; }
+.tkt-stubinfo { font-size: 11px; color: #8a97a4; line-height: 1.9; }
+.tkt-stubinfo b { color: #2c4a63; font-size: 12px; letter-spacing: 1px; }
+.tkt-bars { display: flex; align-items: flex-end; gap: 2px; height: 30px; }
+.tkt-bars i { display: block; background: #17364f; border-radius: 1px; }
+.tkt-ctrl { margin-top: 16px; display: flex; flex-direction: column; gap: 10px; }
+.tkt-row { display: flex; gap: 8px; }
+.tkt-btn { flex: 1; padding: 11px 0; border-radius: 999px; border: 1px solid #c9d4dd; background: var(--card, #fff);
+           color: #2c4a63; font-size: 13.5px; font-weight: 600; cursor: pointer; }
+.tkt-btn:active { transform: scale(.97); }
+.tkt-primary { background: #12405f; border-color: #12405f; color: #fff; flex: 2; }
+.tkt-hint { font-size: 12px; color: #8a97a4; text-align: center; line-height: 1.7; }
+
+/* 那年今天 · 你说的话（票根下面的发言回放，demo 假数据） */
+.tkmsgs {
+  margin: 14px 0 4px; padding: 14px 14px 12px;
+  border-radius: 16px; background: rgba(255, 255, 255, .75);
+  border: 1px solid rgba(23, 54, 79, .08);
+  box-shadow: 0 8px 22px -14px rgba(23, 54, 79, .25);
+}
+.tkmsgs-h { font-size: 13px; font-weight: 800; color: #2c4a63; margin: 0 0 10px; letter-spacing: .5px; }
+.tkmsg { display: flex; gap: 10px; align-items: flex-start; margin: 0 0 8px; }
+.tkmsg .tm {
+  flex: none; font: 600 11px/1.9 Menlo, monospace; color: #9aa6b1;
+  font-variant-numeric: tabular-nums; padding-top: 5px;
+}
+.tkmsg .tx {
+  font-size: 13.5px; line-height: 1.55; color: #22405a;
+  background: #fdf6e9; border: 1px solid #eee0c4;
+  border-radius: 3px 14px 14px 14px; padding: 7px 12px;
+  box-shadow: 0 2px 6px -3px rgba(23, 54, 79, .18);
+}
+.tkmsgs-empty {
+  font-size: 13px; color: #8a97a4; text-align: center; line-height: 1.8;
+  padding: 14px 6px 10px;
+}
+.tkmsgs-more { font-size: 12px; color: #9aa6b1; text-align: center; padding: 6px 0 2px; }
+/* ===== 陪伴档案 · 年报式结果卡（深色渐变 + 动效） ===== */
+/* 查到 uid 后出现的两个子页页签：我的档案 / 我的去年今日（同一份数据，切换显示） */
+.mine-subtabs {
+  display: flex; gap: 3px; padding: 3px; margin: 0 0 14px;
+  border-radius: 999px; background: rgba(23, 35, 64, .06);
+  border: 1px solid rgba(23, 35, 64, .08);
+}
+.mine-subtab {
+  -webkit-appearance: none; appearance: none; border: 0; cursor: pointer; flex: 1;
+  padding: 8px 12px; border-radius: 999px; font: inherit; font-size: 13.5px; font-weight: 700;
+
+  color: rgba(23, 35, 64, .55); background: transparent; transition: color .18s, background .18s, box-shadow .18s;
+}
+.mine-subtab.on {
+  color: #12242a; background: linear-gradient(120deg, #7ff0dd, #9fc8ff);
+  box-shadow: 0 4px 12px rgba(58, 160, 200, .28);
+}
