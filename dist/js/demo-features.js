@@ -2338,8 +2338,12 @@
   };
 
   // 生写小卡：筛选 + 放大（事件委托，guideSub 内容会重渲）
+  // ⚠️ cards:open 必须挂捕获阶段：app.js 的容器委托会对子标签点击 stopPropagation，
+  //    冒泡到不了 document（cards:zoom 不受影响，因为卡片点击没被拦）。
   document.addEventListener('click', (e) => {
     if (e.target.closest('[data-sub="cards"]')) trk('cards:open');  // 只在真点子标签时记，筛选重渲不记
+  }, true);
+  document.addEventListener('click', (e) => {
     const f = e.target.closest('[data-cardf]');
     if (f) {
       LS.set('wyc-demo-cardcat', f.dataset.cardf);
