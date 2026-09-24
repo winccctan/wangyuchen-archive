@@ -3397,7 +3397,24 @@ function renderPerfCuts(query) {
     date: c[0], src: 'bl', title: c[1],
     url: 'https://www.bilibili.com/video/' + c[2], cover: c[3] || '', song: '',
   }));
-  const all = bl.concat(wb);
+  // 2026-09-25：同步把 live-cuts.js 里「公演cut」类条目拉进来。
+  // bili-cuts.js 只覆盖 Chzhnh 单个合集 2024-04→2026-09，老公演 cut 不在此范围，
+  // 它们以 kind:"cut"、无合集形式躺在 live-cuts.js（已随抓取进 KV），之前在「公演cut」页读不到。
+  const lc = (DATA.liveCuts && DATA.liveCuts.cuts ? DATA.liveCuts.cuts : [])
+    .filter((c) => /公演\s*cut/i.test(c.title || ''))
+    .map((c) => ({
+      date: c.titleDate || c.date, src: 'bl', title: c.title || (c.titleDate || ''),
+      url: c.url || ('https://www.bilibili.com/video/' + c.bvid),
+      cover: c.cover ? proxyImg(c.cover) : '', song: '',
+    }));
+  // 合并去重（按 BV 号），避免与 bili-cuts.js 重叠的 2024+ 公演cut 重复出现
+  const seen = new Set();
+  const all = [];
+  for (const it of bl.concat(lc, wb)) {
+    const bv = (it.url.match(/BV1[0-9A-Za-z]{8}/) || [])[0];
+    if (bv) { if (seen.has(bv)) continue; seen.add(bv); }
+    all.push(it);
+  }
   if (!all.length) return '<div class="empty">暂无公演 cut。</div>';
   const q = (query || '').trim().toLowerCase();
   const list = all.filter((c) => !q || c.title.toLowerCase().includes(q) || c.date.includes(q));
@@ -3407,7 +3424,7 @@ function renderPerfCuts(query) {
   order.sort((a, b) => b.localeCompare(a));
   const nBl = list.filter((c) => c.src === 'bl').length;
   const nWb = list.length - nBl;
-  let html = `<div class="pc-note">B 站合集 ${nBl} 条（UP 主 Chzhnh，整场个人 cut）+ 微博 ${nWb} 条（应援会，按单曲切），按日期混排 · 角标区分来源</div>`;
+  let html = `<div class="pc-note">B 站 ${nBl} 条（整场个人 cut）+ 微博 ${nWb} 条（应援会，按单曲切），按日期混排 · 角标区分来源</div>`;
   order.forEach((date) => {
     const arr = groups[date];
     html += `<section class="pc-group" id="pc-group-${escapeHtml(date)}">`
@@ -3935,7 +3952,9 @@ function liveCutList() {
   //   ⚠️ 该合集里混有 2 条「电台直播回放」（20260711 / 20251216 第二段）——
   //   电台也是她的一种直播形式，属于本栏，不能因为标题带「回放」就排除。
   // 无合集 → 该号投稿本身即切片（忘记自己是猪），但标题带「回放」的仍排除。
-  return all.filter((c) => (c.collection ? LIVE_CUT_COLLECTIONS.test(c.collection) : c.kind === "cut"));
+  // 公演cut 不归本栏（按既定口径它进「公演cut」页），避免同一条出现在两个板块。
+  return all.filter((c) => !/公演\s*cut/i.test(c.title || '')
+    && (c.collection ? LIVE_CUT_COLLECTIONS.test(c.collection) : c.kind === "cut"));
 }
 
 function renderLive() {
