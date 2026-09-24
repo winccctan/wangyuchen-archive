@@ -1856,6 +1856,9 @@
     'bmltYV8xMTMzMjAyNjQ4MDBfMTcyMDc1NzIxMDk1Ml80NmViMGIwYS04YjdkLTRlYzAtODVjOC00ZmZjMDA3MGJkMzM=',   // 2024-07-14 盛典海报
     'bmltYV8xMTMzMjAyNjQ4MDBfMTcwOTI4MDYzODMzNV8zYTYzNTE0ZC02YTI2LTRmZGItOWRhMi0wYmM3MjUwNTVmYzQ=',   // 2024-03-01 官方物料
 
+    /* ---- 2026-09-24 站长第四批点名（1 张：外卖订单贴纸）---- */
+    'bmltYV8xMTMzMjAyNjQ4MDBfMTcwOTU2MjEzNzEyNl9kZDM5ZGYzMy03NWZlLTQ0NjEtODI1NC1hYmIzMjZjODJiZTg=',   // 2024-03-05 奶茶杯外卖订单贴纸
+
   ];
 
   function boxOk(it, m) {
