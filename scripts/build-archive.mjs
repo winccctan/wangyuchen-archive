@@ -89,8 +89,10 @@ function attachBiliAndPruneDead(list) {
       const key = shDate(p.stime).replace(/-/g, '');
       const cands = biliByDate.get(key) || [];
       const teams = (p.teamList || []).map((t) => t.teamName).filter(Boolean);
-      const hit = cands.find((v) => /niii/i.test(v.title))
-        || (teams.length > 1 ? cands.find((v) => /gnz48/i.test(v.title)) : null);
+      // 放宽队伍匹配：早期公演（teamList 为空）和「GNZ48」系视频（标题不含 niii）此前都被漏挂。
+      // 优先「公演cut / 公演」类，再兜底任何含 王语晨 / niii / gnz48 的当天视频。
+      const hit = cands.find((v) => /(公演cut|公演)/.test(v.title) && /王语晨|niii|gnz48/i.test(v.title))
+        || cands.find((v) => /王语晨|niii|gnz48/i.test(v.title));
       if (hit) {
         p.biliUrl = `https://www.bilibili.com/video/${hit.bvid}`;
         p.biliTitle = hit.title;
