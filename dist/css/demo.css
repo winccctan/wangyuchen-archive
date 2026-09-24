@@ -785,6 +785,11 @@ button.sc-btn { border: 0; cursor: pointer; font-family: inherit; line-height: 1
   box-shadow: 0 12px 26px -12px rgba(127, 240, 221, .8);
 }
 .ma-act:active { transform: scale(.985); }
+/* 次要按钮（行程图的「复制文案」）：不能抢掉「保存图片」的视觉重点 */
+.ma-act.ma-act2 {
+  margin-top: 8px; font-weight: 600; color: #eaf2ff;
+  background: rgba(255, 255, 255, .14); box-shadow: none;
+}
 .ma-note { min-height: 16px; margin: 8px 0 0; text-align: center; font-size: 12px; color: #9fb3d1; }
 /* 不支持系统分享时，闪一下图片提示「长按这里」 */
 .ma-flash { animation: maFlash 1.1s ease-in-out 2; }
