@@ -2403,6 +2403,167 @@
     }
   });
 
+  /* ═══ 功能 ⑫ 陪伴纪念票根（demo 假数据版） ═══
+     去年今日 × 票根：那天你在她房间说了几句话、送了几个鸡腿，选一句留底。
+     真版数据=口袋房间发言 + 鸡腿礼物记录（离线按天聚合）；demo 用按日期稳定伪随机。 */
+  const TK_QUOTES = [
+    '今天也要好好吃饭，早点休息。',
+    '舞台上的灯光真好，你站在中间发光。',
+    '唱到第二段的时候我鸡皮疙瘩都起来了。',
+    '今天下班路上一直在循环你的 solo。',
+    '辛苦啦，记得喝水，我们都在。',
+    '今天的直拍我看了八遍。',
+    '睡了睡了，明天见。'
+  ];
+  function tkHash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+  function tkFmt(d) { return d.getFullYear() + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.' + String(d.getDate()).padStart(2, '0'); }
+  const tkCur = (() => { const t = new Date(); return new Date(t.getFullYear() - 1, t.getMonth(), t.getDate()); })();
+  let tkHideLeg = LS.get('wyc-tk-hideleg') === '1';   /* 分享图里不显示鸡腿（默认显示） */
+  window._tkCfg = null;                                /* 档案页传入的真实起止（start/days） */
+  function tkRerender() {
+    const slot = document.getElementById('tkSlot');
+    if (slot) slot.outerHTML = window.renderTicket(window._tkCfg);
+    else if (typeof renderGuideSub === 'function') renderGuideSub();
+  }
+  window.tkShift = function (n) { tkCur.setDate(tkCur.getDate() + n); tkRerender(); };
+  window.tkLastYear = function () { const t = new Date(); tkCur.setFullYear(t.getFullYear() - 1); tkCur.setMonth(t.getMonth()); tkCur.setDate(t.getDate()); tkRerender(); };
+
+  /* 那年今天 · 你说的话（demo 假数据：按日期哈希稳定生成，翻回去数字不变）
+     真版数据源：房间全量发言按 uid + 日期过滤，worker 加个按天查的口子即可 */
+  function tkMsgList(key, h, msgs) {
+    if (!msgs) {
+      return `<div class="tkmsgs"><div class="tkmsgs-h">那年今天 · 你说的话</div>
+        <div class="tkmsgs-empty">那天你没有留言。<br>别遗憾，点「前一天」看看别的日子也好。</div></div>`;
+    }
+    let s = h >>> 3;
+    const rnd = () => { s = Math.imul(s, 48271) % 2147483647; return s / 2147483647; };
+    const items = [];
+    let base = 17.5 + rnd() * 3;                    // 傍晚开场，越聊越晚
+    for (let i = 0; i < Math.min(msgs, 8); i++) {
+      base += 0.3 + rnd() * 2.2;
+      if (base >= 24) base -= 24;
+      const hh = Math.floor(base), mm = Math.floor((base - hh) * 60);
+      const txt = TK_QUOTES[(h + i * 97) % TK_QUOTES.length];
+      items.push({ t: String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0'), txt });
+    }
+    const more = msgs - items.length;
+    items.sort((a, b) => (a.t < b.t ? -1 : 1));   // 跨零点回绕会乱序，按时间排回去
+    return `<div class="tkmsgs"><div class="tkmsgs-h">那年今天 · 你说的 ${msgs} 句话</div>`
+      + items.map((it) => `<div class="tkmsg"><span class="tm">${it.t}</span><span class="tx">${esc(it.txt)}</span></div>`).join('')
+      + (more > 0 ? `<div class="tkmsgs-more">……还有 ${more} 句，真版会全部展示</div>` : '')
+      + `</div>`;
+  }
+
+  window.renderTicket = function (cfg) {
+    window._tkCfg = cfg || window._tkCfg || null;
+    const start = (window._tkCfg && window._tkCfg.start) || '2022.11.07';
+    const days = (window._tkCfg && window._tkCfg.days) || Math.floor((Date.now() - new Date(2022, 10, 7)) / 86400000) + 1;
+    const key = tkFmt(tkCur), h = tkHash(key);
+    const msgs = h % 26, leg = msgs > 0 ? (h >>> 4) % 40 : 0;
+    const wk = '日一二三四五六'[tkCur.getDay()];
+    const quote = msgs > 0 ? TK_QUOTES[h % TK_QUOTES.length] : '没关系，第二天你回来就好。';
+    const line = msgs > 0
+      ? `你那天在她的房间<br>留下了 <b>${msgs}</b> 句话`
+      : `那天你没来留言<br>但她一直在房间里发光`;
+    const meta = (!tkHideLeg && leg > 0) ? `<span>来过房间</span><i></i><span>送出 <b>${leg}</b> 个鸡腿</span>`
+      : (leg > 0 && tkHideLeg) ? `<span>来过房间</span><i></i><span>看了直播</span>`
+      : `<span>来过房间</span><i></i><span>安静地看完了直播</span>`;
+    let bars = ''; let s = h;
+    for (let i = 0; i < 24; i++) { s = Math.imul(s, 48271) % 2147483647; bars += `<i style="width:${2 + s % 3}px;height:${62 + s % 38}%"></i>`; }
+    return `
+    <div class="tkwrap" id="tkSlot">
+      <div class="tkt" id="tkt">
+        <div class="tkt-main">
+          <div class="tkt-head"><span class="tkt-brand">陪伴纪念票根</span><span class="tkt-no">NO.${key.replace(/\./g, '')}-${h % 900 + 100}</span></div>
+          <div class="tkt-date"><div class="lab">去 年 今 日</div><div class="val">${key}</div><div class="sub">星期${wk} · 一年前的今天</div></div>
+          <div class="tkt-line">${line}</div>
+          <div class="tkt-quote"><p>${esc(quote)}</p><span>—— 你当时说的话</span></div>
+          <div class="tkt-meta">${meta}</div>
+        </div>
+        <div class="tkt-perf"></div>
+        <div class="tkt-stub">
+          <div class="tkt-stubinfo"><b>一只鱼鱼</b><br>始发 ${start} · 已陪伴 ${days} 天</div>
+          <div class="tkt-bars">${bars}</div>
+        </div>
+      </div>
+      <div class="tkt-ctrl">
+        <div class="tkt-row">
+          <button class="tkt-btn" data-tk="prev">‹ 前一天</button>
+          <button class="tkt-btn" data-tk="lastyear">去年今日</button>
+          <button class="tkt-btn" data-tk="next">后一天 ›</button>
+        </div>
+        <div class="tkt-row"><button class="tkt-btn tkt-primary" id="tkSave">⬇ 保存 / 分享图片</button></div>
+        <div class="tkt-row"><button class="tkt-btn tkt-priv" id="tkPriv">${tkHideLeg ? '🫥 图里显示鸡腿：关' : '🫥 图里显示鸡腿：开'}</button></div>
+        <p class="tkt-hint">demo 假数据版：日期随便翻，条数 / 台词 / 鸡腿每天不一样；<br>真版会接你自己的口袋房间发言和鸡腿记录。</p>
+      </div>
+      ${tkMsgList(key, h, msgs)}
+    </div>`;
+  };
+
+  function tkSaveImage() {
+    const W = 750, H = 1080, cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    const c = cv.getContext('2d');
+    const $id = (id) => document.getElementById(id);
+    if (!$id('tkt')) return;
+    c.fillStyle = '#eef3f7'; c.fillRect(0, 0, W, H);
+    c.fillStyle = '#fbf7ee';
+    c.beginPath(); c.moveTo(71, 70); c.arcTo(705, 70, 705, 1010, 26); c.arcTo(705, 1010, 45, 1010, 26); c.arcTo(45, 1010, 45, 70, 26); c.arcTo(45, 70, 705, 70, 26); c.closePath(); c.fill();
+    c.textAlign = 'left'; c.fillStyle = '#8a97a4'; c.font = '600 24px sans-serif';
+    c.fillText('陪 伴 纪 念 票 根', 90, 138);
+    c.textAlign = 'right'; c.fillStyle = '#b3bcc4'; c.font = '20px Menlo, monospace';
+    c.fillText($id('tkt').querySelector('.tkt-no').textContent, 660, 136);
+    c.textAlign = 'center';
+    c.fillStyle = '#8a97a4'; c.font = '22px sans-serif'; c.fillText('去 年 今 日', 375, 205);
+    c.fillStyle = '#17364f'; c.font = '700 92px sans-serif';
+    c.fillText($id('tkt').querySelector('.tkt-date .val').textContent, 375, 305);
+    c.fillStyle = '#9aa6b1'; c.font = '24px sans-serif';
+    c.fillText($id('tkt').querySelector('.tkt-date .sub').textContent, 375, 350);
+    const m = $id('tkt').querySelector('.tkt-line').innerText.split('\n');
+    c.fillStyle = '#2c4a63'; c.font = '30px sans-serif';
+    m.forEach((t, i) => c.fillText(t, 375, 435 + i * 46));
+    c.fillStyle = '#f3ecdd';
+    c.beginPath(); c.moveTo(131, 535); c.arcTo(619, 535, 619, 685, 20); c.arcTo(619, 685, 131, 685, 20); c.arcTo(131, 685, 131, 535, 20); c.arcTo(131, 535, 619, 535, 20); c.closePath(); c.fill();
+    c.fillStyle = '#3d5166'; c.font = '27px sans-serif';
+    c.fillText($id('tkt').querySelector('.tkt-quote p').textContent, 375, 612);
+    c.fillStyle = '#a39a86'; c.font = '20px sans-serif'; c.fillText('—— 你当时说的话', 375, 656);
+    c.fillStyle = '#4a5c6d'; c.font = '26px sans-serif';
+    c.fillText($id('tkt').querySelector('.tkt-meta').innerText.replace(/\n/g, ' '), 375, 775);
+    c.strokeStyle = '#d5cbb6'; c.setLineDash([12, 10]); c.lineWidth = 3;
+    c.beginPath(); c.moveTo(70, 835); c.lineTo(680, 835); c.stroke(); c.setLineDash([]);
+    c.textAlign = 'left'; c.fillStyle = '#8a97a4'; c.font = '22px sans-serif';
+    c.fillText('一只鱼鱼', 90, 900);
+    c.fillText($id('tkt').querySelector('.tkt-stubinfo').innerText.split('\n')[1], 90, 940);
+    let x = 470; const key = $id('tkt').querySelector('.tkt-date .val').textContent;
+    let s = tkHash(key); c.fillStyle = '#17364f';
+    for (let i = 0; i < 40; i++) { s = Math.imul(s, 48271) % 2147483647; const bw = 2 + s % 4, bh = 30 + s % 25; c.fillRect(x, 945 - bh, bw, bh); x += bw + 3; }
+    c.textAlign = 'center'; c.fillStyle = '#b3bcc4'; c.font = '20px sans-serif';
+    c.fillText('idol.wyc0518.cc', 375, 1015);
+    const fname = '陪伴票根-' + key.replace(/\./g, '') + '.png';
+    cv.toBlob((bl) => {
+      const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) || (navigator.userAgentData && navigator.userAgentData.mobile);
+      const file = new File([bl], fname, { type: 'image/png' });
+      if (isMobile && navigator.canShare && navigator.canShare({ files: [file] })) {
+        navigator.share({ files: [file], title: '陪伴纪念票根' }).catch(() => {});
+      } else {
+        const a = document.createElement('a'); a.href = URL.createObjectURL(bl); a.download = fname;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      }
+    });
+  }
+
+  // 票根按钮（委托；guideSub 内容会重渲）
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-tk]');
+    if (t) { if (t.dataset.tk === 'prev') tkShift(-1); else if (t.dataset.tk === 'next') tkShift(1); else tkLastYear(); return; }
+    if (e.target.closest('#tkSave')) tkSaveImage();
+    if (e.target.closest('#tkPriv')) {
+      tkHideLeg = !tkHideLeg; LS.set('wyc-tk-hideleg', tkHideLeg ? '1' : '0');
+      tkRerender();
+    }
+  });
+
   // 等 app.js 的 init() 把数据拉回来再启动
   (function waitData(n) {
     const ok = (typeof DATA !== 'undefined') && (DATA.messages.length > 0 || DATA.live.length > 0);
