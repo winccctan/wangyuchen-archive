@@ -598,8 +598,8 @@ async function handleStatsBody(url, env, kv, wantJson) {
 
   const total = Number(totalRaw || 0);
 
-  // 累计次数 = 各天相加（详情见 evTotalsByListing）；顺手把当天统计写进 KV 的次数读出来，
-  // 让站长能直接看到「今天用了多少 / 上限多少」，不用再担心统计把额度吃掉。
+  // 累计次数 = 各天相加（详情见 evTotalsByListing）；顺手把当天的「已处理动作数」读出来，
+  // 让站长能直接看见今天记了多少 / 上限多少（这个数是 1/5 抽样得来的粗估，不是精确的写入次数）。
   const [evTotalsMap, gateUsedRaw] = await Promise.all([
     evTotalsByListing(kv),
     g('stat:gate:' + days7[0]).catch(() => null),
@@ -675,8 +675,10 @@ async function handleStatsBody(url, env, kv, wantJson) {
       langs: langRows.map(([l, n]) => ({ lang: l, name: LANG_NAME[l] || l, count: n })),
       days: days.map(([d, n, u, su]) => ({ day: d, count: n, visitors: u, siteUv: su })),
       countries: countries,
-      kvWritesToday: gateUsed,
-      kvWriteCap: STAT_WRITE_CAP,
+      // stat:gate:<day> 是「当天处理了多少次动作」的**粗估**（1/5 抽样、每次加 5，所以和实际值可能差几百），
+      // 不是写入次数：写入次数 ≥ 这个数（每个动作至少写 1 次）。够用来判断有没有撞上限就够了。
+      actionsToday: gateUsed,
+      actionCap: STAT_WRITE_CAP,
       events: evList
     }), {
       headers: {
@@ -705,7 +707,7 @@ async function handleStatsBody(url, env, kv, wantJson) {
 <div class="cards"><div class="card"><div class="k">累计翻译次数</div><div class="v">${total}</div></div>
 <div class="card"><div class="k">今日次数</div><div class="v">${days[0][1]}</div></div>
 <div class="card"><div class="k">今日独立访客</div><div class="v">${siteUvToday}</div></div>
-<div class="card"><div class="k">今日写入 KV / 上限</div><div class="v" style="font-size:18px">${gateUsed} / ${STAT_WRITE_CAP}</div></div></div>
+<div class="card"><div class="k">今日记录动作 / 上限</div><div class="v" style="font-size:18px">${gateUsed} / ${STAT_WRITE_CAP}</div></div></div>
 <h2>各语言使用次数</h2><table>${langHtml}</table>
 <h2>访客来自哪里（今日 / 近 7 天）</h2><table><tr><td>国家·地区</td><td class="n">今日</td><td class="n">近 7 天</td></tr>${ctryHtml}</table>
 <p class="dim">按 Cloudflare 给出的国家（ISO 代码）统计独立访客，不记 IP 明文。<b>统计的是「IP 所在国家/地区」，不是成员的国籍</b>：用加速器 / VPN 的访客会算成出口国家（国内粉丝挂日本节点 → 记为日本），同一个 IP 当天只算 1 人、换 WiFi↔流量或换节点会多算 1 人。近 7 天＝每天独立访客相加，同一个人多天都来会重复计；数据从启用当天开始累计。</p>
