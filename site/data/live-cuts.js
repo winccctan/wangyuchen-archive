@@ -1,9 +1,9 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-09-21T16:36:41.977Z",
-  "count": 620,
-  "matched": 449,
-  "replays": 248,
-  "clips": 372,
+  "updatedAt": "2026-09-24T15:08:15.816Z",
+  "count": 627,
+  "matched": 455,
+  "replays": 251,
+  "clips": 376,
   "targets": [
     {
       "mid": "1805448354",
@@ -23,9 +23,54 @@ window.LIVE_CUTS = {
     "358477444:season:5834827": 2,
     "358477444:season:7130625": 2,
     "358477444:season:6805043": 2,
-    "358477444:season:2812669": 2
+    "358477444:season:2812669": 2,
+    "1805448354:space": 2,
+    "358477444:space": 3
   },
   "cuts": [
+    {
+      "bvid": "BV13oaN6HECj",
+      "collection": "",
+      "cover": "http://i1.hdslb.com/bfs/archive/251e79dce9c0d1179613daee739c8c84d370a633.jpg",
+      "created": 1790250247,
+      "date": "2026-09-24",
+      "kind": "cut",
+      "liveDate": "2023-10-02",
+      "liveId": "915739521941573632",
+      "mid": "358477444",
+      "title": "【王语晨】20221002 梦想奋进计划《致每个不眠之夜+与星空手牵手》公演cut",
+      "titleDate": "2022-10-02",
+      "up": "Chzhnh",
+      "url": "https://www.bilibili.com/video/BV13oaN6HECj"
+    },
+    {
+      "bvid": "BV1Z7aw6nEpq",
+      "collection": "",
+      "cover": "http://i1.hdslb.com/bfs/archive/9f0e52ce6351f2cc288d7167174eef5f9fa2b93a.jpg",
+      "created": 1790222224,
+      "date": "2026-09-24",
+      "kind": "cut",
+      "mid": "358477444",
+      "title": "【王语晨】来越南天天吃炸鸡，都吃胖了，脸上肉都回来了",
+      "titleDate": "",
+      "up": "Chzhnh",
+      "url": "https://www.bilibili.com/video/BV1Z7aw6nEpq"
+    },
+    {
+      "bvid": "BV1W8hk6rEvi",
+      "collection": "",
+      "cover": "http://i2.hdslb.com/bfs/archive/5e6eddddb0f52c0f11f132f7d15970e39bce72bf.jpg",
+      "created": 1790049851,
+      "date": "2026-09-22",
+      "kind": "cut",
+      "liveDate": "2026-09-21",
+      "liveId": "1308594215547899904",
+      "mid": "358477444",
+      "title": "【王语晨】今年这个mv总体效率还算挺高，唯一不能理解的是坐了三四个小时大巴去隔壁省的别墅里面拍，胡志明市就没有别墅吗？",
+      "titleDate": "",
+      "up": "Chzhnh",
+      "url": "https://www.bilibili.com/video/BV1W8hk6rEvi"
+    },
     {
       "bvid": "BV1mUhe6xE5Z",
       "title": "【王语晨】手握两百多万巨款，准备明天全部花光",
@@ -1194,6 +1239,21 @@ window.LIVE_CUTS = {
       "liveDate": "2026-08-07"
     },
     {
+      "bvid": "BV1kvM16sEpW",
+      "collection": "",
+      "cover": "http://i0.hdslb.com/bfs/archive/529078de0f9113fa117457ef924b28687b1bf42b.jpg",
+      "created": 1785950697,
+      "date": "2026-08-06",
+      "kind": "replay",
+      "liveDate": "2026-08-05",
+      "liveId": "1291883782086660096",
+      "mid": "358477444",
+      "title": "【王语晨】20260805 直播回放",
+      "titleDate": "2026-08-05",
+      "up": "Chzhnh",
+      "url": "https://www.bilibili.com/video/BV1kvM16sEpW"
+    },
+    {
       "bvid": "BV1kaMC6UErW",
       "title": "【王语晨】就算别人做错了什么，咱们也是没必要审判人家的，另外希望大家饭我是开心的",
       "created": 1785905516,
@@ -1342,6 +1402,21 @@ window.LIVE_CUTS = {
       "liveDate": "2026-07-30"
     },
     {
+      "bvid": "BV1k23B6yE9E",
+      "collection": "",
+      "cover": "http://i2.hdslb.com/bfs/archive/445960e166ddb8dd88368f7c6ecd24367a9b3f00.jpg",
+      "created": 1785259401,
+      "date": "2026-07-29",
+      "kind": "replay",
+      "liveDate": "2026-07-28",
+      "liveId": "1288971739209732096",
+      "mid": "358477444",
+      "title": "【王语晨】20260728 直播回放",
+      "titleDate": "2026-07-28",
+      "up": "Chzhnh",
+      "url": "https://www.bilibili.com/video/BV1k23B6yE9E"
+    },
+    {
       "bvid": "BV16R3B6uEXa",
       "collection": "",
       "cover": "http://i2.hdslb.com/bfs/archive/5d91cb3f5b5c9c012ef58dafb8f75a3459ec5a62.jpg",
@@ -1370,6 +1445,21 @@ window.LIVE_CUTS = {
       "collection": "合集·王语晨直播回放",
       "liveId": "1287902779085230080",
       "liveDate": "2026-07-25"
+    },
+    {
+      "bvid": "BV1Fp3g6tEAX",
+      "collection": "",
+      "cover": "http://i2.hdslb.com/bfs/archive/a201f6232ea8024fd88d93b9bc2a1a6aefd4fb96.jpg",
+      "created": 1784976454,
+      "date": "2026-07-25",
+      "kind": "cut",
+      "liveDate": "2026-07-25",
+      "liveId": "1287902779085230080",
+      "mid": "358477444",
+      "title": "【王语晨】20260725 GNZ48 Team NIII 《拾忆：TEAM NIII》公演cut",
+      "titleDate": "2026-07-25",
+      "up": "Chzhnh",
+      "url": "https://www.bilibili.com/video/BV1Fp3g6tEAX"
     },
     {
       "bvid": "BV1kX3K6nEFs",
@@ -1662,6 +1752,21 @@ window.LIVE_CUTS = {
       "collection": "合集·王语晨直播回放",
       "liveId": "1280675613733883904",
       "liveDate": "2026-07-05"
+    },
+    {
+      "bvid": "BV1xZMN67EPp",
+      "collection": "",
+      "cover": "http://i0.hdslb.com/bfs/archive/97a21a90126a920108ba850c618e7716dc915945.jpg",
+      "created": 1783195886,
+      "date": "2026-07-05",
+      "kind": "replay",
+      "liveDate": "2026-07-04",
+      "liveId": "1280300518305763328",
+      "mid": "358477444",
+      "title": "【王语晨】20260704 直播回放",
+      "titleDate": "2026-07-04",
+      "up": "Chzhnh",
+      "url": "https://www.bilibili.com/video/BV1xZMN67EPp"
     },
     {
       "bvid": "BV1YkMN6tEFi",
