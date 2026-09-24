@@ -1049,7 +1049,8 @@ async function handleApi(url, request, env, ctx) {
     return handleAdminPass(request, env);
   }
   if (p === '/api/sync' && request.method === 'POST') {
-    if (!(await isSyncAuthorized(request, env))) return json({ error: 'forbidden: sync token required' }, 403);
+    // 与 authorizedForWrite 一致：既认 x-sync-token（CI），也认本机 GH PAT 兜底（x-gh-token，验仓库 owner）
+    if (!(await isSyncAuthorized(request, env) || await isGhAuthorized(request, env))) return json({ error: 'forbidden: sync token required' }, 403);
     return handleApiSync(request, env, ctx);
   }
   return json({ error: 'unknown api: ' + p }, 404);
