@@ -3331,7 +3331,10 @@ function renderPerfSub() {
     const bc = biliCutFor(p);
     const q = { ...p };
     if (c) { q._cutCount = c.n; q._cutDate = c.date; }
-    if (bc) { q._biliCutDate = bc.date; q._biliCutTitle = bc.title; }
+    // 「✂️ B站cut」与公演主回放(biliUrl)是同一视频时（当天无完整回放、cut 即主回放，如 2022-10-02），
+    // 不再重复显示该按钮，避免同一条 cut 既当主回放又当 cut 入口。
+    const mainBvid = (p.biliUrl || '').match(/BV1[0-9A-Za-z]{8}/);
+    if (bc && (!mainBvid || bc.bvid !== mainBvid[0])) { q._biliCutDate = bc.date; q._biliCutTitle = bc.title; }
     return q;
   });
   if (!list.length) {

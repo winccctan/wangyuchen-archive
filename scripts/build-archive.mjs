@@ -89,9 +89,14 @@ function attachBiliAndPruneDead(list) {
       const key = shDate(p.stime).replace(/-/g, '');
       const cands = biliByDate.get(key) || [];
       const teams = (p.teamList || []).map((t) => t.teamName).filter(Boolean);
-      // 放宽队伍匹配：早期公演（teamList 为空）和「GNZ48」系视频（标题不含 niii）此前都被漏挂。
-      // 优先「公演cut / 公演」类，再兜底任何含 王语晨 / niii / gnz48 的当天视频。
-      const hit = cands.find((v) => /(公演cut|公演)/.test(v.title) && /王语晨|niii|gnz48/i.test(v.title))
+      // 账号口径（站长 2026-09-25 明确）：
+      //   企鹅大帝(2086351451) = 公演完整回放 → 作为主回放 biliUrl（绝不能进切片）；
+      //   Chzhnh/忘记自己是猪 = 切片，仅在当天没有完整回放时兜底当主回放（如 2022-10-02 只有 cut）。
+      // 故优先选企鹅大帝的完整回放（按 mid 或「含《剧目》公演、无 cut、无 王语晨」标题特征识别），
+      // 其次兜底任何含 王语晨/niii/gnz48 的当天视频（多为 cut），再兜底其余。
+      const isFullReplay = (v) => /公演/.test(v.title) && !/cut/i.test(v.title) && !/王语晨/.test(v.title);
+      const hit = cands.find((v) => (v.mid === '2086351451' || isFullReplay(v)) && /王语晨|niii|gnz48/i.test(v.title))
+        || cands.find((v) => /(公演cut|公演)/.test(v.title) && /王语晨|niii|gnz48/i.test(v.title))
         || cands.find((v) => /王语晨|niii|gnz48/i.test(v.title));
       if (hit) {
         p.biliUrl = `https://www.bilibili.com/video/${hit.bvid}`;
