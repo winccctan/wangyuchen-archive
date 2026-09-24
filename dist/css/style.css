@@ -371,9 +371,9 @@ body {
 .guide-tip { color: var(--muted); font-size: 12px; text-align: center; margin: 0; }
 
 /* ---------------- 新粉指南子标签 ---------------- */
-.subtabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: nowrap; }
+.subtabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
 .subtab {
-  flex: 1 1 0; min-width: 0; padding: 9px 6px;
+  flex: 0 1 auto; min-width: 0; padding: 9px 14px;
   border: 1px solid var(--border); background: var(--card); color: var(--muted);
   border-radius: 999px; font-size: 13px; font-weight: 600; cursor: pointer;
   white-space: nowrap; text-align: center;
@@ -484,7 +484,7 @@ body {
   .upd-full { display: none; }
   .upd-mini { display: inline; }
   .subtabs { gap: 6px; }
-  .subtab { padding: 8px 4px; font-size: 12px; }
+  .subtab { padding: 8px 11px; font-size: 12px; }
 }
 
 /* 极窄屏（≤380px）：更新时间独占一行，三个按钮整排靠右，避免任何单个按钮被挤到下一行 */
@@ -494,7 +494,7 @@ body {
   .toolbar-actions { gap: 6px; }
   .updated { flex: 1 1 100%; font-size: 11px; }
   .subtabs { gap: 4px; }
-  .subtab { padding: 7px 3px; font-size: 11px; }
+  .subtab { padding: 7px 10px; font-size: 11px; }
 }
 
 /* ---------------- 时间筛选弹窗 ---------------- */
