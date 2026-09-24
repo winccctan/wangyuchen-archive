@@ -2268,6 +2268,133 @@
     console.log('[demo] 演示功能已就绪：收藏+收藏码 · 搜索类型筛选 · 去年今日 · 多选分享 · 热力图 · 开播提醒');
   }
 
+  /* =====================================================================
+     功能 ⑪ 生写小卡图鉴：17 张实物照片识别归组的 14 个系列 / 48 款卡面
+     （数据来自 2026-09-24 实物归档，photos/ 5.5MB 随 demo 部署）
+     ===================================================================== */
+  const CARD_DIR = './cards/photos/';
+  const CARD_SERIES = [
+    { n: 'SNH48 花蝴蝶内封', c: '主题生写', p: '04_新的序章幻境-白纱裙.jpg', k: 2,
+      d: '白色蕾丝纱裙 + 蓝色蝴蝶结发饰、木栅栏秋千背景；卡面左下手写体「王语晨」，竖排「花蝴蝶」。' },
+    { n: 'SNH48 2024总选生写', c: '主题生写', p: '06_新的序章幻境-No27.jpg', k: 4,
+      d: '蓝色格纹外套 + 白色内搭、马尾造型；左侧竖排「No.27 新的序章 幻境」，2024 年度青春盛典第 27 名。' },
+    { n: 'SNH48 2024 青春盛典场限', c: '主题生写', p: '07_新的序章幻境-紫纱裙.jpg', k: 4,
+      d: '淡紫色纱质荷叶边上衣；卡面左侧竖排「GNZ48 新的序章 幻境」。' },
+    { n: 'GNZ48 2023 年秋季生写', c: '季度生写', p: '13_2023年秋季生写.jpg', k: 4,
+      d: '白衬衫 + 黑蝴蝶结 + 珍珠发夹，粉樱背景。' },
+    { n: 'GNZ48 2023 年冬季生写', c: '季度生写', p: '11_2023年冬季生写.jpg', k: 4,
+      d: '护士装（白红制服 + 十字护士帽），手持红笔、持熊款。' },
+    { n: 'GNZ48 2024 年春季生写', c: '季度生写', p: '10_2024年春季生写.jpg', k: 4,
+      d: '国风造型（白衣 + 云纹长裙 + 团扇/书卷），松石与古风置景。' },
+    { n: 'GNZ48 2024 年秋季生写', c: '季度生写', p: '05_2024年秋季生写.jpg', k: 4,
+      d: '蓝黑格纹打歌服 + 白色蕾丝，缀满银色珠串与塑料球的悬浮置景。' },
+    { n: 'GNZ48 七周年纪念生写', c: '纪念生写', p: '15_七周年纪念生写.jpg', k: 4,
+      d: '白色婚纱礼服 + 金色玫瑰捧花、金色大厅背景。TEAM NIII。' },
+    { n: '2023 年总选场限生写', c: '活动／企划', p: '14_2023年总选场限生写.jpg', k: 4,
+      d: '黑裙黑帽复古款 + 水手服款；金色徽章「青春十载 / 星光闪耀」= SNH48 GROUP 十周年 2023 年度青春盛典现场限定。' },
+    { n: 'GNZ48《天枢之弈》', c: '主题生写', p: '08_主题生写-废土风.jpg', k: 4,
+      d: '棕色皮革短裙 + 圆形护目镜 + 白色光剑，棕金科幻置景。Team NIII 北京巡演生写。' },
+    { n: '「因为你」', c: '主题生写', p: '09_因为你.jpg', k: 2,
+      d: '黑白制服 + 双马尾蝴蝶结，粉教室 / 蓝色场景，手持粉色复古电话。' },
+    { n: '偶像运动会（SNH48 GROUP）', c: '活动／企划', p: '12_偶像运动会.jpg', k: 4,
+      d: '卡其色运动卫衣 / 棒球帽 + 滑板，青绿储物柜背景。' },
+    { n: 'SNH48 十周年《重逢的世界》', c: '活动／企划', p: '16_INTO_THE_WORLD.jpg', k: 2,
+      d: '蓝色牛仔套装 + 白衬衫，红木桌球室置景。INTO THE WORLD 内封生写。' },
+    { n: 'GNZ48《左右为男》', c: '活动／企划', p: '17_左右系列-待确认.jpg', k: 2,
+      d: '天蓝印花衬衫 + 阔腿牛仔裤，暗红背景。男装公演特殊生写，1 set 2 张。' },
+    { n: '散卡合集 A', c: '散卡合影', p: '01_散卡合集A-桌面平铺.jpg', k: 15,
+      d: '15 张摊开的散卡：白纱裙 / 蝴蝶结 / 水手服 / 女仆装等，末排为手写签名款。' },
+    { n: '散卡合集 B', c: '散卡合影', p: '02_散卡合集B-签名款.jpg', k: 9,
+      d: '9 张散卡特写：黑裙银饰签名款、白裙花环款、宝丽来白框小卡、黑西装红领带款等。' },
+    { n: '全部收藏', c: '散卡合影', p: '03_全部收藏-整版俯瞰.jpg', k: 40,
+      d: '4 行 × 10 列全部收藏合影，横跨各季度 / 主题 / 纪念系列，可作「集齐度」总览对照。' }
+  ];
+  const CARD_CATS = ['季度生写', '纪念生写', '主题生写', '活动／企划', '散卡合影'];
+  const CARD_TAGC = { '季度生写': '#3b82f6', '纪念生写': '#f59e0b', '主题生写': '#8b5cf6', '活动／企划': '#10b981', '散卡合影': '#64748b' };
+
+  window.renderCards = function () {
+    let cat = 'all';
+    try { cat = LS.get('wyc-demo-cardcat', 'all'); } catch (e) { /* 忽略 */ }
+    const chips = ['all'].concat(CARD_CATS).map((c) =>
+      `<button class="card-chip${cat === c ? ' active' : ''}" data-cardf="${esc(c)}">${c === 'all' ? '全部' : esc(c)}</button>`).join('');
+    const list = CARD_SERIES.filter((s) => cat === 'all' || s.c === cat);
+    const grid = list.map((s) => `
+      <article class="cardx">
+        <div class="cardx-thumb" data-card-img="${esc(CARD_DIR + s.p)}" data-card-name="${esc(s.n)}">
+          <img src="${esc(CARD_DIR + s.p)}" loading="lazy" alt="${esc(s.n)}"
+               onload="if(this.naturalHeight>this.naturalWidth)this.parentElement.classList.add('tall')">
+          <span class="cardx-cnt">${s.k} 款</span>
+        </div>
+        <div class="cardx-body">
+          <div class="cardx-name">${esc(s.n)}</div>
+          <span class="cardx-tag" style="color:${CARD_TAGC[s.c]};background:${CARD_TAGC[s.c]}1a">${esc(s.c)}</span>
+        </div>
+      </article>`).join('');
+    return `<section class="profile-block">
+      <div class="st-h1">生写小卡图鉴</div>
+      <div class="cardx-chips">${chips}</div>
+      <div class="cardx-grid">${grid}</div>
+    </section>`;
+  };
+
+  // 生写小卡：筛选 + 放大（事件委托，guideSub 内容会重渲）
+  document.addEventListener('click', (e) => {
+    const f = e.target.closest('[data-cardf]');
+    if (f) {
+      LS.set('wyc-demo-cardcat', f.dataset.cardf);
+      if (typeof state !== 'undefined' && state.guideSub === 'cards' && typeof renderGuideSub === 'function') renderGuideSub();
+      return;
+    }
+    const im = e.target.closest('[data-card-img]');
+    if (im) {
+      const src = im.dataset.cardImg, name = im.dataset.cardName || '生写小卡';
+      const w = modal(name, `
+        <div class="cv-stage" id="cvStage"><img id="cvImg" src="${esc(src)}" alt="${esc(name)}"></div>
+        <div class="cv-bar">
+          <button class="cv-btn" id="cvRot" type="button">⟳ 旋转</button>
+          <button class="cv-btn" id="cvSave" type="button">⬇ 保存图片</button>
+        </div>`, { wide: true });
+      const img = $('#cvImg', w), stage = $('#cvStage', w);
+      let rot = 0;
+      $('#cvRot', w).addEventListener('click', () => {
+        rot = (rot + 90) % 360;
+        img.style.transform = `rotate(${rot}deg)`;
+        if (rot % 180) {   // 90/270：布局宽高互换才能不溢出
+          img.style.maxWidth = stage.clientHeight + 'px';
+          img.style.maxHeight = stage.clientWidth + 'px';
+        } else {
+          img.style.maxWidth = '100%';
+          img.style.maxHeight = '';
+        }
+      });
+      $('#cvSave', w).addEventListener('click', async () => {
+        const btn = $('#cvSave', w);
+        try {
+          btn.disabled = true; btn.textContent = '…';
+          const r = await fetch(src, { cache: 'force-cache' });
+          const b = await r.blob();
+          const ext = (src.match(/\.(\w+)(\?|$)/) || [, 'jpg'])[1];
+          const fname = name.replace(/[\\/:*?"<>|]/g, '_') + '.' + ext;
+          const file = new File([b], fname, { type: b.type || 'image/jpeg' });
+          const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)
+            || (navigator.userAgentData && navigator.userAgentData.mobile);
+          if (isMobile && navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({ files: [file], title: name });  // 手机走系统保存/分享
+          } else {
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(b); a.download = fname;
+            document.body.appendChild(a); a.click(); a.remove();
+            setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+          }
+        } catch (err) {
+          if (!(err && err.name === 'AbortError')) window.open(src, '_blank');  // 兜底：新窗打开长按存
+        } finally {
+          btn.disabled = false; btn.textContent = '⬇ 保存图片';
+        }
+      });
+    }
+  });
+
   // 等 app.js 的 init() 把数据拉回来再启动
   (function waitData(n) {
     const ok = (typeof DATA !== 'undefined') && (DATA.messages.length > 0 || DATA.live.length > 0);
