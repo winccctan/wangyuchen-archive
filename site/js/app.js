@@ -1732,15 +1732,28 @@ function scheduleText(picks, ex) {
   };
   const byDay = new Map();
   (picks || []).forEach((d) => {
-    if (!d || !d.date) return;
-    if (!byDay.has(d.date)) byDay.set(d.date, []);
-    byDay.get(d.date).push(d);
+    if (!d) return;
+    // ⚠️「更远的安排」（例：11/28 个人年V）数据里没有 date，日期放在 time 上 ——
+    //    别再用 !d.date 跳过，否则文案会比图上少一条（2026-09-24 站长报的 bug）。
+    const k = d.date || '更远';
+    if (!byDay.has(k)) byDay.set(k, []);
+    byDay.get(k).push(d);
   });
+  // 排序：日期升序，「更远的安排」永远垫底
+  const farLast = (a, b) => {
+    if (a === '更远') return 1;
+    if (b === '更远') return -1;
+    return a < b ? -1 : (a > b ? 1 : 0);
+  };
   const L = ['【王语晨 · 近期行程】', ''];
-  Array.from(byDay.keys()).sort().forEach((k) => {
-    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(k);
-    const head = m ? (Number(m[2]) + '月' + Number(m[3]) + '日') : k;
-    L.push(head + '（' + ((byDay.get(k)[0].weekday) || wdOf(k) || '') + '）');
+  Array.from(byDay.keys()).sort(farLast).forEach((k) => {
+    if (k === '更远') {
+      L.push('更远的安排');                                  // 没有确定星期，只写组头
+    } else {
+      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(k);
+      const head = m ? (Number(m[2]) + '月' + Number(m[3]) + '日') : k;
+      L.push(head + '（' + ((byDay.get(k)[0].weekday) || wdOf(k) || '') + '）');
+    }
     byDay.get(k).forEach((d) => { L.push((d.time ? d.time + '  ' : '') + d.title); });
     L.push('');
   });
