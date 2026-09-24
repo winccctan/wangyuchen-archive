@@ -28,6 +28,10 @@
   // 分享卡上口袋表情的边长：单条正文 40px 字 / 多条拼图 36px 字，各配一个尺寸
   const SHARE_EM = 44, SHARE_EM_M = 38;
 
+  /* ---- 埋点：口袋里这 7 个小功能用了多少（app.js 的 track() 走 /track 信标）----
+     🔴 新增事件名必须同时加进 worker/index.js 的 EVENTS 白名单，否则记了也不显示。 */
+  const trk = (ev) => { try { if (typeof track === 'function') track(ev); } catch (_) {} };
+
   /** 复制到剪贴板：优先 Clipboard API，失败回退 textarea + execCommand */
   async function copyText(text, okMsg) {
     const ok = okMsg || '✅ 已复制';
@@ -157,6 +161,7 @@
       const b = e.target.closest('.dm-chip');
       if (!b) return;
       F.typeFilter = b.dataset.type;
+      trk('filter:type');   // 埋在「类型筛选」上：看有多少人在用这排 chips
       $$('.dm-chip', bar).forEach((x) => x.classList.toggle('on', x === b));
       applyTypeFilter();
     });
@@ -503,6 +508,7 @@
   };
 
   async function openShare(m) {
+    trk('share:card');
     const mWrap = modal('生成分享卡片', '<div class="dm-share-loading">正在生成图片…</div>');
     try {
       let c = await makeShareCard(m);
@@ -527,6 +533,7 @@
         saveShareImage(url, `wyc-${bjDate(m.msgTime)}-${bjTime(m.msgTime).replace(':', '')}.png`);
       });
       $('#dmCopy1', mWrap).addEventListener('click', () => {
+        trk('share:text');
         copyText(msgsToText([m]), '✅ 已复制这条发言的文字');
       });
     } catch (e) {
@@ -539,8 +546,8 @@
      ===================================================================== */
   function toggleFav(item) {
     const i = F.favs.findIndex((x) => x.k === item.k);
-    if (i >= 0) { F.favs.splice(i, 1); toast('已取消收藏'); }
-    else { F.favs.unshift(item); toast('⭐ 已加入收藏'); }
+    if (i >= 0) { F.favs.splice(i, 1); trk('fav:del'); toast('已取消收藏'); }
+    else { F.favs.unshift(item); trk('fav:add'); toast('⭐ 已加入收藏'); }
     saveFavs();
     syncFavButtons();
     const c = $('#dmFavCount'); if (c) c.textContent = F.favs.length ? String(F.favs.length) : '';
@@ -557,6 +564,7 @@
   }
 
   function openFavList() {
+    trk('fav:open');
     const items = F.favs;
     const body = items.length
       ? items.map((x) => `<div class="dm-favrow">
@@ -597,6 +605,7 @@
     });
     const ta = $('#dmCode', w);
     $('#dmExport', w).addEventListener('click', async () => {
+      trk('fav:code');
       if (!F.favs.length) { toast('还没有可导出的收藏'); return; }
       // 收藏码 = 版本前缀 + base64(JSON)。带前缀便于识别与防误粘。
       const code = 'WYC1:' + btoa(unescape(encodeURIComponent(JSON.stringify(F.favs))));
@@ -610,6 +619,7 @@
       }
     });
     $('#dmImport', w).addEventListener('click', () => {
+      trk('fav:code');
       const raw = (ta && ta.value || '').trim();
       if (!raw) { toast('请先粘贴收藏码'); return; }
       try {
@@ -678,6 +688,7 @@
   function jumpToDay(day, tip) { jumpToDayWithMsg(day, null, tip); }
 
   function randomDig() {
+    trk('dig:rand');
     const msgs = (typeof DATA !== 'undefined' && DATA.messages) || [];
     const pool = msgs.filter((m) => m.text && String(m.text).trim().length >= 10);
     if (!pool.length) { toast('数据还在加载，稍后再试'); return; }
@@ -688,6 +699,7 @@
 
   /** 去年今日：找往年「今天（北京时间 月-日）」的发言，有就跳过去 */
   function lastYearToday() {
+    trk('dig:last');
     const run = () => {
       const msgs = (typeof DATA !== 'undefined' && DATA.messages) || [];
       if (!msgs.length) { toast('数据还在加载，稍后再试'); return; }
@@ -796,6 +808,7 @@
   let multiBar = null;
   function toggleMulti() {
     F.multi = !F.multi;
+    trk(F.multi ? 'multi:on' : 'multi:off');
     if (!F.multi) F.sel.clear();
     document.body.classList.toggle('dm-multi', F.multi);
     syncMultiBar();
@@ -888,6 +901,7 @@
   }
 
   async function openMultiShare() {
+    trk('multi:card');
     const msgs = [...F.sel].map((k) => (typeof MSG_INDEX !== 'undefined') && MSG_INDEX.get(k)).filter(Boolean);
     if (msgs.length < 1) { toast('先勾选几条发言'); return; }
     const w = modal('生成分享卡片', `<div class="dm-share-loading">正在拼接 ${msgs.length} 条…</div>`);
@@ -907,6 +921,7 @@
         saveShareImage(url, `wyc-multi-${msgs.length}.png`);
       });
       $('#dmCopy2', w).addEventListener('click', () => {
+        trk('multi:text');
         copyText(msgsToText(msgs), `✅ 已复制 ${msgs.length} 条发言文字`);
       });
     } catch (e) {
@@ -976,6 +991,7 @@
       <div class="dm-hm-legend">少 <i class="dm-hm dm-hm0"></i><i class="dm-hm dm-hm1"></i><i class="dm-hm dm-hm2"></i><i class="dm-hm dm-hm3"></i><i class="dm-hm dm-hm4"></i> 多</div>`;
   }
   function openHeatmap() {
+    trk('heat:open');
     const w = modal('🔥 发言热力图', heatmapHtml(), { wide: true });
     // 事件委托：点某一天 → 关弹窗 → 按那天筛选（挂 body 上，重渲后依然生效）
     $('.dm-modal-b', w).addEventListener('click', (e) => {
@@ -984,6 +1000,7 @@
       const day = cell.dataset.day;
       const c = Number(cell.dataset.count || 0);
       if (!c) { toast(day + ' 这天没有发言'); return; }
+      trk('heat:day');
       closeModal();
       jumpToDay(day, '🗓 跳到 ' + day + '（' + c + ' 条发言）');
     });
@@ -999,6 +1016,7 @@
      ===================================================================== */
   let notifyTimer = null, notifyOn = false;
   function fireNotify(it) {
+    trk('notify:hit');   // 真检测到开播、真的弹了提醒才记
     const title = '🔴 王语晨开播啦！';
     const body = (it.title && !/^\d+$/.test(String(it.title))) ? it.title : '口袋48 直播中';
     if ('Notification' in window && Notification.permission === 'granted') {
@@ -1031,6 +1049,7 @@
   }
   function startNotify() {
     notifyOn = !notifyOn;
+    trk(notifyOn ? 'notify:on' : 'notify:off');
     document.body.classList.toggle('dm-notify-on', notifyOn);
     if (notifyOn) {
       checkLive();
@@ -1378,6 +1397,7 @@
   }
 
   async function openCatchup() {
+    trk('catchup:open');
     const w = modal('📖 从头补档', '<div class="dm-empty">正在整理时间线…</div>', { wide: true });
     await ensureAllMonths();
     renderCatchup(w);

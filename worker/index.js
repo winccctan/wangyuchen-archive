@@ -260,6 +260,27 @@ const EVENTS = [
   ['box:open', '盲盒 抽到一张'],
   ['box:card', '盲盒 生成分享图'],
   ['box:copy', '盲盒 复制文案'],
+  // 口袋发言页那 7 个工具按钮（2026-09-24 补埋点）：以前只有盲盒有埋点，
+  // 收藏/考古/去年今日/热力图/开播提醒/多选分享/从头补档 都是「黑盒」，不知道有没有人用。
+  ['fav:open', '收藏 打开列表'],
+  ['fav:add', '收藏 加一条'],
+  ['fav:del', '收藏 取消'],
+  ['fav:code', '收藏 收藏码（导出/导入）'],
+  ['dig:rand', '🎲 随机考古'],
+  ['dig:last', '📜 去年今日'],
+  ['heat:open', '🔥 发言热力图'],
+  ['heat:day', '热力图 点某天跳转'],
+  ['notify:on', '🔔 开播提醒 开启'],
+  ['notify:off', '开播提醒 关闭'],
+  ['notify:hit', '开播提醒 真的弹了'],
+  ['multi:on', '多选模式 进入'],
+  ['multi:off', '多选模式 退出'],
+  ['multi:card', '多选 生成分享图'],
+  ['multi:text', '多选 复制文字'],
+  ['catchup:open', '📖 从头补档'],
+  ['share:card', '单条 生成分享图'],
+  ['share:text', '单条 复制文字'],
+  ['filter:type', '类型筛选 chips'],
   ['sub:replay', '公演回放 子标签'],
   ['sub:cuts', '公演cut 子标签'],
   ['sub:social', '社媒美图 子标签'],
@@ -427,8 +448,11 @@ async function handleTrack(url, request, env, ctx) {
         // （2026-09-22 事故）。超过上限就不再记录，页面照常用。
         // 2026-09-23 提到 600：补了档案卡 4 个埋点后事件变多，原 300 太容易在下午就打满、
         // 导致后半天的动作一个都不记。Workers 已转 Paid（KV 写 100 万/月），600/天很安全。
+        // 2026-09-24 提到 3000：口袋 7 个小功能补齐埋点后事件数翻倍（盲盒一天就 250+ 次点击，
+        // 每次命中 2 次 KV 写），600 当天上午就打满 → 后面的动作全丢。3000/天 ≈ 9 万/月，
+        // 离 100 万/月还很远；数据同步走的是另一个 KV 命名空间（KV binding），互不影响。
         const gateKey = 'stat:gate:' + day;
-        const gateMax = 600;
+        const gateMax = 3000;
         let used = 0;
         try { used = Number((await kv.get(gateKey)) || 0); } catch (_) { used = 0; }
         if (used >= gateMax) return;
@@ -628,7 +652,7 @@ async function handleStatsBody(url, env, kv, wantJson) {
 <div class="card"><div class="k">今日独立访客</div><div class="v">${siteUvToday}</div></div></div>
 <h2>各语言使用次数</h2><table>${langHtml}</table>
 <h2>访客来自哪里（今日 / 近 7 天）</h2><table><tr><td>国家·地区</td><td class="n">今日</td><td class="n">近 7 天</td></tr>${ctryHtml}</table>
-<p class="dim">按 Cloudflare 给出的国家（ISO 代码）统计独立访客，不记 IP 明文。近 7 天＝每天独立访客相加，同一个人多天都来会重复计；数据从启用当天开始累计。</p>
+<p class="dim">按 Cloudflare 给出的国家（ISO 代码）统计独立访客，不记 IP 明文。<b>统计的是「IP 所在国家/地区」，不是成员的国籍</b>：用加速器 / VPN 的访客会算成出口国家（国内粉丝挂日本节点 → 记为日本），同一个 IP 当天只算 1 人、换 WiFi↔流量或换节点会多算 1 人。近 7 天＝每天独立访客相加，同一个人多天都来会重复计；数据从启用当天开始累计。</p>
 <h2>功能使用（次数 / 独立访客）</h2><table><tr><td>动作</td><td class="n">累计</td><td class="n">今日</td><td class="n">独立累计</td><td class="n">独立今日</td></tr>${evHtml}</table>
 <h2>最近 7 天（每天来了多少人 / 翻译次数）</h2><table><tr><td>日期</td><td class="n">到访人数</td><td class="n">翻译次数</td><td class="n">翻译访客</td></tr>${dayHtml}</table>`);
 }
