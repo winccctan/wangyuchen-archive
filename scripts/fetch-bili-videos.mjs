@@ -7,7 +7,8 @@
  * 但仍有大量场次没有官方回放；B 站 UP 主会上传完整录像，标题形如
  *   「【GNZ48】20260913 Team NIII 《拾忆：TEAM NIII》公演」  ← 含日期 + 队伍，可精确匹配。
  *
- * 三条可用通道（都直连，绕过沙箱 HTTP_PROXY —— 走代理会被 B 站 WAF 直接拦）：
+ * 三条可用通道：默认直连；遇 B 站 WAF 风控（-412/-799）自动改走 SCRAPE_PROXY 隧道兜底
+ * （实测杭州阿里云出口可绕过数据中心 IP 限流，与 fetch-live-cuts.mjs 同款逻辑）。
  *   1) 合集：GET /x/polymer/web-space/seasons_series_list?mid=            → 列出合集(seasons)/系列(series)
  *           GET /x/polymer/web-space/seasons_archives_list?mid=&season_id=&page_num=&page_size=30&sort_reverse=false
  *   2) 系列：GET /x/series/archives?mid=&series_id=&only_normal=true&sort=desc&pn=&ps=30
@@ -19,7 +20,8 @@
  *   PAGE_SLEEP=... 每页间隔（默认 2000ms）
  */
 import { writeFileSync, readFileSync, existsSync, renameSync } from 'node:fs';
-import { get as httpsGet } from 'node:https';
+import https from 'node:https';
+import tls from 'node:tls';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
@@ -32,48 +34,123 @@ let pagesUsed = 0;
 const budgetLeft = () => PAGE_BUDGET <= 0 || pagesUsed < PAGE_BUDGET;
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// 出口代理：数据中心 IP 易被 B 站 WAF 限流，SCRAPE_PROXY（杭州阿里云）可绕过
+const PROXY_URL = process.env.SCRAPE_PROXY || process.env.HTTPS_PROXY || process.env.https_proxy || '';
 
 /* ---------------- 要抓的 UP 与通道 ---------------- */
+// 用户指定的三个 B 站数据源：企理鹅大帝 + 忘记自己是猪 + Chzhnh
+// （寒影AkiNa 已移除：非用户指定，且多为 SNH48 内容，对王语晨无意义且易被 WAF 封）
 const UP_TARGETS = [
   // 企理鹅大帝：公演录像按团体放在「合集」里（稳定、快）
   { mid: '2086351451', label: '企理鹅大帝', seasons: ['4158846', '4158274'] },
-  // 寒影AkiNa：无合集，早年「系列」是 2017/2023 的 SNH48 内容，需靠空间投稿列表（只保留 GNZ48 相关）
-  { mid: '1315101', label: '寒影AkiNa', series: ['967578'], space: { keep: /GNZ48/i, maxPages: 400 } },
+  // Chzhnh：有合集（含公演 cut），与直播切片同源；直连/代理均可，空间列表兜底
+  { mid: '358477444', label: 'Chzhnh', seasons: [], space: { keep: /GNZ48|公演|特别|王语晨|语晨/i, maxPages: 300 } },
 ];
 
-function getJson(url, referer, tries = 4, banTries = Number(process.env.BILI_BAN_TRIES ?? 2)) {
-  return new Promise((resolveP, rejectP) => {
-    const attempt = (n) => {
-      const req = httpsGet(url, {
-        headers: { 'User-Agent': UA, Referer: referer, Accept: 'application/json, text/plain, */*' },
-        timeout: 20000
-      }, (res) => {
-        const chunks = [];
-        res.on('data', (c) => chunks.push(c));
-        res.on('end', async () => {
-          const text = Buffer.concat(chunks).toString('utf8');
-          let d = null;
-          try { d = JSON.parse(text); } catch { /* 风控返回 HTML */ }
-          if (d && d.code === 0) return resolveP(d);
-          const msg = d ? `code=${d.code} ${d.message || ''}` : '非 JSON（被风控）';
-          const ban = /-412|-799/.test(msg);
-          // 空间投稿列表的限流窗口较长（-799 常持续数十分钟），故等得久一点
-          if (n < (ban ? banTries : tries)) {
-            const wait = ban ? 60000 * (n + 1) : 1500 * (n + 1);
-            console.warn(`  [重试] ${msg} → 等 ${Math.round(wait / 1000)}s`);
-            await sleep(wait);
-            return attempt(n + 1);
+/* 出口：直连优先，遇 B 站 WAF 风控（-412/-799）自动改走 SCRAPE_PROXY 隧道兜底
+ * （与 fetch-live-cuts.mjs 同款逻辑，实测杭州阿里云出口可绕过数据中心 IP 限流） */
+function directGet(urlStr, referer) {
+  return new Promise((resolve, reject) => {
+    const req = https.get(urlStr, {
+      headers: { 'User-Agent': UA, Referer: referer, Accept: 'application/json, text/plain, */*' },
+      timeout: 20000
+    }, (res) => {
+      const chunks = [];
+      res.on('data', (c) => chunks.push(c));
+      res.on('end', () => resolve({ status: res.statusCode, text: Buffer.concat(chunks).toString('utf8') }));
+    });
+    req.on('timeout', () => req.destroy(new Error('timeout')));
+    req.on('error', reject);
+  });
+}
+
+function proxyGet(urlStr, referer) {
+  return new Promise((resolve, reject) => {
+    const p = new URL(PROXY_URL);
+    const t = new URL(urlStr);
+    const headers = { Host: `${t.hostname}:443` };
+    if (p.username) {
+      headers['Proxy-Authorization'] = 'Basic ' + Buffer.from(
+        `${decodeURIComponent(p.username)}:${decodeURIComponent(p.password || '')}`
+      ).toString('base64');
+    }
+    const req = https.request({
+      host: p.hostname, port: Number(p.port) || 443, method: 'CONNECT',
+      path: `${t.hostname}:443`, headers, timeout: 25000, rejectUnauthorized: false
+    });
+    req.on('connect', (res, socket) => {
+      if (res.statusCode !== 200) { socket.destroy(); return reject(new Error('proxy CONNECT ' + res.statusCode)); }
+      const s = tls.connect({ socket, servername: t.hostname, rejectUnauthorized: false }, () => {
+        s.write([
+          `GET ${t.pathname}${t.search} HTTP/1.1`,
+          `Host: ${t.hostname}`,
+          `User-Agent: ${UA}`,
+          `Referer: ${referer}`,
+          'Accept: application/json, text/plain, */*',
+          'Accept-Encoding: identity',
+          'Connection: close',
+          '', ''
+        ].join('\r\n'));
+      });
+      const chunks = [];
+      s.on('data', (c) => chunks.push(c));
+      s.on('end', () => {
+        const raw = Buffer.concat(chunks).toString('utf8');
+        const sep = raw.indexOf('\r\n\r\n');
+        if (sep < 0) return reject(new Error('代理响应异常'));
+        const head = raw.slice(0, sep);
+        let body = raw.slice(sep + 4);
+        if (/transfer-encoding:\s*chunked/i.test(head)) {
+          let out = '', rest = body;
+          for (;;) {
+            const nl = rest.indexOf('\r\n');
+            if (nl < 0) break;
+            const size = parseInt(rest.slice(0, nl), 16);
+            if (!size) break;
+            out += rest.slice(nl + 2, nl + 2 + size);
+            rest = rest.slice(nl + 2 + size + 2);
           }
-          rejectP(new Error(msg));
-        });
+          body = out;
+        }
+        resolve({ status: Number(head.slice(9, 12)), text: body });
       });
-      req.on('timeout', () => req.destroy(new Error('timeout')));
-      req.on('error', async (e) => {
-        if (n < tries) { await sleep(1500 * (n + 1)); return attempt(n + 1); }
-        rejectP(e);
-      });
-    };
-    attempt(0);
+      s.on('error', reject);
+    });
+    req.on('timeout', () => req.destroy(new Error('proxy timeout')));
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+function getJson(urlStr, referer, tries = 4, banTries = Number(process.env.BILI_BAN_TRIES ?? 2)) {
+  return new Promise(async (resolveP, rejectP) => {
+    const routes = PROXY_URL ? ['direct', 'proxy'] : ['direct'];
+    let lastMsg = '';
+    for (const route of routes) {
+      for (let n = 0; n < tries; n++) {
+        let res;
+        try {
+          res = route === 'proxy' ? await proxyGet(urlStr, referer) : await directGet(urlStr, referer);
+        } catch (e) {
+          lastMsg = `${route}:${e.message}`;
+          await sleep(1500 * (n + 1));
+          continue;
+        }
+        let d = null;
+        try { d = JSON.parse(res.text); } catch { /* HTML = 被风控 */ }
+        if (d && d.code === 0) return resolveP(d);
+        const msg = d ? `code=${d.code} ${d.message || ''}` : `HTTP ${res.status} 非 JSON`;
+        lastMsg = `${route}:${msg}`;
+        const ban = /-412|-799/.test(msg);
+        if (n < (ban ? banTries : tries)) {
+          const wait = ban ? 60000 * (n + 1) : 1500 * (n + 1);
+          console.warn(`  [重试] ${lastMsg} → 等 ${Math.round(wait / 1000)}s`);
+          await sleep(wait);
+          continue;
+        }
+      }
+    }
+    rejectP(new Error(lastMsg));
   });
 }
 
@@ -126,7 +203,7 @@ async function crawlSeasons(mid) {
   console.log(`[合集列表 ${mid}] 合集 ${(il.seasons_list || []).length} 个 / 系列 ${(il.series_list || []).length} 个`);
   for (const s of il.seasons_list || []) {
     const m = s.meta || {};
-    if (!/GNZ48|公演|特别/i.test(m.name || '')) continue;
+    if (!/GNZ48|公演|特别|王语晨|语晨/i.test(m.name || '')) continue;
     await crawlSeasonArchives(mid, m.season_id, m.name, m.total);
   }
   for (const s of il.series_list || []) {

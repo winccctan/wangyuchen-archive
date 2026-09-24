@@ -1,6 +1,741 @@
 {
   "messages": [
     {
+      "msgIdServer": "7408603793",
+      "msgTime": 1790250004629,
+      "msgType": "TEXT",
+      "text": "我要回去沉淀一下了",
+      "reply": null,
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "self": true,
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟"
+      },
+      "raw": {
+        "bodys": "我要回去沉淀一下了",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "TEXT"
+      }
+    },
+    {
+      "msgIdServer": "7408603672",
+      "msgTime": 1790249971315,
+      "msgType": "TEXT",
+      "text": "这个4班的歌还是太难了",
+      "reply": null,
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "self": true,
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟"
+      },
+      "raw": {
+        "bodys": "这个4班的歌还是太难了",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "TEXT"
+      }
+    },
+    {
+      "msgIdServer": "7408505038",
+      "msgTime": 1790249963459,
+      "msgType": "TEXT",
+      "text": "终于彩排完了",
+      "reply": null,
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "self": true,
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟"
+      },
+      "raw": {
+        "bodys": "终于彩排完了",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "TEXT"
+      }
+    },
+    {
+      "msgIdServer": "7408587729",
+      "msgTime": 1790249946470,
+      "msgType": "GIFTREPLY",
+      "text": "谢谢",
+      "reply": {
+        "name": "sunny晴",
+        "text": "送给 王语晨 1个秋天的奶茶"
+      },
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "self": true,
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟"
+      },
+      "raw": {
+        "bodys": "{\"giftReplyInfo\":{\"replyText\":\"送给 王语晨 1个秋天的奶茶\",\"replyName\":\"sunny晴\",\"replyMessageId\":\"5eeb474b-581f-4059-8d4b-8e1d2885d1fd\",\"text\":\"谢谢\"},\"messageType\":\"GIFTREPLY\"}",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "GIFTREPLY"
+      }
+    },
+    {
+      "msgIdServer": "7408521982",
+      "msgTime": 1790249943575,
+      "msgType": "GIFTREPLY",
+      "text": "谢谢wyx的提灯赴月哇🌙💗～",
+      "reply": {
+        "name": "什么又被压制",
+        "text": "送给 王语晨 1个提灯赴月"
+      },
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "self": true,
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟"
+      },
+      "raw": {
+        "bodys": "{\"giftReplyInfo\":{\"replyText\":\"送给 王语晨 1个提灯赴月\",\"replyName\":\"什么又被压制\",\"replyMessageId\":\"99d01af7-03ae-41c6-928a-202d96a3634a\",\"text\":\"谢谢wyx的提灯赴月哇🌙💗～\"},\"messageType\":\"GIFTREPLY\"}",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "GIFTREPLY"
+      }
+    },
+    {
+      "msgIdServer": "7408603660",
+      "msgTime": 1790249913177,
+      "msgType": "GIFTREPLY",
+      "text": "谢谢🧋～",
+      "reply": {
+        "name": "❅mimii❅🎋🐟",
+        "text": "送给 王语晨 10个秋天的奶茶"
+      },
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "self": true,
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟"
+      },
+      "raw": {
+        "bodys": "{\"giftReplyInfo\":{\"replyText\":\"送给 王语晨 10个秋天的奶茶\",\"replyName\":\"❅mimii❅🎋🐟\",\"replyMessageId\":\"622b443b-8f03-4c6a-9333-23f8f672261d\",\"text\":\"谢谢🧋～\"},\"messageType\":\"GIFTREPLY\"}",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "GIFTREPLY"
+      }
+    },
+    {
+      "msgIdServer": "7408194012",
+      "msgTime": 1790229458771,
+      "msgType": "TEXT",
+      "text": "希望昨天学的今天还记得[睡]",
+      "reply": null,
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "self": true,
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟"
+      },
+      "raw": {
+        "bodys": "希望昨天学的今天还记得[睡]",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "TEXT"
+      }
+    },
+    {
+      "msgIdServer": "7408193567",
+      "msgTime": 1790229392791,
+      "msgType": "TEXT",
+      "text": "去彩排了",
+      "reply": null,
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "self": true,
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟"
+      },
+      "raw": {
+        "bodys": "去彩排了",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "TEXT"
+      }
+    },
+    {
+      "msgIdServer": "7408194001",
+      "msgTime": 1790229365316,
+      "msgType": "GIFTREPLY",
+      "text": "谢谢",
+      "reply": {
+        "name": "一只猫猫˚°🐱",
+        "text": "送给 王语晨 1个秋天的奶茶"
+      },
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "self": true,
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟"
+      },
+      "raw": {
+        "bodys": "{\"giftReplyInfo\":{\"replyText\":\"送给 王语晨 1个秋天的奶茶\",\"replyName\":\"一只猫猫˚°🐱\",\"replyMessageId\":\"4b1b1ac9-af24-439a-8969-b1fa8a7f66a2\",\"text\":\"谢谢\"},\"messageType\":\"GIFTREPLY\"}",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "GIFTREPLY"
+      }
+    },
+    {
+      "msgIdServer": "7408194116",
+      "msgTime": 1790229362567,
+      "msgType": "GIFTREPLY",
+      "text": "谢谢",
+      "reply": {
+        "name": "一只猫猫˚°🐱",
+        "text": "送给 王语晨 1个秋天的奶茶"
+      },
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "self": true,
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟"
+      },
+      "raw": {
+        "bodys": "{\"giftReplyInfo\":{\"replyText\":\"送给 王语晨 1个秋天的奶茶\",\"replyName\":\"一只猫猫˚°🐱\",\"replyMessageId\":\"375d4246-f407-474f-a17c-55755744f93f\",\"text\":\"谢谢\"},\"messageType\":\"GIFTREPLY\"}",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "GIFTREPLY"
+      }
+    },
+    {
+      "msgIdServer": "7408177698",
+      "msgTime": 1790229359296,
+      "msgType": "GIFTREPLY",
+      "text": "谢谢",
+      "reply": {
+        "name": "一只猫猫˚°🐱",
+        "text": "送给 王语晨 1个秋天的奶茶"
+      },
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "self": true,
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟"
+      },
+      "raw": {
+        "bodys": "{\"giftReplyInfo\":{\"replyText\":\"送给 王语晨 1个秋天的奶茶\",\"replyName\":\"一只猫猫˚°🐱\",\"replyMessageId\":\"259d7db5-68ba-4f71-aa86-9713935516b2\",\"text\":\"谢谢\"},\"messageType\":\"GIFTREPLY\"}",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "GIFTREPLY"
+      }
+    },
+    {
+      "msgIdServer": "7408178045",
+      "msgTime": 1790229356551,
+      "msgType": "GIFTREPLY",
+      "text": "谢谢",
+      "reply": {
+        "name": "一只猫猫˚°🐱",
+        "text": "送给 王语晨 1个秋天的奶茶"
+      },
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "self": true,
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟"
+      },
+      "raw": {
+        "bodys": "{\"giftReplyInfo\":{\"replyText\":\"送给 王语晨 1个秋天的奶茶\",\"replyName\":\"一只猫猫˚°🐱\",\"replyMessageId\":\"34e1257b-fa70-47cf-a559-44b124b690cc\",\"text\":\"谢谢\"},\"messageType\":\"GIFTREPLY\"}",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "GIFTREPLY"
+      }
+    },
+    {
+      "msgIdServer": "7408177505",
+      "msgTime": 1790229350352,
+      "msgType": "GIFTREPLY",
+      "text": "谢谢",
+      "reply": {
+        "name": "偷吃一把青椒",
+        "text": "送给 王语晨 1个桂叶凝珠"
+      },
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "self": true,
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟"
+      },
+      "raw": {
+        "bodys": "{\"giftReplyInfo\":{\"replyText\":\"送给 王语晨 1个桂叶凝珠\",\"replyName\":\"偷吃一把青椒\",\"replyMessageId\":\"989aa694-7136-4c06-8ed0-b24968a0a65d\",\"text\":\"谢谢\"},\"messageType\":\"GIFTREPLY\"}",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "GIFTREPLY"
+      }
+    },
+    {
+      "msgIdServer": "7408177854",
+      "msgTime": 1790229344792,
+      "msgType": "TEXT",
+      "text": "爪哇～",
+      "reply": null,
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "self": true,
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟"
+      },
+      "raw": {
+        "bodys": "爪哇～",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "TEXT"
+      }
+    },
+    {
+      "msgIdServer": "7407670234",
+      "msgTime": 1790179366211,
+      "msgType": "TEXT",
+      "text": "等外卖到了我就肘！",
+      "reply": null,
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "self": true,
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟"
+      },
+      "raw": {
+        "bodys": "等外卖到了我就肘！",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "TEXT"
+      }
+    },
+    {
+      "msgIdServer": "7407653731",
+      "msgTime": 1790179357190,
+      "msgType": "TEXT",
+      "text": "我点了个外卖准备带回家吃",
+      "reply": null,
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "self": true,
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟"
+      },
+      "raw": {
+        "bodys": "我点了个外卖准备带回家吃",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "TEXT"
+      }
+    },
+    {
+      "msgIdServer": "7407603944",
+      "msgTime": 1790179345470,
+      "msgType": "GIFTREPLY",
+      "text": "谢谢",
+      "reply": {
+        "name": "一只猫猫˚°🐱",
+        "text": "送给 王语晨 1个秋天的奶茶"
+      },
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "self": true,
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟"
+      },
+      "raw": {
+        "bodys": "{\"giftReplyInfo\":{\"replyText\":\"送给 王语晨 1个秋天的奶茶\",\"replyName\":\"一只猫猫˚°🐱\",\"replyMessageId\":\"6c133cc5-d8e0-40c2-8533-84370c97b554\",\"text\":\"谢谢\"},\"messageType\":\"GIFTREPLY\"}",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "GIFTREPLY"
+      }
+    },
+    {
+      "msgIdServer": "7407685769",
+      "msgTime": 1790179324608,
+      "msgType": "TEXT",
+      "text": "不学了不学了",
+      "reply": null,
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "self": true,
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟"
+      },
+      "raw": {
+        "bodys": "不学了不学了",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "TEXT"
+      }
+    },
+    {
+      "msgIdServer": "7407685767",
+      "msgTime": 1790179316820,
+      "msgType": "GIFTREPLY",
+      "text": "谢谢",
+      "reply": {
+        "name": "连灿",
+        "text": "送给 王语晨 2个好柿成双"
+      },
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "self": true,
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟"
+      },
+      "raw": {
+        "bodys": "{\"giftReplyInfo\":{\"replyText\":\"送给 王语晨 2个好柿成双\",\"replyName\":\"连灿\",\"replyMessageId\":\"d5d4172f-eb6a-489c-bb09-4d496bee7ae2\",\"text\":\"谢谢\"},\"messageType\":\"GIFTREPLY\"}",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "GIFTREPLY"
+      }
+    },
+    {
+      "msgIdServer": "7407653398",
+      "msgTime": 1790179313331,
+      "msgType": "GIFTREPLY",
+      "text": "谢谢",
+      "reply": {
+        "name": "一只猫猫˚°🐱",
+        "text": "送给 王语晨 1个秋天的奶茶"
+      },
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "self": true,
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟"
+      },
+      "raw": {
+        "bodys": "{\"giftReplyInfo\":{\"replyText\":\"送给 王语晨 1个秋天的奶茶\",\"replyName\":\"一只猫猫˚°🐱\",\"replyMessageId\":\"93a57623-047f-4f15-9996-b97e64a85c14\",\"text\":\"谢谢\"},\"messageType\":\"GIFTREPLY\"}",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "GIFTREPLY"
+      }
+    },
+    {
+      "msgIdServer": "7407571587",
+      "msgTime": 1790179310866,
+      "msgType": "GIFTREPLY",
+      "text": "谢谢",
+      "reply": {
+        "name": "一只猫猫˚°🐱",
+        "text": "送给 王语晨 1个桂叶凝珠"
+      },
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "self": true,
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟"
+      },
+      "raw": {
+        "bodys": "{\"giftReplyInfo\":{\"replyText\":\"送给 王语晨 1个桂叶凝珠\",\"replyName\":\"一只猫猫˚°🐱\",\"replyMessageId\":\"7def0708-e94f-4b13-ae38-35169f5b67d5\",\"text\":\"谢谢\"},\"messageType\":\"GIFTREPLY\"}",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "GIFTREPLY"
+      }
+    },
+    {
+      "msgIdServer": "7407588314",
+      "msgTime": 1790179306798,
+      "msgType": "GIFTREPLY",
+      "text": "谢谢",
+      "reply": {
+        "name": "一只猫猫˚°🐱",
+        "text": "送给 王语晨 1个一杵清辉"
+      },
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "self": true,
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟"
+      },
+      "raw": {
+        "bodys": "{\"giftReplyInfo\":{\"replyText\":\"送给 王语晨 1个一杵清辉\",\"replyName\":\"一只猫猫˚°🐱\",\"replyMessageId\":\"4203e017-bf40-43c3-9f15-3b28cc003be6\",\"text\":\"谢谢\"},\"messageType\":\"GIFTREPLY\"}",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "GIFTREPLY"
+      }
+    },
+    {
+      "msgIdServer": "7407670224",
+      "msgTime": 1790179290592,
+      "msgType": "GIFTREPLY",
+      "text": "谢谢",
+      "reply": {
+        "name": "一只猫猫˚°🐱",
+        "text": "送给 王语晨 1个月兔桂笺"
+      },
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "self": true,
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟"
+      },
+      "raw": {
+        "bodys": "{\"giftReplyInfo\":{\"replyText\":\"送给 王语晨 1个月兔桂笺\",\"replyName\":\"一只猫猫˚°🐱\",\"replyMessageId\":\"49a6e975-5fb4-40bf-acf0-c30d9dfb10c1\",\"text\":\"谢谢\"},\"messageType\":\"GIFTREPLY\"}",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "GIFTREPLY"
+      }
+    },
+    {
+      "msgIdServer": "7407636670",
+      "msgTime": 1790179287039,
+      "msgType": "GIFTREPLY",
+      "text": "谢谢",
+      "reply": {
+        "name": "一只猫猫˚°🐱",
+        "text": "送给 王语晨 1个好柿成双"
+      },
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "self": true,
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟"
+      },
+      "raw": {
+        "bodys": "{\"giftReplyInfo\":{\"replyText\":\"送给 王语晨 1个好柿成双\",\"replyName\":\"一只猫猫˚°🐱\",\"replyMessageId\":\"bb3f09b9-426c-4e0e-af25-0af2ab233fb4\",\"text\":\"谢谢\"},\"messageType\":\"GIFTREPLY\"}",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "GIFTREPLY"
+      }
+    },
+    {
+      "msgIdServer": "7407489282",
+      "msgTime": 1790172266593,
+      "msgType": "TEXT",
+      "text": "怎么还有这么多没学[流泪]",
+      "reply": null,
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "self": true,
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟"
+      },
+      "raw": {
+        "bodys": "怎么还有这么多没学[流泪]",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "TEXT"
+      }
+    },
+    {
+      "msgIdServer": "7407424105",
+      "msgTime": 1790172254124,
+      "msgType": "TEXT",
+      "text": "谁把我的时间偷走了[流泪]",
+      "reply": null,
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "self": true,
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟"
+      },
+      "raw": {
+        "bodys": "谁把我的时间偷走了[流泪]",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "TEXT"
+      }
+    },
+    {
+      "msgIdServer": "7407390993",
+      "msgTime": 1790172215237,
+      "msgType": "TEXT",
+      "text": "录音给我嘴巴都录白了",
+      "reply": null,
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "self": true,
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟"
+      },
+      "raw": {
+        "bodys": "录音给我嘴巴都录白了",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "TEXT"
+      }
+    },
+    {
+      "msgIdServer": "7407309810",
+      "msgTime": 1790167670633,
+      "msgType": "TEXT",
+      "text": "还是想冲一下这个运动会😬",
+      "reply": null,
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "self": true,
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟"
+      },
+      "raw": {
+        "bodys": "还是想冲一下这个运动会😬",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "TEXT"
+      }
+    },
+    {
+      "msgIdServer": "7407276335",
+      "msgTime": 1790167660827,
+      "msgType": "TEXT",
+      "text": "给你们说一下",
+      "reply": null,
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "self": true,
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟"
+      },
+      "raw": {
+        "bodys": "给你们说一下",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "TEXT"
+      }
+    },
+    {
+      "msgIdServer": "7407325708",
+      "msgTime": 1790167657583,
+      "msgType": "TEXT",
+      "text": "国庆567的握手我都报了噢",
+      "reply": null,
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "self": true,
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟"
+      },
+      "raw": {
+        "bodys": "国庆567的握手我都报了噢",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "TEXT"
+      }
+    },
+    {
       "msgIdServer": "7406900174",
       "msgTime": 1790148116800,
       "msgType": "TEXT",

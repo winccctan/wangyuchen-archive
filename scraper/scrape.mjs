@@ -377,6 +377,22 @@ async function run() {
   if (perfOk) await saveJson(resolve(DATA_DIR, 'performances.json'), { performances });
   await saveJson(resolve(DATA_DIR, 'meta.json'), meta);
 
+  // 刷新 B 站视频库（公演备用源 + 直播切片来源）：按用户指定的三个账号
+  // （企理鹅大帝 / 忘记自己是猪 / Chzhnh）抓取公演与直播切片，走 SCRAPE_PROXY 代理兜底绕过 B 站 WAF。
+  // 增量 + 断点续传；失败仅警告、不影响后续流程（下轮续跑）。
+  if (process.env.SKIP_BILI_VIDEOS !== '1') {
+    try {
+      const { execFileSync: ef } = await import('node:child_process');
+      const fetchBili = resolve(__dirname, '../scripts/fetch-bili-videos.mjs');
+      console.log('[B站库] 刷新公演 / 直播切片视频库...');
+      ef(process.execPath, [fetchBili], { stdio: 'inherit' });
+    } catch (e) {
+      console.warn('[警告] B 站视频库刷新失败（不影响 JSON 数据，下轮续跑）：' + e.message);
+    }
+  } else {
+    console.log('[跳过] B 站视频库（SKIP_BILI_VIDEOS=1）');
+  }
+
   // 生成 archive.js（供 file:// 直接打开时也能加载数据，无需本地服务器）
   try {
     const { execFileSync } = await import('node:child_process');
