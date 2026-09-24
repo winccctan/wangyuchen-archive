@@ -1471,10 +1471,571 @@
     else { closeModal(); toast('🎉 全部补完了！'); }
   }
 
+  /* =====================================================================
+     功能 ⑩ 今日盲盒：随机抽一张她的照片 + 随机「心动指数」
+     —— 照片池 = ① 微博社媒美图（经 /img 代理取图）② 口袋房间她发过的图（直连）
+     —— 心动指数按图片 URL 做稳定哈希：同一张照片每次抽到都是同一个值
+        （不是每次刷新乱跳的数字，看起来才像「这张真的被打了分」）
+     ===================================================================== */
+  const BOX_KEY = 'wyc-demo-blindbox-v1';
+  /** 已经判定为「不是照片」的图（表情包/海报/截图…）——存本地，下次直接跳过，不再白下载一遍。
+   *  为什么需要：口袋池 2774 条里约 63% 是这类图，而判定必须先把图加载出来看像素尺寸。
+   *  不记下来的话每次抽到都要重试，既慢又会让口袋侧的照片被「挤掉」（实测只占 29%，本应 50%）。 */
+  const BOX_JUNK_KEY = 'wyc-demo-blindbox-junk-v1';
+  const BOX_JUNK_MAX = 2500;
+  // 站长 2026-09-24 定：口袋房间发的图只收 2023-09 之后（更早的那批又小又杂，不适合当盲盒主图）
+  const PK_SINCE = Date.UTC(2023, 7, 31, 16, 0, 0);        // = 北京时间 2023-09-01 00:00
+  let boxPool = null, boxPoolLen = -1, boxWb = [], boxPk = [];
+  let boxJunk = null;                                      // Set<url>：已判定不是照片的（懒加载自本地）
+  let boxItem = null, boxDaily = true;
+
+  function hash32(s) {
+    const str = String(s == null ? '' : s);
+    let h = 2166136261 >>> 0;
+    for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+    return h >>> 0;
+  }
+
+  /** 构建照片池：微博（photo 多图 + video 封面）+ 口袋房间（她发的照片）
+   *  两个来源分开存：抽的时候**先五五开选来源**，再在来源内随机。
+   *  （微博池只有几百张、口袋池上千张，混在一起抽的话微博几乎抽不到） */
+  function buildBoxPool() {
+    const msgs = (typeof DATA !== 'undefined' && DATA.messages) || [];
+    const social = (typeof DATA !== 'undefined' && DATA.social) || [];
+    const len = msgs.length * 1000 + social.length;   // 两个源任一变化都重建
+    if (boxPool && boxPoolLen === len) return boxPool;
+    const wb = [], pk = [], seen = new Set();
+    const add = (arr, it) => { if (!it.src || seen.has(it.src)) return; seen.add(it.src); arr.push(it); };
+    // ① 微博：照片条目逐张收，视频条目只收封面
+    social.forEach((it) => {
+      const srcs = (it.k === 'photo') ? (it.p || []) : (it.cover ? [it.cover] : []);
+      srcs.forEach((u, i) => add(wb, {
+        src: u, from: '微博',
+        sub: it.k === 'photo' ? (srcs.length > 1 ? `第 ${i + 1}/${srcs.length} 张` : '单图') : '视频封面',
+        date: it.d || '', text: String(it.t || '').replace(/\s+/g, ' ').trim(),
+        link: it.u || '', wb: true
+      }));
+    });
+    // ② 口袋房间：只收 IMAGE（EXPRESSIMAGE 是口袋表情贴图，不是照片）
+    //    🔴 口袋里还混着大量「表情包 / 小图 / 截图」——她发的 IMAGE 不全是照片。
+    //    raw.bodys 里带 { w, h, size, ext }，按「长边 < 900 或 体积 < 60KB」剔除，
+    //    否则盲盒会抽到猫猫表情包（实测抽到过）。
+    msgs.forEach((m) => {
+      if (m.msgType !== 'IMAGE') return;
+      const ts = Number(m.msgTime) || 0;
+      if (ts && ts < PK_SINCE) return;                       // 早于 2023-09 的口袋图不进池
+      let mt = null;
+      try { mt = JSON.parse((m.raw && m.raw.bodys) || '{}'); } catch (_) { /* 老格式没有 JSON，放行 */ }
+      if (mt) {
+        const side = Math.max(Number(mt.w) || 0, Number(mt.h) || 0);
+        const bytes = Number(mt.size) || 0;
+        if (side && side < 900) return;
+        if (bytes && bytes < 60 * 1024) return;
+      }
+      const arr = m.images || [];
+      arr.forEach((u, i) => add(pk, {
+        src: u, from: '口袋房间',
+        sub: arr.length > 1 ? `第 ${i + 1}/${arr.length} 张` : '',
+        date: bjDate(m.msgTime), text: '', link: '', wb: false
+      }));
+    });
+    boxWb = wb; boxPk = pk; boxPool = wb.concat(pk); boxPoolLen = len;
+    return boxPool;
+  }
+
+  /** 已判定为「图」的集合（懒加载） */
+  function junkSet() {
+    if (!boxJunk) boxJunk = new Set(LS.get(BOX_JUNK_KEY, []) || []);
+    return boxJunk;
+  }
+  function markBoxJunk(src) {
+    const j = junkSet();
+    if (!src || j.has(src)) return;
+    j.add(src);
+    let arr = Array.from(j);
+    if (arr.length > BOX_JUNK_MAX) arr = arr.slice(arr.length - BOX_JUNK_MAX);   // 只留最近的，别撑爆 localStorage
+    LS.set(BOX_JUNK_KEY, arr);
+  }
+  /** 抽之前先把已知的「图」剔掉，照片才不会被这些杂质挤掉 */
+  function boxCand(arr) {
+    const j = junkSet();
+    if (!j.size) return arr;
+    const out = arr.filter((x) => !j.has(x.src));
+    return out.length ? out : arr;
+  }
+
+  // 心动指数档位：下限 → 稀有度徽章 + 短评 + 备选文案（文案再按哈希挑一句）
+  const BOX_TIERS = [
+    { min: 96, tag: 'SSR', name: '一眼万年',   lines: ['这张请直接进我的壁纸库', '看第一眼就知道，今天不用再看别的了', '收藏夹又要多一位常住居民'] },
+    { min: 88, tag: 'SR',  name: '心跳漏一拍', lines: ['心脏被轻轻捏了一下', '手比脑子快，已经点开大图了', '这种程度的心动值得循环一整天'] },
+    { min: 78, tag: 'R',   name: '嘴角自动上扬', lines: ['不自觉笑了一下，被旁边的人看到了', '治愈程度：一杯全糖奶茶', '看完整个人都松下来了'] },
+    { min: 68, tag: 'N',   name: '有点上头',   lines: ['再看一眼，就一眼', '今天的份量刚刚好', '已经偷偷存进相册了'] },
+    { min: 0,  tag: 'N',   name: '稳稳的喜欢', lines: ['平平淡淡也是喜欢', '今天也要好好的', '安安静静看着就很满足'] }
+  ];
+
+  function heartOf(src) {
+    const h = hash32(src);
+    const val = 60 + (h % 40);                                  // 60 ~ 99
+    const tier = BOX_TIERS.find((t) => val >= t.min) || BOX_TIERS[BOX_TIERS.length - 1];
+    const line = tier.lines[(h >>> 7) % tier.lines.length];
+    return { val, tier, line };
+  }
+
+  const boxDay = () => fmtBJ(new Date());                       // 北京日期，换日才换今日份
+
+  /** mode='daily' 今日份（日期哈希决定，同一天固定）｜'rand' 随机；i = 第几次尝试（跳过不合格/重复） */
+  /** flag：0 = 微博池，1 = 口袋池；不传就随机掷一个（daily 由日期哈希决定来源） */
+  function drawBox(mode, i, flag) {
+    buildBoxPool();
+    if (!boxPool.length) return null;
+    const tries = Number(i) || 0;
+    if (mode === 'daily') {
+      const day = boxDay();
+      if (tries === 0) {
+        const st = LS.get(BOX_KEY, {});
+        if (st && st.day === day && st.src) {
+          const hit = boxPool.find((x) => x.src === st.src);
+          if (hit) return hit;                                  // 同一天打开 → 还是那张
+        }
+      }
+      const seed = hash32('wyc-blindbox-' + day) + tries * 7919;  // 加个质数步长，逐次换候选
+      const arr = boxCand(boxArr(seed));
+      return arr[Math.floor(seed / 2) % arr.length];
+    }
+    // 随机抽：来源内随机；尽量别连着抽到同一张
+    const src = (flag === 0 || flag === 1) ? flag : (Math.random() < 0.5 ? 0 : 1);
+    const arr = boxCand(boxArr(src));
+    let it = null;
+    for (let k = 0; k < 8; k++) {
+      it = arr[Math.floor(Math.random() * arr.length)];
+      if (!boxItem || it.src !== boxItem.src) break;
+    }
+    return it;
+  }
+
+  /** 0 = 微博池，1 = 口袋池（某一池为空就回退到另一池） */
+  function boxArr(flag) {
+    const a = flag === 0 ? boxWb : boxPk;
+    const b = flag === 0 ? boxPk : boxWb;
+    return a.length ? a : b;
+  }
+
+  // 微博图必须走站点 /img 代理（新浪直链 403）；口袋图是云信直链，别走代理（会被 host 白名单拒）
+  const boxSrc = (it) => (it.wb && typeof proxyImg === 'function') ? proxyImg(it.src) : it.src;
+  // 出图时两个来源都走代理：代理响应带 CORS 头，画进 canvas 才不会被污染（见 loadCardImg）
+  const boxProxy = (it) => (typeof proxyImg === 'function') ? proxyImg(it.src) : it.src;
+
+  function boxMeta(it) {
+    return [it.from, it.date, it.sub].filter(Boolean).map(esc).join(' · ');
+  }
+
+  function boxHtml(it, daily) {
+    const h = heartOf(it.src);
+    const tag = h.tier.tag.toLowerCase();
+    const txt = it.text
+      ? `<div class="bm-text">“${esc(it.text.length > 56 ? it.text.slice(0, 56) + '…' : it.text)}”</div>` : '';
+    return ''
+      + '<div class="bm-card">'
+      +   `<div class="bm-shot"><img class="bm-img" src="${esc(boxSrc(it))}" alt="王语晨 照片" decoding="async"`
+      +     ` referrerpolicy="no-referrer" onclick="window.__lightboxShow && window.__lightboxShow(this.src)"`
+      +     ' onerror="window.__bmImgFail && window.__bmImgFail()" />'
+      +     `<span class="bm-badge bm-${tag}">${h.tier.tag}</span>`
+      +     `<span class="bm-flag">${daily ? '今日份' : '随机抽'}</span>`
+      +   '</div>'
+      +   '<div class="bm-heart">'
+      +     '<div class="bm-hrow"><span class="bm-hlbl">心动指数</span>'
+      +       `<span class="bm-hval bm-${tag}">${h.val}<i>%</i></span></div>`
+      +     `<div class="bm-bar"><i data-w="${h.val}" style="width:0"></i></div>`
+      +     `<div class="bm-tier"><b>${esc(h.tier.name)}</b><span>${esc(h.line)}</span></div>`
+      +   '</div>'
+      +   `<div class="bm-meta">${boxMeta(it)}</div>` + txt
+      +   '<div class="bm-hint">长按图片可以保存到相册 · 也可以点下方「生成分享图」存成一张卡片</div>'
+      + '</div>';
+  }
+
+  function boxText() {
+    if (!boxItem) return '';
+    const h = heartOf(boxItem.src);
+    const meta = [boxItem.from, boxItem.date, boxItem.sub].filter(Boolean).join(' · ');
+    let s = `【王语晨 · ${boxDaily ? '今日' : '随机'}盲盒】\n`
+      + `💓 心动指数 ${h.val}%　${h.tier.tag} · ${h.tier.name}\n📷 ${meta}`;
+    if (boxItem.text) s += `\n“${boxItem.text.length > 56 ? boxItem.text.slice(0, 56) + '…' : boxItem.text}”`;
+    if (boxItem.link) s += `\n🔗 ${boxItem.link}`;
+    return s + '\n—— 王语晨补档站';
+  }
+
+  function boxFooter() {
+    const wb = boxItem && boxItem.link
+      ? `<a class="dm-btn" href="${esc(boxItem.link)}" target="_blank" rel="noopener">↗ 看原帖</a>` : '';
+    // 外层包一层 .bm-acts：只影响盲盒弹窗的按钮排布，不动其它弹窗的 footer 样式
+    // 按钮顺序：换一张（最常用）→ 生成分享图（本次新增）→ 复制文案 → 看原帖
+    return '<div class="bm-acts">'
+      + '<button class="dm-btn primary bm-again" type="button">🎁 换一张</button>'
+      + '<button class="dm-btn bm-dl" type="button">🖼 生成分享图</button>'
+      + '<button class="dm-btn bm-copy" type="button">📋 复制文案</button>' + wb
+      + '</div>';
+  }
+
+  function renderBlindBox() {
+    const w = modal(boxDaily ? '🎁 今日盲盒' : '🎁 随机盲盒', boxHtml(boxItem, boxDaily), { footer: boxFooter() });
+    requestAnimationFrame(() => {
+      const bar = $('.bm-bar i', w);
+      if (bar) bar.style.width = bar.dataset.w + '%';          // 进度条从 0 长到指数值
+    });
+  }
+
+  function renderBoxLoading() {
+    modal(boxDaily ? '🎁 今日盲盒' : '🎁 随机盲盒', '<div class="bm-loading">正在拆盒…</div>');
+  }
+
+  /** 预加载一张图：既是「出图前先确认能加载」，也顺手拿到真实像素尺寸 */
+  function preloadBox(it) {
+    return new Promise((resolve) => {
+      const im = new Image();
+      im.referrerPolicy = 'no-referrer';
+      let settled = false;
+      const fin = (ok) => { if (!settled) { settled = true; resolve({ ok, w: im.naturalWidth || 0, h: im.naturalHeight || 0 }); } };
+      im.onload = () => fin(true);
+      im.onerror = () => fin(false);
+      im.src = boxSrc(it);
+      setTimeout(() => fin(false), 12000);
+    });
+  }
+
+  /** 口袋房间里的「图」远不全是照片 —— 还混着表情包、计分感谢榜海报、榜单名单截图、聊天长图、
+   *  表单截图、模板图。四条规则拦下来：
+   *    ① 长边 < 1500 → 表情包（1320×1320 那一大堆）、微信导出的设计图（960×1280 榜单海报）
+   *       ← 她手机直出的照片是 3024 / 4284，门槛放 1500 既不误杀又挡得住贴图
+   *    ② 宽高比 < 0.62 或 > 1.8 → 手机截图、名单长图、聊天记录
+   *    ③ 方形（0.9~1.1）还要求长边 ≥ 2000 → 进一步挡方形贴图
+   *    ④ 尺寸与照片完全相同、①②③ 拦不住的导出尺寸 → 见下面的黑名单
+   *  🔴 KV 数据剥掉了 raw.bodys，前端拿不到原始 w/h/size/ext，也读不了像素
+   *     （口袋图云信直链没有 CORS 头，画到 canvas 就被污染），所以只能靠「加载后的真实像素尺寸」判。
+   *  微博池是她本人发的照片，已清洗过，不设卡。 */
+  /** ④-a 已知是「非照片导出」的尺寸 —— 2026-09-24 离线把 2023-09 之后、能过①②③ 的口袋图逐张看过：
+   *  这些尺寸下没有一张是她的照片。新增玩法时若发现漏网，按同样办法核对后往这里加。 */
+  const PK_BAD_DIMS = new Set([
+    '1024x1536',   // 计分感谢榜海报 ×6 + 「房间票打卡冲活动」文本卡 ×1
+    '1620x2160',   // 「谷大歌 / 全员曲 / 花曲 / 流着串烧」模板图 ×5
+    '2360x1640',   // 深色榜单界面截图 ×4
+    '2388x1668',   // 手绘打招呼图 ×1
+    '1179x1710',   // GNZ48 补贴 / 券 表单截图 ×1
+    '1179x1722'    // 同上 ×1
+  ]);
+  /** ④-b 尺寸和她的照片一模一样（1320×1760），尺寸挡不住 → 按链接尾段点名排除。
+   *  目前只有一张粉丝做的「王语晨」应援海报。 */
+  const PK_BAD_TAILS = ['OTI3Zi00NWIzYjk1YTViMmQ='];
+
+  function boxOk(it, m) {
+    if (!m.ok) return false;
+    if (it.wb) return true;
+    const side = Math.max(m.w, m.h);
+    const ratio = m.w / m.h;
+    if (side < 1500) return false;                      // 表情包 / 缩略小图
+    if (ratio < 0.62 || ratio > 1.8) return false;      // 手机截图、名单长图、聊天记录
+    if (ratio >= 0.9 && ratio <= 1.1 && side < 2000) return false;
+    if (PK_BAD_DIMS.has(m.w + 'x' + m.h)) return false; // ④-a
+    for (let i = 0; i < PK_BAD_TAILS.length; i++) {     // ④-b
+      const t = PK_BAD_TAILS[i];
+      if (it.src && it.src.slice(-t.length) === t) return false;
+    }
+    return true;
+  }
+
+  /** 抽一张「合格」的照片；daily=今日份（按日期定，同一天每次结果一样）
+   *  🔴 随机模式下「先掷定来源、再在来源内找合格照片」，来源不会因为某池杂质多就被挤掉。
+   *  口袋池里有 6 成是表情包/海报/截图（判定必须先加载出来看尺寸），若每次重试都重掷来源，
+   *  口袋侧最后只能占 28%（实测），本应 50%。 */
+  async function pickBox(mode) {
+    if (!buildBoxPool().length) return null;
+    let last = null;
+    if (mode === 'daily') {
+      for (let i = 0; i < 6; i++) {
+        const it = drawBox('daily', i);
+        if (!it) break;
+        last = it;
+        if (boxOk(it, await preloadBox(it))) {
+          LS.set(BOX_KEY, { day: boxDay(), src: it.src });       // 定下来就是今天的份
+          return it;
+        }
+        markBoxJunk(it.src);                                     // 记住它，下次不再抽到、也不再白下载
+      }
+      return last;
+    }
+    const first = Math.random() < 0.5 ? 0 : 1;
+    for (const flag of [first, 1 - first]) {                     // 本侧实在找不到才退回另一侧
+      for (let i = 0; i < 8; i++) {
+        const it = drawBox('random', i, flag);
+        if (!it) break;
+        last = it;
+        if (boxOk(it, await preloadBox(it))) return it;
+        markBoxJunk(it.src);
+      }
+    }
+    return last;                                                 // 极端情况：全不合格也给一张，别白点
+  }
+
+  /* ---------- 盲盒分享卡：把「照片 + 心动指数 + 文案」画成一张能保存/能分享的图 ----------
+   * 出图后复用 app.js 里档案卡那套 showAlbumLayer：手机走系统分享面板（面板里选「存储到照片」）
+   * 或引导长按保存；只有桌面才用 a[download]。🔴 手机上绝不用 a[download]——那样只会
+   * 落进「文件」App 的下载文件夹，进不了相册（站长 2026-09-23 定的规矩）。
+   *
+   * ⚠️ canvas 导出要求图片「跨域安全」（响应带 CORS 头），否则画布被污染、toDataURL 直接抛错：
+   *    · 微博图  → 站点 /img 代理（新浪图床），响应带 access-control-allow-origin: *
+   *    · 口袋图  → 云信直链本身没有 CORS 头；上正式站时已给 /img 白名单加上
+   *      kd48-nosdn.yunxinsvr.com / nim-nosdn.netease.im，所以同样走自家代理，不借第三方。
+   *      （万一代理没生效 / 图床抽风 → 兜底借一次公共图片代理，只用于画图，不影响页面展示）
+   */
+  const CARD_FONT = '"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Heiti SC",sans-serif';
+  const WESERV = (u) => 'https://images.weserv.nl/?url='
+    + encodeURIComponent(String(u).replace(/^https?:\/\//, '')) + '&w=1200&output=jpg&q=90';
+
+  /** 带 crossOrigin 加载：拿到能画进 canvas 的图，失败返回 null */
+  function loadImgCors(url) {
+    return new Promise((resolve) => {
+      const im = new Image();
+      im.crossOrigin = 'anonymous';
+      let done = false;
+      const fin = (v) => { if (!done) { done = true; resolve(v); } };
+      im.onload = () => fin(im);
+      im.onerror = () => fin(null);
+      im.src = url;
+      setTimeout(() => fin(null), 20000);
+    });
+  }
+
+  async function loadCardImg(it) {
+    // 一律先走自家 /img 代理（两个图床都在白名单里），失败才退到公共代理
+    const cands = [boxProxy(it), WESERV(it.src)];
+    for (let i = 0; i < cands.length; i++) {
+      const im = await loadImgCors(cands[i]);
+      if (im && im.naturalWidth) return im;
+    }
+    return null;
+  }
+
+  function rrect(ctx, x, y, w, h, r) {
+    const rr = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + rr, y);
+    ctx.arcTo(x + w, y, x + w, y + h, rr);
+    ctx.arcTo(x + w, y + h, x, y + h, rr);
+    ctx.arcTo(x, y + h, x, y, rr);
+    ctx.arcTo(x, y, x + w, y, rr);
+    ctx.closePath();
+  }
+
+  /** 逐字符量宽换行（canvas 不认 \n，必须自己切）；超出行数末尾补省略号 */
+  function wrapLines(ctx, text, maxW, maxLines) {
+    const out = [];
+    let cur = '';
+    for (const ch of String(text || '')) {
+      if (cur && ctx.measureText(cur + ch).width > maxW) {
+        out.push(cur);
+        if (out.length >= maxLines) return out;
+        cur = ch;
+      } else cur += ch;
+    }
+    if (cur) out.push(cur);
+    if (out.length > maxLines) out.length = maxLines;
+    return out;
+  }
+
+  const TIER_COLOR = { SSR: ['#ffb53d', '#ff7a2f', '#ff8a3d'], SR: ['#ff7aa2', '#ff5f7e', '#ff5f7e'],
+    R: ['#4bd0e8', '#2bc4e0', '#2bc4e0'], N: ['#b9b9c2', '#9a9aa4', '#8a8a92'] };
+
+  /** 画卡片：逻辑宽 900，整体放大 2 倍出图（字和间距都用逻辑坐标，等比放大） */
+  function drawBoxCard(img, it, lines) {
+    const SC = 2, W = 900, PAD = 48;
+    const h = heartOf(it.src);
+    const c = TIER_COLOR[h.tier.tag] || TIER_COLOR.N;
+    const iw = img.naturalWidth, ih = img.naturalHeight;
+    const pw = W - PAD * 2;
+    // 照片按原始比例铺满宽度（尽量不裁脸）；只有极端长图/横幅才裁到 560~1150
+    const ph = Math.round(Math.min(1150, Math.max(560, pw * ih / iw)));
+    const textH = lines.length ? 14 + lines.length * 38 : 0;
+    const H = PAD + ph + 28 + 349 + textH + PAD;   // 349 = 下方文字区固定高度（含条、档位、来源、底注）
+
+    const cv = document.createElement('canvas');
+    cv.width = W * SC; cv.height = Math.round(H) * SC;
+    const ctx = cv.getContext('2d');
+    ctx.scale(SC, SC);
+    ctx.textBaseline = 'alphabetic';
+
+    // 背景
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#fff8fa'); g.addColorStop(1, '#ffeaf1');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+
+    // 照片（圆角裁剪 + 居中裁满）
+    ctx.save();
+    rrect(ctx, PAD, PAD, pw, ph, 26);
+    ctx.clip();
+    const s = Math.max(pw / iw, ph / ih);
+    const dw = iw * s, dh = ih * s;
+    ctx.drawImage(img, PAD + (pw - dw) / 2, PAD + (ph - dh) / 2, dw, dh);
+    ctx.restore();
+
+    // 左上角稀有度徽章
+    ctx.save();
+    ctx.font = 'bold 26px ' + CARD_FONT;
+    const bw = ctx.measureText(h.tier.tag).width + 44;
+    rrect(ctx, PAD + 20, PAD + 20, bw, 50, 25);
+    const bg = ctx.createLinearGradient(PAD + 20, PAD + 20, PAD + 20 + bw, PAD + 70);
+    bg.addColorStop(0, c[0]); bg.addColorStop(1, c[1]);
+    ctx.fillStyle = bg; ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(h.tier.tag, PAD + 20 + bw / 2, PAD + 46);
+    // 右上角「今日份 / 随机抽」
+    ctx.textAlign = 'right';
+    ctx.font = '22px ' + CARD_FONT;
+    const flag = boxDaily ? '今日份' : '随机抽';
+    const fw = ctx.measureText(flag).width + 32;
+    rrect(ctx, W - PAD - 20 - fw, PAD + 20, fw, 50, 25);
+    ctx.fillStyle = 'rgba(0,0,0,.34)'; ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.fillText(flag, W - PAD - 36, PAD + 46);
+    ctx.restore();
+
+    let y = PAD + ph + 28;
+    ctx.textBaseline = 'alphabetic';
+
+    // 心动指数
+    ctx.textAlign = 'left';
+    ctx.font = '25px ' + CARD_FONT; ctx.fillStyle = '#8a8a92';
+    ctx.fillText('心动指数', PAD, y + 44);
+    ctx.textAlign = 'right';
+    ctx.font = 'bold 64px ' + CARD_FONT; ctx.fillStyle = c[2];
+    const num = String(h.val);
+    ctx.font = 'bold 30px ' + CARD_FONT;
+    const sw = ctx.measureText('%').width;
+    ctx.font = 'bold 64px ' + CARD_FONT;
+    ctx.fillText(num, W - PAD - sw - 2, y + 46);
+    ctx.font = 'bold 30px ' + CARD_FONT;
+    ctx.fillText('%', W - PAD, y + 46);
+    y += 62;
+
+    // 进度条
+    ctx.save();
+    rrect(ctx, PAD, y + 16, pw, 14, 7);
+    ctx.fillStyle = '#f2e6ea'; ctx.fill();
+    rrect(ctx, PAD, y + 16, Math.max(14, pw * h.val / 100), 14, 7);
+    const pg = ctx.createLinearGradient(PAD, 0, W - PAD, 0);
+    pg.addColorStop(0, '#ffd08a'); pg.addColorStop(1, c[1]);
+    ctx.fillStyle = pg; ctx.fill();
+    ctx.restore();
+    y += 46;
+
+    // 档位名 + 短评
+    ctx.textAlign = 'left';
+    ctx.font = 'bold 36px ' + CARD_FONT; ctx.fillStyle = '#26262c';
+    ctx.fillText(h.tier.name, PAD, y + 32);
+    y += 50;
+    ctx.font = '26px ' + CARD_FONT; ctx.fillStyle = '#8a8a92';
+    ctx.fillText(h.line, PAD, y + 24);
+    y += 40;
+
+    // 来源
+    const meta = [it.from, it.date, it.sub].filter(Boolean).join(' · ');
+    ctx.font = '23px ' + CARD_FONT; ctx.fillStyle = '#a8a8b0';
+    ctx.fillText(meta, PAD, y + 20);
+    y += 36;
+
+    // 原文案（最多两行）
+    if (lines.length) {
+      y += 14;
+      ctx.font = '27px ' + CARD_FONT; ctx.fillStyle = '#4a4a52';
+      lines.forEach((ln, i) => ctx.fillText(ln, PAD, y + 26 + i * 38));
+      y += lines.length * 38;
+    }
+
+    // 底注
+    y += 24;
+    ctx.fillStyle = '#e6d7dd'; ctx.fillRect(PAD, y, pw, 1);
+    y += 30;
+    ctx.textAlign = 'left';
+    ctx.font = '24px ' + CARD_FONT; ctx.fillStyle = '#8a8a92';
+    ctx.fillText('🎁 王语晨 · ' + (boxDaily ? '今日盲盒' : '随机盲盒'), PAD, y);
+    ctx.textAlign = 'right';
+    ctx.fillText('idol.wyc0518.cc', W - PAD, y);
+
+    return cv;
+  }
+
+  async function makeBoxCard() {
+    if (!boxItem) return;
+    toast('正在生成分享图…');
+    const img = await loadCardImg(boxItem);
+    if (!img) { toast('这张图暂时画不出来，换一张试试'); return; }
+    let cv = null;
+    try {
+      const m = document.createElement('canvas').getContext('2d');
+      m.font = '27px ' + CARD_FONT;
+      const lines = wrapLines(m, String(boxItem.text || '').replace(/\s+/g, ' ').trim(), 900 - 96, 2);
+      cv = drawBoxCard(img, boxItem, lines);
+    } catch (e) { toast('生成失败，稍后再试'); return; }
+    const stamp = fmtBJ(new Date()) + '-' + heartOf(boxItem.src).val;
+    // JPEG 而非 PNG：这张卡是照片为主，JPEG 画质看不出差别，数据量只有 PNG 的十分之一
+    // （PNG 的 dataURL 实测 6.4MB，手机上分享/预览都容易卡）
+    const url = cv.toDataURL('image/jpeg', 0.92);
+    if (typeof track === 'function') track('box:card');
+    if (typeof showAlbumLayer === 'function') showAlbumLayer(url, stamp, '王语晨盲盒');
+    else { const a = document.createElement('a'); a.href = url; a.download = '王语晨盲盒.jpg'; a.click(); }
+  }
+
+  /** 线上数据是「首屏 recent + 历史月后台继续拉」，刚开页面就点盲盒的话池子只有几十张。
+   *  这时先等历史月拉完（最多 6 秒）；池子够大就立刻抽，绝不让用户干等。 */
+  async function waitBoxPool(min) {
+    if (buildBoxPool().length >= min) return;
+    let p = null;
+    try { p = (typeof allMonthsPromise !== 'undefined' && allMonthsPromise) ? allMonthsPromise : null; } catch (_) { p = null; }
+    if (!p) return;
+    await Promise.race([p.catch(() => null), new Promise((r) => setTimeout(r, 6000))]);
+  }
+
+  let boxBusy = false;
+  async function openBlindBox(daily) {
+    if (!buildBoxPool().length) { toast('照片还没加载好，等一下再抽'); return; }
+    if (boxBusy) return;
+    boxBusy = true;
+    boxDaily = daily !== false;
+    renderBoxLoading();
+    try {
+      await waitBoxPool(300);
+      const it = await pickBox(boxDaily ? 'daily' : 'rand');
+      if (!it) { closeModal(); toast('照片还没加载好，等一下再抽'); return; }
+      boxItem = it;
+      renderBlindBox();
+      if (typeof track === 'function') track('box:open');
+    } finally { boxBusy = false; }
+  }
+
+  function injectBlindBox() {
+    if ($('#bmFab')) return;
+    const fab = document.createElement('button');
+    fab.className = 'bm-fab';
+    fab.type = 'button';
+    fab.id = 'bmFab';
+    fab.innerHTML = '<span class="bm-fab-ico">🎁</span><span class="bm-fab-txt">盲盒</span>';
+    fab.title = '今日盲盒：随机抽一张她的照片 + 心动指数';
+    fab.addEventListener('click', () => openBlindBox(true));
+    document.body.appendChild(fab);
+
+    // 兜底：出图前已预加载校验过，这里只会出现在中途断网/缓存失效的情况
+    window.__bmImgFail = function () { toast('这张图暂时加载不出来，点「换一张」试试'); };
+
+    document.addEventListener('click', (e) => {
+      if (e.target.closest('.bm-again')) { openBlindBox(false); return; }
+      if (e.target.closest('.bm-dl')) { makeBoxCard(); return; }
+      if (e.target.closest('.bm-copy')) { copyText(boxText()); if (typeof track === 'function') track('box:copy'); return; }
+    });
+  }
+
   function boot() {
     injectToolbar();
     injectChips();
     buildHisDropdown();
+    injectBlindBox();
     syncChipsTab();
 
     // DOM 变化 → 轻度重装饰（带防抖；已处理过的元素会跳过）
