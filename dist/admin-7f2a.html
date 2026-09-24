@@ -18,6 +18,7 @@
   input, textarea, select { width:100%; font:inherit; padding:11px 12px; border:1px solid var(--line);
     border-radius:10px; background:#fff; color:var(--ink); -webkit-appearance:none; }
   textarea { min-height:130px; line-height:1.5; }
+  textarea.sm { min-height:96px; }
   button { width:100%; font:inherit; font-weight:600; padding:13px; border:0; border-radius:12px;
     background:var(--brand); color:#fff; margin-top:10px; }
   button.ghost { background:#fff; color:var(--brand); border:1px solid var(--brand); }
@@ -86,9 +87,9 @@
 
   <h2>3 · 券种 / 计分</h2>
   <div class="card">
-    <label>可用券种（一行一个）</label>
-    <div id="ticketList"></div>
-    <button id="btnTicketAdd" class="mini gray addrow">＋ 加一个券种</button>
+    <label for="ticketText">可用券种</label>
+    <textarea id="ticketText" class="sm" placeholder="例：&#10;《终极殿堂》握手券&#10;《Forever Young》《热恋专属(Love Ver.)》握手券、签名券、合影券"></textarea>
+    <p class="hint">一行一段。想换行就换行，怎么顺手怎么写，保存时会自动用「；」连起来。</p>
     <label for="scorePeriod">计分时段</label>
     <input id="scorePeriod" placeholder="9月26日 - 10月7日">
     <label>计分规则（一行一条）</label>
@@ -121,7 +122,6 @@
   var EXP = Number(localStorage.getItem('wyc.admin.exp') || 0);
   var cur = null;                    // 当前存档（KV 里的全量）
   var rows = [];                     // 待发布条目（可编辑）
-  var tks = [];                      // 可用券种（一行一个）
   var scrs = [];                     // 计分规则（一行一条）
 
   var $ = function (id) { return document.getElementById(id); };
@@ -233,6 +233,12 @@
   }
 
   // ---- 券种 / 计分（可单独保存，不用发行程也能改）----
+  // 券种就是一整段文本（站长要的就是「一大段，自己换行」）；
+  // 存进 KV 时再压成一行（换行 → 「；」），因为海报是 canvas 单行 wrapText，存换行会画不出来。
+  function readTicket() {
+    return String($('ticketText').value || '').split(/\r?\n/)
+      .map(function (s) { return s.trim(); }).filter(Boolean).join('；');
+  }
   function renderLists() {
     function draw(box, arr, key, delKey, empty, ph) {
       box.innerHTML = '';
@@ -253,13 +259,11 @@
     }
     // 数据还没回来时显示「读取中…」，别让站长误以为真的没有、顺手点了「加一条」
     var wait = '读取中…';
-    draw($('ticketList'), tks, 'tk', 'tkdel', loaded ? '还没填券种' : wait, '如《终极殿堂》握手券');
     draw($('scoreList'), scrs, 'sc', 'scdel', loaded ? '还没填计分规则' : wait, '如 每场公演 1 分');
   }
-  $('btnTicketAdd').onclick = function () { if (!loaded) return; tks.push(''); renderLists(); };
   $('btnScoreAdd').onclick = function () { if (!loaded) return; scrs.push(''); renderLists(); };
   $('btnMeta').onclick = function () {
-    var tk = tks.map(function (s) { return String(s).trim(); }).filter(Boolean).join('；');
+    var tk = readTicket();
     var per = $('scorePeriod').value.trim();
     var rules = scrs.map(function (s) { return String(s).trim(); }).filter(Boolean);
     var body = { ticket: tk, score: (rules.length || per) ? { period: per, rules: rules } : null };
@@ -301,8 +305,11 @@
     // 只在第一次回填。之后无论「删了一条行程」「发布了新行程」触发几次 loadCur，
     // 都不再动站长手上的券种 / 计分 —— 否则他改到一半会被服务端数据冲掉。
     if (!loaded) {
+      // 券种存进去是一行（用「；」隔开），这里还原成一段多行文本方便看改。
+      // ⚠️ 只按「；」切，**不按「、」或「，」切** —— 一条券种内部本来就会带「、」
+      //   （如「握手券、签名券、合影券」属于同一组歌），切开再 join 回来就把归属弄丢了。
       var tk = (cur && cur.ticket) ? String(cur.ticket) : '';
-      tks = tk ? tk.split(/[；;，,、\n]+/).map(function (s) { return s.trim(); }).filter(Boolean) : [];
+      $('ticketText').value = tk.replace(/\s*[；;]\s*/g, '\n');
       var sc = (cur && cur.score) || {};
       $('scorePeriod').value = sc.period || '';
       scrs = (sc.rules || []).slice();
