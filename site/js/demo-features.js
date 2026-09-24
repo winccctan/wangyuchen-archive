@@ -2339,6 +2339,7 @@
 
   // 生写小卡：筛选 + 放大（事件委托，guideSub 内容会重渲）
   document.addEventListener('click', (e) => {
+    if (e.target.closest('[data-sub="cards"]')) trk('cards:open');  // 只在真点子标签时记，筛选重渲不记
     const f = e.target.closest('[data-cardf]');
     if (f) {
       LS.set('wyc-demo-cardcat', f.dataset.cardf);
@@ -2347,6 +2348,7 @@
     }
     const im = e.target.closest('[data-card-img]');
     if (im) {
+      trk('cards:zoom');
       const src = im.dataset.cardImg, name = im.dataset.cardName || '生写小卡';
       const w = modal(name, `
         <div class="cv-stage" id="cvStage"><img id="cvImg" src="${esc(src)}" alt="${esc(name)}"></div>
@@ -2380,11 +2382,13 @@
             || (navigator.userAgentData && navigator.userAgentData.mobile);
           if (isMobile && navigator.canShare && navigator.canShare({ files: [file] })) {
             await navigator.share({ files: [file], title: name });  // 手机走系统保存/分享
+            trk('cards:save');
           } else {
             const a = document.createElement('a');
             a.href = URL.createObjectURL(b); a.download = fname;
             document.body.appendChild(a); a.click(); a.remove();
             setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+            trk('cards:save');
           }
         } catch (err) {
           if (!(err && err.name === 'AbortError')) window.open(src, '_blank');  // 兜底：新窗打开长按存
