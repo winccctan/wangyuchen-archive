@@ -735,8 +735,18 @@ async function fetchJson(name) {
 // 只记「发生了什么动作」的次数（如切到哪个 tab、播放视频、点开美图），
 // 不含任何发言内容 / 个人信息；请求失败一律忽略，绝不影响正常使用。
 // 用 1x1 图片发请求：不受跨域限制、不阻塞页面、关闭页面也能发出。
+// 是否停用统计：URL 带 ?notrack=1 → 写进 localStorage，长期生效（清除站点数据即恢复）
+const NOTRACK = (function () {
+  try {
+    if (/[?&]notrack=1(&|$)/.test(location.search)) { localStorage.setItem('wyc-notrack', '1'); return true; }
+    return localStorage.getItem('wyc-notrack') === '1';
+  } catch (_) { return false; }
+})();
 function track(ev) {
   try {
+    // 自助排除：带 ?notrack=1 打开一次，这个浏览器以后就不再上报
+    // （站长自测 / 我改完核验时用，免得把自己的访问算进「访客」和「国家」里）
+    if (NOTRACK) return;
     new Image().src = './track?e=' + encodeURIComponent(String(ev).slice(0, 40)) + '&t=' + Date.now();
   } catch (_) { /* 忽略 */ }
 }
