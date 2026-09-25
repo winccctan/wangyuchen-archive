@@ -82,7 +82,8 @@ const files = [
 // 整目录复制：口袋表情图（105 张 gif，共 ~300KB），逐个列白名单不现实
 const dirs = [
   'assets/emoji',
-  'cards/photos' // 生写小卡图鉴实物照（17 张 ~5.7MB，「生写小卡」子标签用）
+  'cards/photos', // 生写小卡图鉴实物照（17 张 ~5.7MB，「生写小卡」子标签用）
+  'assets/sticker' // 饭制表情包微信版（51 张 240×240 / 单张 ≤500KB，「饭制表情包」子标签用）
 ];
 
 let total = 0;
