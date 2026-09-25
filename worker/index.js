@@ -296,6 +296,9 @@ const EVENTS = [
   ['bili', 'B 站跳转'],
   ['search', '搜索'],
 ];
+// 允许写进 KV 的事件名集合（= EVENTS 的键）。2026-09-25 起 handleTrack 用它做准入校验，
+// 白名单外的事件一律不写（防随手灌数据 + 省 KV 写入额度）。
+const ALLOWED_EVS = new Set(EVENTS.map((e) => e[0]));
 // 已明确不再记录的事件（`lang:` 前缀另算，见 isStoppedEv）
 const STOP_EVENTS = new Set([
   'sub:replay', 'sub:cuts', 'sub:social', 'sub:gallery', 'sub:exp',
@@ -342,6 +345,27 @@ const STAT_WRITE_CAP = 1000;
 async function shortHash(s) {
   const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(s)));
   return Array.from(new Uint8Array(d)).slice(0, 8).map((x) => x.toString(16).padStart(2, '0')).join('');
+}
+/* ──「一个人」的判定键（2026-09-25 修）─────────────────────────────────────────
+ * 以前直接拿完整 IP 当「人」。但手机/宽带的 IPv6 **隐私地址一天要换好几次**
+ * （同一条线路、同一个人，后半段会变），运营商 IPv4 共用池也会轮换，
+ * 于是同一个人会被算成好几个访客 —— 这正是「日本人数虚高」的来源。
+ * 改法：IPv6 只取前四段（64 位前缀，运营商分配给一条线路的那一半，换地址也不变），把同一个网络
+ * 里的多个地址归成一个人。IPv4 维持整段（再收紧会把同一运营商 NAT 池里的其他粉丝也吃掉）。
+ * ⚠️ 副作用（知道就好）：同一屋檐下好几个人共用一个 /64 时只算 1 人 —— 这跟 IPv4 出口 IP
+ * 的性质是一样的，统计页的说明里写清楚了。
+ */
+function visitorIp(ip) {
+  const s = String(ip || '?').trim().toLowerCase();
+  if (s.indexOf(':') < 0) return s;                       // IPv4：原样
+  if (s.indexOf('.') >= 0) return s.split(':').pop();     // IPv4-mapped（::ffff:1.2.3.4）按 IPv4 算
+  const body = s.indexOf('%') >= 0 ? s.slice(0, s.indexOf('%')) : s;   // 去掉 IPv6 zone id
+  const halves = body.split('::');
+  const head = halves[0] ? halves[0].split(':') : [];
+  const tail = (halves.length > 1 && halves[1]) ? halves[1].split(':') : [];
+  const miss = 8 - head.length - tail.length;             // 把 :: 省略的 0 补回去再取前 4 段
+  const full = head.concat(new Array(Math.max(0, miss)).fill('0'), tail);
+  return full.slice(0, 4).join(':') + '::/64';
 }
 async function incKV(kv, k) {
   const n = Number((await kv.get(k)) || 0) + 1;
@@ -417,7 +441,7 @@ async function bumpStat(env, tl, request) {
     await incKV(kv, 'stat:tr:total');
     await incKV(kv, 'stat:tr:lang:' + tl);
     await incKV(kv, 'stat:tr:day:' + day);
-    await kv.put(`stat:tr:u:${day}:${await shortHash(ip)}`, '1');
+    await kv.put(`stat:tr:u:${day}:${await shortHash(visitorIp(ip))}`, '1');
   } catch (_) { /* 统计失败不影响翻译 */ }
 }
 
@@ -497,6 +521,11 @@ async function handleTrack(url, request, env, ctx) {
     // 2026-09-24 站长裁定「没用的别统计了」：命中停用名单的事件一个字节都不写，
     // 直接返回图片（0 次 KV 写）。放在记账之前 ⇒ 连每日配额都不占。
     if (isStoppedEv(ev)) return gif();
+    // 2026-09-25 再加一道：**必须是 EVENTS 白名单里登记过的事件名**才写。
+    // 以前只过滤非法字符，等于任何人打开控制台 `fetch('/track?e=随便写')` 都能往统计里灌数据、
+    // 还白占 KV 写入额度（门槛只有同站请求，而浏览器里随便一行代码就满足了）。
+    // ⚠️ 记账的铁律不变：新事件必须同时登记到 EVENTS，否则一条都记不到（连统计页也不会显示）。
+    if (!ALLOWED_EVS.has(ev)) return gif();
     const job = (async () => {
       try {
         const kv = env && env.SECRETS;
@@ -525,7 +554,7 @@ async function handleTrack(url, request, env, ctx) {
         // 计数器本身也占写入 → 用 1/5 抽样自增（近似值，用于封顶足够）
         if (Math.random() < 0.2) { try { await kv.put(gateKey, String(used + 5)); } catch (_) {} }
         const ip = (request.headers.get('cf-connecting-ip') || request.headers.get('x-forwarded-for') || '?').split(',')[0].trim();
-        const hash = await shortHash(ip);
+        const hash = await shortHash(visitorIp(ip));
         // ── 精简（2026-09-24）──────────────────────────────────────────────
         // 以前这一步还要额外写「累计次数」stat:ev:<ev>，那是一条**每次动作都必写**的记录，
         // 光它一项就占了全部 KV 写入的一半。而「累计」完全可以在看统计的时候把各天的数加起来
@@ -540,9 +569,13 @@ async function handleTrack(url, request, env, ctx) {
         if (!(await kv.get(uKey))) {
           await kv.put(uKey, '1');
           // 访客国家：Cloudflare 每个请求都带（request.cf.country），不用前端传、也不碰 IP 明文。
-          // 同样只在当天首次出现时记一次，所以一天最多写「国家数」条，几乎不占额度。
+          // 同样只在当天首次出现时记一次，所以一天最多写「人数」条，几乎不占额度。
+          // ── 2026-09-25 改：原来这里用 incKV（get→+1→put）累加一个**共享计数器**，
+          // 多个人的「当天首次」撞在同一瞬间时会互相覆盖 ⇒ 丢计数（实测 9/24+9/25 共 144 个到访，
+          // 国家表只记到 123，约 15% 凭空消失）。改成**一人一个键**、统计时按前缀数列 ⇒ 不再有写冲突。
+          // 写入次数和原来一样都是 1 次 put（原方案还要多一次 get），不增加 KV 开销。
           const cc = String((request.cf && request.cf.country) || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-          if (cc) await incKV(kv, `stat:ctryu:${day}:${cc}`);
+          if (cc) await kv.put(`stat:ctry:${day}:${cc}:${hash}`, '1');
         }
       } catch (_) { /* 统计失败不影响页面 */ }
     })();
@@ -609,13 +642,14 @@ async function handleStatsBody(url, env, kv, wantJson) {
   const g = (k) => kv.get(k).catch(() => null);
   const ls = (p, lim) => kv.list(lim ? { prefix: p, limit: lim } : { prefix: p }).catch(() => null);
 
-  const [totalRaw, langVals, dayVals, trUvLists, siteUvLists, ctryLists, evTotals, evDayVals, evUniqT, evUniqD] = await Promise.all([
+  const ctryOldLists = await Promise.all(days7.map((d) => ls(`stat:ctryu:${d}:`, 200)));   // 旧计数器（兼容历史两天）
+  const [totalRaw, langVals, dayVals, trUvLists, siteUvLists, ctryNewLists, evTotals, evDayVals, evUniqT, evUniqD] = await Promise.all([
     g('stat:tr:total'),
     Promise.all(LANGS.map((l) => g('stat:tr:lang:' + l))),
     Promise.all(days7.map((d) => g('stat:tr:day:' + d))),
     Promise.all(days7.map((d) => ls(`stat:tr:u:${d}:`))),
     Promise.all(days7.map((d) => ls(`stat:u:${d}:`, 1000))),
-    Promise.all(days7.map((d) => ls(`stat:ctryu:${d}:`, 200))),   // 当天都出现过哪些国家
+    Promise.all(days7.map((d) => ls(`stat:ctry:${d}:`, 1000))),  // 该国当天有哪些访客（一人一键）
     null, // 事件的「累计次数」不再单独存键（省一半写入），改用下面的 evTotalsByListing 汇总
     Promise.all(evDefs.map((e) => g(`stat:evd:${evToday}:${e[0]}`))),
     Promise.all(evDefs.map((e) => readUniqCount(kv, 'stat:evu:' + e[0]))),
@@ -650,16 +684,25 @@ async function handleStatsBody(url, env, kv, wantJson) {
   ]);
   const siteUvToday = days[0][3];
 
-  // 访客国家：list 只给键名不给值，所以先列出 7 天出现过的国家，再并发把这些键的值读出来
+  // 访客国家：2026-09-25 起改成「一人一个键」（stat:ctry:<day>:<cc>:<访客键>），列前缀数个数即可，
+  // 不再有共享计数器那种并发覆盖丢数。9/24、9/25 上午那两天用的是旧方案 stat:ctryu:<day>:<cc>，两者相加。
   const ccSet = new Set();
-  (ctryLists || []).forEach((l) => ((l && l.keys) || []).forEach((k) => {
+  (ctryNewLists || []).forEach((l) => ((l && l.keys) || []).forEach((k) => {
+    const cc = String((k && k.name) || '').split(':')[3];
+    if (cc) ccSet.add(cc);
+  }));
+  (ctryOldLists || []).forEach((l) => ((l && l.keys) || []).forEach((k) => {
     const cc = String((k && k.name) || '').split(':').pop();
     if (cc) ccSet.add(cc);
   }));
   const ccs = Array.from(ccSet);
-  const ctryVals = await Promise.all(days7.map((d) => Promise.all(ccs.map((c) => g(`stat:ctryu:${d}:${c}`)))));
+  const ctryOldVals = await Promise.all(days7.map((d) => Promise.all(ccs.map((c) => g(`stat:ctryu:${d}:${c}`)))));
   const countries = ccs.map((c, ci) => {
-    const per = days7.map((d, di) => Number(ctryVals[di][ci] || 0));
+    const per = days7.map((d, di) => {
+      const nNew = ((ctryNewLists[di] && ctryNewLists[di].keys) || [])
+        .filter((k) => String((k && k.name) || '').split(':')[3] === c).length;
+      return nNew + Number(ctryOldVals[di][ci] || 0);
+    });
     return {
       cc: c,
       name: CC_NAME[c] || c,
@@ -729,14 +772,18 @@ async function handleStatsBody(url, env, kv, wantJson) {
  tr:last-child td{border-bottom:none} td.n{text-align:right;font-variant-numeric:tabular-nums}
 </style>
 <h1>翻译功能使用统计</h1>
-<p class="dim">累计统计自启用之时；「独立访客」按 IP 短哈希去重估算（不保存明文 IP），同一 WiFi 下多人会算作 1 人，实际人数只会更多。KV 有约 1 分钟同步延迟。</p>
+<p class="dim">累计统计自启用之时；「独立访客」按 IP 去重估算（不保存明文 IP）：<b>同一 WiFi 下多人只算 1 人（偏少），同一个人的 IP 一天轮换几次又会算成几个（偏多）</b> —— 只能当「量级」看，不是精确人数。KV 有约 1 分钟同步延迟。</p>
 <div class="cards"><div class="card"><div class="k">累计翻译次数</div><div class="v">${total}</div></div>
 <div class="card"><div class="k">今日次数</div><div class="v">${days[0][1]}</div></div>
 <div class="card"><div class="k">今日独立访客</div><div class="v">${siteUvToday}</div></div>
 <div class="card"><div class="k">今日记录动作 / 上限</div><div class="v" style="font-size:18px">${gateUsed} / ${STAT_WRITE_CAP}</div></div></div>
 <h2>各语言使用次数</h2><table>${langHtml}</table>
 <h2>访客来自哪里（今日 / 近 7 天）</h2><table><tr><td>国家·地区</td><td class="n">今日</td><td class="n">近 7 天</td></tr>${ctryHtml}</table>
-<p class="dim">按 Cloudflare 给出的国家（ISO 代码）统计独立访客，不记 IP 明文。<b>统计的是「IP 所在国家/地区」，不是成员的国籍</b>：用加速器 / VPN 的访客会算成出口国家（国内粉丝挂日本节点 → 记为日本），同一个 IP 当天只算 1 人、换 WiFi↔流量或换节点会多算 1 人。近 7 天＝每天独立访客相加，同一个人多天都来会重复计；数据从启用当天开始累计。</p>
+<p class="dim">按 Cloudflare 给出的国家（ISO 代码）统计。<b>这是「IP 数」，不是「人数」</b>，两个方向都会偏：<br>
+① 同一个人会被算成好几个 —— 手机的 IPv6 地址一天换好几次、WiFi↔流量切换、加速器换节点，每换一次就是一个；<br>
+② 反过来，同一个 WiFi / 同一个运营商 NAT 池下的好几个粉丝只算 1 个。<br>
+2026-09-25 起 IPv6 已按运营商前缀（/64）合并，同一个端口路回来的多个地址算 1 个；<b>更早的数据还是按完整地址算的，所以历史那几天偏高</b>。<br>
+口径提醒：同一个人多天都来，每天的独立访客里各算一次；国家分布从 2026-09-24 才启用，之前有访客但没有国家数据。</p>
 <h2>功能使用（次数 / 独立访客）</h2><table><tr><td>动作</td><td class="n">累计</td><td class="n">今日</td><td class="n">独立累计</td><td class="n">独立今日</td></tr>${evHtml}</table>
 <h2>最近 7 天（每天来了多少人 / 翻译次数）</h2><table><tr><td>日期</td><td class="n">到访人数</td><td class="n">翻译次数</td><td class="n">翻译访客</td></tr>${dayHtml}</table>`);
 }
