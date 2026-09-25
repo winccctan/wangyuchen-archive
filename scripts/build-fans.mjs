@@ -75,6 +75,21 @@ const has = (k) => argv.includes('--' + k);
 
 const BACK_DAYS = Number(arg('back', 0));
 const CHUNK_DAYS = Number(arg('chunk', 30));
+/* --rescan YYYY-MM-DD:YYYY-MM-DD（北京时间）：强制重抓某一段时间，**忽略已完成标记**。
+ * 为什么要有它：日常跑 `--back 3` 只补最近 3 天，历史上抓漏的月份永远不会被自动补上。
+ * 用法：node scripts/build-fans.mjs --rescan 2024-08-01:2024-12-01 --lanes 4   # 不带 --back
+ * 退出后 progress 里这些片会重新标完成，下轮起恢复常态。 */
+const RESCAN = arg('rescan', '');
+let RESCAN_FROM = 0, RESCAN_TO = 0;
+if (RESCAN) {
+  const [a, b] = String(RESCAN).split(':');
+  RESCAN_FROM = Date.parse(a + 'T00:00:00+08:00');
+  RESCAN_TO = Date.parse(b + 'T00:00:00+08:00');
+  if (!(RESCAN_FROM > 0 && RESCAN_TO > RESCAN_FROM)) {
+    console.error('--rescan 格式应为 YYYY-MM-DD:YYYY-MM-DD（起:止，北京时间）');
+    process.exit(1);
+  }
+}
 const LANES = Math.max(1, Number(arg('lanes', 4)));
 const PUSH = has('push');
 const PUSH_ONLY = has('push-only');   // 跳过抓取，只把现有缓存聚合并灌库（不打断后台扫描）
@@ -101,27 +116,43 @@ const readLines = (p) => {
 // 房间 IM 里 channelRole==='0' 是粉丝；GIFT_TEXT 的 bodys.giftInfo 带礼物名与件数。
 async function scanRoom() {
   const FLOOR = Date.parse('2022-11-01T00:00:00+08:00');
-  const START = Date.now();
-  const end = BACK_DAYS ? START - BACK_DAYS * 86400e3 : FLOOR;
   const CH = CHUNK_DAYS * 86400e3;
+  /* ⚠️ 分片网格必须锚在固定日期（这里锚 FLOOR），不能用 Date.now() 推算。
+   * 旧写法 key = String(from) 而 from 源自 Date.now() ⇒ 每次启动边界整体平移几小时，
+   * progress 里的 key 永远对不上 ⇒ ① 断点形同虚设（每次从头重扫）
+   * ② **想按「2024 年 8 月」定位去重抓根本做不到**（无法预知那个月的 key 是什么）。
+   * 锚定后 key = FLOOR + k*30d，跨天跨次稳定，这是能用 --rescan 补月的必要条件。
+   * 同一套做法见 scripts/build-first-words.mjs。 */
+  const GRID = FLOOR;
+  const TOP = RESCAN_TO || Date.now();
+  const END = RESCAN_FROM || (BACK_DAYS ? TOP - BACK_DAYS * 86400e3 : FLOOR);
+  const K = Math.floor((TOP - GRID) / CH);
   const queue = [];
-  for (let s = START; s > end; s -= CH) queue.push([s, Math.max(end, s - CH)]);
+  for (let k = K; k >= 0; k--) {
+    const from = Math.min(TOP, GRID + (k + 1) * CH);
+    const to = Math.max(END, GRID + k * CH);
+    if (from <= END) break;
+    if (from <= to) continue;      // TOP 正好落在网格点上时会切出零宽度的片，跳过
+    queue.push([from, to, String(GRID + k * CH), k === K]);  // 第 4 位：最新零头片，不吃断点
+  }
 
   let prog = { chunks: {} };
   try { prog = JSON.parse(fs.readFileSync(ROOM_PROG, 'utf8')); if (!prog.chunks) prog.chunks = {}; } catch {}
 
   const seen = new Set(readLines(ROOM_JSONL).map((r) => r.i));
   const out = fs.createWriteStream(ROOM_JSONL, { flags: 'a' });
-  const stat = { new: 0, pages: 0, gifts: 0, errors: 0 };
+  const stat = { new: 0, pages: 0, gifts: 0, errors: 0, empty: 0, jumped: 0 };
   let idx = 0;
 
-  async function chunk(id, [from, to]) {
-    const key = String(from);
+  async function chunk(id, [from, to, key, fresh]) {
+    const FORCE = RESCAN_FROM > 0;          // rescan 模式：忽略「已完成」标记，整段重来
     // ⚠️ 游标初值必须是本片上界 from：用 0 会「从最新一路翻到 to」，第 N 片要翻 N×30 天
     // → 总工作量 O(n²)，48 片慢 24 倍（越老的片越慢）。实测接口 nextTime=<时刻> 即从该时刻往前翻。
-    let cursor = prog.chunks[key] === undefined ? from : prog.chunks[key];
-    if (cursor === null) return;
-    if (prog.chunks[key] === undefined) prog.chunks[key] = from;
+    // fresh = 最新那片零头：它的上界每次运行都在变，吃旧断点会漏掉中间的新消息。
+    let cursor = (prog.chunks[key] === undefined || fresh || FORCE) ? from : prog.chunks[key];
+    if (cursor === null && !FORCE) return;
+    if (FORCE || prog.chunks[key] === undefined) prog.chunks[key] = from;
+    let got = 0, done = false;
     for (;;) {
       let r;
       try {
@@ -132,15 +163,32 @@ async function scanRoom() {
       let list = (r.content && r.content.message) || [];
       stat.pages++;
       if (!list.length) {
-        // 接口偶发返回空（限流/抖动）：重试一次再判定，避免把整片误标完成、永久漏抓这 30 天
-        await sleep(1500);
-        try {
-          r = await A.postJson('/im/api/v1/team/message/list/all',
-            { channelId: MEMBER.channelId, serverId: MEMBER.serverId, nextTime: cursor, limit: 50 },
-            { token: TOKEN, retries: 2 });
-        } catch { stat.errors++; break; }
-        list = (r.content && r.content.message) || [];
-        if (!list.length) break;
+        /* 🔴🔴 返回空 ≠ 这段没数据 —— 这是两条空洞（2024-08 / 2024-11）的真正成因。
+         * 接口的 nextTime 是「从该时刻往前翻」，**不会自动跨过一段无人说话的空白期**：
+         * 起点刚好落在冷场期里，第一页就是空的。
+         * 实证（2026-09-26）：2024-08-27~09-01 无人发言，而 08-22~08-26 有 300+ 条；
+         *   从 09-01 起翻 → 空列表 → 旧代码判定「到底了」并把整片标成完成
+         *   ⇒ 那 5 天的数据永久补不回来（以后每轮都跳过）。
+         * 正解：以 1 天为步长往回探，落到有消息的位置继续翻；一路退到本片下界才算这片真空。
+         * 代价：真空月份要多花约 30 次请求/片，但只发生在全量重扫时，日常 back=N 碰不到。 */
+        stat.empty++;
+        const DAY = 86400e3;
+        let probe = cursor - DAY, hitR = null;
+        while (probe > to) {
+          try {
+            const rp = await A.postJson('/im/api/v1/team/message/list/all',
+              { channelId: MEMBER.channelId, serverId: MEMBER.serverId, nextTime: probe, limit: 50 },
+              { token: TOKEN, retries: 1 });
+            if (((rp.content && rp.content.message) || []).length) { hitR = rp; break; }
+          } catch { break; }
+          probe -= DAY;
+          await sleep(150);
+        }
+        if (!hitR) break;                 // 退过本片下界都空 ⇒ 这片确实没数据（不标完成，下轮再验）
+        stat.pages++;
+        stat.jumped += Math.round((cursor - probe) / DAY);
+        r = hitR; list = r.content.message; cursor = probe;
+        prog.chunks[key] = cursor;
       }
       for (const m of list) {
         const t = Number(m.msgTime) || 0;
@@ -161,18 +209,22 @@ async function scanRoom() {
           } catch { /* bodys 非 JSON，跳过 */ }
         }
         out.write(JSON.stringify(row) + '\n');
-        stat.new++;
+        stat.new++; got++;
       }
       const nt = Number(r.content.nextTime) || 0;
-      if (!nt || (cursor !== 0 && nt >= cursor)) break;
+      if (!nt || (cursor !== 0 && nt >= cursor)) break;   // 数据源不再前进：同样不标完成，留待下一轮再试
       cursor = nt;
       prog.chunks[key] = cursor;
-      if (cursor <= to) break;
+      if (cursor <= to) { done = true; break; }           // ✅ 唯一的「完成」条件：确实翻到本片下界
       await sleep(120);
     }
-    prog.chunks[key] = null;
+    // 只有翻到下界才算完成；凡是中途退出的都保留游标 —— 宁可下轮多扫，也不能把一段永久标记为完成
+    if (done) prog.chunks[key] = null;
+    // 每片实到条数：事后按月汇总能一眼看出哪段异常偏少（这次两条空洞完全靠人工比对才揪出来）
+    prog.counts = prog.counts || {};
+    prog.counts[key] = (prog.counts[key] || 0) + got;
     fs.writeFileSync(ROOM_PROG, JSON.stringify(prog));
-    console.log(`  [room w${id}] ${new Date(from).toISOString().slice(0, 10)} → ${new Date(to).toISOString().slice(0, 10)} 完成 | 累计新增 ${stat.new}（礼物 ${stat.gifts}）`);
+    console.log(`  [room w${id}] ${new Date(from).toISOString().slice(0, 10)} → ${new Date(to).toISOString().slice(0, 10)} ${done ? '完成' : '中断·保留断点'} | 本片 ${got} 条 | 累计新增 ${stat.new}（礼物 ${stat.gifts}）`);
   }
 
   async function worker(id) {
@@ -184,7 +236,15 @@ async function scanRoom() {
   console.log(`房间扫描：${queue.length} 片 × ${CHUNK_DAYS} 天，${LANES} 路并行（已有 ${seen.size} 条）`);
   await Promise.all(Array.from({ length: LANES }, (_, i) => worker(i + 1)));
   await new Promise((r) => out.end(r));
-  console.log(`房间扫描完成：新增 ${stat.new} 条，翻 ${stat.pages} 页`);
+  const notDone = Object.entries(prog.chunks).filter(([, v]) => v !== null).length;
+  console.log(`房间扫描完成：新增 ${stat.new} 条，翻 ${stat.pages} 页` +
+    (stat.empty ? `，跨过 ${stat.empty} 段空白期（回退合计 ${stat.jumped} 天）` : ''));
+  if (notDone) {
+    // 列出没翻到头的片：正常情况下应为空，出现就说明某段可能仍漏
+    const pend = Object.entries(prog.chunks).filter(([, v]) => v !== null).slice(0, 10)
+      .map(([k]) => new Date(Number(k) + TZ_OFFSET_MS).toISOString().slice(0, 10));
+    console.log(`  ⚠️ 以下片未翻到下界（下次会自动续扫）：${pend.join(', ')}${notDone > 10 ? ' …' : ''}`);
+  }
 }
 
 /* ============================ 2. 直播间 ============================ */
@@ -668,6 +728,15 @@ if (has('push-override')) { await pushOverride(); process.exit(0); }
 // 用于「后台还在补历史，但想先拿已有的那部分开放测试」——不打断正在跑的扫描进程。
 if (!PUSH_ONLY && !DRY) {
   await scanRoom();
+  /* --rescan 的职责只是「补抓取」，到此为止：
+     本机的 .cache 未必是全的（比如没拉过最新的 live-gifts.jsonl），
+     在这里继续跑 build() 会把 fans.json 重写成一份更低口径的版本。
+     正确姿势：补完 → 回传 R2 → 让 CI 拿全量缓存去聚合推送。 */
+  if (RESCAN_FROM > 0 && !PUSH) {
+    console.log('\n✅ 区间补抓结束，未跑聚合也没有灌库（有意跳过：本机缓存不全时不重建 fans.json）。');
+    console.log('   新数据已进 room.jsonl。接下来：回传 R2 → 触发 fans-sync 由 CI 聚合推送。');
+    process.exit(0);
+  }
   if (DO_LIVE) await scanLive();
 }
 const PRICE = await priceMap();
