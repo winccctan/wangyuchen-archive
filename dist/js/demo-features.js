@@ -2201,8 +2201,12 @@
      不进 KV、不接登录。代价：换设备 / 清缓存会丢，可接受。
      ===================================================================== */
   const CAL_LS = 'wyc-demo-cal-v1';
+  const CAL_MONTH_KEY = 'wyc-demo-cal-month-v1';   // 记住上次看的月份（换月即存）
   const CAL_KINDS = { '公演': '#185FA5', '见面会': '#993556' };
-  const CAL_MET = '2023-11-01';   // 🔴「认识以后」起点 = 站长认识她的月份（2023 年 11 月，2026-09-25 站长订正：不是 2022-11）
+  // 🔴 站长 2026-09-25 定的两张卡口径，**别再互相串**：
+  //    公演汇总 = 王语晨本人的场次（本月 / 今年 / 全部）→ 她的，跟谁看无关，**不查 uid**；
+  //    我的公演档案 = 我打卡的（本月 / 今年 / 认识以后）→ 「认识以后」只认我自己 uid 的认识日，
+  //    uid 没填或被清除 → 这一档整个不显示，不猜、不写死日期。
   const CAL_MAX_PHOTOS = 9;       // 每场最多留 9 张照片记录（本地缩略图，原图不上传）
   const calColor = (k) => CAL_KINDS[k] || '#888780';
   let calStore = LS.get(CAL_LS, { going: {}, went: {} });
@@ -2235,6 +2239,55 @@
     fix(calStore.went); fix(calStore.going);
     if (ch) LS.set(CAL_LS, calStore);
   })();
+  /* 🔴「认识以后」起点 = 我的档案里那个 uid 的认识日（/api/mine 的 f = 他最早留下记录的时间戳）。
+     站长 2026-09-25 定的规则：uid 在（没被清除）就显示这一档；uid 清掉了 → 整档不显示，不猜、不写死日期。 */
+  const CAL_MET_KEY = 'wyc-demo-cal-met-v1';
+  let calMetDate = '';      // '' = 不知道（没 uid / 没查到）→ 不显示「认识以后」
+  let calMetUid = '?', calMetAt = 0;
+  function calMetSave(uid, start) {
+    calMetDate = /^\d{4}-\d{2}-\d{2}$/.test(String(start || '')) ? String(start) : '';
+    try {
+      if (calMetDate) localStorage.setItem(CAL_MET_KEY, JSON.stringify({ uid: String(uid), start: calMetDate }));
+      else localStorage.removeItem(CAL_MET_KEY);
+    } catch (_) {}
+  }
+  function calMetCache(uid) {
+    try {
+      const j = JSON.parse(localStorage.getItem(CAL_MET_KEY) || 'null');
+      if (j && String(j.uid) === String(uid) && /^\d{4}-\d{2}-\d{2}$/.test(String(j.start || ''))) {
+        calMetDate = String(j.start); return true;
+      }
+    } catch (_) {}
+    return false;
+  }
+  const calMetUidNow = () => {
+    try { return (typeof MINE_KEY !== 'undefined' ? localStorage.getItem(MINE_KEY) : '') || ''; } catch (_) { return ''; }
+  };
+  async function calFetchMet() {
+    const uid = calMetUidNow();
+    const ok = /^\d{4,12}$/.test(uid);
+    // uid 没变就不重复打接口（拿不到也最多 60s 重试一次）；清掉 uid 会立刻重算 → 这一档消失
+    if (uid === calMetUid && (calMetDate || !ok || Date.now() - calMetAt < 60000)) return;
+    calMetUid = uid; calMetAt = Date.now();
+    if (!ok) { calMetSave('', ''); calSig = ''; calRender(); return; }   // 没 uid / 被清除
+    if (!calMetCache(uid)) {
+      try {
+        const base = /wyc0518\.cc$/.test(location.hostname) ? '' : 'https://idol.wyc0518.cc';
+        const r = await fetch(base + '/api/mine', {
+          method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ uid: uid })
+        });
+        if (r.ok) {
+          const d = await r.json() || {};
+          const f = Number(d && d.f);                                    // 首条记录时间戳(ms) → 北京日期
+          let day = (isFinite(f) && f > 0) ? bjDate(f) : '';
+          if (!day && /^\d{4}-\d{2}-\d{2}$/.test(String((d && d.start) || ''))) day = String(d.start);
+          calMetSave(uid, day);
+        }
+      } catch (_) { /* 拿不到就整档不显示，绝不白屏、绝不写死日期 */ }
+    }
+    calSig = ''; calRender();
+    if (document.querySelector('.tkc-arc')) calOpenArchive();   // 档案弹窗正开着 → 顺手刷新成新口径
+  }
   let calItems = [], calMonth = '', calSel = '', calSig = '', calTick = null, calFetched = false;
 
   const calStart = (t) => (String(t || '').trim() ? String(t).split('-')[0].trim() : '时间待定');
@@ -2300,11 +2353,12 @@
     const now = Date.now();
     let changed = false;
     calItems.forEach((x) => {
-      const k = calKey(x);
-      if (!calStore.going[k]) return;
-      if (calStartMs(x) < now - 6 * 3600e3 && !calStore.went[k]) {
-        calStore.went[k] = { ts: Date.now(), auto: true, photos: [] };
-        delete calStore.going[k];
+      const gk = calGoingKeyOf(x);
+      if (!gk || !calStore.going[gk]) return;
+      const wk = calWentKeyOf(x) || calKey(x);
+      if (calStartMs(x) < now - 6 * 3600e3 && !calStore.went[wk]) {
+        calStore.went[wk] = { ts: Date.now(), auto: true, photos: [] };
+        delete calStore.going[gk];
         changed = true;
       }
     });
@@ -2312,6 +2366,19 @@
   }
   // 有效「我去了」= 有记录且未被取消
   function calIsWent(k) { const r = calStore.went[k]; return !!(r && !r.cancelled); }
+  /* 🔴 打卡记录「认领」：先按 日期|时间 精确对；对不上就退到「同一天」。
+     原因：后台改过开演时间 / 数据源换了一份（微博 vs 公演存档）时，键会变，
+     老记录就变成「写了但显示不出来」的孤儿 —— 站长 2026-09-25 遇到的正是这个（关掉页面再看，爱心没了）。
+     退到日期级后，时间怎么变都认得回来；同时 calMine 只从 calItems 反查，对不上任何场次的旧键不再计数。 */
+  function calKeyOf(bag, it) {
+    const k = calKey(it);
+    if (bag[k]) return k;
+    const pre = String(it.date || '') + '|';
+    const hit = Object.keys(bag).filter((x) => x.slice(0, pre.length) === pre);
+    return hit.length ? hit[0] : '';
+  }
+  const calWentKeyOf = (it) => calKeyOf(calStore.went, it);
+  const calGoingKeyOf = (it) => calKeyOf(calStore.going, it);
   function calPhotos(k) { const r = calStore.went[k]; return (r && Array.isArray(r.photos)) ? r.photos : []; }
   function calSavePhotos(k, arr) {
     if (!calStore.went[k]) return true;
@@ -2414,8 +2481,8 @@
     for (let d = 1; d <= days; d++) {
       const k = calMonth + '-' + p2(d);
       const list = calItems.filter((x) => x.date === k);
-      const mine = list.some((x) => calStore.going[calKey(x)]);
-      const went = list.some((x) => calIsWent(calKey(x)));
+      const mine = list.some((x) => !!calGoingKeyOf(x));
+      const went = list.some((x) => calIsWent(calWentKeyOf(x)));
       let cls = 'tkc-cell';
       if (list.length) cls += ' has';
       if (mine) cls += ' mine';
@@ -2439,7 +2506,8 @@
     if (!list.length) return '<div class="tkc-empty">这天没有安排</div>';
     const now = Date.now();
     return list.map((x) => {
-      const k = calKey(x);
+      // 认领已有记录（时间变过也能对上）；没有就用当前这条的键
+      const k = calWentKeyOf(x) || calKey(x);
       // 开演后 6 小时算已结束 —— 别让刚散场的人看不到「我去了」
       const past = calStartMs(x) < now - 6 * 3600e3;
       let act;
@@ -2453,8 +2521,9 @@
           act = '<button type="button" class="tkc-btn" data-cal-went="' + esc(k) + '">我去了</button>';
         }
       } else {
-        const g = calStore.going[k];
-        act = '<button type="button" class="tkc-btn' + (g ? ' on' : '') + '" data-cal-go="' + esc(k) + '">' + (g ? '我要去 ✓' : '我要去') + '</button>'
+        const gk = calGoingKeyOf(x) || calKey(x);
+        const g = calStore.going[gk];
+        act = '<button type="button" class="tkc-btn' + (g ? ' on' : '') + '" data-cal-go="' + esc(gk) + '">' + (g ? '我要去 ✓' : '我要去') + '</button>'
           + '<button type="button" class="tkc-btn ghost" data-cal-share="' + esc(k) + '">分享</button>';
       }
       return '<div class="tkc-item"><span class="tkc-bar" style="background:' + calColor(x.kind) + '"></span>'
@@ -2471,6 +2540,7 @@
   function calRender() {
     const box = $('#calBox');
     if (!box) return;
+    try { localStorage.setItem(CAL_MONTH_KEY, calMonth); } catch (_) {}
     const y = calMonth.slice(0, 4), m = Number(calMonth.slice(5, 7));
     const nMonth = calItems.filter((x) => x.date.slice(0, 7) === calMonth).length;
     const yr = calYearRange();
@@ -2554,7 +2624,12 @@
   }
   function calMarkWent(k) {
     calStore.went[k] = { ts: Date.now(), photos: [] };
-    LS.set(CAL_LS, calStore);
+    // 写不进去（本机存储满了 / 无痕模式）必须出声，否则站长看到的就是「打了卡，关掉页面就没了」
+    if (!LS.set(CAL_LS, calStore)) {
+      if (typeof toast === 'function') toast('这台机器存不下了，打卡没记住');
+      delete calStore.went[k];
+      return;
+    }
     calPending = calItems.find((x) => calKey(x) === k) || null;
     calSig = '';
     calRender();
@@ -2870,27 +2945,35 @@
   }
 
   /* ---- 公演档案：两张汇总卡（都只在本机 Canvas 合成，绝不上传） ---- */
+  // 她的：本月 / 今年 / 全部 / 认识以后
+  //   全部 = 档案里所有已开演的公演（与谁在看无关，**不需要 uid**）
+  //   认识以后 = 从我 uid 的认识日起算的她的公演场次（**需要 uid，且跟打不打卡无关**）
   function calSummary() {
     const perfs = calItems.filter((x) => x.kind === '公演' && calDone(x));
     const ym = fmtBJ(new Date()).slice(0, 7), y = ym.slice(0, 4);
     return {
       month: perfs.filter((x) => x.date.slice(0, 7) === ym).length,
       year: perfs.filter((x) => x.date.slice(0, 4) === y).length,
-      all: perfs.filter((x) => x.date >= CAL_MET).length
+      total: perfs.length,
+      met: calMetDate,
+      all: calMetDate ? perfs.filter((x) => x.date >= calMetDate).length : 0
     };
   }
+  // 我的：本月 / 今年 / 认识以后（认识以后 = 我打卡的场次里，晚于我 uid 认识日的那部分）
+  // 🔴 只从 calItems 反查「认领得到」的打卡，**不直接数 localStorage 的键**：
+  //    直接数键会把对不上任何场次的旧记录也计进来 —— 就是站长说的「我取消了，档案卡还是显示 3」。
   function calMine() {
     const ym = fmtBJ(new Date()).slice(0, 7), y = ym.slice(0, 4);
-    const wentKs = Object.keys(calStore.went).filter(calIsWent);
-    const dates = wentKs.map((k) => k.slice(0, 10)).filter(Boolean).sort();
+    const its = calItems.filter((x) => calIsWent(calWentKeyOf(x)));
+    const dates = its.map((x) => x.date).filter(Boolean).sort();
     const first = dates[0] || '', last = dates[dates.length - 1] || '';
-    const firstIt = first ? calItems.find((x) => x.date === first) : null;
-    const lastIt = last ? calItems.find((x) => x.date === last) : null;
+    const firstIt = first ? its.find((x) => x.date === first) : null;
+    const lastIt = last ? its.filter((x) => x.date === last).pop() : null;
     return {
+      total: dates.length,
       month: dates.filter((d) => d.slice(0, 7) === ym).length,
       year: dates.filter((d) => d.slice(0, 4) === y).length,
-      all: dates.filter((d) => d >= CAL_MET).length,
-      photo: wentKs.reduce((n, k) => n + calPhotos(k).length, 0),
+      photo: its.reduce((n, x) => n + calPhotos(calWentKeyOf(x)).length, 0),
       firstDate: first ? first.slice(5).replace('-', '/') : '',
       firstTitle: firstIt ? (firstIt.title || '').replace(/[《》]/g, '') : '',
       lastDate: last ? last.slice(5).replace('-', '/') : '',
@@ -2899,13 +2982,15 @@
   }
   function calOpenArchive() {
     const s = calSummary(), m = calMine();
+    // 「认识以后」是她的场次，挂公演汇总；没 uid（不知道认识日）就整档不出现
+    const perfMet = s.met ? ' · 认识以后 <b>' + s.all + '</b>' : '';
     const html = '<div class="tkc-arc">'
       + '<div class="tkc-arc-c"><div class="tkc-arc-t">公演汇总</div>'
-      + '<div class="tkc-arc-n">本月 <b>' + s.month + '</b> · 今年 <b>' + s.year + '</b> · 认识以后 <b>' + s.all + '</b> 场</div>'
+      + '<div class="tkc-arc-n">本月 <b>' + s.month + '</b> · 今年 <b>' + s.year + '</b> · 全部 <b>' + s.total + '</b>' + perfMet + ' 场</div>'
       + '<button type="button" class="tkc-btn" data-cal-sum="perf">生成汇总卡</button></div>'
       + '<div class="tkc-arc-c"><div class="tkc-arc-t">我的线下打卡</div>'
-      + '<div class="tkc-arc-n">本月 <b>' + m.month + '</b> · 今年 <b>' + m.year + '</b> · 认识以后 <b>' + m.all + '</b> 场</div>'
-      + (m.all
+      + '<div class="tkc-arc-n">本月 <b>' + m.month + '</b> · 今年 <b>' + m.year + '</b> · 历史打卡 <b>' + m.total + '</b> 场</div>'
+      + (m.total
         ? '<div class="tkc-arc-s">第一场 ' + m.firstDate + (m.firstTitle ? '《' + m.firstTitle + '》' : '') + '</div>'
         : '<div class="tkc-arc-s">还没标记「我去了」</div>')
       + '<button type="button" class="tkc-btn" data-cal-sum="mine">生成打卡卡</button></div>'
@@ -2960,8 +3045,10 @@
     const rows = [
       { l: '本月', n: s.month, sub: fmtBJ(new Date()).slice(0, 7).replace('-', '.') },
       { l: '今年', n: s.year, sub: fmtBJ(new Date()).slice(0, 4) + ' 年' },
-      { l: '认识以后', n: s.all, sub: '2022.11 起' }
+      { l: '全部', n: s.total, sub: '2022.11 起' }
     ];
+    // 认识日来自「我的档案」里的 uid：有就多一档（她的场次，跟打不打卡无关），没有就整档不出现
+    if (s.met) rows.push({ l: '认识以后', n: s.all, sub: s.met.slice(0, 7).replace('-', '.') + ' 起' });
     // 内框高按内容实高算：最后一行副标题 + 底部留白，保证不溢出
     const contentBot = rowsStart + (rows.length - 1) * rowH + 112;
     const boxH = (contentBot - boxTop) + 56;
@@ -2988,12 +3075,12 @@
     const rows = [
       { l: '本月', n: m.month },
       { l: '今年', n: m.year },
-      { l: '认识以后', n: m.all }
+      { l: '历史打卡', n: m.total }        // 我打卡过的全部场次，跟 uid 无关，不需要查档案
     ];
     const rowsBot = rowsStart + (rows.length - 1) * rowH + 92;
     const footTop = rowsBot + 44;
     // 内框高按内容实高算：有打卡 → 第一场/最近一场（+ 可选照片行）；没打卡 → 两行空状态
-    const contentBot = m.all ? (footTop + (m.photo ? 72 : 34) + 10) : (footTop + 44);
+    const contentBot = m.total ? (footTop + (m.photo ? 72 : 34) + 10) : (footTop + 44);
     const boxH = (contentBot - boxTop) + 56;
     const H = boxTop + boxH + 132;
     const o = calCardBase(W, H, boxTop, boxH); const c = o.c;
@@ -3004,7 +3091,7 @@
       c.textAlign = 'center'; c.fillStyle = '#7b8794'; c.font = '600 25px sans-serif'; c.fillText(r.l, W / 2, y);
       calNumUnit(c, W / 2, y + 68, r.n, '场', '600 62px sans-serif', '#0F6E56', '24px sans-serif');
     });
-    if (m.all) {
+    if (m.total) {
       // 剧目名可能很长 → 整块统一缩字号（保证几行字号一致），仍放不下才截断，绝不跑出内框
       const maxW = o.cw - 88;
       const fs = ['23px sans-serif', '21px sans-serif', '19px sans-serif', '17px sans-serif'];
@@ -3042,7 +3129,12 @@
       if (!calItems.length) return;
       const n = calNext();
       const today = fmtBJ(new Date());
-      if (!calMonth) calMonth = (n ? n.it.date : today).slice(0, 7);
+      // 记住上次看的月份：不然每次打开都跳回「下一场」那个月，翻去上个月打的卡就看不见了
+      if (!calMonth) {
+        let saved = '';
+        try { saved = localStorage.getItem(CAL_MONTH_KEY) || ''; } catch (_) {}
+        calMonth = /^\d{4}-\d{2}$/.test(saved) ? saved : (n ? n.it.date : today).slice(0, 7);
+      }
       if (!calSel) calSel = n ? n.it.date : today;
       box = document.createElement('div');
       box.id = 'calBox';
@@ -3055,6 +3147,7 @@
       if (!hasArch) { calItems = calLoad(); calSig = ''; }
     }
     calSyncGoing();   // 「我要去」过了开演 → 自动变「我去了」
+    calFetchMet();    // 「认识以后」起点（有 uid 才有；uid 清掉这一档就消失）
     const sig = calSigNow();
     if (sig !== calSig) { calSig = sig; calRender(); }
     calFetch();
