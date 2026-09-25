@@ -3478,6 +3478,7 @@ const GUIDE_SUBS = [
   ['starter', '入坑必看'],
   ['social', '社媒美图'],
   ['cards', '生写小卡'],
+  ['sticker', '饭制表情包'],
   ['gallery', '公式照'],
   ['exp', '经历备注']
 ];
@@ -3500,6 +3501,7 @@ function renderGuideSub() {
   const box = $('#guideSub');
   if (!box) return;
   if (state.guideSub === 'cards') { box.innerHTML = (typeof renderCards === 'function') ? renderCards() : ''; return; }
+  if (state.guideSub === 'sticker') { box.innerHTML = (typeof renderSticker === 'function') ? renderSticker() : ''; return; }
   if (state.guideSub === 'starter') { box.innerHTML = (typeof renderStarter === 'function') ? renderStarter() : ''; return; }
   if (state.guideSub === 'social') { box.innerHTML = renderSocialGallery(); renderSocialWall(); }
   else if (state.guideSub === 'gallery') box.innerHTML = renderGallery();

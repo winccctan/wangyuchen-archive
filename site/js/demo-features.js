@@ -3462,6 +3462,75 @@
     }
   });
 
+  /* ═══ 功能 ⑭ 饭制表情包（微信版：240×240 正方形 / 单张 ≤500KB） ═══
+     素材 = 站长本机微信导出后压成的「微信可直接添加」规格；
+     assets/sticker 由 scripts/build-dist.mjs 整目录复制，别漏 dirs 白名单。 */
+  const STK_DIR = './assets/sticker/';
+  const STK_GIF = new Set([1, 4, 7, 8, 10, 11, 13, 15, 18, 21, 24, 27, 30, 33, 36, 41]);
+  const STK_EMO = Array.from({ length: 42 }, (_, i) =>
+    'e' + String(i + 1).padStart(2, '0') + (STK_GIF.has(i + 1) ? '.gif' : '.png'));
+  const STK_MID = Array.from({ length: 9 }, (_, i) => 'm' + String(i + 1).padStart(2, '0') + '.png');
+
+  // 文件名不带扩展名（保存时会按真实格式补 .gif/.png，否则会出现 e01.gif.gif）
+  const stkName = (f) => {
+    const m = f.match(/^([em])(\d+)\.\w+$/);
+    return '语晨表情' + (m ? (m[1] === 'm' ? '-中秋' : '-') + m[2] : '');
+  };
+
+  window.renderSticker = function () {
+    const cell = (f) => `
+      <div class="stk-cell" data-stk-img="${esc(STK_DIR + f)}" data-stk-name="${esc(stkName(f))}">
+        <img src="${esc(STK_DIR + f)}" loading="lazy" alt="饭制表情">
+      </div>`;
+    return `<section class="profile-block">
+      <div class="st-h1">饭制表情包</div>
+      <p class="stk-tip">存到相册后，可在微信「我 · 表情 · 添加的单个表情」里加进自己的表情包</p>
+      <div class="stk-grid">${STK_EMO.map(cell).join('')}</div>
+      <div class="stk-h2">中秋水墨</div>
+      <div class="stk-grid">${STK_MID.map(cell).join('')}</div>
+    </section>`;
+  };
+
+  // ⚠️ sticker:open 必须挂捕获阶段（app.js 的子标签委托会 stopPropagation）
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('[data-sub="sticker"]')) trk('sticker:open');
+  }, true);
+  document.addEventListener('click', (e) => {
+    const im = e.target.closest('[data-stk-img]');
+    if (!im) return;
+    const src = im.dataset.stkImg, name = im.dataset.stkName || '语晨表情';
+    const w = modal(name, `
+      <div class="cv-stage" id="cvStage"><img id="cvImg" src="${esc(src)}" alt=""></div>
+      <div class="stk-savetip">手机长按图片保存到相册；电脑点下面按钮下载</div>
+      <div class="cv-bar"><button class="cv-btn" id="cvSave" type="button">⬇ 保存图片</button></div>`, { wide: true });
+    $('#cvSave', w).addEventListener('click', async () => {
+      const btn = $('#cvSave', w);
+      try {
+        btn.disabled = true; btn.textContent = '…';
+        const r = await fetch(src, { cache: 'force-cache' });
+        const b = await r.blob();
+        const ext = (src.match(/\.(\w+)(\?|$)/) || [, 'jpg'])[1];
+        const fname = name + '.' + ext;
+        const file = new File([b], fname, { type: b.type || 'image/jpeg' });
+        const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)
+          || (navigator.userAgentData && navigator.userAgentData.mobile);
+        if (isMobile && navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: name });   // 手机走系统保存 / 分享
+        } else {
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(b); a.download = fname;
+          document.body.appendChild(a); a.click(); a.remove();
+          setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+        }
+        trk('sticker:save');
+      } catch (err) {
+        if (!(err && err.name === 'AbortError')) window.open(src, '_blank');
+      } finally {
+        btn.disabled = false; btn.textContent = '⬇ 保存图片';
+      }
+    });
+  });
+
   /* ═══ 功能 ⑫ 陪伴纪念票根（真数据版） ═══
      数据链路：scripts/build-ticket.mjs 把房间发言全文 + 房间/直播鸡腿按 uid×日期
      聚合进 KV tk/<uid末两位>；worker /api/mineDay 凭 uid+日期回「你自己那天」。
