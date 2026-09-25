@@ -2955,6 +2955,9 @@
       month: perfs.filter((x) => x.date.slice(0, 7) === ym).length,
       year: perfs.filter((x) => x.date.slice(0, 4) === y).length,
       total: perfs.length,
+      // 🔴 副标题的起点**从数据里取**（calItems 已按日期排序 → 第一条就是最早那场），别写死月份：
+      //    站长 2026-09-25 指出档案里最早一场是 2022-10-02，不是 2022-11。
+      first: perfs.length ? perfs[0].date : '',
       met: calMetDate,
       all: calMetDate ? perfs.filter((x) => x.date >= calMetDate).length : 0
     };
@@ -3045,7 +3048,7 @@
     const rows = [
       { l: '本月', n: s.month, sub: fmtBJ(new Date()).slice(0, 7).replace('-', '.') },
       { l: '今年', n: s.year, sub: fmtBJ(new Date()).slice(0, 4) + ' 年' },
-      { l: '全部', n: s.total, sub: '2022.11 起' }
+      { l: '全部', n: s.total, sub: s.first ? s.first.slice(0, 7).replace('-', '.') + ' 起' : '有记录以来' }
     ];
     // 认识日来自「我的档案」里的 uid：有就多一档（她的场次，跟打不打卡无关），没有就整档不出现
     if (s.met) rows.push({ l: '认识以后', n: s.all, sub: s.met.slice(0, 7).replace('-', '.') + ' 起' });
