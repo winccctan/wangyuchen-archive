@@ -2202,7 +2202,7 @@
      ===================================================================== */
   const CAL_LS = 'wyc-demo-cal-v1';
   const CAL_KINDS = { '公演': '#185FA5', '见面会': '#993556' };
-  const CAL_MET = '2022-11-07';   // 「认识以后」起点（站长入坑日）
+  const CAL_MET = '2023-11-01';   // 🔴「认识以后」起点 = 站长认识她的月份（2023 年 11 月，2026-09-25 站长订正：不是 2022-11）
   const CAL_MAX_PHOTOS = 9;       // 每场最多留 9 张照片记录（本地缩略图，原图不上传）
   const calColor = (k) => CAL_KINDS[k] || '#888780';
   let calStore = LS.get(CAL_LS, { going: {}, went: {} });
@@ -2216,16 +2216,49 @@
       delete r.photo;
     });
   })();
+  // 老键（"日期 时间 标题"）→ 新键（"日期|时间"）：把标题变更导致的孤儿记录救回来，
+  // 救回后它们重新对应到当前条目 → 爱心出现、「取消」按钮出现，点了才真的从计数里去掉。
+  (function calMigrateKey() {
+    let ch = false;
+    const fix = (o) => {
+      if (!o) return;
+      Object.keys(o).forEach((k) => {
+        if (String(k).indexOf('|') >= 0) return;                 // 已是新键
+        const p = String(k).split(' ');
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(p[0] || '')) return;     // 认不出日期就不动它
+        const nk = p[0] + '|' + (p[1] || '');
+        if (!o[nk]) o[nk] = o[k];
+        delete o[k];
+        ch = true;
+      });
+    };
+    fix(calStore.went); fix(calStore.going);
+    if (ch) LS.set(CAL_LS, calStore);
+  })();
   let calItems = [], calMonth = '', calSel = '', calSig = '', calTick = null, calFetched = false;
 
   const calStart = (t) => (String(t || '').trim() ? String(t).split('-')[0].trim() : '时间待定');
-  const calKey = (it) => it.date + ' ' + (it.time || '') + ' ' + (it.title || '');
+  // 🔴 键里**不能放标题**：d37 把标题从 p.title（「GNZ48剧场公演」）换成 p.subTitle（「拾忆：TEAM NIII·第二十六场」）后，
+  //    之前存的标记键全部失配 → 变成「孤儿」：日历上找不到（没爱心、点不到取消），calMine 却照样计数，
+  //    站长表现为「我取消了，档案卡还是显示 3」。改成只认 日期|时间，标题再变也不受影响。
+  const calKey = (it) => String(it.date || '') + '|' + String(it.time || '');
   // 开演时刻（北京时间）：time 形如 "14:00" 或 "17:30-19:30"（取前半段）
   function calStartMs(it) {
     const t = calStart(it.time);
     if (!/^\d{1,2}:\d{2}$/.test(t)) return Date.parse(it.date + 'T00:00:00+08:00');  // 时间待定 → 按当天 0 点计，倒计时只到「天」
     const v = Date.parse(it.date + 'T' + t + ':00+08:00');
     return isFinite(v) ? v : Date.parse(it.date + 'T00:00:00+08:00');
+  }
+  // 🔴「已经发生」：汇总卡只统计开演过的场次（站长 2026-09-25 要求，未开演的不算进「本月/今年/认识以后」）
+  //   过去日期 = 已发生；未来日期 = 未发生；今天看开演时间是否已过（时间待定则先不算）
+  function calDone(x) {
+    const today = fmtBJ(new Date());
+    if (!x || !x.date) return false;
+    if (x.date < today) return true;
+    if (x.date > today) return false;
+    if (!x.time) return false;
+    const t = calStartMs(x);
+    return !!(t && t <= Date.now());
   }
   function calLoad() {
     const S = window.__SCHEDULE__ || {};
@@ -2838,7 +2871,7 @@
 
   /* ---- 公演档案：两张汇总卡（都只在本机 Canvas 合成，绝不上传） ---- */
   function calSummary() {
-    const perfs = calItems.filter((x) => x.kind === '公演');
+    const perfs = calItems.filter((x) => x.kind === '公演' && calDone(x));
     const ym = fmtBJ(new Date()).slice(0, 7), y = ym.slice(0, 4);
     return {
       month: perfs.filter((x) => x.date.slice(0, 7) === ym).length,
