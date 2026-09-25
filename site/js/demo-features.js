@@ -2383,9 +2383,20 @@
      原因：后台改过开演时间 / 数据源换了一份（微博 vs 公演存档）时，键会变，
      老记录就变成「写了但显示不出来」的孤儿 —— 站长 2026-09-25 遇到的正是这个（关掉页面再看，爱心没了）。
      退到日期级后，时间怎么变都认得回来；同时 calMine 只从 calItems 反查，对不上任何场次的旧键不再计数。 */
+  /* 🔴🔴 同一天两场必须「各算各的」（站长 2026-09-25 报：点一个「我要去」，另一场也跟着勾上）。
+     上面那个「退到同一天」的兜底是为救孤儿记录设计的，但它在一天多场时会把两场串成一场：
+     点第二场 → 认领到第一场的键 → 两场都显示已勾、实际只存得下一个。
+     ⇒ 只有这天在 calItems 里**只有一场**时才允许退到日期级；多场一律精确匹配。 */
+  let calDayN = {};
+  function calReindex() {
+    const m = {};
+    calItems.forEach((x) => { m[x.date] = (m[x.date] || 0) + 1; });
+    calDayN = m;
+  }
   function calKeyOf(bag, it) {
     const k = calKey(it);
     if (bag[k]) return k;
+    if ((calDayN[it.date] || 0) !== 1) return '';      // 这天有多场 → 不许按日期认领
     const pre = String(it.date || '') + '|';
     const hit = Object.keys(bag).filter((x) => x.slice(0, pre.length) === pre);
     return hit.length ? hit[0] : '';
@@ -2413,6 +2424,7 @@
       if (j && Array.isArray(j.items) && j.items.length) {
         window.__SCHEDULE__ = Object.assign({}, window.__SCHEDULE__ || {}, j);
         calItems = calLoad();
+        calReindex();
         calSig = '';
         calRender();
       }
@@ -3141,7 +3153,7 @@
     if (!pane || !$('.sc-wrap', pane)) return;
     let box = $('#calBox', pane);
     if (!box) {
-      if (!calItems.length) calItems = calLoad();
+      if (!calItems.length) { calItems = calLoad(); calReindex(); }
       if (!calItems.length) return;
       const n = calNext();
       const today = fmtBJ(new Date());
@@ -3160,7 +3172,7 @@
     // DATA.performances 可能晚于首次注入到达 → 等到有了且还没并过，就重算一次日历
     if (typeof DATA !== 'undefined' && DATA && DATA.performances && DATA.performances.length) {
       const hasArch = calItems.some((x) => x.src === 'archive');
-      if (!hasArch) { calItems = calLoad(); calSig = ''; }
+      if (!hasArch) { calItems = calLoad(); calReindex(); calSig = ''; }
     }
     calSyncGoing();   // 「我要去」过了开演 → 自动变「我去了」
     calFetchMet();    // 「认识以后」起点（有 uid 才有；uid 清掉这一档就消失）
