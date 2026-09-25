@@ -1035,3 +1035,81 @@ button.sc-btn { border: 0; cursor: pointer; font-family: inherit; line-height: 1
   color: #12242a; background: linear-gradient(120deg, #7ff0dd, #9fc8ff);
   box-shadow: 0 4px 12px rgba(58, 160, 200, .28);
 }
+
+/* ===== 功能 ⑬ 追星日历（站长 2026-09-25 提出，2026-09-25 移植自 demo） ===== */
+.tkc { background: #fff; border: 1px solid #e8e2d6; border-radius: 14px; padding: 14px 12px; margin: 0 0 14px; }
+.tkc-count { background: #eef7fb; color: #0C447C; font-size: 14px; font-weight: 600; text-align: center; padding: 9px 10px; border-radius: 10px; margin-bottom: 12px; }
+.tkc-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.tkc-head b { font-size: 14px; font-weight: 600; color: #23303c; }
+.tkc-nav { width: 30px; height: 30px; border: 1px solid #e0d9cb; background: #fff; border-radius: 8px; color: #6b7684; font-size: 16px; line-height: 1; cursor: pointer; touch-action: manipulation; }
+.tkc-n { margin-left: auto; font-size: 12px; color: #8a97a4; }
+.tkc-ymsel { display: flex; gap: 4px; }
+/* 🔴 字号必须 ≥16px：小于 16px 时 iOS/安卓聚焦 <select> 会把整页缩放且不缩回（站长反馈「点切换就放大」） */
+.tkc-sel { font-size: 16px; height: 30px; padding: 0 8px; border: 1px solid #e0d9cb; border-radius: 8px; background: #fff; color: #23303c; max-width: 104px; touch-action: manipulation; }
+.tkc-wd { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; margin-bottom: 4px; }
+.tkc-wd i { font-style: normal; text-align: center; font-size: 11px; color: #a39a86; padding-bottom: 4px; }
+.tkc-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.tkc-pad { height: 38px; }
+.tkc-cell { height: 38px; padding: 0; border: 1px solid transparent; background: transparent; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; cursor: pointer; position: relative; }
+.tkc-cell b { font-size: 13px; font-weight: 400; color: #b0a894; }
+.tkc-cell.has b { color: #23303c; font-weight: 600; }
+.tkc-cell.today b { color: #0C447C; }
+.tkc-cell.mine { border-color: #2bc4e0; background: #eafafd; }
+.tkc-cell.went { background: transparent; border-color: transparent; }
+.tkc-cell.went b { position: relative; color: #3B7FD0; font-weight: 600; }
+.tkc-cell.sel { background: #E6F1FB; border-color: #B5D4F4; }
+.tkc-dots { display: flex; gap: 3px; }
+.tkc-dots i { width: 5px; height: 5px; border-radius: 50%; display: block; }
+/* 「我去了」= 整格一枚蓝描边爱心，日期落在爱心里（照站长参考图） */
+.tkc-heart { position: absolute; left: 50%; top: 50%; width: 118%; height: 116%; transform: translate(-50%, -50%); pointer-events: none; overflow: visible; }
+.tkc-heart path { fill: none; stroke: #4A8AD4; stroke-width: 0.8; stroke-linecap: round; stroke-linejoin: round; }
+.tkc-day { margin-top: 12px; border-top: 1px solid #eee8dc; padding-top: 10px; }
+.tkc-dayh { font-size: 12px; color: #8a97a4; margin-bottom: 6px; }
+.tkc-empty { font-size: 12px; color: #a39a86; padding: 6px 2px; }
+.tkc-item { display: flex; align-items: stretch; gap: 10px; padding: 9px 0; border-bottom: 1px solid #f4f0e7; }
+.tkc-item:last-child { border-bottom: 0; }
+.tkc-bar { flex: 0 0 3px; width: 3px; border-radius: 2px; min-height: 34px; }
+.tkc-main { flex: 1 1 auto; min-width: 0; }
+.tkc-t { font-size: 13px; color: #23303c; line-height: 1.45; }
+.tkc-m { font-size: 11px; color: #8a97a4; margin-top: 3px; }
+.tkc-act { flex: 0 0 auto; display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 6px; }
+.tkc-btn { font-size: 12px; padding: 6px 12px; border-radius: 14px; border: 1px solid #2bc4e0; background: #2bc4e0; color: #fff; cursor: pointer; white-space: nowrap; }
+.tkc-btn.ghost { background: #fff; color: #6b7684; border-color: #e0d9cb; }
+.tkc-btn.on { background: #0F6E56; border-color: #0F6E56; }
+.tkc-btn.danger { background: #fff; color: #c0392b; border-color: #e7b7b0; }
+.tkc-went { font-size: 12px; color: #3B7FD0; }
+.tkc-mbody { font-size: 14px; color: #23303c; text-align: center; line-height: 1.7; }
+.tkc-hint { font-size: 12px; color: #8a97a4; }
+.tkc-thumb-none { display: block; margin: 12px 0 6px; }
+.tkc-thumbs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 4px 0 12px; }
+.tkc-thumb { position: relative; display: block; padding-top: 100%; border-radius: 10px; overflow: hidden; background: #f0ece2; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+.tkc-thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.tkc-thumb-x { position: absolute; top: 3px; right: 3px; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 50%; background: rgba(0,0,0,0.55); color: #fff; font-size: 14px; line-height: 20px; text-align: center; cursor: pointer; }
+.tkc-thumb-x:active { background: rgba(0,0,0,0.75); }
+.dm-modal-f .tkc-btn { background: #2bc4e0; border-color: #2bc4e0; color: #fff; }
+.dm-modal-f .tkc-btn.ghost { background: #fff; color: #6b7684; border-color: #e0d9cb; }
+.tkc-share { font-size: 12px; font-weight: 600; padding: 9px 8px; border-radius: 12px; border: 1px solid #0C447C; background: #fff; color: #0C447C; cursor: pointer; white-space: nowrap; }
+.tkc-btns { display: flex; gap: 8px; margin: 0 0 12px; }
+.tkc-btns .tkc-share { flex: 1 1 0; min-width: 0; }
+.tkc-btns .tkc-share.arc { border-color: #0F6E56; color: #0F6E56; }
+.tkc-share:active { background: #eef7fb; }
+.tkc-meet { display: flex; gap: 8px; margin-bottom: 12px; }
+.tkc-meet-c { flex: 1 1 0; min-width: 0; background: #eef7fb; border-radius: 10px; padding: 9px 10px; }
+.tkc-meet-l { display: block; font-size: 11px; color: #8a97a4; margin-bottom: 3px; }
+.tkc-meet-c b { font-size: 13px; color: #0C447C; font-weight: 600; line-height: 1.4; word-break: break-all; }
+
+.tkc-arc { display: flex; gap: 10px; flex-wrap: wrap; }
+.tkc-arc-c { flex: 1 1 200px; min-width: 0; border: 1px solid #e5dcc8; border-radius: 12px; padding: 12px; text-align: center; background: #fffdf8; }
+.tkc-arc-t { font-size: 14px; font-weight: 600; color: #23303c; }
+.tkc-arc-n { font-size: 12px; color: #7b8794; margin: 7px 0 10px; line-height: 1.6; }
+.tkc-arc-n b { color: #0C447C; font-size: 15px; }
+.tkc-arc-s { font-size: 11px; color: #8a97a4; margin-bottom: 10px; line-height: 1.5; }
+
+/* ===== 移动端「防自动放大」=====
+   ① 双击缩放：靠 touch-action: manipulation 关掉（<meta viewport> 的 user-scalable 在 iOS 上不可靠）
+   ② 聚焦小字号表单控件导致的整页缩放：靠把 select/input 字号提到 ≥16px（见 .tkc-sel）
+   ③ text-size-adjust：防 iOS 横竖屏切换时把正文自动放大
+   站长 2026-09-25 反馈「点了日期 / 切换年月就整页放大」 */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+html, body { touch-action: manipulation; }
+button, select, input, textarea, a, .tkc-cell, .tkc-nav, .tkc-btn, .tkc-sel { touch-action: manipulation; }
