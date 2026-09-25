@@ -3407,11 +3407,11 @@ function biliCutFor(p) {
 function renderPerfCuts(query) {
   const wb = (DATA.perfCuts ? DATA.perfCuts.cuts : []).map((c) => ({
     date: c.date, src: 'wb', title: c.song || c.perf || '公演 cut',
-    url: c.url, cover: c.cover ? proxyImg(c.cover) : '', song: c.song || '',
+    url: c.url, cover: cutCoverUrl(c.cover), song: c.song || '',
   }));
   const bl = biliCutsAll().map((c) => ({
     date: c[0], src: 'bl', title: c[1],
-    url: 'https://www.bilibili.com/video/' + c[2], cover: c[3] || '', song: '',
+    url: 'https://www.bilibili.com/video/' + c[2], cover: cutCoverUrl(c[3]), song: '',
   }));
   // 2026-09-25：同步把 live-cuts.js 里「公演cut」类条目拉进来。
   // bili-cuts.js 只覆盖 Chzhnh 单个合集 2024-04→2026-09，老公演 cut 不在此范围，
@@ -3421,7 +3421,7 @@ function renderPerfCuts(query) {
     .map((c) => ({
       date: c.titleDate || c.date, src: 'bl', title: c.title || (c.titleDate || ''),
       url: c.url || ('https://www.bilibili.com/video/' + c.bvid),
-      cover: c.cover ? proxyImg(c.cover) : '', song: '',
+      cover: cutCoverUrl(c.cover), song: '',
     }));
   // 合并去重（按 BV 号），避免与 bili-cuts.js 重叠的 2024+ 公演cut 重复出现
   const seen = new Set();
@@ -3449,9 +3449,7 @@ function renderPerfCuts(query) {
       + '<div class="pc-grid">';
     arr.forEach((c) => {
       const isBl = c.src === 'bl';
-      const cover = c.cover
-        ? `<img src="${escapeHtml(c.cover)}" loading="lazy" referrerpolicy="no-referrer" alt="" onerror="this.style.display='none'">`
-        : '<div class="pc-void">▶</div>';
+      const cover = cutCoverTag(c.cover);
       html += `<a class="pc-card${isBl ? ' is-bl' : ' is-wb'}" href="${escapeHtml(c.url)}" target="_blank" rel="noopener">${cover}`
         + '<div class="pc-scrim"></div>'
         + `<span class="pc-src ${isBl ? 'bl' : 'wb'}">${isBl ? 'B站' : '微博'}</span>`
@@ -4055,9 +4053,8 @@ function renderLiveCuts() {
       + `<span class="perf">${parts.join(' · ')}</span>`
       + `<span class="n">${arr.length} 条</span></h2><div class="pc-grid">`;
     arr.forEach((c) => {
-      const cover = c.cover
-        ? `<img src="${escapeHtml(c.cover)}" loading="lazy" referrerpolicy="no-referrer" alt="">`
-        : '<div class="pc-void">▶</div>';
+      // 封面统一走 cutCoverUrl：B 站图床直链 https（别经 /img 代理，会被 403）+ 失败兜底不塌陷
+      const cover = cutCoverTag(cutCoverUrl(c.cover));
       // 左下角标出「UP · 发布 MM-DD」：组标题是直播日，而这条的发布日可能晚一两天，
       // 标出来才不会让人误以为它和直播同一天。
       const meta = `${c.up || ''} · 发布 ${String(c.date || '').slice(5)}`;
@@ -4095,6 +4092,31 @@ let socialFilter = 'all';
 function proxyImg(url) {
   // 正式站与 Worker 同域 → 相对路径即可；UAT 预览站在别的域名 → 必须带上 API_BASE，否则图全 404
   try { return (typeof API_BASE === 'string' ? API_BASE : '') + '/img?u=' + encodeURIComponent(url); } catch (e) { return url; }
+}
+
+/* 切片封面（公演cut / 直播切片）取图地址：
+ * ① B 站图床 i0/i1/i2.hdslb.com —— 防盗链只认 Referer，用 <img referrerpolicy="no-referrer"> 直链即可；
+ *    千万不能走 /img 代理：代理白名单只放行新浪/网易图床，B 站一律 403（2026-09-25 修的 bug——
+ *    live-cuts 里 627 条封面全是 http://*.hdslb.com，经代理全 403 → 图片挂掉卡片塌成一条线）。
+ * ② 其他图床（新浪 sinaimg / 微博 weibocdn 等）：直链 403，必须走 /img 代理。
+ * ③ 一律 http → https：站点本身是 https，混合内容会被浏览器拦掉。 */
+function cutCoverUrl(url) {
+  const u = String(url || '').trim();
+  if (!u) return '';
+  const httpsUrl = u.replace(/^http:\/\//i, 'https://');
+  let host = '';
+  try { host = new URL(httpsUrl).hostname; } catch (e) { return httpsUrl; }
+  // 写成函数内正则而非顶层 const：本文件末尾才 init()，避免顶层声明落在 TDZ 里被提前取用
+  if (/(^|\.)hdslb\.com$/i.test(host)) return httpsUrl;
+  return proxyImg(httpsUrl);
+}
+
+/* 切片封面 <img>：加载失败时**不能**只是 display:none（卡片会塌成 2px 边框，看起来像一条线），
+ * 要给卡片挂 noimg 让 CSS ::before 撑出与正常封面同高的占位块（见 demo.css .pc-card.noimg）。 */
+function cutCoverTag(cover) {
+  if (!cover) return '<div class="pc-void">▶</div>';
+  return `<img src="${escapeHtml(cover)}" loading="lazy" referrerpolicy="no-referrer" alt=""`
+    + ` onerror="this.onerror=null;this.style.display='none';this.parentNode.classList.add('noimg')">`;
 }
 
 function ensureSocialModal() {

@@ -360,6 +360,11 @@ body.dm-notify-on .dm-tool#dmNotify { background: linear-gradient(135deg, #ff7aa
 .pc-card { margin: 0; display: flex; flex-direction: column; }
 .pc-card img { height: 190px; min-height: 0; max-height: none; object-fit: cover; }
 .pc-void { min-height: 190px; }
+/* 封面加载失败（onerror → 给卡片挂 noimg）：撑出与正常封面等高的占位块。
+ * 否则卡片里只剩绝对定位的角标，高度塌成 2px 边框 —— 2026-09-25 站长看到的「一条很狭窄的竖线」就是它。 */
+.pc-card.noimg::before { content: '▶'; flex: 0 0 190px; display: flex; align-items: center; justify-content: center;
+  font-size: 30px; color: var(--primary); background: var(--primary-soft); }
+@media (max-width: 640px) { .pc-card.noimg::before { flex-basis: 140px; } }
 @media (max-width: 900px) { .pc-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .pc-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } .pc-card img, .pc-void { height: 140px; min-height: 0; } }
 
