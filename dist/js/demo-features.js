@@ -12,7 +12,7 @@
   const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
   const LS = {
     get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (_) { return d; } },
-    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (_) {} }
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (_) { return false; } return true; }
   };
   const bjDate = (ts) => {
     const d = new Date(Number(ts) + 8 * 3600e3);
@@ -2187,8 +2187,913 @@
     });
   }
 
+  /* =====================================================================
+     功能 ⑬ 追星日历（站长 2026-09-25 提出）
+     月历视图 + 「我要去」标记 + 倒计时 + 照片记录打卡。
+
+     🔴 照片记录 = 本地合成、绝不上传：照片经 FileReader 只进 Canvas 合成打卡图，
+        原图**不落服务端**。票根 / 自拍 / 现场照都可能有二维码、订单号、他人正脸
+        （部分票根还带实名），上传即泄露隐私，且与站长自定的盲盒判据
+        「图上有 ID / 名字 / 订单信息的一律不要」正面冲突。所以只记「这场我去过」
+        这个事实 + 一张仅供本机回看的照片标记，不收原图。
+
+     标记只存 localStorage（与「鸡腿要不要写进分享图」那几个开关同一套路），
+     不进 KV、不接登录。代价：换设备 / 清缓存会丢，可接受。
+     ===================================================================== */
+  const CAL_LS = 'wyc-demo-cal-v1';
+  const CAL_KINDS = { '公演': '#185FA5', '见面会': '#993556' };
+  const CAL_MET = '2022-11-07';   // 「认识以后」起点（站长入坑日）
+  const CAL_MAX_PHOTOS = 9;       // 每场最多留 9 张照片记录（本地缩略图，原图不上传）
+  const calColor = (k) => CAL_KINDS[k] || '#888780';
+  let calStore = LS.get(CAL_LS, { going: {}, went: {} });
+  // 迁移：早期 went[k].photo 是 true / 单张字符串，统一成 photos 数组
+  (function calMigrate() {
+    const w = calStore.went || {};
+    Object.keys(w).forEach((k) => {
+      const r = w[k];
+      if (!r || typeof r !== 'object') { w[k] = { ts: 0, photos: [] }; return; }
+      if (!Array.isArray(r.photos)) r.photos = (typeof r.photo === 'string' && r.photo) ? [r.photo] : [];
+      delete r.photo;
+    });
+  })();
+  let calItems = [], calMonth = '', calSel = '', calSig = '', calTick = null, calFetched = false;
+
+  const calStart = (t) => (String(t || '').trim() ? String(t).split('-')[0].trim() : '时间待定');
+  const calKey = (it) => it.date + ' ' + (it.time || '') + ' ' + (it.title || '');
+  // 开演时刻（北京时间）：time 形如 "14:00" 或 "17:30-19:30"（取前半段）
+  function calStartMs(it) {
+    const t = calStart(it.time);
+    if (!/^\d{1,2}:\d{2}$/.test(t)) return Date.parse(it.date + 'T00:00:00+08:00');  // 时间待定 → 按当天 0 点计，倒计时只到「天」
+    const v = Date.parse(it.date + 'T' + t + ':00+08:00');
+    return isFinite(v) ? v : Date.parse(it.date + 'T00:00:00+08:00');
+  }
+  function calLoad() {
+    const S = window.__SCHEDULE__ || {};
+    // items = 已确定场次；future = 更远的安排/预告（可能没有 time）。两者都要进日历
+    const raw = (S.items || []).concat(S.future || []).filter((x) => x && x.date);
+    const arr = raw.map((x) => ({
+      date: x.date, weekday: x.weekday || '', time: x.time || '', title: x.title || '', kind: x.kind || ''
+    }));
+    // 🔵 补全日历：用补档站已有的公演存档（DATA.performances，认识她以来每一场）按日期去重，
+    //    填成「已结束」的过去公演，作为上次见面 / 公演汇总卡的数据底座。不编数据，只汇总已有记录。
+    //    与 schedule.js 里同日期同 kind 的场次去重（应援会微博那份信息更全，优先保留）。
+    const have = new Set(arr.map((x) => x.date + '|' + x.kind));
+    const perfs = (typeof DATA !== 'undefined' && DATA && DATA.performances) ? DATA.performances : [];
+    perfs.forEach((p) => {
+      const ts = Number(p.stime || p.ctime);
+      if (!isFinite(ts) || ts <= 0) return;
+      const date = bjDate(ts);
+      const kind = '公演';
+      const key = date + '|' + kind;
+      if (have.has(key)) return;
+      have.add(key);
+      const d = new Date(ts + 8 * 3600e3);
+      const time = p2(d.getUTCHours()) + ':' + p2(d.getUTCMinutes());
+      // 🔵 具体公演名优先：p.title 大多是笼统的「GNZ48剧场公演」（279 场里 234 场都是），
+      //    真正的剧目/队名在 p.subTitle（如「拾忆：TEAM NIII·第二十八场」）和 p.teamList（TEAM NIII）。
+      //    站长 2026-09-25 要求显示具体名称而不是「GNZ48剧场公演」。
+      const team = (Array.isArray(p.teamList) && p.teamList[0] && p.teamList[0].teamName) || '';
+      let title = String(p.subTitle || '').trim();
+      if (!title) title = team ? (team + ' 公演') : String(p.title || '').trim();
+      if (!title) title = '公演';
+      arr.push({ date: date, weekday: '', time: time, title: title, kind: kind, src: 'archive' });
+    });
+    arr.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : calStartMs(a) - calStartMs(b)));
+    return arr;
+  }
+  /* 「我要去」的场次过了开演 → 自动变「我去了」（站长 2026-09-25 要求）。
+     取消：写 cancelled 墓碑（保留 key），这样之后再渲染不会被自动加回来。 */
+  function calSyncGoing() {
+    const now = Date.now();
+    let changed = false;
+    calItems.forEach((x) => {
+      const k = calKey(x);
+      if (!calStore.going[k]) return;
+      if (calStartMs(x) < now - 6 * 3600e3 && !calStore.went[k]) {
+        calStore.went[k] = { ts: Date.now(), auto: true, photos: [] };
+        delete calStore.going[k];
+        changed = true;
+      }
+    });
+    if (changed) LS.set(CAL_LS, calStore);
+  }
+  // 有效「我去了」= 有记录且未被取消
+  function calIsWent(k) { const r = calStore.went[k]; return !!(r && !r.cancelled); }
+  function calPhotos(k) { const r = calStore.went[k]; return (r && Array.isArray(r.photos)) ? r.photos : []; }
+  function calSavePhotos(k, arr) {
+    if (!calStore.went[k]) return true;
+    calStore.went[k].photos = arr;
+    const ok = LS.set(CAL_LS, calStore);
+    if (!ok && typeof toast === 'function') toast('本地存不下了，照片可能太多');
+    return ok;
+  }
+
+  // demo 域名下 API_BASE 指向生产 Worker；拿不到就用页面自带的 js/schedule.js 快照
+  async function calFetch() {
+    if (calFetched) return;
+    calFetched = true;
+    const base = /wyc0518\.cc$/.test(location.hostname) ? '' : 'https://idol.wyc0518.cc';
+    try {
+      const r = await fetch(base + '/api/schedule', { cache: 'no-store' });
+      if (!r.ok) return;
+      const j = await r.json();
+      if (j && Array.isArray(j.items) && j.items.length) {
+        window.__SCHEDULE__ = Object.assign({}, window.__SCHEDULE__ || {}, j);
+        calItems = calLoad();
+        calSig = '';
+        calRender();
+      }
+    } catch (_) { /* 拿不到就用快照，绝不白屏 */ }
+  }
+
+  function calNext() {
+    const now = Date.now();
+    const mine = calItems.filter((x) => calStore.going[calKey(x)] && calStartMs(x) > now);
+    const pool = mine.length ? mine : calItems.filter((x) => calStartMs(x) > now);
+    return pool.length ? { it: pool[0], mine: mine.length > 0 } : null;
+  }
+  /* 🔴 「今天 / 明天 / 昨天」必须按**日历日期**判断，绝不能按「还剩（过）不到 24 小时」推。
+     踩过的坑（站长 2026-09-25 反馈「下一场不是 9/26 吗，为啥显示今天」）：
+     9/25 15:05 距 9/26 14:00 只有约 23 小时 → Math.floor(ms/86400000) = 0 →
+     旧代码走进 `h > 0` 分支，那里把文案**写死成「今天」**，于是把明天的场次说成了今天。 */
+  function calDayWord(dateStr) {
+    const today = fmtBJ(new Date());
+    if (dateStr === today) return '今天';
+    if (dateStr === fmtBJ(new Date(Date.now() + 86400000))) return '明天';
+    if (dateStr === fmtBJ(new Date(Date.now() - 86400000))) return '昨天';
+    return '';
+  }
+  // a - b 相差几天（都按北京日期算，避免时区/夏令时误差）
+  function calDayDiff(a, b) {
+    return Math.round((Date.parse(a + 'T00:00:00+08:00') - Date.parse(b + 'T00:00:00+08:00')) / 86400000);
+  }
+  function calCountText() {
+    const n = calNext();
+    if (!n) return '暂无公演安排';
+    const ms = calStartMs(n.it) - Date.now();
+    if (ms <= 0) return '正在进行中';
+    const pre = n.mine ? '你要去的下一场 · ' : '下一场 · ';
+    const d = Math.floor(ms / 86400000), h = Math.floor((ms % 86400000) / 3600000), mi = Math.floor((ms % 3600000) / 60000);
+    const word = calDayWord(n.it.date);   // 今天 / 明天 / ''（更远）
+    if (!n.it.time) {
+      return word ? pre + word + '（时间待定）' : pre + d + ' 天后（时间待定）';
+    }
+    // 时长按真实剩余量说：满 1 天就说「X 天 Y 小时」，不足 1 天才说「X 小时 Y 分」
+    const dur = d > 0 ? d + ' 天 ' + h + ' 小时' : (h > 0 ? h + ' 小时 ' + mi + ' 分' : mi + ' 分钟');
+    return word ? pre + word + ' ' + calStart(n.it.time) + ' · 还有 ' + dur : pre + dur;
+  }
+  // 上次见面：优先取「我去了」里最近的一场（你真的去了）；没标记过则退到上一次公演（整体）
+  function calLastMetText() {
+    const now = Date.now();
+    const wentList = Object.keys(calStore.went).filter(calIsWent)
+      .map((k) => calItems.find((x) => calKey(x) === k))
+      .filter(Boolean)
+      .sort((a, b) => calStartMs(b) - calStartMs(a));
+    let it = wentList[0], fromWent = !!it;
+    if (!it) {
+      const past = calItems.filter((x) => calStartMs(x) < now).sort((a, b) => calStartMs(b) - calStartMs(a));
+      it = past[0];
+    }
+    if (!it) return '还没有公演记录';
+    // 同样按日历日期算，避免「昨天 16:00 的场、今天 15:00 看」被算成 0 天而说成「就是今天」
+    const days = calDayDiff(fmtBJ(new Date()), it.date);
+    const dlabel = days <= 0 ? '就是今天' : (days === 1 ? '昨天' : days + ' 天前');
+    const who = fromWent ? '上次见面' : '上一次公演';
+    const ttl = (it.title || '').replace(/[《》]/g, '');
+    return who + '：' + dlabel + '（' + it.date.slice(5).replace('-', '/') + (ttl ? ' ' + ttl : '') + '）';
+  }
+
+  // 年份下拉范围：最早到 2022（入坑），最晚到数据里最大年份 +1（未来月份也能跳）
+  function calYearRange() {
+    const years = calItems.map((x) => Number(x.date.slice(0, 4))).filter((n) => n >= 2000 && n < 2100);
+    const minY = Math.min(2022, years.length ? Math.min.apply(null, years) : 2022);
+    const maxY = Math.max(new Date().getFullYear(), years.length ? Math.max.apply(null, years) : new Date().getFullYear());
+    return [minY, maxY + 1];
+  }
+
+  function calGrid() {
+    const y = Number(calMonth.slice(0, 4)), m = Number(calMonth.slice(5, 7));
+    const dow = (new Date(Date.UTC(y, m - 1, 1)).getUTCDay() + 6) % 7;   // 周一 = 0
+    const days = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    const today = fmtBJ(new Date());
+    let s = '';
+    for (let i = 0; i < dow; i++) s += '<i class="tkc-pad"></i>';
+    for (let d = 1; d <= days; d++) {
+      const k = calMonth + '-' + p2(d);
+      const list = calItems.filter((x) => x.date === k);
+      const mine = list.some((x) => calStore.going[calKey(x)]);
+      const went = list.some((x) => calIsWent(calKey(x)));
+      let cls = 'tkc-cell';
+      if (list.length) cls += ' has';
+      if (mine) cls += ' mine';
+      if (went) cls += ' went';
+      if (k === today) cls += ' today';
+      if (k === calSel) cls += ' sel';
+      // 「我去了」的日格不画场次圆点（爱心本身就是标记，日期要落在爱心正中）
+      const dots = (list.length && !went)
+        ? '<span class="tkc-dots">' + list.slice(0, 3).map((x) => '<i style="background:' + calColor(x.kind) + '"></i>').join('') + '</span>' : '';
+      // 描边爱心包住日期：照站长参考图（粗圆描边、无填充、数字在爱心内部）
+      const heart = went ? '<svg class="tkc-heart" viewBox="0 0 24 24" aria-hidden="true" focusable="false" title="我去过">'
+        + '<path d="M12 20.6C12 20.6 2.9 14.1 2.9 8.6 2.9 5.8 5.1 3.6 7.8 3.6c1.7 0 3.3.9 4.2 2.3.9-1.4 2.5-2.3 4.2-2.3 2.7 0 4.9 2.2 4.9 5 0 5.5-9.1 12-9.1 12z"/>'
+        + '</svg>' : '';
+      s += '<button type="button" class="' + cls + '" data-cal-day="' + k + '">' + heart + '<b>' + d + '</b>' + dots + '</button>';
+    }
+    return s;
+  }
+
+  function calDayHtml() {
+    const list = calItems.filter((x) => x.date === calSel);
+    if (!list.length) return '<div class="tkc-empty">这天没有安排</div>';
+    const now = Date.now();
+    return list.map((x) => {
+      const k = calKey(x);
+      // 开演后 6 小时算已结束 —— 别让刚散场的人看不到「我去了」
+      const past = calStartMs(x) < now - 6 * 3600e3;
+      let act;
+      if (past) {
+        if (calIsWent(k)) {
+          const np = calPhotos(k).length;
+          act = '<span class="tkc-went">这场我在</span>'
+            + '<button type="button" class="tkc-btn ghost" data-cal-photo="' + esc(k) + '">' + (np ? '照片 ' + np + '/' + CAL_MAX_PHOTOS : '加照片') + '</button>'
+            + '<button type="button" class="tkc-btn ghost" data-cal-cancel="' + esc(k) + '">取消</button>';
+        } else {
+          act = '<button type="button" class="tkc-btn" data-cal-went="' + esc(k) + '">我去了</button>';
+        }
+      } else {
+        const g = calStore.going[k];
+        act = '<button type="button" class="tkc-btn' + (g ? ' on' : '') + '" data-cal-go="' + esc(k) + '">' + (g ? '我要去 ✓' : '我要去') + '</button>'
+          + '<button type="button" class="tkc-btn ghost" data-cal-share="' + esc(k) + '">分享</button>';
+      }
+      return '<div class="tkc-item"><span class="tkc-bar" style="background:' + calColor(x.kind) + '"></span>'
+        + '<div class="tkc-main"><div class="tkc-t">' + esc(x.title) + '</div>'
+        + '<div class="tkc-m">' + esc(x.date.slice(5).replace('-', '/')) + ' ' + esc(x.weekday) + ' · ' + esc(calStart(x.time)) + ' · ' + esc(x.kind || '活动') + '</div></div>'
+        + '<div class="tkc-act">' + act + '</div></div>';
+    }).join('');
+  }
+
+  function calSigNow() {
+    return [calMonth, calSel, calItems.length,
+      Object.keys(calStore.going).join(','), Object.keys(calStore.went).join(',')].join('|');
+  }
+  function calRender() {
+    const box = $('#calBox');
+    if (!box) return;
+    const y = calMonth.slice(0, 4), m = Number(calMonth.slice(5, 7));
+    const nMonth = calItems.filter((x) => x.date.slice(0, 7) === calMonth).length;
+    const yr = calYearRange();
+    let yopts = '';
+    for (let yy = yr[0]; yy <= yr[1]; yy++) yopts += '<option value="' + yy + '"' + (yy === Number(y) ? ' selected' : '') + '>' + yy + ' 年</option>';
+    let mopts = '';
+    for (let mm = 1; mm <= 12; mm++) mopts += '<option value="' + p2(mm) + '"' + (mm === m ? ' selected' : '') + '>' + mm + ' 月</option>';
+    box.innerHTML = '<div class="tkc">'
+      + '<div class="tkc-meet">'
+      + '<div class="tkc-meet-c"><span class="tkc-meet-l">上次见面</span><b id="calLast">' + esc(calLastMetText()) + '</b></div>'
+      + '<div class="tkc-meet-c"><span class="tkc-meet-l">下次见面</span><b id="calCount">' + esc(calCountText()) + '</b></div>'
+      + '</div>'
+      + '<div class="tkc-btns">'
+      + (calNext() ? '<button type="button" class="tkc-share" id="calShareNext">📤 分享这张倒计时</button>' : '')
+      + '<button type="button" class="tkc-share arc" id="calArc">📊 公演档案</button>'
+      + '</div>'
+      + '<div class="tkc-head">'
+      + '<button type="button" class="tkc-nav" id="calPrev" aria-label="上个月">‹</button>'
+      + '<div class="tkc-ymsel">'
+      + '<select id="calYearSel" class="tkc-sel" aria-label="选择年份">' + yopts + '</select>'
+      + '<select id="calMonthSel" class="tkc-sel" aria-label="选择月份">' + mopts + '</select>'
+      + '</div>'
+      + '<button type="button" class="tkc-nav" id="calNext" aria-label="下个月">›</button>'
+      + (nMonth ? '<span class="tkc-n">' + nMonth + ' 场</span>' : '')
+      + '</div>'
+      + '<div class="tkc-wd">' + ['一', '二', '三', '四', '五', '六', '日'].map((d) => '<i>' + d + '</i>').join('') + '</div>'
+      + '<div class="tkc-grid">' + calGrid() + '</div>'
+      + '<div class="tkc-day"><div class="tkc-dayh">' + esc(calSel || '') + '</div>' + calDayHtml() + '</div>'
+      + '</div>';
+  }
+
+  function calGotoMonth(delta) {
+    const y = Number(calMonth.slice(0, 4)), m = Number(calMonth.slice(5, 7));
+    const d = new Date(Date.UTC(y, m - 1 + delta, 1));
+    calMonth = d.getUTCFullYear() + '-' + p2(d.getUTCMonth() + 1);
+    // 切过去若该月有安排，自动选中第一个有安排的日子
+    const first = calItems.filter((x) => x.date.slice(0, 7) === calMonth).map((x) => x.date)[0];
+    if (calSel.slice(0, 7) !== calMonth && first) calSel = first;
+    calSig = '';
+    calRender();
+  }
+
+  /* ---- 照片记录打卡：图只在本地走一趟 Canvas ---- */
+  let calFile = null, calPending = null, calDelIdx = 0;
+  function calHasPhoto(k) { return calPhotos(k).length > 0; }
+  // 每张照片只存一张缩略图（长边 ≤720px，卡片里放大也不糊），原图绝不上传
+  const CAL_THUMB = 720;
+  function calMakeThumb(src) {
+    return new Promise((ok) => {
+      const im = new Image();
+      im.onload = () => {
+        const sc = Math.min(1, CAL_THUMB / Math.max(im.naturalWidth || 1, im.naturalHeight || 1));
+        const w = Math.max(1, Math.round((im.naturalWidth || 1) * sc));
+        const h = Math.max(1, Math.round((im.naturalHeight || 1) * sc));
+        const c = document.createElement('canvas'); c.width = w; c.height = h;
+        const cx = c.getContext('2d');
+        cx.fillStyle = '#fff'; cx.fillRect(0, 0, w, h);   // 透明 PNG 垫白，避免卡片里发黑
+        cx.drawImage(im, 0, 0, w, h);
+        try { ok(c.toDataURL('image/jpeg', 0.85)); } catch (e) { ok(''); }
+      };
+      im.onerror = () => ok('');
+      im.src = src;
+    });
+  }
+  // 照片管理弹窗：已有缩略图网格（每张可单独删）+ 加照片（满 9 张停）+ 生成打卡图
+  function calPhotoModal(k) {
+    calPending = calItems.find((x) => calKey(x) === k) || null;
+    const photos = calPhotos(k);
+    const cells = photos.map((u, i) => '<span class="tkc-thumb"><img src="' + esc(u) + '" alt="照片记录">'
+      + '<button type="button" class="tkc-thumb-x" data-cal-delidx="' + i + '" aria-label="删除这张">×</button></span>').join('');
+    const grid = photos.length
+      ? '<div class="tkc-thumbs">' + cells + '</div>'
+      : '<div class="tkc-hint tkc-thumb-none">还没有照片，点下面加一张</div>';
+    const full = photos.length >= CAL_MAX_PHOTOS;
+    modal('照片记录 ' + photos.length + '/' + CAL_MAX_PHOTOS,
+      '<div class="tkc-mbody">' + grid
+      + '<span class="tkc-hint">照片（票根 / 自拍 / 现场照都行）只在你手机上合成，不会上传' + (full ? ' · 已满 9 张' : '') + '</span></div>',
+      { footer: (full ? '' : '<button type="button" class="tkc-btn" id="calPick">加一张照片</button>')
+        + '<button type="button" class="tkc-btn ghost" id="calMakeCardBtn">生成打卡图</button>'
+        + '<button type="button" class="tkc-btn ghost" id="calSkip">就这样</button>' });
+  }
+  function calMarkWent(k) {
+    calStore.went[k] = { ts: Date.now(), photos: [] };
+    LS.set(CAL_LS, calStore);
+    calPending = calItems.find((x) => calKey(x) === k) || null;
+    calSig = '';
+    calRender();
+    calPhotoModal(k);
+  }
+  function calDelPhotoAsk(idx) {
+    calDelIdx = Number(idx) || 0;
+    modal('删除照片记录', '<div class="tkc-mbody">确定删除这张照片记录吗？<br>'
+      + '<span class="tkc-hint">删除后只能重新添加，原图不会保留</span></div>',
+      { footer: '<button type="button" class="tkc-btn danger" id="calDelPhotoOk">确定删除</button>'
+        + '<button type="button" class="tkc-btn ghost" id="calSkip">取消</button>' });
+  }
+  function calDelPhoto() {
+    const k = calKey(calPending);
+    const arr = calPhotos(k).slice();
+    arr.splice(calDelIdx, 1);
+    calSavePhotos(k, arr);
+    closeModal();
+    calSig = ''; calRender();
+    if (typeof toast === 'function') toast('已删除这张照片记录');
+  }
+  // 取消「我去了」：打 cancelled 墓碑（保留 key），自动打卡就不会再把它加回来
+  function calCancelWentAsk(k) {
+    calPending = calItems.find((x) => calKey(x) === k) || null;
+    modal('取消打卡', '<div class="tkc-mbody">取消后这场就不再算「我去了」，自动打卡的场次也不会再标记它。<br>'
+      + '<span class="tkc-hint">已加的照片记录会一起清掉</span></div>',
+      { footer: '<button type="button" class="tkc-btn danger" id="calCancelOk">取消打卡</button>'
+        + '<button type="button" class="tkc-btn ghost" id="calSkip">返回</button>' });
+  }
+  function calCancelWent() {
+    const k = calKey(calPending);
+    calStore.went[k] = { cancelled: true, photos: [] };
+    delete calStore.going[k];
+    LS.set(CAL_LS, calStore);
+    closeModal();
+    calSig = ''; calRender();
+    if (typeof toast === 'function') toast('已取消这场的打卡');
+  }
+  function calPickFile() {
+    if (!calFile) {
+      calFile = document.createElement('input');
+      calFile.type = 'file';
+      calFile.accept = 'image/*';
+      calFile.multiple = true;            // 一次可多选（张数上限 9）
+      calFile.style.display = 'none';
+      calFile.addEventListener('change', () => {
+        const fs = Array.prototype.slice.call(calFile.files || []);
+        calFile.value = '';
+        if (!fs.length) return;
+        calAddFiles(fs);
+      });
+      document.body.appendChild(calFile);
+    }
+    calFile.click();
+  }
+  // 逐张压成缩略图追加（满 9 张停），原图不落任何存储
+  async function calAddFiles(files) {
+    const k = calKey(calPending);
+    if (!k || !calStore.went[k]) return;
+    const arr = calPhotos(k).slice();
+    for (let i = 0; i < files.length; i++) {
+      if (arr.length >= CAL_MAX_PHOTOS) { if (typeof toast === 'function') toast('最多 ' + CAL_MAX_PHOTOS + ' 张'); break; }
+      const dataUrl = await new Promise((ok) => {
+        const fr = new FileReader();
+        fr.onload = () => ok(String(fr.result || '')); fr.onerror = () => ok('');
+        fr.readAsDataURL(files[i]);
+      });
+      if (!dataUrl) continue;
+      const thumb = await calMakeThumb(dataUrl);
+      if (thumb) arr.push(thumb);
+    }
+    calSavePhotos(k, arr);
+    calSig = ''; calRender();
+    calPhotoModal(k);
+  }
+  const calLoadImg = (u) => new Promise((ok, no) => {
+    const im = new Image();
+    im.onload = () => ok(im);
+    im.onerror = no;
+    im.src = u;
+  });
+  // cover 裁剪：把图铺满格子且不变形（多余部分居中裁掉）
+  function calDrawCover(c, img, x, y, w, h) {
+    const iw = img.naturalWidth || 1, ih = img.naturalHeight || 1;
+    const ir = iw / ih, br = w / h;
+    let sw, sh, sx, sy;
+    if (ir > br) { sh = ih; sw = sh * br; sx = (iw - sw) / 2; sy = 0; }
+    else { sw = iw; sh = sw / br; sx = 0; sy = (ih - sh) / 2; }
+    c.drawImage(img, sx, sy, sw, sh, x, y, w, h);
+  }
+  // 圆角矩形路径（手写，Safari 老版本没有 ctx.roundRect）
+  function calRoundRect(c, x, y, w, h, r) {
+    const rr = Math.min(r, w / 2, h / 2);
+    c.beginPath();
+    c.moveTo(x + rr, y);
+    c.lineTo(x + w - rr, y); c.quadraticCurveTo(x + w, y, x + w, y + rr);
+    c.lineTo(x + w, y + h - rr); c.quadraticCurveTo(x + w, y + h, x + w - rr, y + h);
+    c.lineTo(x + rr, y + h); c.quadraticCurveTo(x, y + h, x, y + h - rr);
+    c.lineTo(x, y + rr); c.quadraticCurveTo(x, y, x + rr, y);
+    c.closePath();
+  }
+  // 照片排布：🔴 不管几张都**竖着一张张往下叠**（plog 感觉），不做九宫格拼接。
+  // 每张都占满整行宽，高度按各自原图比例，钳在 [220, PH_MAX]；张数越多单张上限略收，免得卡片长得离谱。
+  function calGridGeom(imgs, pw) {
+    const n = imgs.length;
+    if (!n) return { cols: 0, rows: 0, cw: 0, ch: 0, pw: pw, gap: 14, hs: [], h: 240 };
+    const gap = 14;
+    const PH_MAX = n <= 3 ? 540 : (n <= 6 ? 460 : 400);
+    const hs = imgs.map((im) => {
+      const r = (im.naturalHeight || 1) / (im.naturalWidth || 1);
+      return Math.round(Math.max(220, Math.min(pw * r, PH_MAX)));
+    });
+    const h = hs.reduce((a, b) => a + b, 0) + gap * (n - 1);
+    return { cols: 1, rows: n, cw: pw, ch: hs[0], pw: pw, gap: gap, hs: hs, h: h };
+  }
+  async function calMakeCard(it, src) {
+    closeModal();
+    if (!it) return;
+    const wk = calKey(it);
+    // 传了原图 = 新加一张（追加，满 9 张停）；没传 = 用已存的照片记录重绘
+    if (src && calStore.went[wk]) {
+      const arr = calPhotos(wk).slice();
+      if (arr.length >= CAL_MAX_PHOTOS) {
+        if (typeof toast === 'function') toast('最多 ' + CAL_MAX_PHOTOS + ' 张照片');
+      } else {
+        const thumb = await calMakeThumb(src);
+        if (thumb) { arr.push(thumb); calSavePhotos(wk, arr); }
+      }
+    }
+    const imgs = [];
+    for (const u of calPhotos(wk)) { try { imgs.push(await calLoadImg(u)); } catch (_) {} }
+    const W = 750, pad = 60, cw = W - pad * 2, cTop = 96;
+    // 先量标题行数才能定卡片高度
+    const meas = document.createElement('canvas').getContext('2d');
+    meas.font = '600 34px sans-serif';
+    const lines = (typeof wrapText === 'function')
+      ? wrapText(meas, it.title || '', cw - 80, 2) : [it.title || ''];
+    const g = calGridGeom(imgs, cw - 80);
+    const ph = g.h;
+    const imgY = cTop + 72;
+    const tY = imgY + ph + 62;
+    const dY = tY + (lines.length - 1) * 46 + 44;
+    const dashY = dY + 36;
+    const footY = dashY + 56;
+    const cardBot = footY + 44;
+    const H = cardBot + 130;
+
+    const cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    const c = cv.getContext('2d');
+    c.fillStyle = '#fbf7ee'; c.fillRect(0, 0, W, H);
+    c.fillStyle = '#fffdf8'; c.fillRect(pad, cTop, cw, cardBot - cTop);
+    c.strokeStyle = '#e5dcc8'; c.lineWidth = 2;
+    c.strokeRect(pad + 1, cTop + 1, cw - 2, cardBot - cTop - 2);
+
+    c.textAlign = 'left';
+    c.fillStyle = calColor(it.kind); c.font = '600 24px sans-serif';
+    c.fillText('观演打卡 · ' + (it.kind || '活动'), pad + 40, cTop + 56);
+
+    if (imgs.length) {
+      const x = pad + 40, R = 14;
+      let y = imgY;
+      imgs.forEach((im, i) => {
+        const h = g.hs[i];
+        // 圆角裁切后 cover 铺满，竖着一张张往下叠
+        calRoundRect(c, x, y, g.pw, h, R);
+        c.save(); c.clip();
+        calDrawCover(c, im, x, y, g.pw, h);
+        c.restore();
+        c.strokeStyle = '#e5dcc8'; c.lineWidth = 2;
+        calRoundRect(c, x, y, g.pw, h, R); c.stroke();
+        y += h + g.gap;
+      });
+      if (imgs.length > 1) {
+        c.textAlign = 'right'; c.fillStyle = '#8a97a4'; c.font = '22px sans-serif';
+        c.fillText('共 ' + imgs.length + ' 张', pad + 40 + g.pw, imgY - 14);
+        c.textAlign = 'left';
+      }
+    } else {
+      c.setLineDash([12, 10]); c.strokeStyle = '#d8cfbb'; c.lineWidth = 3;
+      c.strokeRect(pad + 40, imgY, cw - 80, ph);
+      c.setLineDash([]);
+      c.textAlign = 'center'; c.fillStyle = '#b8ae9a'; c.font = '26px sans-serif';
+      c.fillText('照片记录', W / 2, imgY + ph / 2 + 9);
+      c.textAlign = 'left';
+    }
+
+    c.fillStyle = '#23303c'; c.font = '600 34px sans-serif';
+    lines.forEach((t, i) => c.fillText(t, pad + 40, tY + i * 46));
+    c.fillStyle = '#7b8794'; c.font = '26px sans-serif';
+    c.fillText(it.date.replace(/-/g, '.') + ' ' + (it.weekday || '') + ' ' + calStart(it.time), pad + 40, dY);
+
+    c.strokeStyle = '#d5cbb6'; c.setLineDash([12, 10]); c.lineWidth = 3;
+    c.beginPath(); c.moveTo(pad + 40, dashY); c.lineTo(W - pad - 40, dashY); c.stroke();
+    c.setLineDash([]);
+
+    const wentKeys = Object.keys(calStore.went).filter(calIsWent)
+      .sort((a, b) => (calStore.went[a].ts || 0) - (calStore.went[b].ts || 0));
+    const nth = wentKeys.indexOf(calKey(it)) + 1;
+    c.fillStyle = '#6b7684'; c.font = '26px sans-serif';
+    c.fillText(nth > 0 ? '这是我去的第 ' + nth + ' 场' : '我去了这场', pad + 40, footY);
+    c.textAlign = 'right'; c.fillStyle = '#3B7FD0'; c.font = '600 26px sans-serif';
+    c.fillText('这场我在', W - pad - 40, footY);
+
+    c.textAlign = 'center';
+    c.fillStyle = '#8a97a4'; c.font = '600 23px sans-serif';
+    c.fillText('王语晨补档站', W / 2, cardBot + 52);
+    c.fillStyle = '#b3bcc4'; c.font = '20px Menlo, monospace';
+    c.fillText('idol.wyc0518.cc', W / 2, cardBot + 86);
+
+    let url = '';
+    try { url = cv.toDataURL('image/jpeg', 0.92); } catch (_) { url = ''; }
+    if (!url || url.length < 2000) { toast('图片生成失败，请重试'); return; }
+    if (typeof showAlbumLayer === 'function') showAlbumLayer(url, it.date.replace(/\./g, '').replace(/-/g, ''), '观演打卡');
+  }
+
+  /* 倒计时预告卡：没去之前也能分享（图照旧只在本地 Canvas 合成，不上传） */
+  function roundRect(c, x, y, w, h, r) {
+    c.beginPath();
+    c.moveTo(x + r, y);
+    c.arcTo(x + w, y, x + w, y + h, r);
+    c.arcTo(x + w, y + h, x, y + h, r);
+    c.arcTo(x, y + h, x, y, r);
+    c.arcTo(x, y, x + w, y, r);
+    c.closePath();
+  }
+  function calMakeShare(it) {
+    if (!it) return;
+    const going = !!calStore.going[calKey(it)];
+    const ms = calStartMs(it) - Date.now();
+    // 完整倒计时放进大字（跨天时「天 + 小时」一起写），下面配固定说明，
+    // 避免出现「8 天」配「还有 1 小时」这种看起来只剩 1 小时的歧义
+    let big, sub;
+    if (ms <= 0) { big = '已开演'; sub = (calDayWord(it.date) || '今天') + ' ' + calStart(it.time); }
+    else {
+      const d = Math.floor(ms / 86400000), h = Math.floor((ms % 86400000) / 3600000), mi = Math.floor((ms % 3600000) / 60000);
+      if (d > 0) big = d + ' 天' + (h > 0 ? ' ' + h + ' 小时' : '');
+      else if (h > 0) big = h + ' 小时' + (mi > 0 ? ' ' + mi + ' 分' : '');
+      else big = mi + ' 分钟';
+      sub = '距离开演';
+    }
+    const W = 750, pad = 60, cw = W - pad * 2, cTop = 96;
+    const meas = document.createElement('canvas').getContext('2d');
+    meas.font = '600 34px sans-serif';
+    const lines = (typeof wrapText === 'function') ? wrapText(meas, it.title || '', cw - 80, 2) : [it.title || ''];
+    const cdY = cTop + 158;        // 倒计时大数字基线（88px，留足与顶部标签的间距）
+    const subY = cdY + 52;
+    const tagY = subY + 58;        // 「我要去这场」标签基线
+    const lineY = tagY + 58;
+    const tY = lineY + 58;
+    const dY = tY + (lines.length - 1) * 46 + 44;
+    const dashY = dY + 36;
+    const footY = dashY + 58;
+    const cardBot = footY + 30;
+    const H = cardBot + 130;
+
+    const cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    const c = cv.getContext('2d');
+    c.fillStyle = '#fbf7ee'; c.fillRect(0, 0, W, H);
+    c.fillStyle = '#fffdf8'; c.fillRect(pad, cTop, cw, cardBot - cTop);
+    c.strokeStyle = '#e5dcc8'; c.lineWidth = 2;
+    c.strokeRect(pad + 1, cTop + 1, cw - 2, cardBot - cTop - 2);
+
+    c.textAlign = 'center';
+    c.fillStyle = calColor(it.kind); c.font = '600 24px sans-serif';
+    c.fillText((it.kind || '活动') + ' · 开演倒计时', W / 2, cTop + 56);
+
+    c.fillStyle = '#0C447C';
+    let bf = 88;
+    c.font = '600 ' + bf + 'px sans-serif';
+    while (c.measureText(big).width > cw - 80 && bf > 54) { bf -= 4; c.font = '600 ' + bf + 'px sans-serif'; }
+    c.fillText(big, W / 2, cdY);
+    c.fillStyle = '#7b8794'; c.font = '28px sans-serif';
+    c.fillText(sub, W / 2, subY);
+
+    if (going) {
+      const tw = 232, th = 46, tx = W / 2 - tw / 2, ty = tagY - 32;
+      c.fillStyle = 'rgba(15,110,86,0.10)';
+      roundRect(c, tx, ty, tw, th, 23); c.fill();
+      c.fillStyle = '#0F6E56'; c.font = '600 26px sans-serif';
+      c.fillText('♥ 我要去这场', W / 2, tagY);
+    }
+
+    c.textAlign = 'left';
+    c.strokeStyle = '#d5cbb6'; c.setLineDash([12, 10]); c.lineWidth = 3;
+    c.beginPath(); c.moveTo(pad + 40, lineY); c.lineTo(W - pad - 40, lineY); c.stroke();
+    c.setLineDash([]);
+
+    c.fillStyle = '#23303c'; c.font = '600 34px sans-serif';
+    lines.forEach((t, i) => c.fillText(t, pad + 40, tY + i * 46));
+    c.fillStyle = '#7b8794'; c.font = '26px sans-serif';
+    c.fillText(it.date.replace(/-/g, '.') + ' ' + (it.weekday || '') + ' ' + calStart(it.time), pad + 40, dY);
+
+    c.strokeStyle = '#d5cbb6'; c.setLineDash([12, 10]); c.lineWidth = 3;
+    c.beginPath(); c.moveTo(pad + 40, dashY); c.lineTo(W - pad - 40, dashY); c.stroke();
+    c.setLineDash([]);
+
+    c.textAlign = 'center';
+    c.fillStyle = '#0F6E56'; c.font = '600 27px sans-serif';
+    c.fillText(going ? '到时候见 ♥' : '你也想去看吗', W / 2, footY);
+
+    c.textAlign = 'center';
+    c.fillStyle = '#8a97a4'; c.font = '600 23px sans-serif';
+    c.fillText('王语晨补档站', W / 2, cardBot + 52);
+    c.fillStyle = '#b3bcc4'; c.font = '20px Menlo, monospace';
+    c.fillText('idol.wyc0518.cc', W / 2, cardBot + 86);
+
+    let url = '';
+    try { url = cv.toDataURL('image/jpeg', 0.92); } catch (_) { url = ''; }
+    if (!url || url.length < 2000) { toast('图片生成失败，请重试'); return; }
+    if (typeof showAlbumLayer === 'function') showAlbumLayer(url, it.date.replace(/\./g, '').replace(/-/g, ''), '行程预告');
+  }
+
+  /* ---- 公演档案：两张汇总卡（都只在本机 Canvas 合成，绝不上传） ---- */
+  function calSummary() {
+    const perfs = calItems.filter((x) => x.kind === '公演');
+    const ym = fmtBJ(new Date()).slice(0, 7), y = ym.slice(0, 4);
+    return {
+      month: perfs.filter((x) => x.date.slice(0, 7) === ym).length,
+      year: perfs.filter((x) => x.date.slice(0, 4) === y).length,
+      all: perfs.filter((x) => x.date >= CAL_MET).length
+    };
+  }
+  function calMine() {
+    const ym = fmtBJ(new Date()).slice(0, 7), y = ym.slice(0, 4);
+    const wentKs = Object.keys(calStore.went).filter(calIsWent);
+    const dates = wentKs.map((k) => k.slice(0, 10)).filter(Boolean).sort();
+    const first = dates[0] || '', last = dates[dates.length - 1] || '';
+    const firstIt = first ? calItems.find((x) => x.date === first) : null;
+    const lastIt = last ? calItems.find((x) => x.date === last) : null;
+    return {
+      month: dates.filter((d) => d.slice(0, 7) === ym).length,
+      year: dates.filter((d) => d.slice(0, 4) === y).length,
+      all: dates.filter((d) => d >= CAL_MET).length,
+      photo: wentKs.reduce((n, k) => n + calPhotos(k).length, 0),
+      firstDate: first ? first.slice(5).replace('-', '/') : '',
+      firstTitle: firstIt ? (firstIt.title || '').replace(/[《》]/g, '') : '',
+      lastDate: last ? last.slice(5).replace('-', '/') : '',
+      lastTitle: lastIt ? (lastIt.title || '').replace(/[《》]/g, '') : ''
+    };
+  }
+  function calOpenArchive() {
+    const s = calSummary(), m = calMine();
+    const html = '<div class="tkc-arc">'
+      + '<div class="tkc-arc-c"><div class="tkc-arc-t">公演汇总</div>'
+      + '<div class="tkc-arc-n">本月 <b>' + s.month + '</b> · 今年 <b>' + s.year + '</b> · 认识以后 <b>' + s.all + '</b> 场</div>'
+      + '<button type="button" class="tkc-btn" data-cal-sum="perf">生成汇总卡</button></div>'
+      + '<div class="tkc-arc-c"><div class="tkc-arc-t">我的线下打卡</div>'
+      + '<div class="tkc-arc-n">本月 <b>' + m.month + '</b> · 今年 <b>' + m.year + '</b> · 认识以后 <b>' + m.all + '</b> 场</div>'
+      + (m.all
+        ? '<div class="tkc-arc-s">第一场 ' + m.firstDate + (m.firstTitle ? '《' + m.firstTitle + '》' : '') + '</div>'
+        : '<div class="tkc-arc-s">还没标记「我去了」</div>')
+      + '<button type="button" class="tkc-btn" data-cal-sum="mine">生成打卡卡</button></div>'
+      + '</div>';
+    modal('公演档案', html, { wide: true, footer: '' });
+  }
+  // 卡片骨架：米色底 + 一块内框（boxTop / boxH 显式给定，由调用方按内容实高算出，保证字都落在框内）+ 底部页脚
+  function calCardBase(W, H, boxTop, boxH) {
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    const c = cv.getContext('2d');
+    const pad = 54, cw = W - pad * 2;
+    c.fillStyle = '#fbf7ee'; c.fillRect(0, 0, W, H);
+    c.fillStyle = '#fffdf8'; c.fillRect(pad, boxTop, cw, boxH);
+    c.strokeStyle = '#e5dcc8'; c.lineWidth = 2;
+    c.strokeRect(pad + 1, boxTop + 1, cw - 2, boxH - 2);
+    return { c: c, pad: pad, cw: cw, boxTop: boxTop, boxH: boxH, boxBot: boxTop + boxH, W: W, H: H };
+  }
+  function calCardFoot(c, W, H) {
+    c.textAlign = 'center';
+    c.fillStyle = '#8a97a4'; c.font = '600 23px sans-serif';
+    c.fillText('王语晨补档站', W / 2, H - 64);
+    c.fillStyle = '#b3bcc4'; c.font = '20px Menlo, monospace';
+    c.fillText('idol.wyc0518.cc', W / 2, H - 32);
+  }
+  // 数字 + 单位同一行居中（单位小一号、基线对齐）——避免「3」「场」上下分家
+  function calNumUnit(c, cx, yBase, n, unit, numFont, numColor, unitFont) {
+    const s = String(n);
+    c.font = numFont; const nw = c.measureText(s).width;
+    c.font = unitFont; const uw = c.measureText(unit).width;
+    const gap = 9, x0 = cx - (nw + gap + uw) / 2;
+    c.textAlign = 'left';
+    c.font = numFont; c.fillStyle = numColor; c.fillText(s, x0, yBase);
+    c.font = unitFont; c.fillStyle = '#8a97a4'; c.fillText(unit, x0 + nw + gap, yBase);
+    c.textAlign = 'center';
+  }
+  // 一行文字按可用宽度自适应：先逐档缩字号，仍放不下再截断加省略号（防跑出内框）
+  function calFitLine(c, text, x, y, maxW, fonts, color) {
+    c.textAlign = 'left'; c.fillStyle = color;
+    for (let i = 0; i < fonts.length; i++) {
+      c.font = fonts[i];
+      if (c.measureText(text).width <= maxW) { c.fillText(text, x, y); return; }
+    }
+    c.font = fonts[fonts.length - 1];
+    let t = text;
+    while (t.length > 1 && c.measureText(t + '…').width > maxW) t = t.slice(0, -1);
+    c.fillText(t + '…', x, y);
+  }
+  function calMakeSummary() {
+    closeModal();
+    const s = calSummary();
+    const W = 750, boxTop = 96, rowH = 146, rowsStart = boxTop + 124;
+    const rows = [
+      { l: '本月', n: s.month, sub: fmtBJ(new Date()).slice(0, 7).replace('-', '.') },
+      { l: '今年', n: s.year, sub: fmtBJ(new Date()).slice(0, 4) + ' 年' },
+      { l: '认识以后', n: s.all, sub: '2022.11 起' }
+    ];
+    // 内框高按内容实高算：最后一行副标题 + 底部留白，保证不溢出
+    const contentBot = rowsStart + (rows.length - 1) * rowH + 112;
+    const boxH = (contentBot - boxTop) + 56;
+    const H = boxTop + boxH + 132;
+    const o = calCardBase(W, H, boxTop, boxH); const c = o.c;
+    c.textAlign = 'center';
+    c.fillStyle = '#0C447C'; c.font = '600 30px sans-serif';
+    c.fillText('王语晨 · 公演汇总', W / 2, boxTop + 62);
+    rows.forEach((r, i) => {
+      const y = rowsStart + i * rowH;
+      c.fillStyle = '#7b8794'; c.font = '600 25px sans-serif'; c.fillText(r.l, W / 2, y);
+      calNumUnit(c, W / 2, y + 76, r.n, '场', '600 70px sans-serif', '#185FA5', '24px sans-serif');
+      c.textAlign = 'center'; c.fillStyle = '#8a97a4'; c.font = '21px sans-serif'; c.fillText(r.sub, W / 2, y + 112);
+    });
+    calCardFoot(c, W, H);
+    let url = ''; try { url = cv_to(c); } catch (_) { url = ''; }
+    if (!url || url.length < 2000) { toast('图片生成失败，请重试'); return; }
+    if (typeof showAlbumLayer === 'function') showAlbumLayer(url, 'perf-summary', '公演汇总');
+  }
+  function calMakeMine() {
+    closeModal();
+    const m = calMine();
+    const W = 750, boxTop = 96, rowH = 124, rowsStart = boxTop + 128;
+    const rows = [
+      { l: '本月', n: m.month },
+      { l: '今年', n: m.year },
+      { l: '认识以后', n: m.all }
+    ];
+    const rowsBot = rowsStart + (rows.length - 1) * rowH + 92;
+    const footTop = rowsBot + 44;
+    // 内框高按内容实高算：有打卡 → 第一场/最近一场（+ 可选照片行）；没打卡 → 两行空状态
+    const contentBot = m.all ? (footTop + (m.photo ? 72 : 34) + 10) : (footTop + 44);
+    const boxH = (contentBot - boxTop) + 56;
+    const H = boxTop + boxH + 132;
+    const o = calCardBase(W, H, boxTop, boxH); const c = o.c;
+    c.textAlign = 'center';
+    c.fillStyle = '#0F6E56'; c.font = '600 30px sans-serif'; c.fillText('我的公演档案', W / 2, boxTop + 60);
+    rows.forEach((r, i) => {
+      const y = rowsStart + i * rowH;
+      c.textAlign = 'center'; c.fillStyle = '#7b8794'; c.font = '600 25px sans-serif'; c.fillText(r.l, W / 2, y);
+      calNumUnit(c, W / 2, y + 68, r.n, '场', '600 62px sans-serif', '#0F6E56', '24px sans-serif');
+    });
+    if (m.all) {
+      // 剧目名可能很长 → 整块统一缩字号（保证几行字号一致），仍放不下才截断，绝不跑出内框
+      const maxW = o.cw - 88;
+      const fs = ['23px sans-serif', '21px sans-serif', '19px sans-serif', '17px sans-serif'];
+      const lines = [
+        '第一场：' + m.firstDate + (m.firstTitle ? ' 《' + m.firstTitle + '》' : ''),
+        '最近一场：' + m.lastDate + (m.lastTitle ? ' 《' + m.lastTitle + '》' : '')
+      ];
+      if (m.photo) lines.push('共留了 ' + m.photo + ' 张照片记录');
+      let pick = fs[fs.length - 1];
+      for (let i = 0; i < fs.length; i++) {
+        c.font = fs[i];
+        if (lines.every((t) => c.measureText(t).width <= maxW)) { pick = fs[i]; break; }
+      }
+      lines.forEach((t, i) => calFitLine(c, t, o.pad + 44, footTop + i * 38, maxW, [pick], i === 2 ? '#3B7FD0' : '#6b7684'));
+    } else {
+      c.textAlign = 'center'; c.fillStyle = '#b8ae9a'; c.font = '24px sans-serif';
+      c.fillText('还没标记「我去了」', W / 2, footTop);
+      c.fillText('去日历里点一场，记录你的陪伴', W / 2, footTop + 42);
+    }
+    calCardFoot(c, W, H);
+    let url = ''; try { url = cv_to(c); } catch (_) { url = ''; }
+    if (!url || url.length < 2000) { toast('图片生成失败，请重试'); return; }
+    if (typeof showAlbumLayer === 'function') showAlbumLayer(url, 'mine-archive', '我的公演档案');
+  }
+  // 小工具：canvas → jpeg dataURL（统一 JPEG，手机预览/分享更快）
+  function cv_to(c) { return c.canvas.toDataURL('image/jpeg', 0.92); }
+
+  /* 注入到行程页顶部（app.js 会重渲这个 pane，靠 MutationObserver 反复补） */
+  function injectCalendar() {
+    const pane = $('#panel-schedule');
+    if (!pane || !$('.sc-wrap', pane)) return;
+    let box = $('#calBox', pane);
+    if (!box) {
+      if (!calItems.length) calItems = calLoad();
+      if (!calItems.length) return;
+      const n = calNext();
+      const today = fmtBJ(new Date());
+      if (!calMonth) calMonth = (n ? n.it.date : today).slice(0, 7);
+      if (!calSel) calSel = n ? n.it.date : today;
+      box = document.createElement('div');
+      box.id = 'calBox';
+      pane.insertBefore(box, pane.firstChild);
+      calSig = '';
+    }
+    // DATA.performances 可能晚于首次注入到达 → 等到有了且还没并过，就重算一次日历
+    if (typeof DATA !== 'undefined' && DATA && DATA.performances && DATA.performances.length) {
+      const hasArch = calItems.some((x) => x.src === 'archive');
+      if (!hasArch) { calItems = calLoad(); calSig = ''; }
+    }
+    calSyncGoing();   // 「我要去」过了开演 → 自动变「我去了」
+    const sig = calSigNow();
+    if (sig !== calSig) { calSig = sig; calRender(); }
+    calFetch();
+    if (!calTick) calTick = setInterval(() => {
+      const el = $('#calCount');
+      if (el) el.textContent = calCountText();
+    }, 60000);
+  }
+
+  document.addEventListener('click', (e) => {
+    const day = e.target.closest('[data-cal-day]');
+    if (day) { calSel = day.dataset.calDay; calSig = ''; calRender(); return; }
+    const go = e.target.closest('[data-cal-go]');
+    if (go) {
+      const k = go.dataset.calGo;
+      if (calStore.going[k]) delete calStore.going[k]; else calStore.going[k] = 1;
+      LS.set(CAL_LS, calStore); calSig = ''; calRender(); return;
+    }
+    const went = e.target.closest('[data-cal-went]');
+    if (went) { calMarkWent(went.dataset.calWent); return; }
+    const photo = e.target.closest('[data-cal-photo]');
+    if (photo) { calPhotoModal(photo.dataset.calPhoto); return; }
+    const delidx = e.target.closest('[data-cal-delidx]');
+    if (delidx) { calDelPhotoAsk(delidx.dataset.calDelidx); return; }
+    const cancelWent = e.target.closest('[data-cal-cancel]');
+    if (cancelWent) { calCancelWentAsk(cancelWent.dataset.calCancel); return; }
+    const share = e.target.closest('[data-cal-share]');
+    if (share) {
+      const it = calItems.find((x) => calKey(x) === share.dataset.calShare);
+      if (it) calMakeShare(it);
+      return;
+    }
+    if (e.target.closest('#calShareNext')) { const n = calNext(); if (n) calMakeShare(n.it); return; }
+    const card = e.target.closest('[data-cal-card]');
+    if (card) {
+      const it = calItems.find((x) => calKey(x) === card.dataset.calCard);
+      if (it) calMakeCard(it, '');
+      return;
+    }
+    if (e.target.closest('#calPrev')) { calGotoMonth(-1); return; }
+    if (e.target.closest('#calNext')) { calGotoMonth(1); return; }
+    if (e.target.closest('#calPick')) { calPickFile(); return; }
+    if (e.target.closest('#calDelPhotoOk')) { calDelPhoto(); return; }
+    if (e.target.closest('#calMakeCardBtn')) { if (calPending) calMakeCard(calPending, ''); return; }
+    if (e.target.closest('#calCancelOk')) { calCancelWent(); return; }
+    if (e.target.closest('#calSkip')) { closeModal(); return; }
+    if (e.target.closest('#calArc')) { calOpenArchive(); return; }
+    const sum = e.target.closest('[data-cal-sum]');
+    if (sum) {
+      const t = sum.dataset.calSum;
+      if (t === 'perf') calMakeSummary();
+      else if (t === 'mine') calMakeMine();
+      return;
+    }
+  });
+
+  document.addEventListener('change', (e) => {
+    const t = e.target;
+    if (t && (t.id === 'calYearSel' || t.id === 'calMonthSel')) {
+      const sel = document.getElementById('calYearSel'), mos = document.getElementById('calMonthSel');
+      if (!sel || !mos) return;
+      const ny = Number(sel.value), nm = Number(mos.value);
+      calMonth = ny + '-' + p2(nm);
+      const first = calItems.filter((x) => x.date.slice(0, 7) === calMonth).map((x) => x.date)[0];
+      if (calSel.slice(0, 7) !== calMonth) calSel = first || (calMonth + '-01');
+      calSig = ''; calRender();
+    }
+  });
+
   function boot() {
     injectToolbar();
+    injectCalendar();
     injectChips();
     buildHisDropdown();
     injectBlindBox();
@@ -2198,7 +3103,7 @@
     let t = null;
     const obs = new MutationObserver(() => {
       clearTimeout(t);
-      t = setTimeout(() => { decorate(); syncChipsTab(); }, 120);
+      t = setTimeout(() => { decorate(); syncChipsTab(); injectCalendar(); }, 120);
     });
     obs.observe(document.body, { childList: true, subtree: true });
 
