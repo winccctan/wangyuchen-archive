@@ -2600,19 +2600,20 @@
     c.fillText('王语晨补档站', 375, cardBot + 52);
     c.fillStyle = '#b3bcc4'; c.font = '20px Menlo, monospace';
     c.fillText('idol.wyc0518.cc', 375, cardBot + 86);
-    const fname = '陪伴票根-' + dateVal.replace(/\./g, '') + '.png';
-    cv.toBlob((bl) => {
-      trk('tkt:save');   /* 图真的生成出来了才记 */
-      const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) || (navigator.userAgentData && navigator.userAgentData.mobile);
-      const file = new File([bl], fname, { type: 'image/png' });
-      if (isMobile && navigator.canShare && navigator.canShare({ files: [file] })) {
-        navigator.share({ files: [file], title: '陪伴纪念票根' }).catch(() => {});
-      } else {
-        const a = document.createElement('a'); a.href = URL.createObjectURL(bl); a.download = fname;
-        document.body.appendChild(a); a.click(); a.remove();
-        setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-      }
-    });
+    /* 出图一律走站内统一的保存弹层（showAlbumLayer）：手机上「保存到相册」走系统分享，
+       不支持（微信/微博内置浏览器）就引导长按 —— 🔴 绝不退回 <a download>，那会把图存进「文件」App
+       而不是相册（2026-09-25 站长反馈）。文件名 = 陪伴票根-<日期>.png */
+    const stamp = dateVal.replace(/\./g, '');
+    let url = '';
+    try { url = cv.toDataURL('image/png'); } catch (_) { url = ''; }
+    if (!url || url.length < 2000) { if (typeof toast === 'function') toast('图片生成失败，请重试'); return; }
+    trk('tkt:save');   /* 图真的生成出来了才记 */
+    if (typeof showAlbumLayer === 'function') {
+      showAlbumLayer(url, stamp, '陪伴票根');
+    } else {
+      const a = document.createElement('a'); a.href = url; a.download = '陪伴票根-' + stamp + '.png';
+      document.body.appendChild(a); a.click(); a.remove();
+    }
   }
 
   // 票根按钮（委托；guideSub 内容会重渲）
