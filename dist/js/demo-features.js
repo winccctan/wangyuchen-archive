@@ -3462,7 +3462,7 @@
     }
   });
 
-  /* ═══ 功能 ⑭ 饭制表情包（微信版：240×240 正方形 / 单张 ≤500KB） ═══
+  /* ═══ 功能 ⑭ 饭制表情包（微信版：保持原比例、最大边 240 / 单张 ≤500KB） ═══
      素材 = 站长本机微信导出后压成的「微信可直接添加」规格；
      assets/sticker 由 scripts/build-dist.mjs 整目录复制，别漏 dirs 白名单。 */
   const STK_DIR = './assets/sticker/';
@@ -3471,25 +3471,51 @@
     'e' + String(i + 1).padStart(2, '0') + (STK_GIF.has(i + 1) ? '.gif' : '.png'));
   const STK_MID = Array.from({ length: 9 }, (_, i) => 'm' + String(i + 1).padStart(2, '0') + '.png');
 
+  // 分类：三类**并列不重叠**（动 16 + 静 26 + 中秋 9 = 全部 51，静图不含中秋）
+  const STK_POOL = {
+    all: STK_EMO.concat(STK_MID),
+    ani: STK_EMO.filter((f) => f.endsWith('.gif')),
+    sta: STK_EMO.filter((f) => !f.endsWith('.gif')),
+    mid: STK_MID
+  };
+  const STK_TABS = [['all', '全部'], ['ani', '动图'], ['sta', '静图'], ['mid', '中秋限定']];
+  const STK_CAT_KEY = 'wyc-demo-stkcat';
+  const stkCat = () => {
+    const v = (typeof LS !== 'undefined') ? LS.get(STK_CAT_KEY) : '';
+    return STK_POOL[v] ? v : 'all';
+  };
+
   // 文件名不带扩展名（保存时会按真实格式补 .gif/.png，否则会出现 e01.gif.gif）
   const stkName = (f) => {
     const m = f.match(/^([em])(\d+)\.\w+$/);
     return '语晨表情' + (m ? (m[1] === 'm' ? '-中秋' : '-') + m[2] : '');
   };
 
-  window.renderSticker = function () {
-    const cell = (f) => `
+  const stkCell = (f) => `
       <div class="stk-cell" data-stk-img="${esc(STK_DIR + f)}" data-stk-name="${esc(stkName(f))}">
         <img src="${esc(STK_DIR + f)}" loading="lazy" alt="饭制表情">
       </div>`;
+
+  window.renderSticker = function () {
+    const cur = stkCat();
+    const chips = STK_TABS.map(([k, t]) =>
+      `<div class="card-chip${k === cur ? ' active' : ''}" data-stk-view="${k}">${t} ${STK_POOL[k].length}</div>`).join('');
     return `<section class="profile-block">
       <div class="st-h1">饭制表情包</div>
       <p class="stk-tip">存到相册后，可在微信「我 · 表情 · 添加的单个表情」里加进自己的表情包</p>
-      <div class="stk-grid">${STK_EMO.map(cell).join('')}</div>
-      <div class="stk-h2">中秋水墨</div>
-      <div class="stk-grid">${STK_MID.map(cell).join('')}</div>
+      <div class="cardx-chips stk-chips">${chips}</div>
+      <div class="stk-grid">${STK_POOL[cur].map(stkCell).join('')}</div>
     </section>`;
   };
+
+  // 分类切换：跟生写小卡同一套（状态存 LS，点完重渲 guideSub，刷新/切语言都不丢）
+  // 纯前端筛选、不埋点 —— 免多一类高频 KV 写入
+  document.addEventListener('click', (e) => {
+    const chip = e.target.closest('[data-stk-view]');
+    if (!chip) return;
+    LS.set(STK_CAT_KEY, chip.dataset.stkView);
+    if (typeof state !== 'undefined' && state.guideSub === 'sticker' && typeof renderGuideSub === 'function') renderGuideSub();
+  });
 
   // ⚠️ sticker:open 必须挂捕获阶段（app.js 的子标签委托会 stopPropagation）
   document.addEventListener('click', (e) => {
