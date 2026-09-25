@@ -2313,26 +2313,25 @@
     const t = calStartMs(x);
     return !!(t && t <= Date.now());
   }
+  /* 🔴 日历条目 = 公演档案（权威，**一条 = 一场**）+ 日程表里档案没有的条目。
+     2026-09-25 修（站长：「丢公演了 为啥还是 263 应该是 277」）：
+     原来用 `日期|kind` 去重 → 把**同一天两场**（如 2022-12-03 16:45 猜拳大会 + 19:45 TEAM G 公演，
+     共 13 天）并成一场，于是「全部」数出 263（天数）而不是 277（场次）；今年 53≠56、认识以后 184≠191 同理。
+     ⇒ 档案条目**全部保留**；日程条目只在「同一天 + 同 kind + 开演时间相近（≤2 小时）」时才判为同一场跳过。
+     档案缺的场次（如 2026-10-03 周年庆）由日程补进来。 */
   function calLoad() {
     const S = window.__SCHEDULE__ || {};
     // items = 已确定场次；future = 更远的安排/预告（可能没有 time）。两者都要进日历
     const raw = (S.items || []).concat(S.future || []).filter((x) => x && x.date);
-    const arr = raw.map((x) => ({
+    const sched = raw.map((x) => ({
       date: x.date, weekday: x.weekday || '', time: x.time || '', title: x.title || '', kind: x.kind || ''
     }));
-    // 🔵 补全日历：用补档站已有的公演存档（DATA.performances，认识她以来每一场）按日期去重，
-    //    填成「已结束」的过去公演，作为上次见面 / 公演汇总卡的数据底座。不编数据，只汇总已有记录。
-    //    与 schedule.js 里同日期同 kind 的场次去重（应援会微博那份信息更全，优先保留）。
-    const have = new Set(arr.map((x) => x.date + '|' + x.kind));
+    // 公演档案（DATA.performances）：认识她以来每一场，一条 = 一场（同一天午场+晚场算两场）
     const perfs = (typeof DATA !== 'undefined' && DATA && DATA.performances) ? DATA.performances : [];
+    const arr = [];
     perfs.forEach((p) => {
       const ts = Number(p.stime || p.ctime);
       if (!isFinite(ts) || ts <= 0) return;
-      const date = bjDate(ts);
-      const kind = '公演';
-      const key = date + '|' + kind;
-      if (have.has(key)) return;
-      have.add(key);
       const d = new Date(ts + 8 * 3600e3);
       const time = p2(d.getUTCHours()) + ':' + p2(d.getUTCMinutes());
       // 🔵 具体公演名优先：p.title 大多是笼统的「GNZ48剧场公演」（279 场里 234 场都是），
@@ -2342,7 +2341,21 @@
       let title = String(p.subTitle || '').trim();
       if (!title) title = team ? (team + ' 公演') : String(p.title || '').trim();
       if (!title) title = '公演';
-      arr.push({ date: date, weekday: '', time: time, title: title, kind: kind, src: 'archive' });
+      arr.push({ date: bjDate(ts), weekday: '', time: time, title: title, kind: '公演', src: 'archive' });
+    });
+    const toMin = (t) => {
+      const m = /^(\d{1,2}):(\d{2})$/.exec(String(t || '').trim());
+      return m ? (+m[1]) * 60 + (+m[2]) : -1;
+    };
+    sched.forEach((x) => {
+      const a = toMin(x.time);
+      const dup = arr.some((y) => {
+        if (y.date !== x.date || y.kind !== x.kind) return false;
+        const b = toMin(y.time);
+        if (a < 0 || b < 0) return true;            // 有一方没写时间 → 当成同一场，别重复计
+        return Math.abs(a - b) <= 120;
+      });
+      if (!dup) arr.push(x);
     });
     arr.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : calStartMs(a) - calStartMs(b)));
     return arr;
