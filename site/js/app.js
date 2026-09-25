@@ -3,6 +3,29 @@ const DATA = { meta: null, messages: [], live: [], performances: [], social: [],
 // 按月分键加载状态：ALL_MONTHS 为降序月份列表（最新在前），loadedMonths 记录已拉取的月份
 let ALL_MONTHS = [];
 let loadedMonths = new Set();
+// 她真实零发言的月份。2026-09-26 用两条互不相干的数据链交叉核对确认：
+//   ① 站点她本人发言链（site/data/messages.json）② 房间全量数据里筛她的 uid
+//   两边逐月计数几乎完全一致，且接口在这几段同样返回空 ⇒ 那几个月她是真的没说话，不是漏抓。
+// 列表会直接从 2024-10 跳到 2024-08，很容易被当成数据掉了，所以在列表里显式标注出来。
+const SILENT_MONTHS = ['2024-09', '2024-12', '2025-01'];
+// 'YYYY.MM.DD'（fmtDate 的输出）→ 'YYYY-MM'
+const monthOfDay = (d) => String(d || '').slice(0, 7).replace('.', '-');
+// 相邻两天（较新在前）之间完整被跳过的沉默月；字典序在同格式下等价于时间序
+const silentMonthsBetween = (newerDay, olderDay) =>
+  (!newerDay || !olderDay) ? [] : SILENT_MONTHS.filter((ym) => ym < monthOfDay(newerDay) && ym > monthOfDay(olderDay));
+// 当前日期筛选范围是否撞上沉默期（用于空态文案）
+function silentHintForRange() {
+  if (!dateFilterActive()) return '';
+  const from = state.dateFrom || 0;
+  const to = state.dateTo || Number.MAX_SAFE_INTEGER;
+  const hit = SILENT_MONTHS.filter((ym) => {
+    const [y, m] = ym.split('-').map(Number);
+    const s = Date.parse(`${ym}-01T00:00:00+08:00`);
+    const e = Date.parse(`${m === 12 ? y + 1 : y}-${String(m === 12 ? 1 : m + 1).padStart(2, '0')}-01T00:00:00+08:00`) - 1;
+    return from <= e && to >= s;
+  });
+  return hit.length ? `<span class="silence-badge">${hit.join(' / ')} 她确实没有在口袋发言，不是漏抓</span>` : '';
+}
 // 数据接口基址：主站（idol.wyc0518.cc）同源直连；备份站（GitHub Pages）与本地预览走线上 Worker。
 // Worker 的数据接口已开 CORS（access-control-allow-origin: *），故跨域也能读同一份 KV 数据，
 // 备份站因此不必再等 git 提交，也能显示最新补档。
@@ -3634,7 +3657,7 @@ function renderMessages() {
       return;
     }
     panel.innerHTML = filterNote(0) +
-      `<div class="empty-state">${dateFilterActive() ? '该时间范围内没有发言，点上方「清除筛选」看全部。' : '暂无口袋发言数据。<br/>若尚未抓取，请设置 <code>POCKET48_TOKEN</code> 后运行 <code>node scrape.mjs</code>。'}</div>`;
+      `<div class="empty-state">${dateFilterActive() ? '该时间范围内没有发言，点上方「清除筛选」看全部。' : '暂无口袋发言数据。<br/>若尚未抓取，请设置 <code>POCKET48_TOKEN</code> 后运行 <code>node scrape.mjs</code>。'}${silentHintForRange()}</div>`;
     return;
   }
 
@@ -3667,7 +3690,14 @@ function renderMessages() {
     </div>`;
 
   const matchedCount = sortedDays.reduce((n, d) => n + groups[d].length, 0);
-  panel.innerHTML = filterNote(matchedCount) + shown.map(renderDay).join('')
+  let listHtml = '';
+  for (let i = 0; i < shown.length; i++) {
+    listHtml += renderDay(shown[i]);
+    for (const ym of silentMonthsBetween(shown[i], shown[i + 1])) {
+      listHtml += `<div class="silence-note">${ym.replace('-', '.')} 整月没有她的发言<span class="silence-sub">真实沉默期，不是漏抓</span></div>`;
+    }
+  }
+  panel.innerHTML = filterNote(matchedCount) + listHtml
     + (restDays > 0
       ? `<button class="load-more" id="loadMore" type="button">加载更早的消息（还有 ${restCount} 条 / ${restDays} 天）</button>`
       : '');

@@ -285,6 +285,15 @@ body {
 .empty-state { text-align: center; color: var(--muted); padding: 60px 20px; }
 .empty-state a { color: var(--primary-dark); }
 
+/* 真实沉默期标注：她那几个月确实一条都没发（两条数据链交叉核实），
+   列表里会把 2024-10 直接接到 2024-08，不标一句容易被当成漏抓 */
+.silence-note {
+  text-align: center; color: var(--muted); font-size: 12px;
+  padding: 16px 12px; margin: 2px 0;
+}
+.silence-note .silence-sub { display: block; margin-top: 3px; opacity: .72; }
+.silence-badge { display: inline-block; margin-top: 8px; font-size: 12px; }
+
 /* Lightbox：大图预览 + 打开原图 / 下载 */
 .lightbox {
   position: fixed; inset: 0; background: rgba(0, 0, 0, .88);
