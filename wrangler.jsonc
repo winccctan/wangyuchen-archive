@@ -1,0 +1,50 @@
+{
+  // 王语晨补档站：Cloudflare Worker（静态资源 + Workers AI 翻译代理）
+  // name 必须与 Cloudflare 仪表板中的 Worker 名称一致
+  "name": "wangyuchen-archive",
+  "compatibility_date": "2026-09-17",
+  // Worker 入口脚本（/translate 翻译代理、/ping 健康检查，其余透传静态资源）
+  "main": "worker/index.js",
+  // 静态站点资源目录（构建产物）。Worker 内通过 env.ASSETS 访问。
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "run_worker_first": true
+  },
+  // Workers AI 绑定：env.AI.run() 在 Cloudflare 边缘做翻译推理（不经过外部 IP，稳定、无需密钥）
+  "ai": {
+    "binding": "AI"
+  },
+  // KV：存放 GitHub PAT（GH_TOKEN），运行时读取，不进公开仓库、也不依赖 Git 构建注入 Secret。
+  // 键名填 GH_TOKEN（值 = 你的 PAT）。Git 构建不会注入 dashboard Secret，故用 KV 保证生效。
+  "kv_namespaces": [
+    { "binding": "SECRETS", "id": "ef32273095ad4a86953aa1222a11843b" },
+    // 数据 KV：存补档站全部数据（口袋发言按月分键 msg/YYYY-MM、live、performances、social、index）。
+    // 与 SECRETS 分离，避免大体积数据涨爆密钥命名空间。
+    // 【部署前必填】在 Cloudflare 控制台 Workers & Pages → KV → Create a namespace 新建一个，
+    // 命名如 wyc-archive-data，把它的「Namespace ID」替换到下面的 id 占位。
+    { "binding": "KV", "id": "bc641d8acc654e1faa12c0afac7aec2f" }
+  ],
+  // D1（SQLite）：存「口袋发言」—— 全站唯一持续增长、写得最频繁的数据。
+  // 免费额度 10 万写/天、500 万读/天，是 KV（1000 写/天）的 100 倍。
+  // 其余数据（live / performances / social / perf-cuts / live-cuts / index）仍留 KV：它们变化慢，每天只写 ~100 次。
+  "d1_databases": [
+    { "binding": "DB", "database_name": "wyc-archive-data", "database_id": "7408007c-bcf6-4d2d-8377-3443eec87180" }
+  ],
+  // /scrape 手动触发抓取用（非敏感，可明文）：GitHub 仓库名。
+  "vars": {
+    "REPO": "winccctan/wangyuchen-archive"
+  },
+  // Cron 触发器：Cloudflare 边缘自动派发抓取（worker/index.js 的 scheduled()）。
+  // 为什么放这里：GitHub 原生 cron 极其不稳定（经常延迟数十分钟甚至整天丢跑），
+  // 用 Cloudflare 的 Cron 作主调度器才稳；GitHub 那份保留作兜底（每20分钟）。
+  // 为什么 5 分钟而不是更密：一轮抓取要 1~2 分钟，间隔太短会让任务排队堆积、
+  // 且对口袋 48 接口压力过大（有被限流风险）。
+  // ⚠️ 实际频率以 Cloudflare 仪表板的 Cron Triggers 为准（那份是手配的，部署不会覆盖它）；
+  //   这里的值只是「期望值」。2026-09-22 起发言已迁 D1，KV 写入量降到 ~100/天，5 分钟也安全。
+  // 注意：若 Cloudflare 是用「Connect Git」自动部署、未读取本文件的 cron，
+  // 需在 Cloudflare 仪表板 Workers → 本 Worker → Settings → Triggers → Cron Triggers 手动调整。
+  "triggers": {
+    "crons": ["*/5 * * * *"]
+  }
+}

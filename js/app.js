@@ -1,0 +1,4483 @@
+// 王语晨补档站 - 前端逻辑
+const DATA = { meta: null, messages: [], live: [], performances: [], social: [], perfCuts: null, liveCuts: null };
+// 按月分键加载状态：ALL_MONTHS 为降序月份列表（最新在前），loadedMonths 记录已拉取的月份
+let ALL_MONTHS = [];
+let loadedMonths = new Set();
+// 她真实零发言的月份。2026-09-26 用两条互不相干的数据链交叉核对确认：
+//   ① 站点她本人发言链（site/data/messages.json）② 房间全量数据里筛她的 uid
+//   两边逐月计数几乎完全一致，且接口在这几段同样返回空 ⇒ 那几个月她是真的没说话，不是漏抓。
+// 列表会直接从 2024-10 跳到 2024-08，很容易被当成数据掉了，所以在列表里显式标注出来。
+const SILENT_MONTHS = ['2024-09', '2024-12', '2025-01'];
+// 'YYYY.MM.DD'（fmtDate 的输出）→ 'YYYY-MM'
+const monthOfDay = (d) => String(d || '').slice(0, 7).replace('.', '-');
+// 相邻两天（较新在前）之间完整被跳过的沉默月；字典序在同格式下等价于时间序
+const silentMonthsBetween = (newerDay, olderDay) =>
+  (!newerDay || !olderDay) ? [] : SILENT_MONTHS.filter((ym) => ym < monthOfDay(newerDay) && ym > monthOfDay(olderDay));
+// 当前日期筛选范围是否撞上沉默期（用于空态文案）
+function silentHintForRange() {
+  if (!dateFilterActive()) return '';
+  const from = state.dateFrom || 0;
+  const to = state.dateTo || Number.MAX_SAFE_INTEGER;
+  const hit = SILENT_MONTHS.filter((ym) => {
+    const [y, m] = ym.split('-').map(Number);
+    const s = Date.parse(`${ym}-01T00:00:00+08:00`);
+    const e = Date.parse(`${m === 12 ? y + 1 : y}-${String(m === 12 ? 1 : m + 1).padStart(2, '0')}-01T00:00:00+08:00`) - 1;
+    return from <= e && to >= s;
+  });
+  return hit.length ? `<span class="silence-badge">${hit.join(' / ')} 她确实没有在口袋发言，不是漏抓</span>` : '';
+}
+// 数据接口基址：主站（idol.wyc0518.cc）同源直连；备份站（GitHub Pages）与本地预览走线上 Worker。
+// Worker 的数据接口已开 CORS（access-control-allow-origin: *），故跨域也能读同一份 KV 数据，
+// 备份站因此不必再等 git 提交，也能显示最新补档。
+const API_BASE = /(^|\.)wyc0518\.cc$/.test(location.hostname) ? '' : 'https://idol.wyc0518.cc';
+// msgKey → message，便于翻译时按 id 取到原文（重新渲染后 DOM 里只剩 mid）
+const MSG_INDEX = new Map();
+const state = { tab: 'messages', query: '', dateFrom: null, dateTo: null, dayLimit: 3, matchLimit: 300, lang: 'zh', expanded: new Set(), guideSub: 'guide', perfSub: 'perf', liveSub: 'replay', perfJumpTo: null };
+
+// 搜索 / 时间筛选时一次最多渲染这么多条（超了分批处理，点底部按钮继续展开）。
+// 见 renderMessages 里的注释：手机上一次性渲染上千张卡片要卡好几秒。
+const MATCH_RENDER_LIMIT = 300;
+
+const $ = (sel) => document.querySelector(sel);
+const panels = {
+  messages: $('#panel-messages'),
+  live: $('#panel-live'),
+  performances: $('#panel-performances'),
+  schedule: $('#panel-schedule'),
+  guide: $('#panel-guide'),
+  mine: $('#panel-mine')
+};
+
+/* ---------------- 新粉指南数据 ---------------- */
+// 说明：微博统一用 uid 直链（weibo.com/u/<uid>）直达主页（比中文昵称路由稳定，改名也不失效）；
+// 抖音 / 小红书 / B站 已通过短链解析出内部 ID，这里用「平台 scheme + ID」实现 App 内直达主页。
+// accounts[].scheme 可覆盖 groups[].scheme（用于精确到某个账号的主页）。
+const PROFILE = {
+  name: '王语晨',
+  aliases: '晨晨 / 壮壮 / 鱼鱼',
+  facts: [
+    ['生日', '2002.05.18'],
+    ['星座', '金牛座'],
+    ['出生地', '重庆'],
+    ['MBTI', 'INFJ'],
+    ['宠物', '小面包'],
+    ['队伍', 'Team NIII'],
+    ['期数', 'GNZ48 十三期'],
+    ['粉丝名', '小甜橙'],
+    ['应援色', '天蓝色']
+  ],
+  secretCode: '831882944',
+  groups: [
+    {
+      label: '微博',
+      scheme: 'sinaweibo://',
+      color: '#e6162d',
+      accounts: [
+        { handle: 'GNZ48-王语晨', web: 'https://weibo.com/u/7791377245' },
+        { handle: '忘记自己是鱼_', web: 'https://weibo.com/u/7648263890' }
+      ]
+    },
+    {
+      label: '抖音',
+      scheme: 'snssdk1128://',
+      color: '#111111',
+      accounts: [
+        {
+          handle: 'Yuuuchen_',
+          web: 'https://v.douyin.com/AOSQp6eBlwg/',
+          scheme: 'snssdk1128://user/profile/MS4wLjABAAAADMlKYF7tTpgCmrD4up029mze5aSL3DshSGupCO2KxwnVUHLdRxJiXqoc21nTvfTm'
+        },
+        {
+          handle: '是一只鱼',
+          web: 'https://v.douyin.com/ZQ3QZpzoRNY/',
+          scheme: 'snssdk1128://user/profile/MS4wLjABAAAAPoRpu29hMC-ZnzB-4iv_gdpKOkRvkIjo4l8C9Mn1zy0uWl3xCwrNhE9Syou8stCc'
+        }
+      ]
+    },
+    {
+      label: '小红书',
+      scheme: 'xhsdiscover://',
+      color: '#ff2442',
+      accounts: [
+        {
+          handle: 'Yuuuchen_',
+          note: '3935 粉丝',
+          web: 'https://xhslink.cn/o/5yLa5r0LeWV',
+          scheme: 'xhsdiscover://user/5cedbceb00000000160097c0'
+        }
+      ]
+    },
+    {
+      label: 'B站',
+      scheme: 'bilibili://',
+      color: '#00aeec',
+      accounts: [
+        {
+          handle: '忘记自己是鱼_',
+          web: 'https://space.bilibili.com/19994272',
+          scheme: 'bilibili://space/19994272'
+        }
+      ]
+    },
+    {
+      label: '往期舞台补档（微博）',
+      scheme: 'sinaweibo://',
+      color: '#e6162d',
+      accounts: [
+        { handle: '初昼·王语晨', web: 'https://weibo.com/u/7807274718' },
+        { handle: '爱在黎明前_王语晨', web: 'https://weibo.com/u/7730075207' }
+      ]
+    },
+    {
+      label: '应援会微博',
+      scheme: 'sinaweibo://',
+      color: '#e6162d',
+      accounts: [
+        { handle: 'GNZ48-王语晨的甜橙小铺', web: 'https://weibo.com/u/7794095795' }
+      ]
+    }
+  ],
+  // 公式照（按年份倒序分组）：2026 官网，2025 白礼服+皇冠、2024 蓝格纹礼服（均来自微博）
+  galleryByYear: [
+    {
+      year: '2026',
+      source: 'SNH48 官网成员资料',
+      photos: [
+        './assets/member-gs1.jpg',
+        './assets/member-gs2.jpg',
+        './assets/member-gs4.jpg'
+      ]
+    },
+    {
+      year: '2025',
+      source: '微博',
+      photos: [
+        './assets/gs2025-1.jpg',
+        './assets/gs2025-2.jpg',
+        './assets/gs2025-3.jpg',
+        './assets/gs2025-4.jpg'
+      ]
+    },
+    {
+      year: '2024',
+      source: '微博',
+      photos: [
+        './assets/gs2024-1.jpg',
+        './assets/gs2024-2.jpg',
+        './assets/gs2024-3.jpg',
+        './assets/gs2024-4.jpg'
+      ]
+    }
+  ],
+  // 经历备注（SNH48 官网 member-detail，新→旧；tag: 高飞/梦想/新人/定制/预告）
+  experience: [
+    { date: '2026.11.28', tag: '预告', text: '个人年V全场定制公演即将到来' },
+    { date: '2026.08.08', tag: '高飞', text: 'SNH48 GROUP 年度青春盛典 NO.22 年度高飞成员奖' },
+    { date: '2025.08.02', tag: '梦想', text: 'SNH48 GROUP 年度青春盛典 NO45 年度梦想成员奖' },
+    { date: '2024.08.03', tag: '高飞', text: 'SNH48 GROUP 年度青春盛典 NO27 年度高飞成员奖' },
+    { date: '2023.08.05', tag: '新人', text: 'SNH48 GROUP 年度青春盛典 年度潜力新人' },
+    { date: '2023.01.15', tag: '', text: '升格加入 GNZ48 Team NIII 队（Team NIII）' },
+    { date: '2022.10.02', tag: '', text: '加入 GNZ48 十三期生' }
+  ],
+  // 官方微博提及（各官微提到王语晨的微博，手动抓取补入；带官微深链）
+  // source = 提及来源账号；渲染时按 date 倒序合并成一条时间线
+  officialMentions: [
+    { date: '2026.09.05', source: '@SNH48', text: "#SNH48[超话]# GROUP首支电竞女子战队正式集结📣 【大名单发布】 @SNH48-王睿琦 @BEJ48-黄宣绮- @BEJ48-朱虹蓉 @SNH48-由淼 @GNZ48-石竹君 @GNZ48-王语晨 @BEJ48-王佳琪 @SNH48-温若其@SNH48-钟亚男 @SNH48-叶凡 【首发战队】 @SNH48-王睿琦 @BEJ48-黄宣绮- @SNH48-由淼 @SNH48-温若其 ​​​", url: 'https://weibo.com/2689280541/RgGEXi2k8' },
+    { date: '2026.08.30', source: '@SNH48', text: "#SNH48[超话]#2026#SNH48GROUP年度青春盛典# ——TOP 22 领奖图—— “让你们的努力，都成为日后「值得」的回忆。” 恭喜@GNZ48-王语晨 获得年度高飞成员奖！你做到了！更远的山海，我们一起奔赴！ ​​​", url: 'https://weibo.com/2689280541/RfKUUz5gN' },
+    { date: '2026.08.26', source: '@SNH48', text: "#SNH48[超话]# 2026#SNH48GROUP年度青春盛典# ——TOP 21-24 发言时刻—— @BEJ48-周湘 “这个夏天因你们而饱满，这份成绩因你们而有重量！” @GNZ48-王语晨 “我的心中还有更远的山海，并做好了全力以赴的准备，希望大家都能在生活中拥有奔赴理想的勇气，做到眼里有光，脚下有路。” @SNH48-禹佳蔚 ​​​", url: 'https://weibo.com/2689280541/Rf9Binm0n' },
+    { date: '2026.08.25', source: '@GNZ48', text: "#GNZ48[超话]# ✨重磅消息✨ @GNZ48-王语晨 @GNZ48-黄楚茵 @GNZ48-吕思琪 @GNZ48-林家谊 四位成员解锁全新副本🔓 现正式宣布团内荣誉兼任 [星星]王语晨 兼任 GNZ48 TEAM Z [星星]黄楚茵 兼任 GNZ48 TEAM Z [星星]吕思琪 兼任 GNZ48 TEAM Z [星星]林家谊 兼任 GNZ48 TEAM NIII 📅演出信息 9月5日 ​​​", url: 'https://weibo.com/5675361083/Rf1KcqcCe' },
+    { date: '2026.08.12', source: '@GNZ48', text: "2026#SNH48GROUP年度青春盛典# 梦想、汗水、坚持 #GNZ48[超话]# 荣誉恭贺 恭喜@GNZ48-王语晨 《过去完成时》 获得『年度高飞成员奖』🏆 “拥有奔赴理想的勇气，做到眼里有光，脚下有路。” 以无畏之姿拥抱每一次蜕变 用热爱镌刻青春最璀璨的印记 期待更耀眼的绽放[心] ​​​", url: 'https://weibo.com/5675361083/Rd1dYrlHJ' },
+    { date: '2026.08.08', source: '@GNZ48', text: "#GNZ48[超话]# #SNH48苏州演唱会# 梦想、汗水、坚持✨ 2026 #SNH48GROUP年度青春盛典# 颁奖典礼 荣获「年度高飞成员奖」的作品正式揭晓 [打call] 恭喜@GNZ48-石竹君 @GNZ48-王语晨 @GNZ48-黄楚茵 @GNZ48-王秭歆 @GNZ48-方琪 @GNZ48-吕思琪 @GNZ48-林家谊 心怀热望，终绽锋芒。", url: 'https://weibo.com/5675361083/Rctgln61L' },
+    { date: '2026.08.03', source: '@GNZ48', text: "#GNZ48[超话]# 梦想、汗水、坚持✨2026 #SNH48GROUP年度青春盛典# ——倒计时1周 即时周报结果公开—— 恭喜@GNZ48-朱怡欣- 入围年度影响力成员银奖提名 [打call] 恭喜@GNZ48-张琼予 入围『年度星光成员奖项』[打call] 恭喜@GNZ48-王语晨 @GNZ48-黄楚茵 @GNZ48-王秭歆 @GNZ48-陈珊玲 入围『年度高飞成", url: 'https://weibo.com/5675361083/RbEAzwLZa' },
+    { date: '2026.07.28', source: '@GNZ48', text: "#GNZ48[超话]# GNZ48歌唱企划 《豪歌 2026》 巅峰之夜圆满收官[打call] 恭喜—— 🥇@GNZ48-朱怡欣- 🥈@CGT48-何林燕 🥉@GNZ48-陈珊玲 🎤@GNZ48-黄楚茵 @GNZ48-张琼予 @GNZ48-石竹君 @GNZ48-王语晨 @GNZ48-方琪 @-CKG48-吴志越- @GNZ48-王秭歆 @-CKG48-何馨曼- ​​​", url: 'https://weibo.com/5675361083/RaKBg2DvE' },
+    { date: '2026.07.27', source: '@GNZ48', text: "#GNZ48[超话]# 梦想、汗水、坚持 2026 #SNH48GROUP年度青春盛典# 倒计时2周 即时周报结果公开： 恭喜@GNZ48-朱怡欣- 入围本轮年度影响力成员银奖提名🎉恭喜@GNZ48-张琼予 入围『年度星光成员奖项』🎉恭喜@GNZ48-王语晨 @GNZ48-黄楚茵 @GNZ48-陈珊玲 @GNZ48-王秭歆 @GNZ48-吕思琪 @GNZ48-方琪 入", url: 'https://weibo.com/5675361083/RaAgNvoO4' },
+    { date: '2026.07.12', source: '@GNZ48', text: "#GNZ48[超话]# 梦想、汗水、坚持 2026 #SNH48GROUP年度青春盛典# 恭喜@GNZ48-朱怡欣- 入围影响力成员银奖提名 🎉恭喜@GNZ48-张琼予 @GNZ48-王语晨 入围第二阶段『年度星光成员奖项』的提名 🎉 行至山巅，终见星光 [打call] 演唱会购票直达＞＞http://t.cn/AXo3eLAn", url: 'https://weibo.com/5675361083/R8nDHA3dz' },
+    { date: '2026.07.09', source: '@GNZ48', text: "2026 #SNH48GROUP年度青春盛典##GNZ48[超话]# 青春时刻返图 作品计分通道正式开启>>http://t.cn/A6aL75W1 @GNZ48-王语晨｜个人作品《过去完成时》 青春宣言： 过往不恋，未来不忧，当下不负。 ​​​", url: 'https://weibo.com/5675361083/R7R5HxpNg' },
+    { date: '2026.07.04', source: '@GNZ48', text: "#GNZ48[超话]# 梦想、汗水、坚持 2026 #SNH48GROUP年度青春盛典# 作品计分通道正式开启>>http://t.cn/A6aL75W1 ——成员个人作品汇总—— 今天有3名成员发布了自己的个人作品，分别是： @GNZ48-王语晨《过去完成时》 “过往不恋，未来不忧，当下不负。” http://t.cn/AXo66rrC @GNZ48-许涵婧 《明日 ​​​", url: 'https://weibo.com/5675361083/R78vpyzVV' },
+    { date: '2026.06.21', source: '@GNZ48', text: "#GNZ48[超话]# 梦想、汗水、坚持 2026 #SNH48GROUP年度青春盛典# 恭喜🎉 @GNZ48-王语晨 @GNZ48-陈珊玲 入围第一阶段『年度高飞成员奖项』", url: 'https://weibo.com/5675361083/R5bFPej9k' },
+    { date: '2026.05.21', source: '@GNZ48', text: "#GNZ48[超话]# @GNZ48-王语晨 生日公演精彩回顾✨ 聚光灯落下的那一刻 青春被赋予了最具体的形状 过往皆为序章 未来才是她更广阔的旷野 ​​​​", url: 'https://weibo.com/5675361083/R0qIx4OkX' },
+    { date: '2026.05.18', source: '@GNZ48', text: "#GNZ48[超话]# 今天是@GNZ48-王语晨 的生日～祝壮壮生日快乐🎂 聚光灯下的每一次跳动，都是你与梦想的同频共振。从默默积蓄力量，到在舞台中心尽情释放，你的光芒愈发耀眼且纯粹。🎞️ 愿未来的路途：万里无云，满目星光，掌声常伴。新的一岁，愿你自在生长，在热爱的领域里，永远滚烫，永远自 ​​​", url: 'https://weibo.com/5675361083/QFTVBj0Jr' },
+    { date: '2026.05.08', source: '@GNZ48', text: "#GNZ48[超话]# @GNZ48-王语晨 季度MVP精彩回顾✨ 明眸璀璨 似繁星坠落人间 在追梦的轨迹里 始终恪守最初的纯真与滚烫🔥 ​​​", url: 'https://weibo.com/5675361083/QEofowp8q' },
+    { date: '2026.04.26', source: '@GNZ48', text: "#GNZ48[超话]# @GNZ48-王语晨 季度MVP环节—《猩红之眼》 🎵撕碎标签 🎵傲慢偏见 撕碎世俗标签，挣脱傲慢偏见，步履不停，奔赴下一程盛放✨ http://t.cn/AXxmUbiU ​​​", url: 'https://weibo.com/5675361083/QCBRXiDRv' },
+    { date: '2026.04.19', source: '@GNZ48', text: "#GNZ48[超话]# 星愿树通知：@GNZ48-王语晨 专场指定直播时间为：4月19日21:00；@GNZ48-程戈 专场直播时间为：4月20日20:00。请各位相互转告，谢谢～", url: 'https://weibo.com/5675361083/QBwIp9j7t' },
+    { date: '2026.04.17', source: '@GNZ48', text: "#GNZ48[超话]# 星愿树下的心动约定，让动听的旋律点亮你的星光~✨ @GNZ48-王语晨 专场 举办时间：4月25日 16:30-18:00 指定直播时间：4月19日 21:00（以实际开播时间为准） @GNZ48-鲍雨欣 专场 举办时间：4月26日 15:30-17:00 指定直播时间：4月17日 22:00（以实际开播时间为准） 树语见面会：4月26 ​​​", url: 'https://weibo.com/5675361083/QBcsUlYu9' },
+    { date: '2026.04.13', source: '@GNZ48', text: "#GNZ48[超话]# 2026年4月23日-4月26日GNZ48公演最新安排[打call] @刘力菲_ 《3652》荣誉毕业生GNZ48剧场年度MVP公演，藏满一路星光，邀你共同见证 [星星]GNZ48 TEAM NIII @GNZ48-王语晨 季度MVP环节 解构与重生的旅程迎来终章，GNZ48 TEAM NIII《没有我的世界(uN_v3rse)》千秋乐，定格最后一场闪耀 GNZ ​​​", url: 'https://weibo.com/5675361083/QAALmbsnv' },
+    { date: '2026.03.12', source: '@SNH48', text: "#SNH48[超话]##SNH48无限青春# SNH48 GROUP 2026年度春季EP 《Forever Young》全曲上线倒计时！ 3月14日，白色情人节不见不散！ @-CKG48-何馨曼- @SNH48-蒋舒婷- @BEJ48-郑照暄 @SNH48-柏欣妤 @-GNZ48-徐楚雯 @SNH48-由淼 @GNZ48-王语晨 @CGT48-王艺霖 @-CKG48-雷宇霄 ​​​", url: 'https://weibo.com/2689280541/QvIoOzXI3' },
+    { date: '2026.03.11', source: '@SNH48', text: "#SNH48[超话]# #SNH48无限青春# SNH48 GROUP 2026 春季EP同名曲 《Forever Young》MV今日已上线！侧拍花絮送达！ @-CKG48-何馨曼- @SNH48-蒋舒婷- @BEJ48-郑照暄 @SNH48-柏欣妤 @-GNZ48-徐楚雯 @SNH48-由淼 @GNZ48-王语晨 @CGT48-王艺霖 @-CKG48-雷宇霄 http://t.cn/AXVNC0in ​​​", url: 'https://weibo.com/2689280541/Qvza6lj5p' },
+    { date: '2026.03.11', source: '@GNZ48', text: "#GNZ48[超话]# #SNH48无限青春# SNH48 GROUP 2026 春季EP同名曲 《Forever Young》MV今日正式上线[打call]@GNZ48-张琼予 @GNZ48-杨媛媛 @-GNZ48-徐楚雯 @GNZ48-王语晨 这是一段属于她们的青春发光故事。", url: 'https://weibo.com/5675361083/Qvz8zbnax' },
+    { date: '2026.03.10', source: '@GNZ48', text: "#GNZ48[超话]# #SNH48无限青春# @-GNZ48-徐楚雯 @GNZ48-王语晨 SNH48 GROUP 2026年度春季EP 《Forever Young》热血版接力来袭[打call] 3月11日，主打曲音源&MV同步上线！", url: 'https://weibo.com/5675361083/Qvr9Ylbrr' },
+    { date: '2026.03.10', source: '@SNH48', text: "#SNH48[超话]# #SNH48无限青春# SNH48 GROUP 2026年度春季EP 《Forever Young》热血版接力来袭 3月11日，主打曲音源&MV同步上线！ @-CKG48-何馨曼- @SNH48-蒋舒婷- @BEJ48-郑照暄 @SNH48-柏欣妤 @-GNZ48-徐楚雯 @SNH48-由淼 @GNZ48-王语晨 @CGT48-王艺霖 @-CKG48-雷宇霄 http://t.cn/AXVSPWic ​​​", url: 'https://weibo.com/2689280541/QvprlaT3s' },
+    { date: '2026.03.08', source: '@SNH48', text: "#SNH48[超话]# #SNH48无限青春# SNH48 GROUP 2026年度春季EP同名主打曲 《Forever Young》青春版Young接力发布 3月11日，音源&MV同步上线，敬请期待！ @-CKG48-何馨曼- @SNH48-蒋舒婷- @BEJ48-郑照暄 @SNH48-柏欣妤 @-GNZ48-徐楚雯 @SNH48-由淼 @GNZ48-王语晨 @CGT48-王艺霖 @-CKG48-雷宇霄 ​​​", url: 'https://weibo.com/2689280541/Qv6AlETmz' },
+    { date: '2026.03.05', source: '@SNH48', text: "#SNH48[超话]# #SNH48无限青春# SNH48 GROUP 2026年度春季EP 《Forever Young》青春版海报发布 3月6日MV预告，上线倒计时1天！ @-CKG48-何馨曼- @SNH48-蒋舒婷- @BEJ48-郑照暄 @SNH48-柏欣妤 @-GNZ48-徐楚雯 @SNH48-由淼 @GNZ48-王语晨 @CGT48-王艺霖 @-CKG48-雷宇霄 ​​​", url: 'https://weibo.com/2689280541/QuEiQyLU0' },
+    { date: '2026.03.03', source: '@SNH48', text: "#SNH48[超话]# #SNH48无限青春# SNH48 GROUP 2026年度春季EP 《Forever Young》热血版海报发布 3月6日MV预告，上线倒计时3天！ @-CKG48-何馨曼- @SNH48-蒋舒婷- @BEJ48-郑照暄 @SNH48-柏欣妤 @-GNZ48-徐楚雯 @SNH48-由淼 @GNZ48-王语晨 @CGT48-王艺霖 @-CKG48-雷宇霄 ​​​", url: 'https://weibo.com/2689280541/QulrR9Cy9' },
+    { date: '2026.02.27', source: '@GNZ48', text: "GNZ48超话#马年大吉# 大年十一，一心一意✨ 由@GNZ48-王语晨 送出的双重好礼🎁 ✅【“简直仙品”——往期成员拍立得一张！】 ✅【GNZ48拍了拍你——一次性胶卷相机】 一张定格回忆里的仙品，一张捕捉未来的光影，愿新的一年十全十美事事顺，每一帧都是好风景！ 2026.2.27 23：59通过@微博抽奖平台 ​​​", url: 'https://weibo.com/5675361083/QtKwAhVsV' },
+    { date: '2026.02.04', source: '@GNZ48', text: "#GNZ48[超话]# 马年祝福满载而来🐎2月15日晚19:30锁定@重庆卫视 @四川卫视 2026川渝春节联欢晚会🎁和@GNZ48-王语晨 一起让欢笑与祝福撞个满怀～#2026川渝春晚阵容官宣# #川渝春晚分会场幸福集结#", url: 'https://weibo.com/5675361083/QqgTy16Qm' },
+    { date: '2026.01.26', source: '@SNH48', text: "#SNH48[超话]##乐曜曲2025全阵容LIVE# SNH48 GROUP乐曜曲全阵容LIVE HOUSE • 上海站 单人回顾返图 @GNZ48-张琼予 @GNZ48-梁娇 @GNZ48-王秭歆 @-CKG48-朱瑞缘 @-CKG48-林-丹蕾 @-CKG48-徐沁楠 @-CKG48-陈萧扬 @刘力菲_ @GNZ48-王语晨 有些再见，是为了让相遇永远； 关于乐曜曲的故事，「未完待续 ​​​", url: 'https://weibo.com/2689280541/QoTf2vXsT' },
+    { date: '2026.01.24', source: '@SNH48', text: "#SNH48[超话]##乐曜曲2025全阵容LIVE# SNH48 GROUP乐曜曲全阵容LIVE HOUSE • 上海站 1/24专属答谢见面会返图 时光会记得所有声音， 穿过人海，漫过四季，抵达崭新的明天。 @GNZ48-张琼予 @SNH48-韩家乐- @SNH48-卢天惠 @SNH48-金莹玥 @GNZ48-梁娇 @GNZ48-王秭歆 @GNZ48-王语晨 @SNH48-赵天杨 ​​​", url: 'https://weibo.com/2689280541/QoCm2zSJA' },
+    { date: '2026.01.23', source: '@SNH48', text: "#SNH48[超话]##乐曜曲2025全阵容LIVE# SNH48 GROUP乐曜曲全阵容LIVE HOUSE • 上海站 3月乐曜曲《非正式告别》现场直击 @刘力菲_ @GNZ48-王语晨 有些告别没有句号， 只有未完的旋律在脑海中萦绕。 http://t.cn/AXqPu7v8 ​​​", url: 'https://weibo.com/2689280541/QotzD0qWJ' },
+    { date: '2026.01.02', source: '@GNZ48', text: "#GNZ48[超话]#2025年12月GNZ48星梦剧院MVP月度之星及2025年第四季度季度之星名单公布： 恭喜—— #GNZ48TeamG[超话]# @GNZ48-张琼予 #GNZ48TeamNIII[超话]# @GNZ48-王语晨 #GNZ48TeamZ[超话]# @GNZ48-杨媛媛 感谢粉丝们的支持，期待更多精彩舞台在星梦剧院诞生！ ​​​", url: 'https://weibo.com/5675361083/QlecNelig' },
+    { date: '2026.01.01', source: '@GNZ48', text: "#GNZ48[超话]# SNH48 GROUP 2025星梦剧院年度MVP TOP16选拔阵容正式公布！[打call]恭喜@GNZ48-张琼予 @GNZ48-杨媛媛 @-GNZ48-徐楚雯 @GNZ48-王语晨 入选选拔阵容！[鼓掌][鼓掌]", url: 'https://weibo.com/5675361083/Ql0PbnVam' },
+    { date: '2025.12.11', source: '@GNZ48', text: "#GNZ48[超话]# 2026年纪念台历拍摄花絮｜@GNZ48-王语晨 任浪漫在花间流转 将甜蜜写进温柔时光 2026GNZ48纪念台历及周边现正火热销售中 GNZ48 2026年纪念台历套装-通行版>>>http://t.cn/AXy5ftEc GNZ48 2026年纪念台历套装-定制版>>>http://t.cn/AXy5ftEV GNZ48 2026年台历纪念主题小卡>>> ​​​", url: 'https://weibo.com/5675361083/QhTbR5nP3' },
+    { date: '2025.12.08', source: '@GNZ48', text: "#GNZ48[超话]# 星愿树活动通知：@GNZ48-王语晨 指定直播时间：12月11日 21:00，请各位相互转告，谢谢~", url: 'https://weibo.com/5675361083/QhsyzvR3N' },
+    { date: '2025.12.03', source: '@GNZ48', text: "#GNZ48[超话]# 星愿树下的心动约定，让动听的旋律点亮你的星光~✨ 12月14日，用歌声连接彼此~ @GNZ48-王语晨 专场 举办时间：12月14日 15:30-17:00 指定直播时间：12月11日 21:00（以实际开播时间为准） @GNZ48-陈珊玲 专场 举办时间：12月14日 20:00-21:30 指定直播时间：12月4日 22:00 （以实际 ​​​", url: 'https://weibo.com/5675361083/QgHJFgASi' },
+    { date: '2025.12.01', source: '@GNZ48', text: "#GNZ48[超话]# SNH48 GROUP 2025星梦剧院年度MVP TOP16选拔阵容阶段性结果公布！[打call]恭喜@GNZ48-张琼予 @GNZ48-杨媛媛 @-CKG48-王思予 @GNZ48-王语晨 @GNZ48-朱怡欣- 入围[鼓掌]SNH48 GROUP 2025年度MVP TOP16选拔阵容、2025星梦剧院年度MVP「年度之星」都将于《SNH48 2025⏩2026跨年公演》当晚最", url: 'https://weibo.com/5675361083/QgoiDwFUe' },
+    { date: '2025.11.21', source: '@SNH48', text: "#SNH48[超话]# #SNH48新学季# TOP48（梦想组）汇报单曲《新学季》现已上线 世界在倾听 我心底声音 实现着曾经梦境 @-CKG48-朱瑞缘 @BEJ48-郭晓盈 @GNZ48-方琪 @BEJ48-郑照暄 @GNZ48-梁乔 @GNZ48-王语晨 @GNZ48-刘欣媛 @SNH48-周童玥- @SNH48-张倩 ​​​", url: 'https://weibo.com/2689280541/QeQrJBFuQ' },
+    { date: '2025.11.17', source: '@GNZ48', text: "#GNZ48[超话]# #SNH48新学季# 距离TOP48汇报MV《新学季》正式上线还有4天！[纸飞机] @GNZ48-梁乔 @GNZ48-王语晨 @GNZ48-刘欣媛 #SNH48GROUP年度青春盛典# TOP48（梦想组）汇报单曲《新学季》 11月21日10:00MV正式上线！", url: 'https://weibo.com/5675361083/QeeXhaiCi' },
+    { date: '2025.11.17', source: '@SNH48', text: "#SNH48[超话]##SNH48新学季# 距离TOP48汇报MV《新学季》正式上线还有4天！ @GNZ48-梁乔 @GNZ48-王语晨 @GNZ48-刘欣媛 @SNH48-周童玥- @SNH48-张倩 #SNH48GROUP年度青春盛典# TOP48（梦想组）汇报单曲《新学季》 11月21日10:00MV正式上线！ http://t.cn/AX21Ssf3 ​​​", url: 'https://weibo.com/2689280541/QeeVWaw7X' },
+    { date: '2025.11.17', source: '@SNH48', text: "#SNH48[超话]# #SNH48新学季# 青春像一首狂想曲 从来没有既定剧情 @GNZ48-梁乔 @GNZ48-王语晨 @GNZ48-刘欣媛 @SNH48-周童玥- @SNH48-张倩 #SNH48GROUP年度青春盛典# TOP48（梦想组）汇报单曲《新学季》 11月21日10:00MV正式上线！ ​​​", url: 'https://weibo.com/2689280541/QeexzzTHm' },
+    { date: '2025.10.01', source: '@GNZ48', text: "#GNZ48[超话]# 2025星梦剧院「年度之星」荣耀继续✨ 2025年9月GNZ48星梦剧院MVP月度之星名单公布： 恭喜—— #GNZ48TeamG[超话]# @GNZ48-张琼予 #GNZ48TeamNIII[超话]# @GNZ48-王语晨 #GNZ48TeamZ[超话]# @GNZ48-杨媛媛 感谢粉丝们的支持，期待更多精彩舞台在星梦剧院诞生！ ​​​", url: 'https://weibo.com/5675361083/Q76rgmLp6' },
+    { date: '2025.09.14', source: '@SNH48', text: "#SNH48[超话]#以世界之名，让世界洋溢青春 2025#SNH48GROUP年度青春盛典# ——TOP32&48专场答谢见面会返图—— 穿越千里 只为匆匆一面 @SNH48-李佳恩-@GNZ48-王秭歆 @SNH48-闫娜 @SNH48-叶凡 @GNZ48-石竹君 @BEJ48-郭晓盈 @GNZ48-方琪 @GNZ48-梁乔 @GNZ48-王语晨 @GNZ48-刘欣媛 ​​​", url: 'https://weibo.com/2689280541/Q4x7ZoGvj' },
+    { date: '2025.09.08', source: '@SNH48', text: "#SNH48[超话]# 2025 #SNH48GROUP年度青春盛典# 「年度梦想成员奖」NO.45-48发言时刻回顾 恭喜@GNZ48-王语晨《虚构者》 “谢谢你们一直一直守护我，以后也一起幸福快乐地生活下去吧。” 恭喜@GNZ48-刘欣媛《因为你》 “我真的觉得你们特别厉害，每次都可以接住我所有情绪。” 恭喜@SNH48-周童玥- 《别 ​​​", url: 'https://weibo.com/2689280541/Q3AqEbdrN' },
+    { date: '2025.09.08', source: '@SNH48', text: "#SNH48[超话]# 2025 #SNH48GROUP年度青春盛典# 「年度梦想成员奖」荣誉恭贺 所有在迷雾中不曾停步的坚持，早已把虚构的影子奏成了光芒本身 恭喜「年度梦想成员奖」NO.45@GNZ48-王语晨《虚构者》 即便有过无助落泪却从未放弃，终于在这舞台上绽放出耀眼的光芒 恭喜「年度梦想成员奖」NO.46 ​​​", url: 'https://weibo.com/2689280541/Q3Aeszx7K' },
+    { date: '2025.05.22', source: '@SNH48', text: "#SNH48[超话]##SNH48乐曜曲计划# 2025 SNH48 GROUP星梦剧院 全新歌曲内容企划“乐曜曲计划” 【3月乐曜曲】《非正式告别》音源正式上线！ @GNZ48-刘力菲 @GNZ48-王语晨 所谓离别 就像是被慢放的痛觉 让音乐 代替未说出口的再见 QQ音乐＞＞http://t.cn/A6gpmfDe 酷狗音乐＞＞http://t.cn/A6gpmfDg 酷 ​​​", url: 'https://weibo.com/2689280541/PsY6F1oOY' },
+    { date: '2024.11.01', source: '@SNH48', text: "#SNH48[超话]# #SNH48最好的朋友# TOP32汇报MV《花蝴蝶》现已上线 不会再迷惑 越飞越不惧陨落 @BEJ48-黄宣绮- @SNH48-陈雨孜 @SNH48-青钰雯 @GNZ48-王语晨 @SNH48-王睿琦 @GNZ48-杨若惜 @SNH48-卢天惠 @SNH48-林佳怡 @SNH48-金莹玥 ​​​", url: 'https://weibo.com/2689280541/OEdPd7r1J' },
+    { date: '2024.10.29', source: '@SNH48', text: "#SNH48[超话]# #SNH48最好的朋友# 你就像是大自然的杰作 措手不及被我诱惑 @BEJ48-黄宣绮- @SNH48-陈雨孜 @SNH48-青钰雯 @GNZ48-王语晨 11月1日10:00《花蝴蝶》MV正式上线！ ​​​", url: 'https://weibo.com/2689280541/ODLlxqz7u' },
+    { date: '2024.10.29', source: '@SNH48', text: "#SNH48[超话]# #SNH48最好的朋友# 距离TOP32汇报MV《花蝴蝶》正式上线还有3天！ @BEJ48-黄宣绮- @SNH48-陈雨孜 @SNH48-青钰雯 @GNZ48-王语晨 http://t.cn/A6ntRict ​​​", url: 'https://weibo.com/2689280541/ODKXbAoOi' },
+    { date: '2024.08.30', source: '@SNH48', text: "#SNH48[超话]# 2024“新的序章”#SNH48GROUP年度青春盛典# ——发言时刻回顾—— 恭喜@GNZ48-王语晨 《蒲公英的脚印》 荣获「年度高飞成员奖」NO.27 “属于我们的第一个夏天正式打板了！” http://t.cn/A6R6sw6M ​​​", url: 'https://weibo.com/2689280541/OuDHL55F7' },
+    { date: '2024.08.30', source: '@SNH48', text: "#SNH48[超话]# 2024“新的序章”#SNH48GROUP年度青春盛典# ——荣誉恭贺—— 乘着风的翅膀飞翔 飞过海平面的另一方 恭喜@GNZ48-王语晨 《蒲公英的脚印》 荣获「年度高飞成员奖」NO.27 ​​​", url: 'https://weibo.com/2689280541/OuDnsg6Zu' },
+    { date: '2024.07.29', source: '@SNH48', text: "#SNH48[超话]# “新的序章”2024 #SNH48GROUP年度青春盛典# 即将开启！ 作品计分通道将于8月3日12:00正式关闭>>http://t.cn/A6aL75W1 专属计分EP《薄荷糖》正在SNH48星梦剧院周边店火热销售中 7月30日一日粉丝服务安排公布如下↓ 7月30日18:30-19:30 王语晨、郑照暄、李佳恩、赵天杨、周童玥 7月30日 ​​​", url: 'https://weibo.com/2689280541/OpPDO3VTr' },
+    { date: '2024.07.22', source: '@SNH48', text: "#SNH48[超话]# “新的序章”2024 #SNH48GROUP年度青春盛典# 作品计分通道持续开启>>http://t.cn/A6aL75W1 专属计分EP《薄荷糖》全员应援版热销中>> http://t.cn/A6Hc1xw7 7/25-7/28一日粉丝服务安排公布如下↓ 7月25日18:00-18:45 郑丹妮、刘力菲、唐莉佳、张润、王语晨 7月27日17:30-18:15 袁一琦 ​​​", url: 'https://weibo.com/2689280541/OoKrHjc1x' },
+    { date: '2024.03.24', source: '@SNH48', text: "#SNH48[超话]# 2024 #SNH48绽放春日见面会# 正是江南好风景 落花时节又逢君 @SNH48-胡晓慧 @BEJ48-黄怡慈 @SNH48-刘洁 @SNH48-冯思佳 @SNH48-郝婧怡 @SNH48-孙语姗 @GNZ48-王语晨 @GNZ48-杨若惜 ​​​", url: 'https://weibo.com/2689280541/O6uTSbL56' },
+    { date: '2024.03.10', source: '@SNH48', text: "#SNH48[超话]# 2023 SNH48 GROUP 「年度潜力新人TOP16」巡演——上海站 @SNH48-温若其 @SNH48-杨心渝 @SNH48-卢晨昕- 《深海之声》听见海的心跳 听见了海中妖 @BEJ48-郑照暄 @BEJ48-庄雅雯 《画》十洲风光尽在我笔下 @GNZ48-刘欣媛 @GNZ48-王语晨 《白昼街灯 (LIGHT IT UP)》浪漫情节惹人陶醉 ​​​", url: 'https://weibo.com/2689280541/O4oGq4Tfa' },
+    { date: '2024.03.10', source: '@SNH48', text: "#SNH48[超话]# 2023 SNH48 GROUP 「年度潜力新人TOP16」巡演——上海站 好想大声告诉你📢：我-喜-欢-你！ 最热切的呼喊 最浓烈的告白 都在这里 @BEJ48-郑照暄 @CGT48-周是汝 @SNH48-温若其 @GNZ48-刘欣媛 @CGT48-谭思慧 @-CKG48-何馨曼- @GNZ48-王语晨 @CGT48-宋筱璐 @CGT48-夏莹 @BEJ48-庄雅雯 ​​​", url: 'https://weibo.com/2689280541/O4oea7Crf' },
+    { date: '2024.01.13', source: '@SNH48', text: "#SNH48[超话]##SNH48年度金曲大赏# SNH48 GROUP 第十届年度金曲大赏媒体采访返图 恭贺以下成员完成本届金曲作品首秀 @SNH48-胡晓慧 @SNH48-刘姝贤 《给未来的我们》 @SNH48-王奕 @SNH48-周诗雨 《双人舞》 @GNZ48-梁乔 @GNZ48-卢静 @GNZ48-杨若惜 @GNZ48-叶舒淇 @GNZ48-龙亦瑞 @GNZ48-王语晨 ​​​", url: 'https://weibo.com/2689280541/NBHQV8LR2' },
+    { date: '2023.08.05', source: '@SNH48', text: "#SNH48[超话]# 2023丝芭家族十周年演唱会 #SNH48GROUP年度青春盛典# 颁奖典礼 恭喜@BEJ48-郑照暄 潜力新人TOP1 @BEJ48-马欣宇 @CGT48-周是汝 SNH48温若其 @CGT48-钟洁玟 @-CKG48-杨添淩- @GNZ48-刘欣媛 @CGT48-谭思慧 @-CKG48-何馨曼- @GNZ48-王语晨 @CGT48-宋筱璐 @CGT48-夏莹 @BEJ48-庄雅雯 SN ​​​", url: 'https://weibo.com/2689280541/NdbI1oXb6' }
+  ]
+};
+
+// 点击社交账号：移动端先尝试唤起对应 App，未成功则回退网页
+function openSocial(web, scheme) {
+  const ua = navigator.userAgent || '';
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(ua);
+  if (!isMobile || !scheme) {
+    window.open(web, '_blank', 'noopener');
+    return;
+  }
+  let fallbackTimer = setTimeout(() => { window.location.href = web; }, 1400);
+  const cancel = () => clearTimeout(fallbackTimer);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) cancel(); }, { once: true });
+  window.addEventListener('pagehide', cancel, { once: true });
+  try {
+    window.location.href = scheme;
+  } catch {
+    cancel();
+    window.open(web, '_blank', 'noopener');
+  }
+}
+
+/* ---------------- 工具函数 ---------------- */
+function toUrl(path) {
+  if (!path) return '';
+  if (/^(https?:|data:)/i.test(path)) return path;
+  return 'https://source3.48.cn' + (path.startsWith('/') ? '' : '/') + path;
+}
+
+function pad(n) { return String(n).padStart(2, '0'); }
+
+// 全站时间统一按北京时间（UTC+8）显示/筛选：访客机器时区各不相同（UTC+9、UTC 等），
+// 若直接用本地时区，同一条发言在不同人手机上会显示不同时刻，且日期筛选会差一天。
+// 中国全境无夏令时，固定 +8 偏移即可；刻意不依赖 Intl（各浏览器实现差异大，易在老 Safari 上取不到值）。
+const TZ = 'Asia/Shanghai';
+const TZ_OFFSET_MS = 8 * 60 * 60 * 1000;
+function tzDate(ts) {
+  // 时间戳既可能是毫秒数字，也可能是 ISO 字符串（meta.lastUpdated 就是 "2026-09-19T09:21:28.376Z"），两种都要支持
+  let t = Number(ts);
+  if (!isFinite(t)) { const p = Date.parse(ts); if (isNaN(p)) return null; t = p; }
+  return new Date(t + TZ_OFFSET_MS); // 平移后再用 UTC getter 读，得到的就是北京时间
+}
+function fmtDate(ts) {
+  const d = tzDate(ts);
+  return d ? `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}` : '';
+}
+function fmtTime(ts) {
+  const d = tzDate(ts);
+  return d ? `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}` : '';
+}
+// 时间戳 → <input type="date"> 需要的 YYYY-MM-DD（北京时间）
+function toDateInput(ts) { return fmtDate(ts); }
+
+const TYPE_LABEL = {
+  TEXT: '文字', IMAGE: '图片', REPLY: '回复', GIFTREPLY: '礼物回复',
+  AUDIO: '语音', AUDIO_GIFT_REPLY: '语音回复', VIDEO: '视频',
+  LIVEPUSH: '直播推送', OPEN_LIVE: '公演直播',
+  FLIPCARD: '翻牌', FLIPCARD_AUDIO: '翻牌语音', FLIPCARD_VIDEO: '翻牌视频',
+  EXPRESS: '表情', EXPRESSIMAGE: '表情包', PRESENT_NORMAL: '礼物',
+  PRESENT_TEXT: '文字礼物', SHARE_POSTS: '分享', VOTE: '投票', TRIP_INFO: '行程',
+  DELETE: '撤回', DISABLE_SPEAK: '禁言', SESSION_DIANTAI: '电台', CLOSE_ROOM_CHAT: '闭房',
+  RED_PACKET_2024: '红包', RED_PACKET_2026: '红包', RED_PACKET_QIXI_2025: '七夕红包',
+  ZHONGQIU_ACTIVITY_LANTERN_FANS: '中秋灯笼'
+};
+
+// 王语晨本人的口袋 userId：用于区分「她本人发言」与房间里的其他人（粉丝 / 袋王 / 队友）
+const SELF_ID = '89653517';
+
+// 语音/视频时长（传入毫秒）
+function fmtDur(ms) {
+  const s = Math.round(Number(ms) / 1000);
+  if (!s || s < 0) return '';
+  return s < 60 ? `${s}"` : `${Math.floor(s / 60)}'${pad(s % 60)}"`;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+/* ---------------- 口袋表情：[敲打] → 表情图 ---------------- */
+// 口袋48 服务端存的是纯文本（如「这是住在口袋的一个下午[敲打]」），App 里渲染成图片。
+// 表情取自微信/QQ 经典表情表（0~104），已离线托管在 assets/emoji/{序号}.gif，
+// 不依赖任何第三方 CDN，也不受防盗链影响。只替换表里存在的名字，未收录的原样保留文本。
+const EMOJI_NAMES = ('微笑 撇嘴 色 发呆 得意 流泪 害羞 闭嘴 睡 大哭 '
+  + '尴尬 发怒 调皮 呲牙 惊讶 难过 酷 冷汗 抓狂 吐 '
+  + '偷笑 可爱 白眼 傲慢 饥饿 困 惊恐 流汗 憨笑 悠闲 '
+  + '奋斗 咒骂 疑问 嘘 晕 折磨 衰 骷髅 敲打 再见 '
+  + '擦汗 抠鼻 鼓掌 糗大了 坏笑 左哼哼 右哼哼 哈欠 鄙视 委屈 '
+  + '快哭了 阴险 亲亲 吓 可怜 菜刀 西瓜 啤酒 篮球 乒乓 '
+  + '咖啡 饭 猪头 玫瑰 凋谢 示爱 爱心 心碎 蛋糕 闪电 '
+  + '炸弹 刀 足球 瓢虫 便便 月亮 太阳 礼物 拥抱 强 '
+  + '弱 握手 胜利 抱拳 勾引 拳头 差劲 爱你 NO OK '
+  + '爱情 飞吻 跳跳 发抖 怄火 转圈 磕头 回头 跳绳 挥手 '
+  + '激动 街舞 献吻 左太极 右太极').split(/\s+/).filter(Boolean);
+const EMOJI_MAP = Object.create(null);
+EMOJI_NAMES.forEach((n, i) => { EMOJI_MAP[n] = i; });
+EMOJI_MAP['飘虫'] = 73;   // 口袋里的写法，标准名「瓢虫」
+EMOJI_MAP['大汗'] = 40;   // 口袋里的写法，标准名「擦汗」
+
+const EMOJI_RE = /\[([^\[\]\n]{1,8})\]/g;
+/** 传入已 escape 的文本，把其中的方括号表情换成表情图 */
+function withEmoji(escaped) {
+  if (!escaped || escaped.indexOf('[') < 0) return escaped;
+  return escaped.replace(EMOJI_RE, (m0, name) => {
+    const i = EMOJI_MAP[name];
+    if (i === undefined) return m0;   // 未收录 → 保持原文本，不瞎猜
+    return '<img class="msg-emoji" src="assets/emoji/' + i + '.gif" alt="' + m0
+      + '" title="' + m0 + '" loading="lazy" decoding="async">';
+  });
+}
+
+/* ---------------- 多语言翻译（浏览器按需，免费接口 + localStorage 缓存） ---------------- */
+// 目标语言：中 / 英 / 西 / 法 / 荷 / 葡 / 罗 / 日 / 越 / 韩 / 泰（按访客国家分布补：比利时/法国→fr、荷兰→nl、
+// 罗马尼亚→ro、莫桑比克→pt、泰国→th；印度访客通用英语，故不加印地语）。选「中文」时不做任何翻译。
+// 翻译走 translate.googleapis.com 的公开 endpoint（浏览器端 CORS 已放行，无需密钥），
+// 每条译文按「语言 + 文本哈希」缓存到 localStorage，重复查看不再请求、离线也能读缓存。
+const TRANSLATE_ENDPOINT = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&dt=t';
+let proxyOk = null; // 同域代理是否可用：null=未探明 / true / false（首次探测后缓存，避免每次翻译都发无效请求）
+
+// 翻译相关 UI 文案：随目标语言（state.lang）本地化，否则外国粉丝看不懂「翻译 / 查看原帖」等按钮
+const TR_UI = {
+  zh: { translate: '🌐 翻译', hide: '🌐 隐藏翻译', page: '🌐 翻译本页', loading: '翻译中…', fail: '翻译失败', viewOriginal: '查看原帖', viewRaw: '查看原始数据', videoGoOriginal: '视频内容 · 请到原帖观看' },
+  en: { translate: '🌐 Translate', hide: '🌐 Hide translation', page: '🌐 Translate page', loading: 'Translating…', fail: 'Translation failed', viewOriginal: 'View original post', viewRaw: 'View raw data', videoGoOriginal: 'Video · open the source post to watch' },
+  es: { translate: '🌐 Traducir', hide: '🌐 Ocultar traducción', page: '🌐 Traducir página', loading: 'Traduciendo…', fail: 'Error de traducción', viewOriginal: 'Ver publicación original', viewRaw: 'Ver datos originales', videoGoOriginal: 'Vídeo · abre la publicación fuente para verlo' },
+  ja: { translate: '🌐 翻訳', hide: '🌐 翻訳を隠す', page: '🌐 このページを翻訳', loading: '翻訳中…', fail: '翻訳失敗', viewOriginal: '元の投稿を見る', viewRaw: '元のデータを見る', videoGoOriginal: '動画 · 元の投稿で視聴できます' },
+  fr: { translate: '🌐 Traduire', hide: '🌐 Masquer la traduction', page: '🌐 Traduire la page', loading: 'Traduction…', fail: 'Échec de la traduction', viewOriginal: 'Voir la publication originale', viewRaw: 'Voir les données originales', videoGoOriginal: "Vidéo · ouvrez la publication d'origine pour la regarder" },
+  nl: { translate: '🌐 Vertalen', hide: '🌐 Vertaling verbergen', page: '🌐 Pagina vertalen', loading: 'Vertalen…', fail: 'Vertaling mislukt', viewOriginal: 'Origineel bericht bekijken', viewRaw: 'Originele gegevens bekijken', videoGoOriginal: 'Video · open het originele bericht om te kijken' },
+  pt: { translate: '🌐 Traduzir', hide: '🌐 Ocultar tradução', page: '🌐 Traduzir página', loading: 'Traduzindo…', fail: 'Falha na tradução', viewOriginal: 'Ver postagem original', viewRaw: 'Ver dados originais', videoGoOriginal: 'Vídeo · abra a postagem original para assistir' },
+  ro: { translate: '🌐 Tradu', hide: '🌐 Ascunde traducerea', page: '🌐 Tradu pagina', loading: 'Se traduce…', fail: 'Traducere eșuată', viewOriginal: 'Vezi postarea originală', viewRaw: 'Vezi datele originale', videoGoOriginal: 'Videoclip · deschide postarea originală pentru a viziona' },
+  vi: { translate: '🌐 Dịch', hide: '🌐 Ẩn bản dịch', page: '🌐 Dịch trang này', loading: 'Đang dịch…', fail: 'Lỗi dịch', viewOriginal: 'Xem bài gốc', viewRaw: 'Xem dữ liệu gốc', videoGoOriginal: 'Video · mở bài gốc để xem' },
+  ko: { translate: '🌐 번역', hide: '🌐 번역 숨기기', page: '🌐 이 페이지 번역', loading: '번역 중…', fail: '번역 실패', viewOriginal: '원본 게시물 보기', viewRaw: '원본 데이터 보기', videoGoOriginal: '동영상 · 원본 게시물에서 시청하세요' },
+  th: { translate: '🌐 แปล', hide: '🌐 ซ่อนคำแปล', page: '🌐 แปลหน้านี้', loading: 'กำลังแปล…', fail: 'แปลไม่สำเร็จ', viewOriginal: 'ดูโพสต์ต้นฉบับ', viewRaw: 'ดูข้อมูลต้นฉบับ', videoGoOriginal: 'วิดีโอ · เปิดโพสต์ต้นฉบับเพื่อดู' },
+};
+function trUI(key, lang) {
+  const set = TR_UI[lang] || TR_UI.zh;
+  return set[key] != null ? set[key] : (TR_UI.zh[key] != null ? TR_UI.zh[key] : key);
+}
+
+function strHash(s) {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = (((h << 5) + h) + s.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36);
+}
+function trCacheKey(text, lang) { return `wyc:tr:${lang}:${strHash(text)}`; }
+function trGet(text, lang) { try { return localStorage.getItem(trCacheKey(text, lang)); } catch { return null; } }
+function trSet(text, lang, val) { try { localStorage.setItem(trCacheKey(text, lang), val); } catch { /* 配额满则忽略 */ } }
+
+// 一条消息里所有可翻译的文本片段（正文 / 引用原话 / 卡片标题 / 描述）
+function trSegs(m) {
+  const segs = [];
+  if (m.text) segs.push({ label: '', text: m.text });
+  if (m.reply?.text) {
+    const who = m.reply.name ? `@${m.reply.name}：` : '';
+    segs.push({ label: '↩︎ ' + who, text: m.reply.text });
+  }
+  if (m.card?.title) segs.push({ label: '标题：', text: m.card.title });
+  if (m.card?.desc) segs.push({ label: '描述：', text: m.card.desc });
+  return segs;
+}
+function hasTranslatable(m) {
+  return !!(m.text || m.reply?.text || (m.card && (m.card.title || m.card.desc)));
+}
+// 稳定的消息 id（msgIdServer 可能缺失，兜底用 文本+时间 哈希）
+function msgKey(m) {
+  return m.msgIdServer || ('k' + strHash((m.text || '') + (m.reply?.text || '') + m.msgTime));
+}
+
+// 已入库消息的 key 集合：供 loadMonth 做 O(1) 去重（只在 DATA.messages 被**整体替换**时随 rebuildIndex 重建）
+// 🔴 原来 loadMonth 每拉一个月就「全量建 Map + 全量展开成新数组」：
+//    到第 30~40 个月时 DATA.messages 已有四、五万条，一次合并就要几万次 msgKey（含字符串 hash），
+//    44 个月累计上百万次 —— 手机上每次几百毫秒，叠起来就是「点确定卡很久」（站长 2026-09-26）。
+const MSG_KEYS = new Set();
+
+// 调接口翻译单段文本（失败抛错，由调用方决定如何展示）
+// 多翻译源按顺序尝试，任一成功即用（覆盖国内/海外、镜像/file:// 各种网络环境）：
+//   1) /translate   ：本站 Cloudflare 边缘代理（国内可用、质量最佳；未部署时 404 自动跳过）
+//   2) google       ：直连 Google 公开接口（海外/镜像可用、质量最佳）
+//   3) mymemory     ：欧洲公共服务（国内可直连、CORS 已放行，作为兜底）
+async function translateText(text, target) {
+  if (target === 'zh' || !text) return text;
+  const q = encodeURIComponent(text);
+  const tl = encodeURIComponent(target);
+  const gParse = (d) => ((d && d[0]) || []).map((s) => s[0]).join('');
+
+  const gUrl = `${TRANSLATE_ENDPOINT}&tl=${tl}&q=${q}`;
+  const pParse = (d) => (d && d.text) || ''; // 同域代理 /translate 返回 { text }（Workers AI 或 Google）
+  const mmParse = (d) => {
+    if (!d || d.responseStatus !== '200') return '';
+    const t = (d.responseData && d.responseData.translatedText) || '';
+    if (/MYMEMORY WARNING|QUOTA|YOU USED ALL/i.test(t)) return ''; // 额度耗尽 → 换下一个源
+    return t;
+  };
+
+  // 翻译源按「质量优先」依次尝试（前一个失败才用下一个）：
+  //   1) Google 直连         —— 质量最好（海外/镜像可用；大陆被墙会快速失败后自动降级）
+  //   2) 同域代理 /translate —— Cloudflare Workers AI 翻译（稳定可用、含大陆；质量中等）
+  //   3) MyMemory            —— 公共兜底
+  const sources = [];
+  sources.push({ kind: 'google', url: gUrl, parse: gParse, timeout: 2500 });
+  if (proxyOk !== false) sources.push({ kind: 'proxy', url: `${API_BASE}/translate?tl=${tl}&q=${q}`, parse: pParse, timeout: 9000 });
+  sources.push({ kind: 'mymemory', url: `https://api.mymemory.translated.net/get?langpair=zh|${target}&q=${q}`, parse: mmParse, timeout: 6000 });
+
+  const errs = []; // 记录每个源失败原因，便于用户反馈时定位
+  for (const s of sources) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), s.timeout);
+    try {
+      const r = await fetch(s.url, { cache: 'no-store', signal: ctrl.signal });
+      if (s.kind === 'proxy') proxyOk = r.ok; // 记录代理可用性（失败后不再请求）
+      if (!r.ok) { errs.push(`${s.kind}=HTTP${r.status}`); continue; }
+      const out = s.parse(await r.json());
+      if (out) return out;
+      errs.push(`${s.kind}=空`);
+    } catch (e) {
+      errs.push(`${s.kind}=${(e && e.name) || '网络错误'}`);
+      if (s.kind === 'proxy') proxyOk = false;
+    } finally { clearTimeout(timer); }
+  }
+  throw new Error(errs.join(' / ') || '全部翻译源失败');
+}
+
+// 从缓存生成译文块（已展开但缓存缺失时返回「翻译中…」占位）
+function trBlocksHtml(m, lang) {
+  return trSegs(m).map((s) => {
+    const t = trGet(s.text, lang);
+    const body = t != null
+      ? withEmoji(escapeHtml(t))
+      : '<span class="tr-loading">' + trUI('loading', lang) + '</span>';
+    const lab = s.label ? `<span class="tr-label">${escapeHtml(s.label)}</span>` : '';
+    return `<div class="tr-item">${lab}<span class="tr-text">${body}</span></div>`;
+  }).join('');
+}
+
+// 翻译一条消息的全部片段，写入 #tr-<mid>；逐个请求并加微小间隔避免限流
+async function doTranslate(mid) {
+  const m = MSG_INDEX.get(mid);
+  if (!m) return;
+  const lang = state.lang;
+  if (lang === 'zh') return;
+  const segs = trSegs(m);
+  if (!segs.length) return;
+  for (const s of segs) {
+    let t = trGet(s.text, lang);
+    if (t == null) {
+      try {
+        t = await translateText(s.text, lang);
+        trSet(s.text, lang, t);
+      } catch (e) {
+        t = '__ERR__' + ((e && e.message) || '失败');
+      }
+    }
+    s._t = t;
+    await new Promise((r) => setTimeout(r, 120));
+  }
+  const box = document.getElementById('tr-' + mid);
+  if (box) {
+    box.innerHTML = segs.map((s) => {
+      const isErr = typeof s._t === 'string' && s._t.startsWith('__ERR__');
+      const body = isErr
+        ? `<span class="tr-err">${trUI('fail', lang)}（${escapeHtml(s._t.slice(7))}）</span>`
+        : withEmoji(escapeHtml(s._t));
+      return `<div class="tr-item">${s.label ? `<span class="tr-label">${escapeHtml(s.label)}</span>` : ''}` +
+        `<span class="tr-text">${body}</span></div>`;
+    }).join('');
+  }
+}
+
+// 翻译当前可见的全部消息（带并发上限，避免一次性打爆接口）
+async function translateAllVisible() {
+  const boxes = [...panels.messages.querySelectorAll('.msg-tr')];
+  let i = 0;
+  const worker = async () => {
+    while (i < boxes.length) {
+      const box = boxes[i++];
+      const mid = box.id.replace(/^tr-/, '');
+      if (!MSG_INDEX.get(mid)) continue;
+      state.expanded.add(mid);
+      await doTranslate(mid);
+    }
+  };
+  panels.messages.querySelectorAll('.tr-btn').forEach((b) => { b.textContent = trUI('hide', state.lang); });
+  await Promise.all(Array.from({ length: 4 }, worker));
+}
+
+/* ---------------- 数据加载 ---------------- */
+// 加载策略（兼顾「快」与「新」，且对手机/弱网友好）：
+//   ① 先用 ~500 字节的 meta.json 取当前数据版本（lastUpdated），该请求每次都取最新（开销可忽略）；
+//   ② 再以 <script src="./data/archive.js?v=<版本>"> 加载大文件：
+//        数据没变 → 版本号没变 → 浏览器/CDN 直接命中缓存（秒开，不再重下十几 MB）；
+//        数据一变 → 版本号随之变化 → URL 不同 → 自动拉到最新，且不会命中旧缓存。
+//   ③ 失败自动换一种 URL 再试一次（弱网、连接中断很常见），仍失败才提示，并附上真实原因。
+// 说明：改用 <script> 注入而非 fetch + new Function()，让浏览器原生解析，
+//      避免再把十几 MB 的源码字符串复制一份交给 V8 编译，显著降低手机端内存峰值。
+function injectScript(src) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = src;
+    s.async = true;
+    s.onload = () => { if (s.parentNode) s.parentNode.removeChild(s); resolve(); };
+    s.onerror = () => { if (s.parentNode) s.parentNode.removeChild(s); reject(new Error('无法下载数据文件 data/archive.js')); };
+    (document.head || document.body).appendChild(s);
+  });
+}
+
+// 取当前数据版本：用体积极小的 meta.json（每次都强制取最新）。取不到则返回空串。
+async function dataVersion() {
+  try {
+    const r = await fetch(`./data/meta.json?t=${Date.now()}`, { cache: 'no-store' });
+    if (r.ok) {
+      const m = await r.json();
+      if (m && m.lastUpdated) return String(m.lastUpdated);
+    }
+  } catch (_) { /* 取不到版本就退回不带版本号的 URL */ }
+  return '';
+}
+
+// 从 Worker 数据 API 取 JSON（数据存 KV，no-store 保证刷新即拿最新）
+async function fetchApi(path) {
+  const r = await fetch(API_BASE + path, { cache: 'no-store' });
+  if (!r.ok) throw new Error('加载 ' + path + ' 失败: ' + r.status);
+  return r.json();
+}
+
+// 惰性加载某月发言（合并进 DATA.messages，按 msgKey 去重）。已加载则跳过。
+// 同一月份「正在加载中」时复用同一个 Promise —— 后台并行补齐与「首屏预拉当月」可能同时要这个月，
+// 没有它的话第二方会直接 early-return（以为已完成），拿到的其实是空数据。
+const monthPromises = new Map();
+async function loadMonth(m, silent) {
+  if (!m) return;
+  if (monthPromises.has(m)) return monthPromises.get(m); // 已在加载 → 复用，不重复请求
+  if (loadedMonths.has(m)) return;
+  const p = (async () => {
+    loadedMonths.add(m);
+    try {
+      const arr = await fetchApi('/api/month?m=' + encodeURIComponent(m));
+      // 增量合并：只追加没见过的，不动已有条目（顺序与原来的「旧在前 + 新在后」完全一致）
+      for (const x of arr || []) {
+        const k = msgKey(x);
+        if (MSG_KEYS.has(k)) continue;
+        MSG_KEYS.add(k);
+        DATA.messages.push(x);
+        MSG_INDEX.set(k, x); // 索引同步增量更新：数据还没全拉完时也能查到已到的那些
+      }
+    } catch (e) {
+      loadedMonths.delete(m); // 允许重试
+      if (!silent) throw e;
+    }
+  })();
+  monthPromises.set(m, p);
+  const cleanup = () => monthPromises.delete(m);
+  p.then(cleanup, cleanup); // 用 then(, ) 而非 finally：避免非 silent 失败时产生 unhandled rejection
+  return p;
+}
+
+function bjMonth(ts) {
+  const d = new Date((ts == null ? Date.now() : ts) + 8 * 3600 * 1000);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
+// 时间区间覆盖了哪些月份（'YYYY-MM' 可直接字符串比较）。
+// 🔴 这条是「点确定卡很久」的主因修法：以前无论选「近 7 天」还是「近 30 天」，
+//    都一律去补齐**全部 44 个月**（约 25MB），手机上要等十几秒才出结果。
+//    其实筛选哪一段就只需要哪几个月的数据（近 30 天 = 1~2 个月）。
+function monthsInRange(from, to) {
+  const a = from ? bjMonth(from) : null;
+  const b = to ? bjMonth(to - 1) : null;   // to 存的是「次日 0 点」，减 1ms 回到当天
+  if (!a && !b) return [];
+  return ALL_MONTHS.filter((m) => (!a || m >= a) && (!b || m <= b));
+}
+
+/** 带并发上限地批量加载指定月份（并发 8：实测 44 个月串行 54s / 并行 2.1s；再高会被同域连接数拖慢） */
+async function loadMonths(list) {
+  let i = 0;
+  const worker = async () => {
+    while (i < list.length) {
+      const m = list[i++];
+      try { await loadMonth(m, true); } catch (_) { /* 单月失败不影响其余 */ }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(MONTH_CONCURRENCY, list.length) }, worker));
+}
+
+/** 区间内「还没拿到数据」的月份：未加载 + **正在加载中**（loadMonth 一开工就把月塞进 loadedMonths，
+ *  所以只看 loadedMonths 会把「正在下」误判成「已下完」，结果就是筛选结果缺一段）。 */
+function pendingMonthsInFilterRange() {
+  return monthsInRange(state.dateFrom, state.dateTo)
+    .filter((m) => !loadedMonths.has(m) || monthPromises.has(m));
+}
+
+/** 只补「区间内缺的月份」（幂等：都到齐了就直接 resolve，一次网络请求都不发） */
+function loadMonthsInFilterRange() {
+  const pending = pendingMonthsInFilterRange();
+  if (!pending.length) return Promise.resolve();
+  return loadMonths(pending);
+}
+
+// 后台静默补齐「其余历史月份」。
+// 为什么必须做：数据改按月分键存 KV 后，首屏只有 recent + 当前月，
+// 若只靠「加载更早」按钮那就一次只多拉 1 个月 —— 想翻到两年前要点击上百次，
+// 搜索/日期筛选也只能搜到已加载的那一小段，体验远不如以前一次性读整份数据。
+// 历史月内容永不再变（且 /api/month 允许浏览器/CDN 缓存），所以后台并行拉完最划算：
+// 首屏不受影响，拉完后「加载更早」/搜索/日期筛选恢复全量语义。
+// ★ 全程**静默**：不给加载过程任何提示，只有「搜索/筛选正等数据」时才在工具栏显示小字。
+let allMonthsPromise = null;
+let allMonthsLoaded = false;
+
+// 并行度 8：实测 44 个月「串行 54s / 并行 8 路 2.1s」，是收益最大的那个点
+// （再高会被浏览器同域连接数上限拖慢，实测 44 路并发反而回落到 4s）。
+const MONTH_CONCURRENCY = 8;
+
+// 返回同一个 Promise，可安全地被首屏加载、搜索、日期筛选多处重复 await。
+function loadRemainingMonths() {
+  if (allMonthsPromise) return allMonthsPromise;
+  const todo = ALL_MONTHS.filter((m) => !loadedMonths.has(m));
+  if (!todo.length) { allMonthsLoaded = true; allMonthsPromise = Promise.resolve(); return allMonthsPromise; }
+  allMonthsPromise = (async () => {
+    let i = 0;
+    const worker = async () => {
+      while (i < todo.length) {
+        const m = todo[i++];
+        // 并发下每个 loadMonth 在 await 之后才读 DATA.messages、并同步写回，
+        // 中间没有 await → 单线程下不会交错，无需加锁。
+        try { await loadMonth(m, true); } catch (_) { /* 单月失败不影响其余 */ }
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(MONTH_CONCURRENCY, todo.length) }, worker));
+    rebuildIndex();
+    allMonthsLoaded = true;
+    hideBusy(); // 数据到齐：收起「搜索中…」小字
+    if (state.tab === 'messages' && (state.query || dateFilterActive())) {
+      // 正在搜索/筛选：必须重绘才能把新补进来的历史结果显示出来
+      const y = window.scrollY;
+      renderMessages();
+      window.scrollTo(0, y);
+    } else {
+      // 普通浏览：**不整表重绘**（刚打开就重绘会闪一下、打断阅读）。
+      // 这里只把「加载更早」的剩余条数就地改成真实值。
+      const btn = document.getElementById('loadMore');
+      if (btn) {
+        const groups = {};
+        for (const m of DATA.messages) {
+          const d = fmtDate(m.msgTime) || '未知日期';
+          (groups[d] ||= []).push(m);
+        }
+        const days = Object.keys(groups).sort((a, b) => (b > a ? 1 : -1));
+        const restDays = days.length - Math.min(state.dayLimit, days.length);
+        if (restDays > 0) {
+          const restCount = days.slice(state.dayLimit).reduce((n, d) => n + groups[d].length, 0);
+          btn.textContent = `加载更早的消息（还有 ${restCount} 条 / ${restDays} 天）`;
+        } else {
+          btn.remove();
+        }
+      }
+    }
+  })();
+  return allMonthsPromise;
+}
+
+async function loadArchive() {
+  // 主路径：从 Worker 数据 API 读取（数据存 KV → 站点零部署更新、实时秒更）
+  try {
+    const idx = await fetchApi('/api/index');   // { months, recent, updatedAt, meta }
+    if (idx && ((idx.months && idx.months.length) || (idx.recent && idx.recent.length))) {
+      DATA.meta = idx.meta || {};
+      DATA.messages = idx.recent || [];
+      ALL_MONTHS = (idx.months || []).slice();    // 降序，最新月份在前
+      loadedMonths = new Set();
+      rebuildIndex();   // 🔴 建 MSG_KEYS：loadMonth 靠它做增量去重，漏了会整月重复灌入
+      // ★ 重载时必须把「月份加载状态」一并复位。否则 loadRemainingMonths() 会直接返回
+      //   上一次已经完成的 Promise，历史月再也不会被拉进来 —— 刷新之后搜索/时间筛选就失效了
+      //   （表现为「刷新完反而搜不到以前的数据」）。
+      allMonthsPromise = null;
+      allMonthsLoaded = false;
+      monthPromises.clear();
+      // ★ 历史月是「搜索 / 加载更早」的前提（时间筛选现在只补区间内的月，不必等全量）。
+      //   这里就启动（不 await，不阻塞首屏；搜索/筛选会 await 同一个 Promise）。
+      //   🔴 但**延后 1.2 秒**再开：首屏的 live / 公演 / 社媒 / 切片 正在下载，
+      //      同时再开 8 路去下 25MB 历史月会把首屏拖慢（手机上尤其明显）。
+      //      搜索若在这 1.2s 内发生，会自己调 loadRemainingMonths() 立刻开始，不会多等。
+      setTimeout(() => { loadRemainingMonths(); }, 1200);
+      // 首屏只额外等「当月」补全（它就在上面那批并行下载里，await 到的是同一个 Promise）
+      await loadMonth(bjMonth(Date.now()), true);
+      const [live, perfs, social, perfCuts, liveCuts] = await Promise.all([
+        fetchApi('/api/live'), fetchApi('/api/performances'), fetchApi('/api/social'), fetchApi('/api/perf-cuts'),
+        // 「直播切片」是锦上添花的数据：单独失败不该拖垮整页
+        // （否则整个 API 分支抛错 → 回退去下 19MB 静态 archive.js，因小失大）
+        fetchApi('/api/live-cuts').catch(() => null)
+      ]);
+      DATA.live = live || [];
+      DATA.performances = perfs || [];
+      DATA.social = social || [];
+      DATA.perfCuts = (perfCuts && Array.isArray(perfCuts.cuts)) ? perfCuts : null;
+      DATA.liveCuts = (liveCuts && Array.isArray(liveCuts.cuts)) ? liveCuts : null;
+      return { meta: DATA.meta, messages: DATA.messages, live: DATA.live, performances: DATA.performances };
+    }
+  } catch (_) { /* 落到静态兜底 */ }
+
+  // 兜底：KV 无数据或接口异常 → 读旧静态 archive.js（最后一次部署的快照）
+  return loadArchiveStatic();
+}
+
+// 静态兜底（保留旧逻辑）：注入 ./data/archive.js → 读 window.__ARCHIVE__
+async function loadArchiveStatic() {
+  const isFile = location.protocol === 'file:';
+  let candidates;
+  if (isFile) {
+    candidates = ['./data/archive.js'];
+  } else {
+    const ver = await dataVersion();
+    candidates = ver
+      ? [`./data/archive.js?v=${encodeURIComponent(ver)}`, `./data/archive.js?t=${Date.now()}`]
+      : [`./data/archive.js?t=${Date.now()}`];
+  }
+  let lastErr = null;
+  for (const src of candidates) {
+    try {
+      await injectScript(src);
+      if (window.__ARCHIVE__) {
+        DATA.social = window.SOCIAL_MEDIA || [];
+        DATA.perfCuts = window.PERF_CUTS || null;
+        DATA.liveCuts = window.LIVE_CUTS || null;
+        return window.__ARCHIVE__;
+      }
+      lastErr = new Error('数据文件内容为空');
+    } catch (e) { lastErr = e; }
+  }
+  throw lastErr || new Error('加载数据文件 data/archive.js 失败');
+}
+
+async function init() {
+  let data = null;
+  let err = null;
+  try {
+    data = await loadArchive();
+  } catch (e) {
+    err = e;
+    if (window.__ARCHIVE__) data = window.__ARCHIVE__; // 兜底层：拿不到新数据时先用已加载的旧数据
+  }
+  if (!data) {
+    document.querySelector('.content').innerHTML =
+      `<div class="empty-state">数据加载失败：${escapeHtml((err && err.message) || '未知原因')}<br/>` +
+      `请检查网络后刷新重试；若持续失败，说明数据可能尚未部署完成。</div>`;
+    return;
+  }
+  DATA.meta = data.meta;
+  DATA.messages = data.messages || [];
+  DATA.live = data.live || [];
+  DATA.performances = data.performances || [];
+  rebuildIndex();
+  renderMeta();
+  bindEvents();
+  switchTab(state.tab); // 走一遍 tab 切换逻辑：正确显示/隐藏「时间」按钮并渲染当前面板
+}
+
+function rebuildIndex() {
+  MSG_INDEX.clear();
+  MSG_KEYS.clear();
+  for (const m of DATA.messages) {
+    const k = msgKey(m);
+    MSG_INDEX.set(k, m);
+    MSG_KEYS.add(k);
+  }
+}
+
+async function fetchJson(name) {
+  const res = await fetch(`./data/${name}`);
+  if (!res.ok) throw new Error(`加载 ${name} 失败: ${res.status}`);
+  return res.json();
+}
+
+/* ---------------- 使用统计 ---------------- */
+// 只记「发生了什么动作」的次数（如切到哪个 tab、播放视频、点开美图），
+// 不含任何发言内容 / 个人信息；请求失败一律忽略，绝不影响正常使用。
+// 用 1x1 图片发请求：不受跨域限制、不阻塞页面、关闭页面也能发出。
+// 是否停用统计：URL 带 ?notrack=1 → 写进 localStorage，长期生效（清除站点数据即恢复）
+const NOTRACK = (function () {
+  try {
+    if (/[?&]notrack=1(&|$)/.test(location.search)) { localStorage.setItem('wyc-notrack', '1'); return true; }
+    return localStorage.getItem('wyc-notrack') === '1';
+  } catch (_) { return false; }
+})();
+function track(ev) {
+  try {
+    // 自助排除：带 ?notrack=1 打开一次，这个浏览器以后就不再上报
+    // （站长自测 / 我改完核验时用，免得把自己的访问算进「访客」和「国家」里）
+    if (NOTRACK) return;
+    new Image().src = './track?e=' + encodeURIComponent(String(ev).slice(0, 40)) + '&t=' + Date.now();
+  } catch (_) { /* 忽略 */ }
+}
+
+// 搜索框防抖统计（停止输入 800ms 才记一次，避免敲每个字都打点）
+let trackSearchTimer = null;
+function trackSearch() {
+  clearTimeout(trackSearchTimer);
+  trackSearchTimer = setTimeout(() => track('search'), 800);
+}
+
+/* ---------------- 检查更新 ---------------- */
+function showToast(msg, isError, linkUrl) {
+  let t = document.getElementById('toast');
+  if (!t) { t = document.createElement('div'); t.id = 'toast'; t.className = 'toast'; document.body.appendChild(t); }
+  if (linkUrl) {
+    t.innerHTML = '';
+    const span = document.createElement('span');
+    span.textContent = msg + ' ';
+    const a = document.createElement('a');
+    a.href = linkUrl;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    a.textContent = '点此在 GitHub 手动触发';
+    a.style.color = '#fff';
+    a.style.textDecoration = 'underline';
+    t.appendChild(span);
+    t.appendChild(a);
+  } else {
+    t.textContent = msg;
+  }
+  t.style.background = isError ? '#c0392b' : '#2bc4e0';
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 4200);
+}
+
+/* ---------------- 刷新：触发一次最新抓取 + 拉取最新数据 ----------------
+ * 点刷新 = 经 Worker 静默触发一次后台抓取（Worker 内部有 15 分钟冷却，粉丝狂点也不会把 GitHub 打爆），
+ * 随后立即重新加载当前已部署的最新数据。全程不弹提示、不开新标签，对外完全无感；
+ * 若 Cloudflare 密钥未配置导致触发失败，则仅拉取最新数据，不影响浏览。 */
+async function checkForUpdates() {
+  const btn = document.getElementById('refreshBtn');
+  if (!btn || btn.disabled) return;
+  const oldText = btn.textContent;
+  const beforeTs = String((DATA.meta && DATA.meta.lastUpdated) || '');
+  btn.disabled = true;
+  btn.textContent = '刷新中…';
+
+  // 先用 500 字节的 meta.json 看版本号：数据没变就完全不用重下十几 MB 的 archive.js（接近「秒响应」）
+  const applyLatest = async () => {
+    const data = await loadArchive();
+    DATA.meta = data.meta;
+    DATA.messages = data.messages || [];
+    DATA.live = data.live || [];
+    DATA.performances = data.performances || [];
+    rebuildIndex();
+    renderMeta();
+    renderAll();
+  };
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const release = () => { btn.disabled = false; btn.textContent = oldText; };
+
+  let triggered = false;
+  try {
+    // 1) 比「数据版本号」，相等就不用重下。
+    // ★ 版本号必须取自 KV（/api/index 的 meta.lastUpdated）。
+    //   数据现在存 KV，而静态 ./data/meta.json 是「上次部署时」的快照、
+    //   根本不随抓取更新 —— 拿它跟 KV 的时间比永远不相等，会导致
+    //   「点刷新 → 立刻提示已同步 → 实际根本没触发抓取」（用户反馈「手动点更新也没更新」就是这个）。
+    const idx = await fetchApi('/api/index');
+    const nowVer = String((idx && idx.meta && idx.meta.lastUpdated) || '');
+    if (beforeTs && nowVer && nowVer !== beforeTs) {
+      await applyLatest();
+      showToast('✅ 已同步到最新补档');
+      return; // ← finally 会负责恢复按钮
+    }
+
+    // 2) 数据没变化 → 触发一次后台抓取（GitHub Actions）
+    //    ⚠️ 必须带 Content-Type + body：裸的「空 body POST」会被 Cloudflare 的防护规则拦掉
+    //    （前端只会看到 Failed to fetch），曾导致点「刷新」看似有反应、实际根本没触发抓取。
+    try {
+      const r = await fetch('/scrape', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+        cache: 'no-store'
+      });
+      const j = await r.json().catch(() => ({}));
+      triggered = r.ok && !j.skipped;
+      if (!r.ok) showToast('⚠️ 触发抓取失败，请稍后再试', true);
+    } catch (_) {
+      showToast('⚠️ 连接服务器失败，请稍后再试', true);
+    }
+
+    // 3) 现在数据走 KV：抓取 2~4 分钟（慢的时候见过 7 分钟）+ KV 写入传播最长约 60 秒。
+    //    窗口给足 10 分钟，避免「明明抓到了却等到超时」；按钮在 60 秒时就已还给粉丝
+    //    （见下面的 release()），这里只是继续静默等待，不阻塞任何操作。
+    const deadline = Date.now() + 600 * 1000;
+    let waited = 0, updated = false;
+    while (Date.now() < deadline) {
+      await sleep(10000); waited += 10;
+      btn.textContent = `同步中 ${waited}s…`;
+      try {
+        // 同上：轮询也要看 **KV** 的版本号。原先读静态 meta.json，
+        // 它永远不会变 → 永远等不到变化 → 之前每次点刷新都以「已是最新」收尾。
+        const idx2 = await fetchApi('/api/index');
+        const v = String((idx2 && idx2.meta && idx2.meta.lastUpdated) || '');
+        if (v && v !== beforeTs) {
+          await applyLatest();
+          updated = true;
+          showToast('✅ 已同步到最新补档');
+          break;
+        }
+        // 等满 60 秒还没变化就先把按钮还给粉丝（继续在后台静默轮询），不让刷新键被锁死
+        if (waited >= 60) release();
+      } catch (_) { /* 继续等 */ }
+    }
+    // 等完还没变化就明确告诉粉丝结果，避免「点了没反应」的困惑
+    if (!updated) {
+      showToast(triggered ? '⏳ 已触发抓取，约 3~5 分钟后刷新即可看到最新' : '抓取刚跑过，稍后再点一次');
+    }
+  } finally {
+    release();
+  }
+}
+
+function renderMeta() {
+  const m = DATA.meta;
+  if (!m) return;
+  $('#memberName').textContent = m.member.name || '王语晨';
+  $('#memberSub').textContent = `${m.member.groupName || 'GNZ48'} ${m.member.team || ''} · ${m.member.period || ''}`.trim();
+  $('#statMsg').textContent = m.counts.messages ?? DATA.messages.length;
+  $('#statLive').textContent = m.counts.live ?? DATA.live.length;
+  $('#statPerf').textContent = m.counts.performances ?? DATA.performances.length;
+  // 更新时间：宽屏显示完整时间，窄屏（≤560px）自动切换成「HH:MM 更新」，避免挤到右侧按钮
+  const upEl = $('#updatedAt');
+  if (upEl) {
+    if (!m.lastUpdated) {
+      upEl.textContent = '';
+    } else {
+      // 北京时间（UTC+8）：宽屏「更新于 YYYY-MM-DD HH:MM」，窄屏「HH:MM 更新」
+      const hhmm = fmtTime(m.lastUpdated).slice(0, 5);
+      upEl.innerHTML =
+        `<span class="upd-full">更新于 ${fmtDate(m.lastUpdated)} ${hhmm}</span>` +
+        `<span class="upd-mini">${hhmm} 更新</span>`;
+    }
+  }
+}
+
+/* ---------------- 事件 ---------------- */
+function bindEvents() {
+  const refreshBtn = document.getElementById('refreshBtn');
+  if (refreshBtn) refreshBtn.addEventListener('click', checkForUpdates);
+
+  // 多语言：切换目标语言 → 清空展开态、显隐「翻译本页」、重渲染消息列表
+  const langSelect = document.getElementById('langSelect');
+  if (langSelect) {
+    langSelect.addEventListener('change', (e) => {
+      state.lang = e.target.value;
+      state.expanded.clear();
+      const trAll = document.getElementById('trAllBtn');
+      if (trAll) { trAll.hidden = state.lang === 'zh'; trAll.textContent = trUI('page', state.lang); }
+      if (state.tab === 'messages') renderMessages();
+    });
+  }
+  const trAllBtn = document.getElementById('trAllBtn');
+  if (trAllBtn) {
+    trAllBtn.textContent = trUI('page', state.lang);
+    trAllBtn.addEventListener('click', async () => {
+      panels.messages.querySelectorAll('.msg-tr').forEach((box) => {
+        state.expanded.add(box.id.replace(/^tr-/, ''));
+      });
+      renderMessages();
+      await translateAllVisible();
+    });
+  }
+
+  document.querySelectorAll('.tab').forEach((btn) => {
+    btn.addEventListener('click', () => { switchTab(btn.dataset.tab); track('tab:' + btn.dataset.tab); });
+  });
+  /* ★ 顶部搜索：**输完点「搜索」或按回车**才执行（2026-09-26）
+     🔴 原来挂在 input 上、每敲一个字符就 renderAll()：中文输入法每打一个拼音字母就整页重渲，
+        候选框被重建 → 打不出中文；列表还跟着跳 → 「输入一个字母还没输完就乱跳」。
+        现在输入期间**一个 DOM 都不动**，只在这三个时机真正执行：点「搜索」/ 按回车 / 点「清空」。 */
+  function loadAllMonthsWithBusy(msg) {
+    return loadMonthsWithBusy(msg, loadRemainingMonths(), 20000);
+  }
+  function runSearch() {
+    const el = $('#searchInput');
+    state.query = String((el && el.value) || '').trim().toLowerCase();
+    state.matchLimit = MATCH_RENDER_LIMIT;   // 新一轮搜索：分批展开从头计
+    renderAll();
+    if (state.query) trackSearch(); // 只在真的输入了内容时才记
+    // ★ 搜索必须覆盖「全部历史」，否则就是假阴性：数据按月分键、首屏只有 recent+当月，
+    //   历史月还在后台拉的时候立刻下结论，用户就会以为「搜不到老发言」。
+    //   故搜索时等全量补齐后再重渲一次（并行 8 路，实测约 2 秒），期间在工具栏显示「搜索中…」。
+    if (state.query && !allMonthsLoaded) {
+      loadAllMonthsWithBusy('搜索中…').then(() => { if (state.query) renderAll(); });
+    } else if (!state.query) {
+      hideBusy();
+    }
+    // 手机上收起键盘，否则结果被键盘挡住
+    if (el && document.activeElement === el) el.blur();
+  }
+  function clearSearch() {
+    const el = $('#searchInput');
+    if (el) el.value = '';
+    state.query = '';
+    hideBusy();
+    renderAll();
+  }
+  const si0 = $('#searchInput');
+  if (si0) si0.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.keyCode === 13) { e.preventDefault(); runSearch(); }
+  });
+  const sb0 = $('#searchBtn');
+  if (sb0) sb0.addEventListener('click', runSearch);
+  const sc0 = $('#searchClear');
+  if (sc0) sc0.addEventListener('click', clearSearch);
+  // 时间筛选：弹窗 + 点「确认」才刷新；含「全部 / 近 N 天」快捷
+  const dateModal = document.getElementById('dateModal');
+  const openDateModal = () => {
+    $('#dateFrom').value = state.dateFrom ? toDateInput(state.dateFrom) : '';
+    $('#dateTo').value = state.dateTo ? toDateInput(state.dateTo - 1) : ''; // dateTo 存的是「次日 0 点」，回填减一天
+    dateModal.hidden = false;
+  };
+  const closeDateModal = () => { dateModal.hidden = true; };
+  const dateToggle = document.getElementById('dateToggleBtn');
+  if (dateToggle) dateToggle.addEventListener('click', openDateModal);
+  if (dateModal) {
+    dateModal.addEventListener('click', (e) => { if (e.target === dateModal) closeDateModal(); });
+    document.getElementById('dateCancel').addEventListener('click', closeDateModal);
+    dateModal.querySelectorAll('[data-quick]').forEach((b) => {
+      b.addEventListener('click', () => {
+        const q = b.dataset.quick;
+        if (q === 'all') { $('#dateFrom').value = ''; $('#dateTo').value = ''; return; }
+        const days = Number(q) || 7;
+        $('#dateFrom').value = toDateInput(Date.now() - (days - 1) * 86400000);
+        $('#dateTo').value = toDateInput(Date.now());
+      });
+    });
+    document.getElementById('dateConfirm').addEventListener('click', () => {
+      const f = $('#dateFrom').value, t = $('#dateTo').value;
+      // 固定按北京时间 0 点（+08:00）取边界，避免访客本地时区导致前后差一天
+      state.dateFrom = f ? new Date(f + 'T00:00:00+08:00').getTime() : null;          // 当天 0 点
+      state.dateTo = t ? new Date(t + 'T00:00:00+08:00').getTime() + 86400000 : null; // 次日 0 点（含当天）
+      closeDateModal();
+      state.dayLimit = 3;
+      state.matchLimit = MATCH_RENDER_LIMIT;   // 新一轮筛选：分批展开从头计
+      renderAll(); // 发言 / 直播录播 / 公演 三个页都要按新时间范围刷新
+      showToast(state.dateFrom || state.dateTo ? '✅ 已按时间筛选' : '✅ 已显示全部时间');
+      // 已加载的数据先渲染出来（即时反馈），再补「区间内缺的月份」后重渲一次。
+      // 🔴 只补区间内的月：选「近 30 天」= 下 1~2 个月（几百毫秒），
+      //    以前是补齐全部 44 个月（约 25MB）后才出结果，手机上要等十几秒 —— 即「点确定卡很久」。
+      //    例外：如果同时还有搜索词，关键词可能在任何月份，这时才需要全量。
+      if (state.query && !allMonthsLoaded) {
+        loadAllMonthsWithBusy('搜索中…').then(() => renderAll());
+      } else if (state.dateFrom || state.dateTo) {
+        loadMonthsWithBusy('筛选中…', loadMonthsInFilterRange(), 12000).then(() => renderAll());
+      } else {
+        hideBusy();
+      }
+    });
+  }
+  // 图片放大预览：支持点击放大、在新标签打开原图、下载，方便保存
+  const lb = document.createElement('div');
+  lb.className = 'lightbox';
+  lb.innerHTML = `
+    <div class="lb-bar">
+      <button class="lb-btn" id="lbOpen" type="button">⤢ 打开原图</button>
+      <button class="lb-btn" id="lbSave" type="button">⤓ 下载</button>
+      <button class="lb-btn" id="lbClose" type="button">✕ 关闭</button>
+    </div>
+    <div class="lb-stage">
+      <img alt="图片预览" referrerpolicy="no-referrer" />
+    </div>
+    <div class="lb-tip">点击空白处关闭</div>`;
+  const lbImg = lb.querySelector('img');
+  lbImg.addEventListener('load', () => lb.classList.remove('loading'));
+  lbImg.addEventListener('error', () => {
+    lb.classList.remove('loading');
+    lb.classList.add('broken');
+  });
+
+  window.__lightboxShow = (src) => {
+    if (!src) return;
+    lb.dataset.src = src;
+    lb.classList.add('show', 'loading');
+    lb.classList.remove('broken');
+    lbImg.src = src;
+  };
+  lb.querySelector('#lbOpen').addEventListener('click', () => {
+    const s = lb.dataset.src;
+    if (s) window.open(s, '_blank', 'noopener');
+  });
+  lb.querySelector('#lbSave').addEventListener('click', () => {
+    const s = lb.dataset.src;
+    if (!s) return;
+    const name = (s.split('/').pop().split('?')[0]) || 'image.jpg';
+    fetch(s, { referrerPolicy: 'no-referrer' })
+      .then((r) => { if (!r.ok) throw new Error('net'); return r.blob(); })
+      .then((blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = name;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+      })
+      .catch(() => { if (s) window.open(s, '_blank', 'noopener'); });
+  });
+  lb.querySelector('#lbClose').addEventListener('click', () => lb.classList.remove('show'));
+  lb.addEventListener('click', (e) => {
+    // 点图片本体或工具栏时不关闭
+    if (e.target.closest('.lb-bar') || e.target.tagName === 'IMG') return;
+    lb.classList.remove('show');
+  });
+  document.body.appendChild(lb);
+  window.__lightbox = lb;
+
+  // 视频播放器事件
+  $('#playerClose').addEventListener('click', closePlayer);
+  $('#playerModal').addEventListener('click', (e) => { if (e.target === $('#playerModal')) closePlayer(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#playerModal').hidden) closePlayer(); });
+
+  // 卡片「播放」按钮 + 新粉指南社交按钮（事件委托）
+  document.querySelector('.content').addEventListener('click', (e) => {
+    // 翻译开关：点开才请求译文，再点收起
+    const trBtn = e.target.closest('.tr-btn');
+    if (trBtn) {
+      e.stopPropagation();
+      const mid = trBtn.dataset.mid;
+      const box = document.getElementById('tr-' + mid);
+      if (state.expanded.has(mid)) {
+        state.expanded.delete(mid);
+        trBtn.textContent = trUI('translate', state.lang);
+        if (box) box.innerHTML = '';
+      } else {
+        state.expanded.add(mid);
+        trBtn.textContent = trUI('hide', state.lang);
+        if (box) box.innerHTML = trBlocksHtml(MSG_INDEX.get(mid) || {}, state.lang);
+        doTranslate(mid);
+      }
+      return;
+    }
+    const playBtn = e.target.closest('.play-btn');
+    if (playBtn) {
+      e.stopPropagation();
+      track('play');
+      openPlayer(playBtn.dataset.play, playBtn.dataset.title);
+      return;
+    }
+    const biliLink = e.target.closest('.bili-btn');
+    if (biliLink) { track('bili'); return; }
+    const socialBtn = e.target.closest('.social-btn');
+    if (socialBtn) {
+      e.stopPropagation();
+      openSocial(socialBtn.dataset.web, socialBtn.dataset.scheme);
+      return;
+    }
+    // 子标签切换（公演 / 新粉指南 共用 .subtab）
+    const subBtn = e.target.closest('.subtab');
+    if (subBtn) {
+      e.stopPropagation();
+      if (state.tab === 'performances') {
+        state.perfSub = subBtn.dataset.sub;
+        panels.performances.querySelectorAll('.subtab').forEach((b) =>
+          b.classList.toggle('active', b.dataset.sub === state.perfSub));
+        renderPerfSub();
+      } else if (state.tab === 'live') {
+        state.liveSub = subBtn.dataset.sub;
+        panels.live.querySelectorAll('.subtab').forEach((b) =>
+          b.classList.toggle('active', b.dataset.sub === state.liveSub));
+        renderLiveSub();
+      } else {
+        state.guideSub = subBtn.dataset.sub;
+        panels.guide.querySelectorAll('.subtab').forEach((b) =>
+          b.classList.toggle('active', b.dataset.sub === state.guideSub));
+        renderGuideSub();
+      }
+      return;
+    }
+    // 开播推送卡片 → 站内「直播 / 录播」页
+    const gotoBtn = e.target.closest('[data-goto]');
+    if (gotoBtn) {
+      e.stopPropagation();
+      switchTab(gotoBtn.dataset.goto);
+      return;
+    }
+    // 列表上方的「清除筛选」
+    if (e.target.closest('.filter-clear')) {
+      e.stopPropagation();
+      state.dateFrom = null;
+      state.dateTo = null;
+      state.dayLimit = 3;
+      const f = $('#dateFrom'), t = $('#dateTo');
+      if (f) f.value = '';
+      if (t) t.value = '';
+      renderAll();
+      showToast('✅ 已清除时间筛选');
+    }
+  });
+}
+
+/* ---------------- 渲染 ---------------- */
+function switchTab(name) {
+  state.tab = name;
+  document.querySelectorAll('.tab').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
+  Object.entries(panels).forEach(([k, el]) => el.classList.toggle('active', k === name));
+  // 「📅 时间」筛选与「搜索」的显隐统一走 syncToolbarSearch()（唯一出口）
+  syncToolbarSearch();
+  renderAll();
+}
+
+/** 顶部搜索框的显隐（唯一出口，别在别处直接改 si.hidden）
+ *  - 新粉指南 / 行程 / 我的：整页自带内容，不用搜索框
+ *  - 公演 → 「曲目」子标签：**面板内自带**「搜曲目 / 拼音」输入框，顶部再来一个就是两个搜索框
+ *    （站长 2026-09-26：「曲目这边不应该两个搜索框，留下面的就行」）。
+ *    两个并存时顶部那个会走 state.query → renderAll() 整页重渲，页面乱跳。 */
+function syncToolbarSearch() {
+  // 🔴 隐藏的是整个 .search-wrap（输入框 + 清空 + 搜索按钮），只藏 input 会剩两个按钮在外面；
+  //    并且 style.css 里必须有 `.search-wrap[hidden]{display:none}` —— 显式 display:flex 会盖掉 UA 的 [hidden]。
+  const w = $('#searchWrap') || $('#searchInput');
+  const isGuide = state.tab === 'guide' || state.tab === 'schedule' || state.tab === 'mine';
+  const isSongs = state.tab === 'performances' && state.perfSub === 'songs';
+  const hide = isGuide || isSongs;
+  if (w) w.hidden = hide;
+  // 📅 时间按钮同进退：曲目列表不吃时间筛选，留着它是误导（点了没反应）
+  const df = $('#dateToggleBtn');
+  if (df) df.hidden = hide;
+}
+
+/* ---------- 时间筛选（发言 / 直播录播 / 公演 共用 state.dateFrom/dateTo） ---------- */
+const dateFilterActive = () => !!(state.dateFrom || state.dateTo);
+function inDateRange(ts) {
+  const t = Number(ts);
+  if (!t) return false;
+  if (state.dateFrom && t < state.dateFrom) return false;
+  if (state.dateTo && t > state.dateTo) return false; // dateTo 存「次日 0 点」，故含当天
+  return true;
+}
+// 筛选生效时在列表上方显示一条提示 + 一键清除
+function filterNote(count) {
+  if (!dateFilterActive()) return '';
+  const f = state.dateFrom ? fmtDate(state.dateFrom) : '最早';
+  const t = state.dateTo ? fmtDate(state.dateTo - 86400000) : '最新';
+  return `<div class="filter-note">📅 <b>${escapeHtml(f)}</b> ~ <b>${escapeHtml(t)}</b> · 共 ${count} 条` +
+    `<button class="filter-clear" type="button">清除筛选</button></div>`;
+}
+
+// 工具栏「更新于」左侧的忙碌小字：只在「搜索 / 筛选正等着历史数据就绪」时出现，
+// 数据一到就消失。后台静默补齐历史**不显示任何提示**（用户明确要求完全静默）。
+let busyTimer = null;
+/* busy 提示的唯一收口：失败要吞、超时要兜，最后一定 hideBusy()。
+   🔴 站长 2026-09-26 报「点确定出不去」＝ busy「筛选中…」常驻：原来只 .then()，
+      某个请求挂掉/reject 就永远等不到 → 转圈不收、页面像卡死。
+   ⚠️ 这里必须是**顶层函数**：renderMessages()（不经过 bindEvents）也会用到它。 */
+function loadMonthsWithBusy(msg, done, timeoutMs) {
+  showBusy(msg);
+  const timeout = new Promise((res) => setTimeout(res, timeoutMs));  // 硬兜底
+  return Promise.race([Promise.resolve(done).catch(() => { /* 个别历史月挂了也别阻塞 */ }), timeout])
+    .then(() => { hideBusy(); });
+}
+
+function showBusy(text) {
+  const el = document.getElementById('busyNote');
+  if (!el) return;
+  el.textContent = text;
+  el.hidden = false;
+  if (busyTimer) clearTimeout(busyTimer);
+  busyTimer = setTimeout(hideBusy, 15000); // 兜底：异常时最多显示 15 秒，不会卡住不消失
+}
+function hideBusy() {
+  if (busyTimer) { clearTimeout(busyTimer); busyTimer = null; }
+  const el = document.getElementById('busyNote');
+  if (el) el.hidden = true;
+}
+
+function renderAll() {
+  if (state.tab === 'messages') renderMessages();
+  else if (state.tab === 'live') renderLive();
+  else if (state.tab === 'guide') renderGuide();
+  else if (state.tab === 'schedule') renderScheduleAsync();
+  else if (state.tab === 'mine') renderMine();
+  else renderPerformances();
+}
+
+/* ---------------- 行程（数据源：微博 @GNZ48-王语晨的甜橙小铺「本周行程」） ----------------
+ * ⚠️ 行程是「静态快照」而不是实时接口：数据由脚本抓一次写进 js/schedule.js /
+ * js/theater-schedule.js，不会自己变新。所以必须写明发布时间和来源 ——
+ * 超过 7 天就直说「可能已变动」，别让访客拿着过期行程当真跑去现场。
+ */
+function scSourceNote(src) {
+  if (!src) return '';
+  const day = String(src.pub || '').slice(0, 10);
+  let age = null;
+  if (day) {
+    const a = Date.parse(day + 'T00:00:00Z'), b = Date.parse(fmtDate(Date.now()) + 'T00:00:00Z');
+    if (isFinite(a) && isFinite(b)) age = Math.round((b - a) / 86400000);
+  }
+  const stale = age !== null && age > 7;
+  const name = src.name ? escapeHtml(src.name) : '来源';
+  const link = src.url
+    ? ' <a href="' + escapeHtml(src.url) + '" target="_blank" rel="noopener">看原帖 ↗</a>' : '';
+  const when = day ? '更新于 <b>' + escapeHtml(day) + '</b>'
+    + (age === null ? '' : age <= 0 ? '（今天）' : '（' + age + ' 天前）') : '发布时间未知';
+  return '<div class="sc-note' + (stale ? ' stale' : '') + '">'
+    + (stale ? '⚠️ 这份行程 ' + when + '，可能有变动，出发前请先看原帖确认' : '📌 行程 ' + when)
+    + ' · 来源 ' + name + link + '</div>';
+}
+/* 行程两来源去重：微博应援会行程（最新）与星梦剧院官方安排会列出同一场公演，
+ * 同一场只显示一次 —— 官方那边的票种标记（实名认证 / 随心拍）并到应援会那一行上。 */
+function scNormTitle(t) {
+  return String(t || '').toLowerCase().replace(/[《》·・:：、，,。.\s\-—_()（）!！]/g, '');
+}
+function scSameShow(a, b) {
+  if (!a || !b || a.date !== b.date) return false;
+  if (a.time && b.time && a.time === b.time) return true;
+  const x = scNormTitle(a.title), y = scNormTitle(b.title);
+  return !!(x && y && (x.indexOf(y) >= 0 || y.indexOf(x) >= 0));
+}
+/* 行程数据源（2026-09-23 起）：**优先读 Worker 里的存档 /api/schedule** —— 站长在手机后台
+ * 发的新行程就写在那儿，发完刷新页面就能看到，不用等我改 js 文件、推 git、等 CI。
+ * 接口挂了 / 还没灌过数据 → 退回页面自带的 js/schedule.js 快照，页面照常能看。
+ * 每次进这个 tab 都拉一次：接口很轻（边缘缓存 60s），保证你手机上刚发的行程别人马上能看到。 */
+async function renderScheduleAsync() {
+  try {
+    const r = await fetch('/api/schedule', { cache: 'no-store' });
+    if (r.ok) {
+      const j = await r.json();
+      if (j && Array.isArray(j.items) && j.items.length) {
+        const local = window.__SCHEDULE__ || {};
+        // 存档为准；本地那份里「更远」的安排存档还没有，保留下来一起显示
+        window.__SCHEDULE__ = Object.assign({}, local, j, { future: local.future || [] });
+      }
+    }
+  } catch (_) { /* 拿不到就用本地快照，绝不白屏 */ }
+  renderSchedule();
+}
+
+function renderSchedule() {
+  const S = window.__SCHEDULE__;
+  const box = panels.schedule;
+  if (!box) return;
+  if (!S || (!S.items || !S.items.length) && (!S.future || !S.future.length)) {
+    box.innerHTML = '<div class="empty">暂无行程信息。</div>';
+    return;
+  }
+  const today = fmtDate(Date.now());
+  // 距今几天：今天 0 / 明天 1 …
+  const daysTo = (d) => {
+    if (!d) return null;
+    const a = Date.parse(d + 'T00:00:00Z'), b = Date.parse(today + 'T00:00:00Z');
+    if (!isFinite(a) || !isFinite(b)) return null;
+    return Math.round((a - b) / 86400000);
+  };
+  const dayTag = (d) => {
+    const n = daysTo(d);
+    if (n === null) return '';
+    if (n === 0) return '<span class="sc-tag today">今天</span>';
+    if (n === 1) return '<span class="sc-tag soon">明天</span>';
+    if (n > 1) return `<span class="sc-tag">${n} 天后</span>`;
+    return '<span class="sc-tag done">已结束</span>';
+  };
+  const kindIcon = (k) => (k === '见面会' ? '🤝' : k === '预告' ? '📣' : '🎭');
+
+  // 按日期分组（近的在前）
+  const groups = {}, order = [];
+  (S.items || []).forEach((it) => {
+    if (!groups[it.date]) { groups[it.date] = []; order.push(it.date); }
+    groups[it.date].push(it);
+  });
+  order.sort((a, b) => (a < b ? -1 : 1));
+
+  // 与剧院官方安排去重：命中的官方条目记进 tUsed，剧院那块就不再重复列
+  const tItems = (window.__THEATER_SCHEDULE__ && window.__THEATER_SCHEDULE__.items) || [];
+  const tUsed = new Set();
+  const tMatch = (it) => {
+    for (let i = 0; i < tItems.length; i++) {
+      if (tUsed.has(i)) continue;
+      if (scSameShow(it, tItems[i])) { tUsed.add(i); return tItems[i]; }
+    }
+    return null;
+  };
+
+  // 勾选出图的清单：每条行程一个下标，DOM 上只存 data-i，勾选状态由复选框自己维护
+  const pickList = [];
+  const pushPick = (o) => pickList.push(o) - 1;
+
+  let html = '<div class="sc-wrap">';
+  html += '<div class="sc-bar" id="scBar">'
+    + '<span class="sc-bar-n" id="scBarN">已选 0 项</span>'
+    + '<button type="button" class="sc-bar-btn" id="scAll">全选</button>'
+    + '<button type="button" class="sc-bar-btn" id="scSoon">只看未开始</button>'
+    + '<button type="button" class="sc-bar-btn" id="scCancel">取消</button>'
+    + '<button type="button" class="sc-bar-btn primary" id="scGo">生成图片</button>'
+    + '</div>';
+  html += scSourceNote(S.source);
+  // 入口放最上面：原来只在列表末尾，13 条行程一路滚到底才看得见，等于没有
+  html += '<div class="sc-links sc-links-top">';
+  if (S.callUrl) html += `<a class="sc-btn" href="${escapeHtml(S.callUrl)}" target="_blank" rel="noopener">Call 本 ↗</a>`;
+  html += '<button type="button" class="sc-btn ghost" id="scPosterBtn">🖼 生成行程图</button>';
+  html += '</div>';
+  // 已结束的单独收进折叠区：过完的别跟还没开始的混在一起，但都留在存档里可供回顾
+  const isPast = (d) => (daysTo(d) !== null && daysTo(d) < 0);
+  const dayHtml = (d) => {
+    const arr = groups[d];
+    const passed = isPast(d);
+    let s = `<section class="sc-day${passed ? ' passed' : ''}">`
+      + `<h2 class="sc-day-h"><span class="sc-date">${escapeHtml(d.slice(5).replace('-', '/'))}</span>`
+      + `<span class="sc-wd">${escapeHtml(arr[0].weekday || '')}</span>${dayTag(d)}</h2><div class="sc-list">`;
+    arr.forEach((it) => {
+      const t = tMatch(it);   // 官方安排里同名的那一场（有就把它带的标记并过来）
+      // 已结束的默认不勾（转发给别人没意义），未开始的默认全勾
+      const pi = pushPick({
+        date: d, weekday: arr[0].weekday || '', time: it.time || '', title: it.title || '',
+        kind: it.kind || '', icon: kindIcon(it.kind), flags: (t && t.flags ? t.flags.slice() : []),
+        passed: !!passed,
+      });
+      s += '<div class="sc-item">'
+        + `<span class="sc-pick"><input type="checkbox" data-i="${pi}"${passed ? '' : ' checked'}`
+        + ' aria-label="把这一场放进图里"></span>'
+        + `<span class="sc-ic">${kindIcon(it.kind)}</span>`
+        + `<span class="sc-time">${escapeHtml(it.time || '')}</span>`
+        + `<span class="sc-title">${escapeHtml(it.title || '')}</span>`
+        + (it.kind ? `<span class="sc-kind">${escapeHtml(it.kind)}</span>` : '')
+        + (t && t.flags && t.flags.length
+          ? t.flags.map((f) => `<span class="sc-flag">${escapeHtml(f)}</span>`).join('') : '')
+        + '</div>';
+    });
+    return s + '</div></section>';
+  };
+  const soonDays = order.filter((d) => !isPast(d));
+  const pastDays = order.filter(isPast);
+  soonDays.forEach((d) => { html += dayHtml(d); });
+  if (pastDays.length) {
+    const n = pastDays.reduce((s, d) => s + groups[d].length, 0);
+    html += '<details class="sc-past"><summary class="sc-past-h">'
+      + `已结束 · ${n} 场<span class="sc-past-tip">点击展开回顾</span></summary>`;
+    pastDays.slice().reverse().forEach((d) => { html += dayHtml(d); });   // 已结束按倒序：最近的在前
+    html += '</details>';
+  }
+
+  if (S.future && S.future.length) {
+    html += '<section class="sc-day future"><h2 class="sc-day-h"><span class="sc-date">更远</span>'
+      + '<span class="sc-wd">已知的安排</span></h2><div class="sc-list">';
+    S.future.forEach((it) => {
+      const n = daysTo(it.date);
+      const short = (it.date || '').slice(5).replace('-', '/');
+      // date 留空 → 图上归到「更远」一组，日期只在行内出现一次（否则组头和行内重复显示 11/28）
+      const pi = pushPick({
+        date: '', weekday: '', time: short, title: it.title || '',
+        kind: it.kind || '', icon: kindIcon(it.kind), flags: [], passed: false,
+      });
+      html += '<div class="sc-item">'
+        + `<span class="sc-pick"><input type="checkbox" data-i="${pi}" checked`
+        + ' aria-label="把这一场放进图里"></span>'
+        + `<span class="sc-ic">${kindIcon(it.kind)}</span>`
+        + `<span class="sc-time">${escapeHtml(short)}</span>`
+        + `<span class="sc-title">${escapeHtml(it.title || '')}</span>`
+        + (n && n > 0 ? `<span class="sc-kind">还有 ${n} 天</span>` : '')
+        + '</div>';
+    });
+    html += '</div></section>';
+  }
+
+  // 运动会计分（有就显示）：橙色卡，和宣传图上的那块一致
+  if (S.score && S.score.rules && S.score.rules.length) {
+    html += '<div class="sc-score">'
+      + '<div class="sc-score-h">🏅 运动会计分时段'
+      + (S.score.period ? ' <b>' + escapeHtml(S.score.period) + '</b>' : '')
+      + '</div><div class="sc-score-grid">'
+      + S.score.rules.map((r) => '<span>' + escapeHtml(r) + '</span>').join('')
+      + '</div></div>';
+  }
+
+  if (S.ticket) html += `<div class="sc-note">🎟️ 可使用券种：${escapeHtml(S.ticket)}</div>`;
+  if (S.note) html += `<div class="sc-note subtle">${escapeHtml(S.note)}</div>`;
+  // 附加信息（计分卡 / 券种）也能勾进图里 —— 只在勾选模式出现，默认都勾
+  const extras = [];
+  if (S.score && S.score.rules && S.score.rules.length) extras.push(['score', '🏅 运动会计分', S.score.period || '']);
+  if (S.ticket) extras.push(['ticket', '🎟️ 可使用券种', '']);
+  if (extras.length) {
+    html += '<div class="sc-extra">';
+    extras.forEach((x) => {
+      html += '<div class="sc-item">'
+        + `<span class="sc-pick"><input type="checkbox" data-x="${x[0]}" checked aria-label="${escapeHtml(x[1])}"></span>`
+        + `<span class="sc-title">${escapeHtml(x[1])}</span>`
+        + (x[2] ? `<span class="sc-kind">${escapeHtml(x[2])}</span>` : '')
+        + '</div>';
+    });
+    html += '</div>';
+  }
+  // 底部只留「生成」：勾到底不用再滚回顶部（非勾选模式下隐藏）
+  html += '<div class="sc-links sc-links-bot">'
+    + '<button type="button" class="sc-btn primary" id="scGoBot">✅ 生成图片</button>'
+    + '</div></div>';
+  html += renderTheaterSchedule(daysTo, tUsed);
+  box.innerHTML = html;
+  bindSchedulePicker(pickList);
+}
+
+function roundRectPath(ctx, x, y, w, h, r) {
+  const rr = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + rr, y);
+  ctx.arcTo(x + w, y, x + w, y + h, rr);
+  ctx.arcTo(x + w, y + h, x, y + h, rr);
+  ctx.arcTo(x, y + h, x, y, rr);
+  ctx.arcTo(x, y, x + w, y, rr);
+  ctx.closePath();
+}
+
+function loadImgOnce(src) {
+  return new Promise((res) => {
+    const im = new Image();
+    im.onload = () => res(im);
+    im.onerror = () => res(null);   // 头像只是锦上添花，拿不到就画 🐟，绝不让出图失败
+    im.src = src;
+  });
+}
+
+/* 行程转发图：**排版与字号对齐 tools/schedule-poster.html 那张手工海报**
+ * ——浅青渐变底 + 白色大圆角卡片 + 她的圆头像，配色与排版照搬那张手工海报。
+ * 之前那版沿用档案分享卡的深色底、900 宽，字偏小、也不像海报，站长明确要「海报那种、清晰蓝底」。
+ * 头像素材用站上 favicon 那张（同域、必定存在）；量高一趟 + 画一趟的两段式与 buildShareCard 一致。 */
+function drawSchedulePoster(ctx, d, W, PAD, FONT, bgOnly, H, SC) {
+  /* SC = 整图放大倍率（默认 1）。排版一律按 900 基准写，出图时 ctx.scale(SC) 等比放大，
+   * 字号、圆角、间距全都跟着走，不用逐个常量乘一遍。返回的高度仍是基准值，由调用方 ×SC。
+   * 之所以基准取 900 而不是海报的 1080：同样出到 2160 宽，基准越窄 = 字在图里占比越大，
+   * 手机上缩到屏幕宽时字才真的看着大（等比放大只是变清晰，视觉大小不会变）。 */
+  SC = SC || 1;
+  ctx.save();
+  ctx.scale(SC, SC);
+  const CW = W - PAD * 2;          // 808
+  const CPAD = 38;                 // 卡片内边距
+  const TX = PAD + CPAD;           // 84，卡片内文字起点
+  const IW = CW - CPAD * 2;        // 732，卡片内可用宽度
+  const INK = '#123a45', INK2 = '#5b7c87';
+  const f = (w, s) => { ctx.font = w + ' ' + s + 'px ' + FONT; };
+  ctx.textBaseline = 'top';
+  ctx.textAlign = 'left';
+
+  if (bgOnly) {
+    const bg = ctx.createLinearGradient(0, 0, W * .55, H / SC);
+    bg.addColorStop(0, '#e6f7fb'); bg.addColorStop(.4, '#d3f0f8'); bg.addColorStop(1, '#c9ecf6');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H / SC);
+  }
+
+  // ── 头部：圆头像 + 称呼 + 渐变大标题 + 汇总 ──
+  let y = PAD;
+  const A = 190;
+  ctx.save();
+  ctx.shadowColor = 'rgba(13,69,86,.16)'; ctx.shadowBlur = 22 * SC; ctx.shadowOffsetY = 8;
+  ctx.beginPath(); ctx.arc(PAD + A / 2, y + A / 2, A / 2, 0, Math.PI * 2);
+  ctx.fillStyle = '#dff2f7'; ctx.fill();
+  ctx.restore();
+  if (d.avatar) {
+    ctx.save();
+    ctx.beginPath(); ctx.arc(PAD + A / 2, y + A / 2, A / 2, 0, Math.PI * 2); ctx.clip();
+    ctx.drawImage(d.avatar, PAD, y, A, A);
+    ctx.restore();
+  } else {
+    const ag = ctx.createLinearGradient(PAD, y, PAD + A, y + A);
+    ag.addColorStop(0, '#35e0c8'); ag.addColorStop(.5, '#58a6ff'); ag.addColorStop(1, '#b47aff');
+    ctx.save();
+    ctx.beginPath(); ctx.arc(PAD + A / 2, y + A / 2, A / 2, 0, Math.PI * 2); ctx.clip(); ctx.fillStyle = ag; ctx.fill();
+    ctx.restore();
+    ctx.textAlign = 'center'; f('400', 84); ctx.fillStyle = '#fff';
+    ctx.fillText('🐟', PAD + A / 2, y + A / 2 - 46);
+    ctx.textAlign = 'left';
+  }
+
+  const hx = PAD + A + 28;
+  f('600', 28); ctx.fillStyle = '#2b7a8d';
+  ctx.fillText('王语晨 · GNZ48 TEAM NIII', hx, y + 10);
+  const gt = ctx.createLinearGradient(hx, 0, W - PAD, 0);
+  gt.addColorStop(0, '#0f7f9b'); gt.addColorStop(.6, '#2fb8cf'); gt.addColorStop(1, '#5fd6e4');
+  f('800', 68); ctx.fillStyle = gt; ctx.fillText(d.h1, hx, y + 54);
+  // 汇总行：「9.26 – 10.7 · 6 场公演 · 6 场见面会」，场次加粗深色（海报里是 <b>）
+  let mx = hx;
+  f('400', 30);
+  d.metaParts.forEach((p) => {
+    ctx.font = (p.b ? '700 ' : '400 ') + '30px ' + FONT;
+    ctx.fillStyle = p.b ? '#0d7f9b' : INK2;
+    ctx.fillText(p.t, mx, y + 150);
+    mx += ctx.measureText(p.t).width;
+  });
+  y += A + 30;
+
+  // ── 卡片外壳（白底 + 圆角 + 投影，海报 .card）──
+  const cardBox = (top, h, fill) => {
+    ctx.save();
+    ctx.shadowColor = 'rgba(13,69,86,.10)'; ctx.shadowBlur = 34 * SC; ctx.shadowOffsetY = 14;
+    ctx.fillStyle = fill || '#fff';
+    roundRectPath(ctx, PAD, top, CW, h, 32); ctx.fill();
+    ctx.restore();
+    ctx.strokeStyle = 'rgba(13,69,86,.10)'; ctx.lineWidth = 1;
+    roundRectPath(ctx, PAD, top, CW, h, 32); ctx.stroke();
+  };
+  const dashLine = (yy, color) => {
+    ctx.save();
+    ctx.setLineDash([9, 9]); ctx.strokeStyle = color; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(TX, yy); ctx.lineTo(TX + IW, yy); ctx.stroke();
+    ctx.restore();
+  };
+
+  // ── 卡片 1：日程一览 ──
+  const TIME_W = 200;                   // 时间列：够放「17:30–19:30」，再宽就挤得活动名老折行
+  const NAME_W = IW - 88 - TIME_W - 32; // 标签 88 + 时间列 + 两个 gap
+  /* 活动名自适应：先按 34 试一行，放不下就降一档字号再试，最后还是放不下才折行。
+   * 基准从 1080 收到 900 之后名称列窄了，长戏名（《拾忆：TEAM NIII》第二十八场）会折成
+   * 「第二 / 十八场」这种难看的断法，缩一号往往就能整行放下。 */
+  const nameFit = (t) => {
+    for (let i = 0; i < 3; i++) {
+      const size = [34, 30, 27][i];
+      f('500', size);
+      const lines = wrapText(ctx, t, NAME_W, 3);
+      if (lines.length <= 1 || i === 2) return { lines: lines, size: size, lh: Math.round(size * 1.4) };
+    }
+    return { lines: [t], size: 34, lh: 48 };
+  };
+  let c1 = 36 + 46 + 22 + 2;            // padding-top + 标题行 + 间距 + 虚线
+  d.days.forEach((g) => {
+    c1 += 26 + 48 + 16;                 // day padding-top + 日期行 + 行距
+    g.items.forEach((it) => {
+      const nf = nameFit(it.name);
+      c1 += 14 + Math.max(47, nf.lines.length * nf.lh) + 14;
+    });
+    c1 += 8;
+  });
+  c1 += 32;
+  cardBox(y, c1, '#fff');
+  let cy = y + 36;
+  f('800', 38); ctx.fillStyle = INK;
+  ctx.fillText('🗓️ 日程一览', TX, cy);
+  cy += 46 + 22;
+  dashLine(cy, 'rgba(13,69,86,.13)');
+  cy += 2;
+
+  d.days.forEach((g) => {
+    cy += 26;
+    f('700', 40); ctx.fillStyle = INK;
+    ctx.fillText(g.label, TX, cy);
+    const lw = ctx.measureText(g.label).width;
+    if (g.sub) { f('400', 29); ctx.fillStyle = INK2; ctx.fillText(g.sub, TX + lw + 14, cy + 9); }
+    cy += 48 + 16;
+    g.items.forEach((it) => {
+      const nf = nameFit(it.name);
+      const rh = Math.max(47, nf.lines.length * nf.lh);
+      let ry = cy + 14 + (rh - 47) / 2;
+      // 类型标签：公演青、见面粉（海报 .tag）
+      const isMeet = it.kind === '见面会';
+      const tagTxt = it.tag || (isMeet ? '见面' : '公演');
+      ctx.fillStyle = isMeet ? 'rgba(224,122,154,.15)' : 'rgba(62,201,221,.16)';
+      roundRectPath(ctx, TX, ry - 2, 88, 47, 12); ctx.fill();
+      f('700', 26); ctx.fillStyle = isMeet ? '#c9557e' : '#0f8fa8';
+      ctx.textAlign = 'center'; ctx.fillText(tagTxt, TX + 44, ry + 8); ctx.textAlign = 'left';
+      f('700', 32); ctx.fillStyle = '#0b4f61';
+      ctx.fillText(it.time || '', TX + 88 + 16, ry + 6);
+      f('500', nf.size); ctx.fillStyle = '#16414d';
+      nf.lines.forEach((ln, i) => { ctx.fillText(ln, TX + 88 + 16 + TIME_W + 16, ry + 4 + i * nf.lh); });
+      cy += 14 + rh + 14;
+    });
+    cy += 8;
+  });
+  y += c1 + 28;
+
+  // ── 卡片 2：运动会计分（可勾选，暖橙白卡，海报 .point）──
+  if (d.point) {
+    const P = d.point;
+    const ruleRows = (P.rules || []).map((r) => {
+      const m = /^(\S+)\s+([\s\S]*)$/.exec(r);
+      return m ? [m[1], m[2]] : [r, ''];
+    });
+    f('400', 28);
+    // 券种：补上「可用券种：」小标题（海报里有），🎟️ 只出现在第一行
+    const tkLines = P.ticket ? wrapText(ctx, '🎟️ 可用券种：' + P.ticket, IW - 56, 4) : [];
+    let c2 = 36 + 46 + 22 + 2;
+    if (P.period) c2 += 24 + 60 + 4;
+    if (ruleRows.length) {
+      c2 += 22;
+      ruleRows.forEach((rw) => {
+        f('400', 31);
+        const sl = wrapText(ctx, rw[1], IW - 48 - 104 - 18 - 24, 2);
+        c2 += 18 + Math.max(53, sl.length * 42) + 18 + 14;
+      });
+      c2 += 6;
+    }
+    if (tkLines.length) c2 += 24 + 22 + tkLines.length * 48 + 22;
+    c2 += 32;
+
+    const pg = ctx.createLinearGradient(PAD, y, PAD + CW * .8, y + c2);
+    pg.addColorStop(0, '#fff9f2'); pg.addColorStop(.55, '#fff3f6'); pg.addColorStop(1, '#f3fbff');
+    cardBox(y, c2, null);
+    ctx.save(); roundRectPath(ctx, PAD, y, CW, c2, 32); ctx.clip();
+    ctx.fillStyle = pg; ctx.fillRect(PAD, y, CW, c2); ctx.restore();
+    ctx.strokeStyle = 'rgba(13,69,86,.10)'; ctx.lineWidth = 1;
+    roundRectPath(ctx, PAD, y, CW, c2, 32); ctx.stroke();
+
+    let py = y + 36;
+    f('800', 38); ctx.fillStyle = '#b5651d';
+    ctx.fillText('⚠️ 运动会计分时段', TX, py);
+    py += 46 + 22;
+    dashLine(py, 'rgba(181,101,29,.18)');
+    py += 2;
+    if (P.period) {
+      py += 24;
+      f('800', 50); ctx.fillStyle = '#c2551f';
+      ctx.fillText(P.period, TX, py);
+      const pw = ctx.measureText(P.period).width;
+      f('600', 28); ctx.fillStyle = INK2;
+      ctx.fillText('这段时间内的活动都在计分', TX + pw + 16, py + 18);
+      py += 60 + 4;
+    }
+    if (ruleRows.length) {
+      py += 22;
+      ruleRows.forEach((rw) => {
+        f('400', 31);
+        const sl = wrapText(ctx, rw[1], IW - 48 - 104 - 18 - 24, 2);
+        const rh = Math.max(53, sl.length * 42);
+        ctx.fillStyle = 'rgba(255,255,255,.86)';
+        roundRectPath(ctx, TX, py, IW, rh + 36, 20); ctx.fill();
+        ctx.strokeStyle = 'rgba(181,101,29,.13)'; ctx.lineWidth = 1;
+        roundRectPath(ctx, TX, py, IW, rh + 36, 20); ctx.stroke();
+        f('800', 44); ctx.fillStyle = '#d3691f'; ctx.textAlign = 'right';
+        ctx.fillText(rw[0], TX + 24 + 104, py + 18 + (rh - 53) / 2);
+        ctx.textAlign = 'left';
+        f('400', 31); ctx.fillStyle = '#4d6b74';
+        sl.forEach((ln, i) => { ctx.fillText(ln, TX + 24 + 104 + 24, py + 18 + (rh - 42) / 2 + i * 42); });
+        py += rh + 36 + 14;
+      });
+      py += 6;
+    }
+    if (tkLines.length) {
+      py += 24;
+      ctx.fillStyle = 'rgba(255,255,255,.72)';
+      roundRectPath(ctx, TX, py, IW, 22 + tkLines.length * 48 + 22, 20); ctx.fill();
+      ctx.save(); ctx.setLineDash([7, 7]); ctx.strokeStyle = 'rgba(181,101,29,.28)'; ctx.lineWidth = 1;
+      roundRectPath(ctx, TX, py, IW, 22 + tkLines.length * 48 + 22, 20); ctx.stroke(); ctx.restore();
+      f('400', 28); ctx.fillStyle = '#4d6b74';
+      tkLines.forEach((ln, i) => { ctx.fillText(ln, TX + 24, py + 22 + i * 48); });
+      py += 22 + tkLines.length * 48 + 22;
+    }
+    y += c2 + 28;
+  }
+
+  // ── 页脚 ──
+  ctx.textAlign = 'center';
+  f('600', 26); ctx.fillStyle = '#5b7c87';
+  ctx.fillText('idol.wyc0518.cc · 王语晨补档站', W / 2, y + 8);
+  f('400', 25); ctx.fillStyle = '#8aa7b1';
+  ctx.fillText('行程以官方公告为准，如有变动请关注官方与应援会通知', W / 2, y + 48);
+  ctx.textAlign = 'left';
+  y += 48 + 34 + 30;
+  ctx.restore();
+  return y;   // 基准高度（未乘 SC）
+}
+
+async function buildSchedulePoster(picks, extra) {
+  const BASE_W = 900, PAD = 46;
+  /* 出图宽度对齐手工海报那张（2160 = 900 基准 ×2.4），站长嫌 1080 太窄、在手机上还得
+   * 双指放大到屏幕宽才看得清。基准取 900 而不是海报的 1080，是为了顺手把字在图里的
+   * 占比也提上去（日期行 / 活动名的像素都更大），不然只是图变清晰、字一点没变大。
+   * iOS Safari 的 canvas 上限约 1600 万像素，勾太多场会把高度顶爆（出图变空白），
+   * 所以按实测高度把倍率收回来，最低 1 倍。 */
+  const MAXPX = 16000000;
+  const SC_MAX = 2160 / 900;   // 2.4 → 出图正好 2160 宽，与手工海报同宽
+  const FONT = '"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Heiti SC",sans-serif';
+  const S = window.__SCHEDULE__ || {};
+  // picks 已经是页面顺序（渲染时就按日期排过），顺序分组即可，不用再排
+  const days = [], order = [];
+  picks.forEach((it) => {
+    const k = it.date || '更远';
+    let gi = order.indexOf(k);
+    if (gi < 0) { order.push(k); days.push({ label: '', sub: '', items: [] }); gi = order.length - 1; }
+    days[gi].items.push({ kind: it.kind, time: it.time, name: it.title });
+  });
+  days.forEach((g, i) => {
+    const k = order[i];
+    if (k === '更远') { g.label = '更远的安排'; g.sub = ''; return; }
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(k);
+    g.label = m ? (Number(m[2]) + '月' + Number(m[3]) + '日') : k;
+    const first = picks.find((x) => (x.date || '更远') === k);
+    g.sub = first ? (first.weekday || '') : '';
+  });
+
+  // 汇总行：日期区间 + 各类场次数（场次加粗）
+  const dated = picks.map((x) => x.date).filter(Boolean).sort();
+  const fmt = (s) => { const m = /^\d{4}-(\d{2})-(\d{2})$/.exec(s); return m ? Number(m[1]) + '.' + Number(m[2]) : s; };
+  const parts = [];
+  if (dated.length) parts.push({ t: fmt(dated[0]) + ' – ' + fmt(dated[dated.length - 1]), b: false });
+  const cnt = (k) => picks.filter((x) => x.kind === k).length;
+  const np = cnt('公演'), nm = cnt('见面会');
+  if (np) { if (parts.length) parts.push({ t: ' · ', b: false }); parts.push({ t: np + ' 场公演', b: true }); }
+  if (nm) { parts.push({ t: ' · ', b: false }); parts.push({ t: nm + ' 场见面会', b: true }); }
+  if (!parts.length) parts.push({ t: picks.length + ' 项安排', b: true });
+
+  // 计分卡 / 券种：按勾选决定画不画
+  let point = null;
+  const ex = extra || {};
+  if ((ex.score && S.score) || (ex.ticket && S.ticket)) {
+    point = {
+      period: (ex.score && S.score) ? (S.score.period || '') : '',
+      rules: (ex.score && S.score) ? (S.score.rules || []) : [],
+      ticket: (ex.ticket && S.ticket) ? S.ticket : '',
+    };
+  }
+
+  const d = { h1: '晨晨 · 行程安排', metaParts: parts, days: days, point: point, avatar: null };
+  const measure = document.createElement('canvas').getContext('2d');
+  const BH = Math.ceil(drawSchedulePoster(measure, d, BASE_W, PAD, FONT, false, 2000, 1));
+  // 先按面积算出安全倍率，再排一串递减候选：真画出来要是被系统判超限（iOS Safari
+  // 上超限的 canvas 会直接变空白、toDataURL 返回空串），就退一档重画，宁可小一点也不给白图。
+  const safe = Math.min(SC_MAX, Math.sqrt(MAXPX / Math.max(1, BASE_W * BH)));
+  const cands = [];
+  [safe, 2, 1.7, 1.45, 1.2, 1].forEach((s) => {
+    const v = Math.round(s * 100) / 100;
+    if (v > 0 && v <= safe + .001 && cands.indexOf(v) < 0) cands.push(v);
+  });
+  cands.sort((a, b) => b - a);
+  d.avatar = await loadImgOnce('./assets/avatar-round.png');
+  for (let i = 0; i < cands.length; i++) {
+    const SC = cands[i];
+    const W = Math.round(BASE_W * SC), H = Math.ceil(BH * SC);
+    const cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    drawSchedulePoster(cv.getContext('2d'), d, BASE_W, PAD, FONT, true, H, SC);
+    let url = '';
+    try { url = cv.toDataURL('image/png'); } catch (e) { url = ''; }
+    if (url && url.length > 2000) return { canvas: cv, url: url };
+  }
+  return null;
+}
+
+/* 行程「文字版」——图给别人看，这段给别人粘贴（群 / 超话 / 私信直接用）。
+ * 只拼勾中的那几场，顺序和图上一致；附加信息也跟着决定是否带上。 */
+function scheduleText(picks, ex) {
+  const S = window.__SCHEDULE__ || {};
+  const WD = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+  const wdOf = (ds) => {
+    const t = Date.parse(ds + 'T00:00:00+08:00');
+    return isNaN(t) ? '' : WD[new Date(t).getUTCDay()];
+  };
+  const byDay = new Map();
+  (picks || []).forEach((d) => {
+    if (!d) return;
+    // ⚠️「更远的安排」（例：11/28 个人年V）数据里没有 date，日期放在 time 上 ——
+    //    别再用 !d.date 跳过，否则文案会比图上少一条（2026-09-24 站长报的 bug）。
+    const k = d.date || '更远';
+    if (!byDay.has(k)) byDay.set(k, []);
+    byDay.get(k).push(d);
+  });
+  // 排序：日期升序，「更远的安排」永远垫底
+  const farLast = (a, b) => {
+    if (a === '更远') return 1;
+    if (b === '更远') return -1;
+    return a < b ? -1 : (a > b ? 1 : 0);
+  };
+  const L = ['【王语晨 · 近期行程】', ''];
+  Array.from(byDay.keys()).sort(farLast).forEach((k) => {
+    if (k === '更远') {
+      L.push('更远的安排');                                  // 没有确定星期，只写组头
+    } else {
+      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(k);
+      const head = m ? (Number(m[2]) + '月' + Number(m[3]) + '日') : k;
+      L.push(head + '（' + ((byDay.get(k)[0].weekday) || wdOf(k) || '') + '）');
+    }
+    byDay.get(k).forEach((d) => { L.push((d.time ? d.time + '  ' : '') + d.title); });
+    L.push('');
+  });
+  if (ex && ex.score && S.score && S.score.rules && S.score.rules.length) {
+    L.push('🏅 运动会计分' + (S.score.period ? '（' + S.score.period + '）' : ''));
+    S.score.rules.forEach((r) => { L.push('· ' + r); });
+    L.push('');
+  }
+  if (ex && ex.ticket && S.ticket) { L.push('🎟️ 可使用券种：' + S.ticket, ''); }
+  L.push('—— 王语晨应援补档站 idol.wyc0518.cc');
+  return L.join('\n');
+}
+
+/* ---- 行程 · 勾选几场 → 生成一张转发图 ----
+ * 粉丝要转告别人的往往只有其中几场（比如「周末这两场去不去」），
+ * 所以让他自己勾，而不是整份行程全铺上去。
+ * 出图后走 showAlbumLayer：手机上只走系统分享面板 / 长按，绝不用 a[download]。
+ */
+function bindSchedulePicker(list) {
+  const box = panels.schedule;
+  if (!box || !list.length) return;
+  const btn = box.querySelector('#scPosterBtn');
+  if (!btn) return;
+  const go = box.querySelector('#scGo');
+  const bot = box.querySelector('#scGoBot');   // 列表底部那个，只在勾选模式下露出来
+  // 两类复选框分开取：行程条目带 data-i，附加信息（计分卡/券种）带 data-x
+  const rowInputs = () => Array.prototype.slice.call(box.querySelectorAll('.sc-pick input[data-i]'));
+  const xInputs = () => Array.prototype.slice.call(box.querySelectorAll('.sc-extra input[data-x]'));
+  const inputs = () => rowInputs().concat(xInputs());
+  const picked = () => rowInputs().filter((i) => i.checked)
+    .map((i) => list[Number(i.getAttribute('data-i'))]).filter(Boolean);
+  const xPicked = () => {
+    const o = {};
+    xInputs().forEach((i) => { o[i.getAttribute('data-x')] = i.checked; });
+    return o;
+  };
+  const sync = () => {
+    const n = picked().length;
+    const nEl = box.querySelector('#scBarN');
+    const goEl = box.querySelector('#scGo');
+    if (nEl) nEl.textContent = '已选 ' + n + ' 项';
+    if (goEl) goEl.disabled = (n === 0);
+    if (bot) {
+      bot.disabled = (n === 0);
+      bot.textContent = n ? '✅ 生成图片（已选 ' + n + ' 项）' : '✅ 生成图片';
+    }
+    inputs().forEach((i) => {
+      const row = i.closest('.sc-item');
+      if (row) row.classList.toggle('picked', i.checked);
+    });
+  };
+  // 生成按钮两头都有（顶部工具条 + 列表底部）：条目一多，勾到底部时不用再滚回顶部
+  const doBuild = async () => {
+    const picks = picked();
+    if (!picks.length) return;
+    if (go) { go.disabled = true; go.textContent = '正在生成…'; }
+    btn.disabled = true;
+    if (bot) { bot.disabled = true; bot.textContent = '正在生成…'; }
+    try {
+      const res = await buildSchedulePoster(picks, xPicked());
+      if (!res) throw new Error('canvas 超限');
+      track('sch:poster');
+      showAlbumLayer(res.url, '行程', '王语晨行程', scheduleText(picks, xPicked()));
+    } catch (e) {
+      if (window.console) console.warn('行程图生成失败', e);
+      if (go) go.textContent = '生成失败，重试';
+    }
+    btn.disabled = false;
+    if (go) { go.disabled = false; go.textContent = '生成图片'; }
+    sync();   // 底部按钮的「已选 N 项」由 sync 统一回写
+  };
+  const setMode = (on) => {
+    box.classList.toggle('sc-picking', on);
+    btn.textContent = on ? '✅ 生成图片' : '🖼 生成行程图';
+    if (on) sync();
+  };
+  btn.addEventListener('click', () => {
+    if (box.classList.contains('sc-picking')) { doBuild(); return; }
+    setMode(true);
+  });
+  const all = box.querySelector('#scAll');
+  if (all) all.addEventListener('click', () => { inputs().forEach((i) => { i.checked = true; }); sync(); });
+  const soon = box.querySelector('#scSoon');
+  if (soon) soon.addEventListener('click', () => {
+    // 只看未开始 —— 只动行程条目，附加信息保持原样
+    rowInputs().forEach((i) => {
+      const it = list[Number(i.getAttribute('data-i'))];
+      i.checked = !!(it && !it.passed);
+    });
+    sync();
+  });
+  const cancel = box.querySelector('#scCancel');
+  if (cancel) cancel.addEventListener('click', () => setMode(false));
+  inputs().forEach((i) => i.addEventListener('change', sync));
+
+  if (go) go.addEventListener('click', doBuild);
+  if (bot) bot.addEventListener('click', doBuild);
+}
+
+/* ---------------- 行程 · 星梦剧院官方公演安排（只取 NIII / 全团联合） ----------------
+ * 数据：demo 专属 js/theater-schedule.js → window.__THEATER_SCHEDULE__
+ * 官方一帖列出 G / Z / NIII / 全团联合 / 偶像研究计划 全部场次，这里只留王语晨所在队与全团场。
+ */
+function renderTheaterSchedule(daysTo, skip) {
+  const T = window.__THEATER_SCHEDULE__;
+  if (!T || !T.items || !T.items.length) return '';
+  // 已经在应援会行程里出现过的场次不再重复列；全被去重掉时整块不显示
+  const items = T.items.filter((_, i) => !(skip && skip.has && skip.has(i)));
+  if (!items.length) return '';
+  const today = fmtDate(Date.now());
+  const d2 = daysTo || ((d) => {
+    if (!d) return null;
+    const a = Date.parse(d + 'T00:00:00Z'), b = Date.parse(today + 'T00:00:00Z');
+    return (isFinite(a) && isFinite(b)) ? Math.round((a - b) / 86400000) : null;
+  });
+  const dayTag = (d) => {
+    const n = d2(d);
+    if (n === null) return '';
+    if (n === 0) return '<span class="sc-tag today">今天</span>';
+    if (n === 1) return '<span class="sc-tag soon">明天</span>';
+    if (n > 1) return `<span class="sc-tag">${n} 天后</span>`;
+    return '<span class="sc-tag done">已结束</span>';
+  };
+  const groups = {}, order = [];
+  items.forEach((it) => { if (!groups[it.date]) { groups[it.date] = []; order.push(it.date); } groups[it.date].push(it); });
+  order.sort();
+
+  const first = order[0], last = order[order.length - 1];
+  const fmt = (x) => x.slice(5).replace('-', '/');
+  const range = first === last ? fmt(first) : fmt(first) + ' - ' + fmt(last);
+
+  let h = '<div class="sc-wrap sc-wrap2">';
+  h += '<h3 class="sc-sec-h">🏛 星梦剧院 · 官方公演安排'
+    + `<span class="sc-range">${escapeHtml(range)}</span>`
+    + '<span class="sc-sec-tag">NIII / 全团联合</span></h3>';
+  h += scSourceNote(T.source);
+  order.forEach((d) => {
+    const arr = groups[d];
+    const passed = (d2(d) !== null && d2(d) < 0);
+    h += `<section class="sc-day${passed ? ' passed' : ''}">`
+      + `<h2 class="sc-day-h"><span class="sc-date">${escapeHtml(fmt(d))}</span>`
+      + `<span class="sc-wd">${escapeHtml(arr[0].weekday || '')}</span>${dayTag(d)}</h2><div class="sc-list">`;
+    arr.forEach((it) => {
+      h += '<div class="sc-item">'
+        + `<span class="sc-ic">${it.kind === '全团联合' ? '🎊' : '🎭'}</span>`
+        + `<span class="sc-time">${escapeHtml(it.time || '')}</span>`
+        + `<span class="sc-title">${escapeHtml(it.title || '')}</span>`
+        + (it.kind ? `<span class="sc-kind">${escapeHtml(it.kind)}</span>` : '')
+        + (it.flags && it.flags.length
+          ? it.flags.map((f) => `<span class="sc-flag">${escapeHtml(f)}</span>`).join('') : '')
+        + '</div>';
+    });
+    h += '</div></section>';
+  });
+  if (T.sales && T.sales.length) {
+    h += `<div class="sc-note">🎫 票务：${T.sales.map((s) => escapeHtml(s)).join('；')}</div>`;
+  }
+  h += '</div>';
+  return h;
+}
+
+/* ---------------- 我和她的房间（陪伴档案 · 只查自己，不做排名） ----------------
+   数据：js/room-stats.js（window.__ROOM_STATS__），由 tools/build-companion.mjs 生成。
+   隐私约定：数据里只有 uid + 统计数字（条数 / 日期位图 / 小时分布），
+   没有昵称、没有留言正文、也没有「她回复了谁」「送了多少礼」这类可比字段。  */
+const MINE_KEY = 'wyc-demo-mine-uid-v1';
+// 鸡腿要不要写进分享图，由本人决定（默认写）
+const GIFT_OPT_KEY = 'wyc-demo-mine-gift-opt-v1';
+const giftOptOn = () => { try { return localStorage.getItem(GIFT_OPT_KEY) !== '0'; } catch (_) { return true; } };
+const giftOptSet = (on) => { try { localStorage.setItem(GIFT_OPT_KEY, on ? '1' : '0'); } catch (_) {} };
+// 活动打分同上，且**和鸡腿分开控制**（站长 2026-09-23 定：两个是不同的东西，
+// 有人愿意晒分数但不愿晒金额，也可能反过来，所以各给一个开关，互不牵连）
+const SCORE_OPT_KEY = 'wyc-demo-mine-score-opt-v1';
+const scoreOptOn = () => { try { return localStorage.getItem(SCORE_OPT_KEY) !== '0'; } catch (_) { return true; } };
+const scoreOptSet = (on) => { try { localStorage.setItem(SCORE_OPT_KEY, on ? '1' : '0'); } catch (_) {} };
+// 打分有 0.1 这种小数位：整数就不带小数点，有小数才保留 1 位
+const fmtScore = (v) => {
+  const n = Number(v) || 0;
+  if (!n) return '0';
+  return Number.isInteger(n) ? n.toLocaleString() : n.toFixed(1);
+};
+/* 「我对她说的第一句话」也要能关（站长 2026-09-23 定：可以分享，但由本人决定）。
+   默认写进分享图 —— 这句话是档案里最有感情的一项，多数人愿意晒。 */
+const FIRST_OPT_KEY = 'wyc-demo-mine-first-opt-v1';
+const firstOptOn = () => { try { return localStorage.getItem(FIRST_OPT_KEY) !== '0'; } catch (_) { return true; } };
+const firstOptSet = (on) => { try { localStorage.setItem(FIRST_OPT_KEY, on ? '1' : '0'); } catch (_) {} };
+/* ⚠️ canvas 换行用下面已有的 wrapText(ctx, text, maxW, maxLines) ——
+   注意它必须传 maxLines：不传时内部 `out.length < undefined` 恒为 false，
+   会一行都不返回（2026-09-23 踩过：分享卡上「第一句话」只剩标题、正文空白）。 */
+
+function bjDayKey(ts) { return new Date(Number(ts) + 8 * 3600e3).toISOString().slice(0, 10); }
+
+function decodeDayBitmap(b64, total) {
+  try {
+    const bin = atob(b64);
+    const a = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
+    const out = [];
+    for (let i = 0; i < total; i++) if (a[i >> 3] & (1 << (i & 7))) out.push(i);
+    return out;
+  } catch (e) { return []; }
+}
+
+const HOUR_BANDS = [
+  { k: 'late', h: [22, 23, 0, 1, 2], name: '深夜守候型', desc: '晚上 10 点到凌晨 2 点' },
+  { k: 'dawn', h: [5, 6, 7, 8], name: '早起的第一声', desc: '清晨 5 点到 9 点' },
+  { k: 'morn', h: [9, 10, 11], name: '上午常客', desc: '上午 9 点到 12 点' },
+  { k: 'noon', h: [12, 13, 14, 15, 16, 17], name: '午后时光', desc: '中午到傍晚' },
+  { k: 'prime', h: [18, 19, 20, 21], name: '黄金档常驻', desc: '傍晚 6 点到 10 点' }
+];
+
+function mainBand(hs) {
+  let best = HOUR_BANDS[4], bestN = -1;
+  for (const b of HOUR_BANDS) {
+    const n = b.h.reduce((s, i) => s + (Number(hs[i]) || 0), 0);
+    if (n > bestN) { bestN = n; best = b; }
+  }
+  return best;
+}
+
+function mineBadges(u, band, dayKeys) {
+  const out = [];
+  if (u.b >= 30) out.push(['连续 ' + u.b + ' 天', 'amber']);
+  const years = new Set(dayKeys.map((d) => d.slice(0, 4)));
+  if (years.size >= 2) out.push(['陪她跨过 ' + years.size + ' 个年头', 'amber']);
+  if (band.k === 'late') out.push(['深夜常客', 'teal']);
+  if (u.n >= 1000) out.push(['第 1000 句', 'violet']);
+  else if (u.n >= 100) out.push(['第 100 句', 'violet']);
+  if (u.d >= 200) out.push(['来过 ' + u.d + ' 天', 'teal']);
+  return out.slice(0, 5);
+}
+
+function mineCalendar(activeSet, fromKey, toKey, annMap) {
+  const startMs = Date.parse(fromKey + 'T00:00:00Z');
+  const endMs = Date.parse(toKey + 'T00:00:00Z');
+  const s0 = new Date(startMs);
+  const dow = (s0.getUTCDay() + 6) % 7;           // 周一 = 0
+  let html = '<div class="mine-cal-wrap"><div class="mine-cal">';
+  let n = 0;
+  for (let t = startMs - dow * 86400e3; t <= endMs; t += 86400e3) {
+    const k = new Date(t).toISOString().slice(0, 10);
+    const on = activeSet.has(k);
+    // 亮起来的格子按顺序依次放大出现（延迟封顶，避免 400 格排太久）
+    const d = on ? Math.min(n, 90) * 4 : 0;
+    if (on) n++;
+    const ann = annMap && annMap[k];           // 纪念日：金边 + 中心小金点
+    const cls = 'mc' + (on ? ' on' : '') + (ann ? ' ann' : '');
+    const tip = ann ? ' title="认识 ' + ann + ' 天"' : '';
+    html += `<i class="${cls}"${on ? ' style="animation-delay:' + d + 'ms"' : ''}${tip} data-d="${k}"></i>`;
+  }
+  html += '</div></div>'
+    + '<div class="mine-cal-legend"><i class="mc"></i>没来过 <i class="mc on"></i>来过'
+    + (annMap && Object.keys(annMap).length ? ' <i class="mc ann"></i>纪念日' : '') + '</div>';
+  return html;
+}
+
+/* 纪念日：认识那天算第 1 天，所以「认识 N 天」= 起点往后 N-1 天。
+   只认站长定的这几档；已经过去的列出日期，最近的一档给倒计时。 */
+const ANN_DAYS = [100, 365, 500, 1000, 1500, 2000];
+function addDaysKey(key, n) {
+  return new Date(Date.parse(key + 'T00:00:00Z') + n * 86400e3).toISOString().slice(0, 10);
+}
+function mineAnniversaries(firstKey, nowDay, activeSet) {
+  const nowMs = Date.parse(nowDay + 'T00:00:00Z');
+  const passed = [], upcoming = [];
+  ANN_DAYS.forEach((n) => {
+    const k = addDaysKey(firstKey, n - 1);
+    const ms = Date.parse(k + 'T00:00:00Z');
+    if (ms <= nowMs) passed.push({ days: n, key: k, there: !!activeSet.has(k) });
+    else upcoming.push({ days: n, key: k, left: Math.round((ms - nowMs) / 86400e3) });
+  });
+  return { passed, next: upcoming[0] || null, keys: passed.map((p) => p.key) };
+}
+
+/* ==================== 我和她的房间 · 数据来自服务端 ====================
+ * 隐私红线（站长 2026-09-22 定）：粉丝名单不得以任何静态文件形式上公网。
+ * 所以这里**不再有任何本地名单文件**——输入自己的 uid，向 Worker 单条回取属于你的那份数据。
+ * （早年方案是加载 js/room-stats.js + js/gift-stats-2026.js 两份全量名单，已废弃。）
+ */
+// ⚠️ 必须和 API_BASE 用同一套判定：以前是「host 里含 cloudstudio/dev 才指线上」，
+// 结果演示站的 `*.app.workbuddy.host` 不匹配 → 请求打到演示站自己的静态服务 → 404 → 前端只能报「网络问题」。
+const MINE_API = (API_BASE || location.origin) + '/api/mine';
+
+function renderMine() {
+  const box = panels.mine;
+  if (!box) return;
+  buildMineShell(box);
+}
+
+function buildMineShell(box) {
+  if (box.dataset.built === '1') return;   // 只搭一次骨架，避免重复绑定
+  box.dataset.built = '1';
+  box.innerHTML = '<div class="mine-wrap">'
+    + '<div class="mine-head"><h3 class="mine-title">我和她的房间</h3>'
+    + '<p class="mine-sub">输入你的口袋 uid，看看你陪她走了多久。</p></div>'
+    + '<form class="mine-form" id="mineForm" autocomplete="off">'
+    + '<input id="mineUid" class="mine-input" type="text" inputmode="numeric" placeholder="口袋 uid（纯数字）" aria-label="口袋 uid">'
+    + '<button class="mine-btn" type="submit">查我的档案</button></form>'
+    + '<div class="mine-saved" id="mineSaved" hidden>已记住这个 uid，下次打开自动查'
+    + '<button type="button" class="mine-clear" id="mineClear">清除</button></div>'
+    + '<div id="mineResult" class="mine-result"></div></div>';
+
+  const form = document.getElementById('mineForm');
+  const input = document.getElementById('mineUid');
+  const savedRow = document.getElementById('mineSaved');
+  const showSaved = (on) => { if (savedRow) savedRow.hidden = !on; };
+
+  const clearUid = () => {
+    try { localStorage.removeItem(MINE_KEY); } catch (e) {}
+    if (input) input.value = '';
+    showSaved(false);
+    const res = document.getElementById('mineResult');
+    if (res) res.innerHTML = '';
+    mineHint('已清除，下次进来不会再自动带入');
+  };
+  const clearBtn = document.getElementById('mineClear');
+  if (clearBtn) clearBtn.addEventListener('click', clearUid);
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const uid = String(input.value || '').trim();
+    if (!/^\d{4,12}$/.test(uid)) { mineHint('uid 是纯数字，再看一下'); return; }
+    try { localStorage.setItem(MINE_KEY, uid); } catch (e) {}
+    showSaved(true);
+    lookupMine(uid);
+  });
+  let saved = '';
+  try { saved = localStorage.getItem(MINE_KEY) || ''; } catch (e) {}
+  // 旧版本存的是昵称（当时按昵称查），口径换了就丢掉，别拿去当 uid 用
+  if (saved && !/^\d{4,12}$/.test(saved)) { try { localStorage.removeItem(MINE_KEY); } catch (e) {} saved = ''; }
+  if (saved) { input.value = saved; showSaved(true); lookupMine(saved); }
+}
+
+// 「我和她的房间」的即时提示（app.js 里没有 toast，别跨脚本调用）
+function mineHint(msg, ok) {
+  let el = document.getElementById('mineHint');
+  const form = document.getElementById('mineForm');
+  if (!form) return;
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'mineHint';
+    el.className = 'mine-hint';
+    form.parentNode.insertBefore(el, form.nextSibling);
+  }
+  el.className = 'mine-hint' + (ok ? ' ok' : '');
+  el.textContent = msg;
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { if (el) el.textContent = ''; }, 4000);
+}
+
+function mineG(label, val, unit) {
+  return '<div class="mine-g"><div class="mine-g-l">' + escapeHtml(label) + '</div>'
+    + '<div class="mine-g-v">' + escapeHtml(String(val)) + '<small>' + escapeHtml(unit) + '</small></div></div>';
+}
+
+// 大数字从 0 滚上去（网易云年报那种感觉）
+function mineCountUp() {
+  document.querySelectorAll('.mine-report [data-count]').forEach((el) => {
+    const target = Number(el.dataset.count) || 0;
+    if (!target) { el.textContent = '0'; return; }
+    // data-dec="1" 的是活动打分（可能是 2518.5 这种带小数的），按 fmtScore 走
+    const dec = el.dataset.dec === '1';
+    const show = (v) => (dec ? fmtScore(v) : Math.round(v).toLocaleString());
+    const dur = 950, t0 = performance.now();
+    const tick = (t) => {
+      const p = Math.min(1, (t - t0) / dur);
+      const e = 1 - Math.pow(1 - p, 3);
+      el.textContent = show(target * e);
+      if (p < 1) requestAnimationFrame(tick); else el.textContent = show(target);
+    };
+    requestAnimationFrame(tick);
+  });
+}
+
+/* ---------- 导出分享卡（canvas 手绘一张竖版长图，不依赖任何外部库） ----------
+   卡片里只有「你自己的数字」，不含 uid、不含昵称、不含别人说过的话。 */
+function rr(ctx, x, y, w, h, r) {
+  const rad = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + rad, y);
+  ctx.arcTo(x + w, y, x + w, y + h, rad);
+  ctx.arcTo(x + w, y + h, x, y + h, rad);
+  ctx.arcTo(x, y + h, x, y, rad);
+  ctx.arcTo(x, y, x + w, y, rad);
+  ctx.closePath();
+}
+
+function wrapText(ctx, text, maxW, maxLines) {
+  const out = [];
+  let line = '';
+  for (const ch of String(text)) {
+    const t = line + ch;
+    if (ctx.measureText(t).width > maxW && line) {
+      out.push(line);
+      line = ch;
+      if (out.length === maxLines) break;
+    } else line = t;
+  }
+  if (line && out.length < maxLines) out.push(line);
+  if (out.length === maxLines && ctx.measureText(out[maxLines - 1]).width >= maxW - 1) {
+    out[maxLines - 1] = out[maxLines - 1].slice(0, -1) + '…';
+  }
+  return out;
+}
+
+/* ---- 分享卡上的「第一句话」把口袋表情 [敲打] 也画成图 ----
+ * 页面上用 withEmoji() 换成 <img> 就行，canvas 得自己排：先把句子切成
+ * 「文字 / 表情图」token，再逐 token 断行，最后每行居中摆开。
+ * 表情是动图，canvas 只画第一帧 —— 静态不影响识别，总比露出 [敲打] 原文好。
+ */
+const EMOJI_IMG = Object.create(null);          // 序号 -> HTMLImageElement（加载一次长期复用）
+const Q_EM = 30;                                // 表情在卡上的边长
+function emojiSrcOf(name) {
+  const i = EMOJI_MAP[name];
+  return i === undefined ? null : 'assets/emoji/' + i + '.gif';
+}
+/** 预加载句子里的表情图（saveShareCard 是 async 的，await 完再画） */
+async function preloadEmoji(text) {
+  const names = [];
+  const re = new RegExp(EMOJI_RE.source, 'g');
+  let m;
+  while ((m = re.exec(String(text || '')))) names.push(m[1]);
+  await Promise.all(names.map((n) => new Promise((res) => {
+    const src = emojiSrcOf(n);
+    if (!src || EMOJI_IMG[src]) return res();
+    const im = new Image();
+    im.onload = im.onerror = () => { EMOJI_IMG[src] = im; res(); };
+    im.src = src;
+  })));
+}
+/** 切成 token：{x:'文字'} 或 {e:'assets/emoji/7.gif'}（第一句话、发言正文都用它） */
+function tokenizeText(s) {
+  const out = [];
+  const re = new RegExp(EMOJI_RE.source, 'g');
+  let last = 0, m;
+  while ((m = re.exec(s))) {
+    if (m.index > last) out.push({ x: s.slice(last, m.index) });
+    const src = emojiSrcOf(m[1]);
+    if (src && EMOJI_IMG[src]) out.push({ e: src });     // 图没加载上就退回原文
+    else out.push({ x: m[0] });
+    last = m.index + m[0].length;
+  }
+  if (last < s.length) out.push({ x: s.slice(last) });
+  return out;
+}
+/** 通用 token 断行：文字逐字量宽，表情整体不可断。maxLines=0 → 不限行数
+ *  em = 表情占位边长（不同卡字号不一样，档案卡 25px 字用 30，发言卡 27px 字也用 30） */
+function layoutTokens(ctx, toks, maxW, maxLines, em) {
+  const EM = em || Q_EM;
+  const lines = [];
+  let line = [], w = 0;
+  const flush = () => { lines.push(line); line = []; w = 0; };
+  outer:
+  for (const tk of toks) {
+    if (maxLines && lines.length >= maxLines) break;
+    if (tk.e) {
+      if (w + EM > maxW && line.length) { flush(); if (maxLines && lines.length >= maxLines) break; }
+      line.push(tk); w += EM;
+      continue;
+    }
+    for (const ch of tk.x) {
+      const cw = ctx.measureText(ch).width;
+      if (w + cw > maxW && line.length) { flush(); if (maxLines && lines.length >= maxLines) break outer; }
+      const lastTk = line[line.length - 1];
+      if (lastTk && lastTk.x !== undefined) lastTk.x += ch; else line.push({ x: ch });
+      w += cw;
+    }
+  }
+  if (line.length && (!maxLines || lines.length < maxLines)) lines.push(line);
+  return lines;
+}
+/** 画一行 token：align='center' 时 x 传行中心，'left' 时 x 传左边界。
+ *  表情垂直居中于这一行的文字可视区（用实测 ascent/descent 算，别目测） */
+function drawTokenLine(ctx, line, x, y, fontSize, align, em) {
+  const EM = em || Q_EM;
+  const total = line.reduce((s, tk) => s + (tk.e ? EM : ctx.measureText(tk.x).width), 0);
+  let px = align === 'left' ? x : x - total / 2;
+  const prev = ctx.textAlign;
+  ctx.textAlign = 'left';
+  let top = y - (EM - fontSize) / 2 - fontSize * 0.36;   // 兜底：老浏览器没有 actualBoundingBox
+  try {
+    const mt = ctx.measureText('中');
+    if (mt.actualBoundingBoxAscent) {
+      const asc = mt.actualBoundingBoxAscent, desc = mt.actualBoundingBoxDescent;
+      top = y - asc + ((asc + desc) - EM) / 2;
+    }
+  } catch (e) { /* 用兜底值 */ }
+  for (const tk of line) {
+    if (tk.e) {
+      const im = EMOJI_IMG[tk.e];
+      if (im) ctx.drawImage(im, px, top, EM, EM);
+      px += EM;
+    } else {
+      ctx.fillText(tk.x, px, y);
+      px += ctx.measureText(tk.x).width;
+    }
+  }
+  ctx.textAlign = prev;
+}
+
+function drawShareCard(ctx, d, W, PAD, FONT, bgOnly, H) {
+  const CW = W - PAD * 2;
+  const cx = W / 2;
+  const f = (w, s) => { ctx.font = w + ' ' + s + 'px ' + FONT; };
+  ctx.textBaseline = 'top';
+
+  if (bgOnly) {
+    const bg = ctx.createLinearGradient(0, 0, W * .35, H);
+    bg.addColorStop(0, '#1d3f66'); bg.addColorStop(.45, '#172340'); bg.addColorStop(1, '#1b1533');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+    let g = ctx.createRadialGradient(W - 60, 40, 0, W - 60, 40, 330);
+    g.addColorStop(0, 'rgba(53,224,200,.55)'); g.addColorStop(1, 'rgba(53,224,200,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    g = ctx.createRadialGradient(40, H * .45, 0, 40, H * .45, 300);
+    g.addColorStop(0, 'rgba(255,122,184,.34)'); g.addColorStop(1, 'rgba(255,122,184,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  }
+
+  let y = 66;
+  // 头像
+  const r = 48;
+  const ag = ctx.createLinearGradient(cx - r, y, cx + r, y + r * 2);
+  ag.addColorStop(0, '#35e0c8'); ag.addColorStop(.5, '#58a6ff'); ag.addColorStop(1, '#b47aff');
+  ctx.beginPath(); ctx.arc(cx, y + r, r, 0, Math.PI * 2); ctx.fillStyle = ag; ctx.fill();
+  ctx.globalAlpha = .16; ctx.beginPath(); ctx.arc(cx, y + r, r + 8, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill(); ctx.globalAlpha = 1;
+  ctx.textAlign = 'center';
+  f('400', 46); ctx.fillStyle = '#fff'; ctx.fillText('🐟', cx, y + r - 26);
+  y += r * 2 + 32;
+
+  // 标题
+  const tg = ctx.createLinearGradient(PAD, y, W - PAD, y);
+  tg.addColorStop(0, '#7ff0dd'); tg.addColorStop(.55, '#9fc8ff'); tg.addColorStop(1, '#e6b3ff');
+  f('800', 42); ctx.fillStyle = tg; ctx.fillText(d.title || roomTitle(), cx, y);
+  y += 42 + 16;
+  f('400', 20); ctx.fillStyle = '#9fb3d1';
+  ctx.fillText('从 ' + d.firstKey + ' 那天起', cx, y);
+  y += 20 + 48;
+
+  // 大数字
+  f('400', 18); ctx.fillStyle = '#a9bcd8';
+  ctx.fillText('认  识  她', cx, y);
+  y += 30;
+  const hg = ctx.createLinearGradient(PAD, y, W - PAD, y);
+  hg.addColorStop(0, '#6ff2dd'); hg.addColorStop(.45, '#8fc4ff'); hg.addColorStop(1, '#f0a6ff');
+  f('800', 96); const numTxt = String(d.knowDays);
+  f('700', 30); const unitTxt = '天';
+  f('800', 96); const nw = ctx.measureText(numTxt).width;
+  f('700', 30); const uw = ctx.measureText(unitTxt).width;
+  const total = nw + 10 + uw;
+  ctx.textAlign = 'left';
+  f('800', 96); ctx.fillStyle = hg; ctx.fillText(numTxt, cx - total / 2, y);
+  f('700', 30); ctx.fillStyle = '#a9bcd8'; ctx.fillText(unitTxt, cx - total / 2 + nw + 10, y + 56);
+  ctx.textAlign = 'center';
+  y += 96 + 18 + 26;
+
+  /* 「我对她说的第一句话」（可选，默认写）—— 放在认识天数之后、鸡腿之前：
+     这是整张卡最有感情的一项，一打开就该看见，别被数字压在后面。 */
+  if (d.showFirst && d.firstWord) {
+    const qMaxW = CW - 96;
+    f('400', 25);
+    // 表情 [敲打] 之类在 canvas 上要画成图，所以走 token 排版而不是纯文本换行
+    const qLines = layoutTokens(ctx, tokenizeText('「' + d.firstWord + '」'), qMaxW, 4, Q_EM);
+    const lh = 40;
+    const bh = 52 + qLines.length * lh + 22;
+    ctx.fillStyle = 'rgba(255,255,255,.07)';
+    rr(ctx, PAD + 12, y, CW - 24, bh, 20); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.13)'; ctx.lineWidth = 2; ctx.stroke();
+    f('400', 16); ctx.fillStyle = '#93a8c6'; ctx.textAlign = 'center';
+    ctx.fillText('我 对 她 说 的 第 一 句 话' + (d.firstWordAt ? ' · ' + d.firstWordAt : ''), cx, y + 18);
+    ctx.fillStyle = '#eaf1ff';
+    qLines.forEach((line, i) => drawTokenLine(ctx, line, cx, y + 52 + i * lh, 25, 'center', Q_EM));
+    y += bh + 26;
+  }
+
+  // 累计鸡腿（可选：本人可以在分享前关掉，默认写）
+  if (d.showGift && Number(d.giftTotal) > 0) {
+    f('400', 18); ctx.fillStyle = '#a9bcd8'; ctx.textAlign = 'center';
+    ctx.fillText(d.giftLabel || '2 0 2 6 年 送 出', cx, y);
+    y += 28;
+    const gg2 = ctx.createLinearGradient(PAD, y, W - PAD, y);
+    gg2.addColorStop(0, '#ffd98a'); gg2.addColorStop(1, '#ff9ec7');
+    const gNum = Number(d.giftTotal).toLocaleString();
+    const gUnit = '鸡腿';
+    f('800', 58); const gNw = ctx.measureText(gNum).width;
+    f('700', 24); const gUw = ctx.measureText(gUnit).width;
+    const gTw = gNw + 10 + gUw;
+    ctx.textAlign = 'left';
+    f('800', 58); ctx.fillStyle = gg2; ctx.fillText(gNum, cx - gTw / 2, y);
+    f('700', 24); ctx.fillStyle = '#a9bcd8'; ctx.fillText(gUnit, cx - gTw / 2 + gNw + 10, y + 30);
+    ctx.textAlign = 'center';
+    y += 58 + 16 + 26;
+  }
+  // 2026 活动打分（可选，和鸡腿是两个开关）—— 打分道具不是礼物、不算鸡腿，
+  // 所以必须单独成块，绝不能和上面的金额并成一个数。
+  if (d.showScore && Number(d.score26) > 0) {
+    f('400', 18); ctx.fillStyle = '#a9bcd8'; ctx.textAlign = 'center';
+    ctx.fillText('2 0 2 6 年 打 出', cx, y);
+    y += 26;
+    const gs2 = ctx.createLinearGradient(PAD, y, W - PAD, y);
+    gs2.addColorStop(0, '#8ef0d4'); gs2.addColorStop(1, '#7ec9ff');
+    const sNum = fmtScore(d.score26);
+    const sUnit = '分';
+    f('800', 52); const sNw = ctx.measureText(sNum).width;
+    f('700', 24); const sUw = ctx.measureText(sUnit).width;
+    const sTw = sNw + 10 + sUw;
+    ctx.textAlign = 'left';
+    f('800', 52); ctx.fillStyle = gs2; ctx.fillText(sNum, cx - sTw / 2, y);
+    f('700', 24); ctx.fillStyle = '#a9bcd8'; ctx.fillText(sUnit, cx - sTw / 2 + sNw + 10, y + 28);
+    ctx.textAlign = 'center';
+    y += 52 + 14 + 26;
+  }
+
+  // 三张玻璃卡
+  const gw = (CW - 32) / 3;
+  const items = [['来过房间', String(d.dayCount), '天'], ['最长连续', String(d.best), '天'], ['留下过', Number(d.msgs).toLocaleString(), '句']];
+  ctx.textAlign = 'center';
+  items.forEach(([l, v, un], k) => {
+    const x = PAD + k * (gw + 16);
+    ctx.fillStyle = 'rgba(255,255,255,.07)'; rr(ctx, x, y, gw, 116, 18); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.12)'; ctx.lineWidth = 2; ctx.stroke();
+    f('400', 17); ctx.fillStyle = '#a3b6d2'; ctx.fillText(l, x + gw / 2, y + 22);
+    f('700', 36); ctx.fillStyle = '#fff';
+    const vw = ctx.measureText(v).width;
+    f('400', 17); const uw2 = ctx.measureText(un).width;
+    const tv = vw + 4 + uw2;
+    f('700', 36); ctx.fillText(v, x + gw / 2 - tv / 2 + vw / 2, y + 52);
+    f('400', 17); ctx.fillStyle = '#9fb3d1'; ctx.fillText(un, x + gw / 2 + tv / 2 - uw2 / 2, y + 70);
+  });
+  y += 116 + 34;
+
+  // 时段
+  f('700', 22); ctx.fillStyle = '#fff'; ctx.textAlign = 'left';
+  ctx.fillText('你最常出现的时段', PAD, y);
+  f('400', 17); ctx.fillStyle = '#93a8c6';
+  ctx.fillText(d.bandDesc, PAD + 186, y + 4);
+  y += 22 + 18;
+  const bx = PAD, bw = CW, bhh = 150;
+  ctx.fillStyle = 'rgba(255,255,255,.055)'; rr(ctx, bx, y, bw, bhh, 20); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,.09)'; ctx.lineWidth = 2; ctx.stroke();
+  const innerX = bx + 20, innerW = bw - 40, hh = 88, baseY = y + bhh - 42;
+  const gap = 4, barW = (innerW - gap * 23) / 24;
+  const maxH = Math.max(1, ...d.hs.map((x) => Number(x) || 0));
+  for (let k = 0; k < 24; k++) {
+    const v = Number(d.hs[k]) || 0;
+    const hp = Math.max(4, Math.round((v / maxH) * hh));
+    const hot = d.bandHours.indexOf(k) >= 0;
+    const x = innerX + k * (barW + gap);
+    if (hot) {
+      const g2 = ctx.createLinearGradient(0, baseY - hp, 0, baseY);
+      g2.addColorStop(0, '#7ff0dd'); g2.addColorStop(1, '#58a6ff');
+      ctx.fillStyle = g2;
+    } else ctx.fillStyle = 'rgba(255,255,255,.18)';
+    rr(ctx, x, baseY - hp, barW, hp, Math.min(4, barW / 2)); ctx.fill();
+  }
+  f('400', 15); ctx.fillStyle = '#879bb8'; ctx.textAlign = 'left';
+  ctx.fillText('0 点', innerX, baseY + 10);
+  ctx.textAlign = 'center';
+  ctx.fillText('6', innerX + innerW * .25, baseY + 10);
+  ctx.fillText('12', innerX + innerW * .5, baseY + 10);
+  ctx.fillText('18', innerX + innerW * .75, baseY + 10);
+  ctx.textAlign = 'right';
+  ctx.fillText('23 点', innerX + innerW, baseY + 10);
+  ctx.textAlign = 'left';
+  y += bhh + 18;
+  const ng = ctx.createLinearGradient(PAD, y, PAD + 260, y + 26);
+  ng.addColorStop(0, '#7ff0dd'); ng.addColorStop(1, '#c9a6ff');
+  f('800', 26); ctx.fillStyle = ng; ctx.fillText(d.bandName, PAD, y);
+  y += 26 + 34;
+
+  // 徽章
+  if (d.badges.length) {
+    let bx2 = PAD; let by = y;
+    d.badges.forEach(([t, col]) => {
+      f('700', 19);
+      const w = ctx.measureText(t).width + 40;
+      if (bx2 + w > W - PAD) { bx2 = PAD; by += 54; }
+      const g3 = ctx.createLinearGradient(bx2, by, bx2 + w, by + 40);
+      if (col === 'amber') { g3.addColorStop(0, '#ffd166'); g3.addColorStop(1, '#ff9e66'); }
+      else if (col === 'violet') { g3.addColorStop(0, '#b47aff'); g3.addColorStop(1, '#ff7ab8'); }
+      else { g3.addColorStop(0, '#35e0c8'); g3.addColorStop(1, '#58a6ff'); }
+      ctx.fillStyle = g3; rr(ctx, bx2, by, w, 40, 20); ctx.fill();
+      ctx.fillStyle = col === 'amber' ? '#4a2c00' : (col === 'violet' ? '#2a0b3d' : '#04292b');
+      ctx.textAlign = 'center'; ctx.fillText(t, bx2 + w / 2, by + 11);
+      ctx.textAlign = 'left';
+      bx2 += w + 12;
+    });
+    y = by + 40 + 34;
+  }
+
+  // 足迹：和页面上同一种「按周排成列」的画法，一排放不下就换一块继续
+  f('700', 22); ctx.fillStyle = '#fff'; ctx.textAlign = 'left';
+  ctx.fillText('我的足迹', PAD, y);
+  f('400', 17); ctx.fillStyle = '#93a8c6'; ctx.textAlign = 'right';
+  ctx.fillText(d.firstKey + ' · 认识她的那天', W - PAD, y + 4);
+  ctx.textAlign = 'left';
+  y += 22 + 20;
+
+  const totalDays = Number(d.dayCount2) || 0;
+  const dayList = d.daySet || [];
+  const fromMs = Date.parse((d.footFrom || d.firstKey) + 'T00:00:00Z');
+  if (totalDays && dayList.length) {
+    const cell = 13, cgap = 4, perRow = Math.floor((CW + cgap) / (cell + cgap));
+    const rowG = ctx.createLinearGradient(PAD, 0, PAD + perRow * (cell + cgap), 0);
+    rowG.addColorStop(0, '#6ff2dd'); rowG.addColorStop(1, '#58a6ff');
+    let blockStart = 0, bi = 0;
+    while (blockStart < totalDays) {
+      const cols = Math.min(perRow, Math.ceil((totalDays - blockStart) / 7));
+      // 每块头顶标一下这块从哪年哪月开始，翻页时看得出时间
+      const headKey = new Date(fromMs + blockStart * 86400e3).toISOString().slice(0, 10);
+      const tailIdx = Math.min(totalDays - 1, blockStart + cols * 7 - 1);
+      const tailKey = new Date(fromMs + tailIdx * 86400e3).toISOString().slice(0, 10);
+      f('500', 12); ctx.fillStyle = 'rgba(163,182,210,.75)'; ctx.textAlign = 'left';
+      ctx.fillText(headKey.slice(0, 7).replace('-', ' 年 ') + ' 月起 · 到 ' + tailKey.slice(0, 7).replace('-', ' 年 ') + ' 月', PAD, y);
+      y += 16;
+      for (let col = 0; col < cols; col++) {
+        for (let row = 0; row < 7; row++) {
+          const idx = blockStart + col * 7 + row;
+          if (idx >= totalDays) break;
+          const x = PAD + col * (cell + cgap);
+          const yy = y + row * (cell + cgap);
+          const on = dayList[idx];
+          ctx.fillStyle = on ? rowG : 'rgba(255,255,255,.09)';
+          rr(ctx, x, yy, cell, cell, 3); ctx.fill();
+          // 纪念日：金边 + 中心小金点
+          if (d.annMap) {
+            const k = new Date(fromMs + idx * 86400e3).toISOString().slice(0, 10);
+            if (d.annMap[k]) {
+              ctx.strokeStyle = '#ffd166'; ctx.lineWidth = 2;
+              rr(ctx, x - 2, yy - 2, cell + 4, cell + 4, 4); ctx.stroke();
+              ctx.fillStyle = '#ffd166';
+              ctx.beginPath(); ctx.arc(x + cell / 2, yy + cell / 2, 3, 0, Math.PI * 2); ctx.fill();
+            }
+          }
+        }
+      }
+      // 起点：第一块第一格（认识她那天）圈出来
+      if (bi === 0) {
+        ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = 2;
+        rr(ctx, PAD - 3, y - 3, cell + 6, cell + 6, 5); ctx.stroke();
+      }
+      y += 7 * (cell + cgap) - cgap + 18;
+      blockStart += cols * 7;
+      bi++;
+    }
+    // 图例
+    y += 2;
+    ctx.fillStyle = rowG; rr(ctx, PAD, y + 2, 11, 11, 3); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.16)'; rr(ctx, PAD + 19, y + 2, 11, 11, 3); ctx.fill();
+    f('400', 14); ctx.fillStyle = '#8ea2bf';
+    const legX = PAD + 38;
+    ctx.fillText('来过 / 没来', legX, y + 2);
+    f('400', 14); const legW = ctx.measureText('来过 / 没来').width;
+    ctx.strokeStyle = '#ffd166'; ctx.lineWidth = 2;
+    rr(ctx, legX + legW + 22, y + 2, 11, 11, 3); ctx.stroke();
+    ctx.fillStyle = '#ffd166';
+    ctx.beginPath(); ctx.arc(legX + legW + 27.5, y + 7.5, 3, 0, Math.PI * 2); ctx.fill();
+    f('400', 14); ctx.fillStyle = '#8ea2bf';
+    ctx.fillText('纪念日', legX + legW + 40, y + 2);
+    y += 11 + 22;
+  }
+
+  // 纪念日
+  const annList = (d.ann || []).filter((p) => p && p.key);
+  if (annList.length || d.annNext) {
+    f('700', 22); ctx.fillStyle = '#fff'; ctx.textAlign = 'left';
+    ctx.fillText('纪念日', PAD, y);
+    f('400', 16); ctx.fillStyle = '#93a8c6'; ctx.textAlign = 'right';
+    ctx.fillText('认识那天算第 1 天', W - PAD, y + 5);
+    ctx.textAlign = 'left';
+    y += 22 + 18;
+    annList.forEach((p, i) => {
+      if (i) {
+        ctx.fillStyle = 'rgba(255,255,255,.08)';
+        ctx.fillRect(PAD, y - 9, CW, 1);
+      }
+      f('700', 18); ctx.fillStyle = '#fff';
+      ctx.fillText('认识 ' + p.days + ' 天', PAD, y);
+      f('400', 17); ctx.fillStyle = '#c9d6ea'; ctx.textAlign = 'center';
+      ctx.fillText(p.key, PAD + CW * .58, y + 1);
+      f('400', 15); ctx.fillStyle = p.there ? 'rgba(127,240,221,.95)' : 'rgba(147,168,198,.9)';
+      ctx.textAlign = 'right';
+      ctx.fillText(p.there ? '那天你在' : '那天没来', W - PAD, y + 3);
+      ctx.textAlign = 'left';
+      y += 18 + 18;
+    });
+    if (d.annNext) {
+      y -= 4;
+      f('400', 16); ctx.fillStyle = 'rgba(255,209,102,.95)';
+      ctx.fillText('距离认识 ' + d.annNext.days + ' 天还有 ' + d.annNext.left + ' 天 · ' + d.annNext.key, PAD, y);
+      y += 16 + 26;
+    } else y += 8;
+  }
+
+  // 共同记忆
+  const memoLines = (() => { f('400', 20); return wrapText(ctx, d.memoText || '', CW - 84, 3); })();
+  if (memoLines.length) {
+    const mh = 34 + memoLines.length * 32 + 22;
+    ctx.fillStyle = 'rgba(255,255,255,.06)'; rr(ctx, PAD, y, CW, mh, 20); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.1)'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.font = '400 40px Georgia, serif'; ctx.fillStyle = 'rgba(127,240,221,.55)';
+    ctx.fillText('\u201C', PAD + 18, y + 6);
+    f('400', 20); ctx.fillStyle = '#dbe6f7';
+    memoLines.forEach((ln, n2) => ctx.fillText(ln, PAD + 58, y + 24 + n2 * 32));
+    y += mh + 30;
+  }
+
+  // 底部
+  y += 6;
+  f('400', 16); ctx.fillStyle = '#8296b3'; ctx.textAlign = 'center';
+  ctx.fillText('王语晨补档站 · ' + d.stamp, cx, y);
+  y += 16 + 46;
+  ctx.textAlign = 'left';
+  return y;
+}
+
+/* ---------- 精简版分享卡（「只送过礼、没在房间说过话」的人也能存一张）----------
+ * 站长 2026-09-23 定：信息少的人同样要能保存到相册。
+ * 这批人（全站 39 位）档案里没有「认识她几天」、没有时段分布、没有足迹日历、
+ * 没有徽章 —— 硬套完整版会画出一张「来过房间 0 天 / 最长连续 0 天 / 留下过 0 句」
+ * 加一排空柱子的图，等于当面说人什么都没留下。所以另画一张小的：
+ * 头像 + 标题 + 那句「心意收到了」+ 鸡腿（可选）。与完整卡共用同一套配色和版式。
+ * -------------------------------------------------------------------------- */
+function drawLiteShareCard(ctx, d, W, PAD, FONT, bgOnly, H) {
+  const cx = W / 2;
+  const f = (w, s) => { ctx.font = w + ' ' + s + 'px ' + FONT; };
+  ctx.textBaseline = 'top';
+
+  if (bgOnly) {
+    const bg = ctx.createLinearGradient(0, 0, W * .35, H);
+    bg.addColorStop(0, '#1d3f66'); bg.addColorStop(.45, '#172340'); bg.addColorStop(1, '#1b1533');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+    let g = ctx.createRadialGradient(W - 60, 40, 0, W - 60, 40, 330);
+    g.addColorStop(0, 'rgba(53,224,200,.55)'); g.addColorStop(1, 'rgba(53,224,200,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    g = ctx.createRadialGradient(40, H * .45, 0, 40, H * .45, 300);
+    g.addColorStop(0, 'rgba(255,122,184,.34)'); g.addColorStop(1, 'rgba(255,122,184,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  }
+
+  let y = 66;
+  const r = 48;
+  const ag = ctx.createLinearGradient(cx - r, y, cx + r, y + r * 2);
+  ag.addColorStop(0, '#35e0c8'); ag.addColorStop(.5, '#58a6ff'); ag.addColorStop(1, '#b47aff');
+  ctx.beginPath(); ctx.arc(cx, y + r, r, 0, Math.PI * 2); ctx.fillStyle = ag; ctx.fill();
+  ctx.globalAlpha = .16; ctx.beginPath(); ctx.arc(cx, y + r, r + 8, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill(); ctx.globalAlpha = 1;
+  ctx.textAlign = 'center';
+  f('400', 46); ctx.fillStyle = '#fff'; ctx.fillText('🐟', cx, y + r - 26);
+  y += r * 2 + 34;
+
+  const tg = ctx.createLinearGradient(PAD, y, W - PAD, y);
+  tg.addColorStop(0, '#7ff0dd'); tg.addColorStop(.55, '#9fc8ff'); tg.addColorStop(1, '#e6b3ff');
+  f('800', 42); ctx.fillStyle = tg; ctx.fillText(d.title || roomTitle(), cx, y);
+  y += 42 + 20;
+
+  f('400', 21); ctx.fillStyle = '#9fb3d1';
+  ctx.fillText('你在房间里还没说过话', cx, y); y += 21 + 10;
+  ctx.fillText('但这些心意她都收到了', cx, y); y += 21 + 46;
+
+  if (d.showGift && Number(d.giftTotal) > 0) {
+    f('400', 18); ctx.fillStyle = '#a9bcd8';
+    ctx.fillText(d.giftLabel || '2 0 2 6 年 送 出', cx, y);
+    y += 30;
+    const gg2 = ctx.createLinearGradient(PAD, y, W - PAD, y);
+    gg2.addColorStop(0, '#ffd98a'); gg2.addColorStop(1, '#ff9ec7');
+    const gNum = Number(d.giftTotal).toLocaleString();
+    const gUnit = '鸡腿';
+    f('800', 78); const gNw = ctx.measureText(gNum).width;
+    f('700', 28); const gUw = ctx.measureText(gUnit).width;
+    const gTw = gNw + 12 + gUw;
+    ctx.textAlign = 'left';
+    f('800', 78); ctx.fillStyle = gg2; ctx.fillText(gNum, cx - gTw / 2, y);
+    f('700', 28); ctx.fillStyle = '#a9bcd8'; ctx.fillText(gUnit, cx - gTw / 2 + gNw + 12, y + 42);
+    ctx.textAlign = 'center';
+    y += 78 + 24;
+    // 不画「2024、2025 年的归档不完整」这句 —— 站长 2026-09-23 定：
+    // 提醒只留在页面上，分享出去的图要保持干净（别人转发时不该带着一句免责声明）。
+  }
+  // 2026 活动打分（独立开关，和鸡腿互不影响）
+  if (d.showScore && Number(d.score26) > 0) {
+    f('400', 18); ctx.fillStyle = '#a9bcd8';
+    ctx.fillText('2 0 2 6 年 打 出', cx, y);
+    y += 28;
+    const gs2 = ctx.createLinearGradient(PAD, y, W - PAD, y);
+    gs2.addColorStop(0, '#8ef0d4'); gs2.addColorStop(1, '#7ec9ff');
+    const sNum = fmtScore(d.score26);
+    const sUnit = '分';
+    f('800', 62); const sNw = ctx.measureText(sNum).width;
+    f('700', 26); const sUw = ctx.measureText(sUnit).width;
+    const sTw = sNw + 12 + sUw;
+    ctx.textAlign = 'left';
+    f('800', 62); ctx.fillStyle = gs2; ctx.fillText(sNum, cx - sTw / 2, y);
+    f('700', 26); ctx.fillStyle = '#a9bcd8'; ctx.fillText(sUnit, cx - sTw / 2 + sNw + 12, y + 36);
+    ctx.textAlign = 'center';
+    y += 62 + 20;
+  }
+
+  y += 10;
+  f('400', 16); ctx.fillStyle = '#8296b3';
+  ctx.fillText('王语晨补档站 · ' + d.stamp, cx, y);
+  y += 16 + 46;
+  ctx.textAlign = 'left';
+  return y;
+}
+
+function buildShareCard(d) {
+  const W = 900, PAD = 56;
+  const FONT = '"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Heiti SC",sans-serif';
+  // 信息少的人（只送过礼、没说过话）走精简版；两张卡共用同一套量高 → 铺背景 → 画内容流程
+  const draw = d.lite ? drawLiteShareCard : drawShareCard;
+  const measure = document.createElement('canvas').getContext('2d');
+  const h = draw(measure, d, W, PAD, FONT, false, 1800);   // 先量高度
+  const H = Math.ceil(h);
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  draw(ctx, d, W, PAD, FONT, true, H);   // 先铺背景再画内容（一次搞定）
+  return cv;
+}
+
+function dataUrlToBlob(dataUrl) {
+  const [head, b64] = dataUrl.split(',');
+  const bin = atob(b64);
+  const a = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
+  return new Blob([a], { type: (head.match(/:(.*?);/) || [, 'image/png'])[1] });
+}
+
+/* ⚠️ 站长 2026-09-23 定：按钮写的是「保存到相册」，点了就必须进相册 ——
+ * 绝不能落进「文件」App 的下载文件夹（手机上 a[download] 只会存到那里，进不了相册）。
+ * 手机上能进相册的只有两条路：① Web Share 系统面板里的「存储到照片」；② 长按图片 → 保存图片。
+ * 所以手机端一律不走 a[download]：能分享就分享，不能分享就引导长按。
+ * 桌面端下载到本地文件夹本来就是正确行为，保留。
+ */
+function isPhoneUA() {
+  return /iPhone|iPad|iPod|Android|Mobile|HarmonyOS/i.test(navigator.userAgent || '');
+}
+/** 微信 / QQ / 微博等内置浏览器：没有 Web Share，只能靠长按 */
+function isInAppBrowser() {
+  return /MicroMessenger|QQ\/|Weibo|QQBrowser|Douban|Alipay|DingTalk/i.test(navigator.userAgent || '');
+}
+function showAlbumLayer(dataUrl, stamp, name, copyText) {
+  const nm = name || roomTitle();     // 行程图传「王语晨行程」，档案卡沿用房间名
+  const old = document.getElementById('mineAlbum');
+  if (old) old.remove();
+  const phone = isPhoneUA();
+  const tip = phone
+    ? (isInAppBrowser() ? '长按图片 → 保存图片' : '长按图片 → 存储到相册')
+    : '点下面按钮下载到本地';
+  const ov = document.createElement('div');
+  ov.id = 'mineAlbum';
+  ov.className = 'mine-overlay';
+  // 行程图额外给一个「复制文案」：图发给别人看，文字版适合直接粘进群 / 超话 / 私信
+  const copyBtn = copyText ? '<button type="button" class="ma-act ma-act2" id="maCopy">📋 复制文案</button>' : '';
+  ov.innerHTML = '<div class="ma-bar"><span class="ma-tip">' + tip + '</span>'
+    + '<button type="button" class="ma-close" id="maClose">关闭</button></div>'
+    + '<div class="ma-body"><img src="' + dataUrl + '" alt="' + nm + '"></div>'
+    + '<div class="ma-foot"><button type="button" class="ma-act" id="maAct">'
+    + (phone ? '保存到相册' : '下载图片') + '</button>'
+    + copyBtn
+    + '<div class="ma-note" id="maNote"></div></div>';
+  document.body.appendChild(ov);
+  document.body.style.overflow = 'hidden';
+  const close = () => { ov.remove(); document.body.style.overflow = ''; };
+  document.getElementById('maClose').addEventListener('click', close);
+  ov.addEventListener('click', (e) => { if (e.target === ov) close(); });
+
+  document.getElementById('maAct').addEventListener('click', async () => {
+    const noteEl = document.getElementById('maNote');
+    // 文件名后缀跟着 dataURL 的实际格式走（档案卡/行程图 PNG、盲盒卡 JPEG），别让 .png 里装 JPEG
+    const fmt = (((/^data:image\/(\w+)/.exec(dataUrl) || [])[1]) || 'png').toLowerCase();
+    const fname = nm + '-' + stamp + (fmt === 'jpeg' ? '.jpg' : '.' + fmt);
+    if (phone) {
+      // ① 能调系统分享就调（面板里选「存储到照片」→ 直接进相册）
+      try {
+        const file = new File([dataUrlToBlob(dataUrl)], fname, { type: fmt === 'jpeg' ? 'image/jpeg' : 'image/png' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file] });
+          track('mine:save');   // 走到这里说明系统面板真的弹出来了（取消会抛异常、不计）
+          return;
+        }
+      } catch (e) { return; }   // 用户取消或不支持 —— 都不许退回下载
+      // ② 不支持（微信 / 微博内置浏览器等）→ 引导长按，绝不写进文件夹
+      if (noteEl) noteEl.textContent = '请在上方图片上长按 → 选「保存图片」';
+      const img = ov.querySelector('.ma-body img');
+      if (img) {
+        img.scrollIntoView({ block: 'center' });
+        img.classList.remove('ma-flash'); void img.offsetWidth; img.classList.add('ma-flash');
+      }
+      return;
+    }
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = fname;
+    document.body.appendChild(a); a.click(); a.remove();
+    track('mine:save');
+    if (noteEl) noteEl.textContent = '已下载到本地';
+  });
+
+  const copyEl = document.getElementById('maCopy');
+  if (copyEl) copyEl.addEventListener('click', async () => {
+    const noteEl = document.getElementById('maNote');
+    const ok = await copyPlainText(copyText);
+    track('sch:copy');
+    if (noteEl) noteEl.textContent = ok ? '文案已复制，去群里粘贴就行' : '这台设备不支持复制，请长按图片发给对方';
+  });
+}
+
+/* 复制到剪贴板：优先新接口，老 Safari / 非安全上下文退回 execCommand。
+ * iOS 上必须给临时 textarea 设 contentEditable + select + setSelectionRange 才肯复制。 */
+async function copyPlainText(text) {
+  const s = String(text || '');
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(s);
+      return true;
+    }
+  } catch (e) { /* 落到下面的降级 */ }
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = s;
+    ta.setAttribute('readonly', '');
+    ta.contentEditable = 'true';
+    ta.style.position = 'fixed';
+    ta.style.top = '-1000px';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    ta.setSelectionRange(0, s.length);
+    const ok = document.execCommand('copy');
+    ta.remove();
+    return !!ok;
+  } catch (e) { return false; }
+}
+
+async function saveShareCard(d) {
+  const btn = document.getElementById('mineDl');
+  const note = (msg) => {
+    const el = document.getElementById('mineDlNote');
+    if (el) el.textContent = msg;
+  };
+  if (btn) btn.disabled = true;
+  note('正在生成图片…');
+  try {
+    // 第一句话里可能有口袋表情：gif 得先加载好，canvas 才画得出来
+    if (d.showFirst && d.firstWord) await preloadEmoji(d.firstWord);
+    const cv = buildShareCard(d);
+    showAlbumLayer(cv.toDataURL('image/png'), d.stamp);
+    note('');
+    if (btn) btn.disabled = false;
+  } catch (e) {
+    note('图片生成失败，稍后再试');
+    if (btn) btn.disabled = false;
+  }
+}
+
+/* ---------- 鸡腿（两档口径，可在档案卡上切换）----------
+ * 站长 2026-09-23 定：
+ *   「2026 年」     —— 2026-01-01 至今。这是完整、干净、能拿来对账的一年。
+ *   「2024 年至今」 —— 2024-01-01 至今。2024/2025 年的归档不完整（早年直播弹幕
+ *                     没全量留存、部分月份房间关闭），所以这一档必须显式提示「可能有缺失」。
+ * 数据上有两条路：上榜的人（src='list'）取站长给的第三方榜单值，没上榜的自己算，
+ * 两边取大值。不过站长 2026-09-23 最终定了：**这行口径说明整个不展示给用户** ——
+ * 档位标题已经写清「2026 年送出 / 2024 年起送出」，再补一句时间范围 + 数据来源
+ * 对粉丝只是噪音。榜单值 / 自算取大值的逻辑照旧，只是不告诉用户。
+ * 两档都是 0 才退回历史累计，并标明「这些年还没有」。
+ * -------------------------------------------------------------------------- */
+let GIFT_PERIOD = '2026';                 // 当前展示档位：'2026' | '2024plus'
+let MINE_GIFT = null;                     // 当前档案的鸡腿数据（切换档位时要重算）
+let MINE_CARD = null;                     // 分享卡数据（切换档位后要同步数字）
+// 2024 档那句提醒：页面上和分享图里是同一句，抽出来免得两处写得不一样
+const GIFT_WARN_2024 = '2024、2025 年的归档不完整，这一档可能比实际少';
+
+/* ---------- 称谓开关：她叫「一只鱼鱼」还是「王语晨」----------
+ * 站长 2026-09-23 定：让访客自己挑。**只作用于档案卡本身** —— 页面上的卡片、
+ * 分享出去的图、存图文件名；站内其它页面（我的面板标题、直播/公演/行程等）一律不动。
+ * 两个叫法都是真的：
+ *   - 「一只鱼鱼」是她自己在口袋用的昵称 —— 查 uid 89653517 在房间里的发言，
+ *     署名就是「一只鱼鱼˚°🐟」，和微博小号「忘记自己是鱼_」、抖音「一只鱼」同路。
+ *   - 「王语晨」是本名，口袋官方资料页显示的则是「GNZ48-王语晨」。
+ * -------------------------------------------------------------------------- */
+const ROOM_NAMES = [{ id: 'fish', label: '一只鱼鱼' }, { id: 'name', label: '王语晨' }];
+const ROOM_NAME_KEY = 'wyc.mine.roomname';
+let ROOM_NAME = 'fish';
+try {
+  const _v = localStorage.getItem(ROOM_NAME_KEY);
+  if (ROOM_NAMES.some((x) => x.id === _v)) ROOM_NAME = _v;
+} catch (e) {}
+const roomName = () => (ROOM_NAME === 'name' ? '王语晨' : '一只鱼鱼');
+const roomTitle = () => '我和' + roomName() + '的房间';
+// 站长 2026-09-23 反馈：原来做成夹在封面标题下的悬浮胶囊，看不出是干嘛的 ——
+// 挪到最下面「保存到相册」那一块，跟「分享图里也写上我送的鸡腿」排成同一族，
+// 左边加一句「称呼她为」把用途说清楚。
+function roomNameTabs() {
+  return '<div class="mine-name-opt">'
+    + '<span class="mine-name-lab">称呼她为</span>'
+    + '<span class="mine-nm-tabs">' + ROOM_NAMES.map((n) =>
+      '<button type="button" class="mine-nm-tab' + (n.id === ROOM_NAME ? ' on' : '') + '" data-nm="' + n.id + '">'
+      + n.label + '</button>').join('') + '</span></div>';
+}
+// 切称谓只改标题文字，别整卡重排（会打断其它区块的入场动画）
+function applyRoomName() {
+  const t = roomTitle();
+  document.querySelectorAll('.mine-cover-t').forEach((el) => { el.textContent = t; });
+  if (MINE_CARD) MINE_CARD.title = t;
+}
+function bindRoomNameTabs() {
+  document.querySelectorAll('.mine-nm-tab').forEach((b) => {
+    b.addEventListener('click', () => {
+      ROOM_NAME = b.getAttribute('data-nm') || 'fish';
+      try { localStorage.setItem(ROOM_NAME_KEY, ROOM_NAME); } catch (e) {}
+      document.querySelectorAll('.mine-nm-tab').forEach((x) => x.classList.toggle('on', x === b));
+      applyRoomName();
+    });
+  });
+}
+
+function giftNums(d) {
+  // 一档 = { live, room, self(自算合计), listed(榜单值), total(max), src }
+  const pack = (live, room, listed, src, rank) => {
+    const L = Number(live) || 0, R = Number(room) || 0, T = Number(listed) || 0;
+    return { live: L, room: R, self: L + R, listed: src === 'list' ? T : 0,
+             total: Math.max(L + R, src === 'list' ? T : 0), src: src || '', rank: Number(rank) || 0 };
+  };
+  const p26 = pack(d.live2026, d.room2026, d.total2026, d.src26, d.rank26);
+  const p24 = pack(d.liveSince2024, d.roomSince2024, d.totalSince2024, d.srcSince2024, d.rankSince2024);
+  // rank 字段保留在数据结构里，但前端不展示排名 ——
+  // 站长 2026-09-23 决定去掉：只有两百来人有、口径又是第三方榜，容易起争议。
+  const liveAll = Number(d.live) || 0, roomAll = Number(d.room) || 0;
+  // 2026 年度活动「打分道具」累计分（口袋房间 + 直播，只有 2026 一档）
+  const score26 = Number(d.score2026) || 0;
+  return { p26, p24, score26, liveAll, roomAll, totalAll: liveAll + roomAll };
+}
+
+// 当前该展示哪一档：
+//   · 选了 2024 且该档有数 → 2024
+//   · 2026 有数 → 2026（默认档）
+//   · 2026 没数但 2024 有数 → 还是给 2024（别把人锁在「累计」档看不到数）
+//   · 两档都没数 → 退回历史累计
+function giftView(g) {
+  const gg = g || {};
+  const p26 = gg.p26 || { live: 0, room: 0, self: 0, listed: 0, total: 0, src: '' };
+  const p24 = gg.p24 || { live: 0, room: 0, self: 0, listed: 0, total: 0, src: '' };
+  // 打分只统计 2026 那一档（分值表目前也只有 2026 的），别的档位一律不带分
+  const sc26 = Number(gg.score26) || 0;
+  const v24 = { id: '2024plus', p: p24, score: 0, label: '2 0 2 4 年 起 送 出', since: '2024 年 1 月 1 日至今' };
+  const v26 = { id: '2026', p: p26, score: sc26, label: '2 0 2 6 年 送 出', since: '2026 年 1 月 1 日至今' };
+  if (GIFT_PERIOD === '2024plus' && p24.total > 0) return v24;
+  if (p26.total > 0) return v26;
+  if (p24.total > 0) return v24;
+  return { id: 'all', p: { live: gg.liveAll || 0, room: gg.roomAll || 0, self: 0, listed: 0,
+                           total: gg.totalAll || 0, src: '' },
+           score: 0, label: '累 计 送 出', since: '2022 年 11 月至今' };
+}
+// 分享卡用：取当前档位的数字与标题
+const giftNum = (g) => giftView(g).p.total;
+const giftLabel = (g) => giftView(g).label;
+// 分享卡用：当前档位的活动打分（只在 2026 档有值；与鸡腿分开控制，不能混进 giftNum）
+const giftScore = (g) => giftView(g).score;
+
+function mineGiftBlock(gg, delay) {
+  const g = gg || {};
+  const v = giftView(g);
+  const tot = v.p.total;
+  // 口径说明这一行**不再展示**（站长 2026-09-23 定）——
+  // 档位标题已经写清「2026 年送出 / 2024 年起送出」，下面再补一句时间范围 + 来源，
+  // 对粉丝是噪音。榜单值 / 自算取大值的逻辑照旧，只是不告诉用户。
+  // 2024 档那句「不完整」的提醒保留 —— 它是防对账争议的，不是口径说明。
+  // 2024 档自带一句「不完整」的提醒 —— 别让人拿这一档去和第三方榜对账
+  const warn = (v.id === '2024plus')
+    ? '<div class="mine-gift-warn">' + GIFT_WARN_2024 + '</div>'
+    : '';
+  // 两个档位都有数才给切换；只有一档就不放空按钮
+  const has26 = (g.p26 && g.p26.total > 0), has24 = (g.p24 && g.p24.total > 0);
+  let tabs = '';
+  if (has26 && has24) {
+    tabs = '<div class="mine-gift-tabs">'
+      + '<button type="button" class="mine-gift-tab' + (GIFT_PERIOD !== '2024plus' ? ' on' : '')
+      + '" data-gp="2026">2026 年</button>'
+      + '<button type="button" class="mine-gift-tab' + (GIFT_PERIOD === '2024plus' ? ' on' : '')
+      + '" data-gp="2024plus">2024 年至今</button></div>';
+  }
+  // 活动打分：只在 2026 档出现，和鸡腿并排展示（两个不同的东西，别合并成一个数）
+  const sc = v.score || 0;
+  const duo = sc > 0;
+  return '<div class="mine-sec mine-hero mine-hero-gift" style="animation-delay:' + delay + 's">'
+    + tabs
+    + '<div class="mine-hero-l">' + v.label + '</div>'
+    // 单位用 🍗（站长 2026-09-23 定）。分享卡是 canvas 绘制，彩色 emoji 在
+    // Windows / 部分安卓上会变灰或变豆腐块，所以那边仍写「鸡腿」二字（见 gUnit）。
+    + '<div class="mine-hero-v' + (duo ? ' duo' : '') + '">'
+    + '<span class="hv-gift"><span data-count="' + tot + '">0</span><small class="unit">🍗</small></span>'
+    + (duo ? '<span class="hv-score"><small class="hv-sc-lab">打出</small>'
+           + '<span data-count="' + sc + '" data-dec="1">0</span><small class="unit">分</small></span>' : '')
+    + '</div>'
+    + warn
+    + '</div>';
+}
+
+// 切换档位：只重画鸡腿这一块，别整页重排（会打断其它区块的入场动画）
+function bindGiftTabs() {
+  document.querySelectorAll('.mine-gift-tab').forEach((b) => {
+    b.addEventListener('click', () => {
+      GIFT_PERIOD = b.getAttribute('data-gp') || '2026';
+      const el = document.querySelector('.mine-hero-gift');
+      if (el && MINE_GIFT) {
+        el.outerHTML = mineGiftBlock(MINE_GIFT, 0);
+        bindGiftTabs();
+        mineCountUp();
+      }
+      // 分享卡跟着当前档位走
+      if (MINE_CARD) {
+        MINE_CARD.giftTotal = giftNum(MINE_GIFT);
+        MINE_CARD.giftLabel = giftLabel(MINE_GIFT);
+        MINE_CARD.score26 = giftScore(MINE_GIFT);   // 打分只在 2026 档有值
+      }
+    });
+  });
+}
+
+// 只送过礼、没在房间留过言的人
+function renderMineGiftOnly(g, box) {
+  const gg = g || {};
+  const sc26 = Number(gg.score26) || 0;
+  // 只送过打分道具、一件礼物都没送的人也要有卡（分数得让人看见）
+  const show = (gg.p26 && gg.p26.total > 0) || (gg.p24 && gg.p24.total > 0)
+    || (Number(gg.totalAll) || 0) > 0 || sc26 > 0;
+  let h = '<div class="mine-report">';
+  h += '<div class="mine-cover">'
+    + '<div class="mine-avatar">🐟</div>'
+    + '<div class="mine-cover-t">' + roomTitle() + '</div>'
+    + '<div class="mine-cover-s">你在房间里还没说过话<br>但这些心意她都收到了</div></div>';
+  h += show ? mineGiftBlock(gg, 0.08) : '';
+  // 信息少也照样能存一张（站长 2026-09-23 定）—— 只是走精简版卡片，
+  // 不画那些空着的小时柱、足迹格和「0 天 / 0 句」。见 drawLiteShareCard。
+  h += '<div class="mine-sec mine-dl-wrap" style="animation-delay:.16s">';
+  h += roomNameTabs();
+  // 鸡腿和打分各一个开关：有人愿意晒分数但不愿晒金额，也可能反过来
+  if (show) {
+    h += '<label class="mine-share-opt"><input type="checkbox" id="mineGiftOpt"'
+      + (giftOptOn() ? ' checked' : '') + '>分享图里也写上我送的鸡腿</label>';
+  }
+  if (sc26 > 0) {
+    h += '<label class="mine-share-opt"><input type="checkbox" id="mineScoreOpt"'
+      + (scoreOptOn() ? ' checked' : '') + '>分享图里也写上我打的分</label>';
+  }
+  h += '<button type="button" class="mine-dl" id="mineDl">保存到相册</button>'
+    + '<div class="mine-dl-note" id="mineDlNote"></div></div>';
+  h += '</div>';
+  box.innerHTML = h;
+  MINE_GIFT = gg;
+  bindGiftTabs();
+  bindRoomNameTabs();   // 「一只鱼鱼 / 王语晨」称谓切换（只影响这张卡）
+  mineCountUp();
+
+  MINE_CARD = {
+    lite: true, stamp: bjDayKey(Date.now()),
+    title: roomTitle(),
+    giftTotal: giftNum(gg), giftLabel: giftLabel(gg), showGift: false,   // 导出这一刻才按勾选决定
+    score26: sc26, showScore: false,
+  };
+  const giftOpt = document.getElementById('mineGiftOpt');
+  if (giftOpt) giftOpt.addEventListener('change', () => giftOptSet(giftOpt.checked));
+  const scoreOpt = document.getElementById('mineScoreOpt');
+  if (scoreOpt) scoreOpt.addEventListener('change', () => scoreOptSet(scoreOpt.checked));
+  const dl = document.getElementById('mineDl');
+  if (dl) dl.addEventListener('click', () => {
+    MINE_CARD.showGift = !!(giftOpt && giftOpt.checked) && Number(MINE_CARD.giftTotal) > 0;
+    MINE_CARD.showScore = !!(scoreOpt && scoreOpt.checked) && Number(MINE_CARD.score26) > 0;
+    saveShareCard(MINE_CARD);
+  });
+}
+
+async function lookupMine(uid) {
+  const box = document.getElementById('mineResult');
+  if (!box) return;
+  box.innerHTML = '<div class="mine-empty">正在找你的那一份…</div>';
+  // 每次新查一个人都回到默认档（2026 年），别把上一个人的选择带过来
+  GIFT_PERIOD = '2026';
+  MINE_GIFT = null;
+  MINE_CARD = null;
+
+  let d = null;
+  try {
+    const res = await fetch(MINE_API, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ uid: String(uid) }),
+    });
+    d = await res.json();
+    // 服务端有明确说法（档案生成中 / 查太快 / uid 格式）就照实显示，别一律说「网络问题」
+    if (!res.ok) {
+      box.innerHTML = '<div class="mine-empty">'
+        + escapeHtml((d && d.error) || '服务暂时不可用，一会儿再试试。') + '</div>';
+      return;
+    }
+  } catch (e) {
+    box.innerHTML = '<div class="mine-empty">网络不太顺，一会儿再试试。</div>';
+    return;
+  }
+  if (!d || !d.found) {
+    // 档案还没补完全历史时，查不到 ≠ 没记录 —— 如实说明覆盖区间，别冤枉人
+    if (d && d.partial && d.since) {
+      box.innerHTML = '<div class="mine-empty">目前档案只补到 <b>' + bjDayKey(d.since) + '</b> 之后，'
+        + '更早的历史还在录。<br>你如果只在那之前活跃过，过几天再来看会更完整。</div>';
+      return;
+    }
+    box.innerHTML = '<div class="mine-empty">这个 uid 在房间里没留下过记录。<br>'
+      + '可能是还没说过话，或者 uid 输错了一位。</div>';
+    return;
+  }
+
+  track('mine:hit');   // 查到了（含「只送过礼」的简版卡）
+  // 服务端返回的就是「他自己那一份」，字段沿用旧口径（n/f/l/d/b/h/m）
+  const startKey = d.start || '2022-11-01';
+  const S = {
+    start: startKey,
+    days: Math.max(1, Math.round((Date.parse(bjDayKey(Date.now()) + 'T00:00:00Z')
+      - Date.parse(startKey + 'T00:00:00Z')) / 86400e3) + 1),
+    from: '',                                   // 全量已回溯到 2022-11，不再需要「至少」措辞
+  };
+  const u = d;
+  // 鸡腿（直播弹幕礼物 + 口袋房间送礼折算），服务端已按「2026 / 2024 年起」分别算好
+  const gAll = giftNums(d);
+  const g = (gAll.p26.total > 0 || gAll.p24.total > 0 || gAll.totalAll > 0) ? gAll : null;
+  // 只送过礼、从没在房间说过话的人：给一张只有鸡腿的简版卡
+  if (!u.n) { renderMineGiftOnly(g, box); return; }
+  const dayIdx = decodeDayBitmap(u.m, S.days);
+  const startMs = Date.parse(S.start + 'T00:00:00Z');
+  const dayKeys = dayIdx.map((i) => new Date(startMs + i * 86400e3).toISOString().slice(0, 10));
+  const activeSet = new Set(dayKeys);
+  const firstKey = bjDayKey(u.f);
+  const hs = String(u.h || '').split(',').map(Number);
+  const band = mainBand(hs);
+  const badges = mineBadges(u, band, dayKeys);
+  const nowDay = bjDayKey(Date.now());
+  const knowDays = Math.max(1, Math.round((Date.parse(nowDay + 'T00:00:00Z') - Date.parse(firstKey + 'T00:00:00Z')) / 86400e3));
+  // 数据还没回溯到底时，首次日期只是「已抓到的最早」，措辞要诚实
+  const atLeast = firstKey <= S.from;
+  const maxH = Math.max(1, ...hs.map((x) => Number(x) || 0));
+
+  // 查到之后出现两个子页：档案 / 去年今日（票根）。都是同一份 uid 数据，页签只负责切换显示
+  let html = '<div class="mine-subtabs">'
+    + '<button type="button" class="mine-subtab on" data-mtab="archive">我的档案</button>'
+    + '<button type="button" class="mine-subtab" data-mtab="ticket">我的去年今日</button>'
+    + '</div>'
+    + '<div class="mine-report" id="minePaneArchive">';
+  html += '<div class="mine-cover">'
+    + '<div class="mine-avatar">🐟</div>'
+    + '<div class="mine-cover-t">' + roomTitle() + '</div>'
+    + '<div class="mine-cover-s">从 <b>' + escapeHtml(firstKey) + '</b> 那天起'
+    + '<br>只属于你的陪伴记录，慢慢往下滑</div></div>';
+
+  html += '<div class="mine-sec mine-hero" style="animation-delay:.08s">'
+    + '<div class="mine-hero-l">认 识 她</div>'
+    + '<div class="mine-hero-v"><span data-count="' + knowDays + '">0</span><small>天</small></div>'
+    + '</div>';
+
+  // 我对她说的第一句话（服务端按 uid 取的是他自己在房间里的第一条留言正文）
+  const firstWord = String(u.fw || '').trim();
+  const firstWordAt = firstWord ? bjDayKey(Number(u.fwt) || u.f || Date.now()) : '';
+  if (firstWord) {
+    html += '<div class="mine-sec mine-first" style="animation-delay:.12s">'
+      + '<div class="mine-h"><b>我对她说的第一句话</b><span>' + escapeHtml(firstWordAt) + '</span></div>'
+      + '<div class="mine-first-q">「' + withEmoji(escapeHtml(firstWord)) + '」</div></div>';
+  }
+
+  if (g) { html += mineGiftBlock(g, 0.14); MINE_GIFT = g; }
+
+  html += '<div class="mine-sec mine-glass" style="animation-delay:.18s">'
+    + mineG('来过房间', u.d, '天') + mineG('最长连续', u.b, '天') + mineG('留下过', u.n.toLocaleString(), '句')
+    + '</div>';
+
+  let bars = '';
+  for (let i = 0; i < 24; i++) {
+    const v = Number(hs[i]) || 0;
+    const pct = Math.max(4, Math.round((v / maxH) * 100));
+    const hot = band.h.indexOf(i) >= 0;
+    bars += `<i class="mh${hot ? ' hot' : ''}" style="--hh:${pct}%;animation-delay:${120 + i * 24}ms" title="${i} 点 ${v} 条"></i>`;
+  }
+  html += '<div class="mine-sec mine-band" style="animation-delay:.28s">'
+    + '<div class="mine-h"><b>你最常出现的时段</b><span>' + escapeHtml(band.desc) + '</span></div>'
+    + '<div class="mine-hours">' + bars + '</div>'
+    + '<div class="mine-hours-scale"><span>0 点</span><span>6</span><span>12</span><span>18</span><span>23 点</span></div>'
+    + '<div class="mine-band-name">' + escapeHtml(band.name) + '</div></div>';
+
+  if (badges.length) {
+    html += '<div class="mine-sec mine-badges" style="animation-delay:.36s">';
+    badges.forEach(([t, c], k) => {
+      html += `<span class="mine-badge ${c}" style="animation-delay:${360 + k * 70}ms">${escapeHtml(t)}</span>`;
+    });
+    html += '</div>';
+  }
+
+  // 纪念日：从「认识她那天」往后数，认识那天算第 1 天
+  const ann = mineAnniversaries(firstKey, nowDay, activeSet);
+  const annMap = {};
+  ann.passed.forEach((p) => { annMap[p.key] = p.days; });
+
+  html += '<div class="mine-sec" style="animation-delay:.44s"><div class="mine-h"><b>我的足迹</b>'
+    + '<span>' + escapeHtml(firstKey) + ' 至今'
+    + '<span class="mine-cal-hint">，左右滑动看全部</span></span></div>'
+    + mineCalendar(activeSet, dayKeys[0] || firstKey, nowDay, annMap) + '</div>';
+
+  if (ann.passed.length || ann.next) {
+    html += '<div class="mine-sec mine-ann" style="animation-delay:.48s">'
+      + '<div class="mine-h"><b>纪念日</b><span>认识那天算第 1 天</span></div>';
+    ann.passed.forEach((p) => {
+      html += '<div class="mine-ann-row"><span class="mar-l">认识 ' + p.days + ' 天</span>'
+        + '<span class="mar-d">' + p.key + '</span>'
+        + '<span class="mar-t' + (p.there ? ' on' : '') + '">'
+        + (p.there ? '那天你在' : '那天没来') + '</span></div>';
+    });
+    if (ann.next) {
+      html += '<div class="mine-ann-next">距离认识 <b>' + ann.next.days + '</b> 天还有 <b>'
+        + ann.next.left + '</b> 天 · ' + ann.next.key + '</div>';
+    }
+    html += '</div>';
+  }
+
+  html += '<div class="mine-sec" id="mineMemo" style="animation-delay:.52s">'
+    + '<div class="mine-memo"><div class="mine-memo-loading">正在找那天的记忆…</div></div></div>';
+
+  html += '<div class="mine-sec mine-dl-wrap" style="animation-delay:.6s">';
+  html += roomNameTabs();
+  // 「第一句话」默认写进分享图（感情价值最高的一项），但一样可以自己关掉
+  if (firstWord) {
+    html += '<label class="mine-share-opt"><input type="checkbox" id="mineFirstOpt"'
+      + (firstOptOn() ? ' checked' : '') + '>分享图里也写上我的第一句话</label>';
+  }
+  // 鸡腿是隐私敏感度最高的那一项：由本人决定写不写进分享图
+  if (Number(d.total) > 0) {
+    html += '<label class="mine-share-opt"><input type="checkbox" id="mineGiftOpt"'
+      + (giftOptOn() ? ' checked' : '') + '>分享图里也写上我送的鸡腿</label>';
+  }
+  // 活动打分是另一回事（不是鸡腿），单独给开关
+  if ((Number(d.score2026) || 0) > 0) {
+    html += '<label class="mine-share-opt"><input type="checkbox" id="mineScoreOpt"'
+      + (scoreOptOn() ? ' checked' : '') + '>分享图里也写上我打的分</label>';
+  }
+  html += '<button type="button" class="mine-dl" id="mineDl">保存到相册</button>'
+    + '<div class="mine-dl-note" id="mineDlNote"></div></div>';
+
+
+  html += '</div>';   // minePaneArchive（我的档案）结束
+  // 票根独立成第二个子页：同样只有查到自己档案的人才能看到（真数据：uid 传给 /api/mineDay）
+  if (typeof renderTicket === 'function') {
+    html += '<div class="mine-report" id="minePaneTicket" hidden>'
+      + '<div class="mine-sec" style="animation-delay:.08s">'
+      + '<div class="mine-h"><b>我的陪伴票根</b></div>'
+      + renderTicket({ uid, start: firstKey, days: knowDays }) + '</div></div>';
+  }
+  box.innerHTML = html;
+  // 档案 / 去年今日 子页切换
+  box.querySelectorAll('.mine-subtab').forEach((b) => {
+    b.addEventListener('click', () => {
+      box.querySelectorAll('.mine-subtab').forEach((x) => x.classList.toggle('on', x === b));
+      const arc = document.getElementById('minePaneArchive');
+      const tkt = document.getElementById('minePaneTicket');
+      if (arc) arc.hidden = b.dataset.mtab !== 'archive';
+      if (tkt) tkt.hidden = b.dataset.mtab !== 'ticket';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  });
+  bindGiftTabs();          // 「2026 年 / 2024 年至今」切换
+  bindRoomNameTabs();      // 「一只鱼鱼 / 王语晨」称谓切换（只影响这张卡）
+  mineCountUp();
+
+  // 分享卡需要的数据（导出时现取 DOM 里的共同记忆文本）
+  const cardData = {
+    firstKey, atLeast, knowDays,
+    title: roomTitle(),
+    dayCount: u.d, best: u.b, msgs: u.n,
+    giftTotal: giftNum(g), giftLabel: giftLabel(g), showGift: false,   // 鸡腿：导出时按勾选决定
+    score26: giftScore(g), showScore: false,                           // 活动打分：另一个开关
+    firstWord, firstWordAt, showFirst: false,                          // 第一句话：第三个开关
+    hs, bandName: band.name, bandDesc: band.desc, bandHours: band.h,
+    badges,
+    dayCount2: Math.max(1, Math.round((Date.parse(nowDay + 'T00:00:00Z') - Date.parse((dayKeys[0] || firstKey) + 'T00:00:00Z')) / 86400e3) + 1),
+    daySet: null,
+    ann: ann.passed, annNext: ann.next, annMap,
+    memoText: '',
+    stamp: nowDay,
+  };
+  {
+    const footFrom = dayKeys[0] || firstKey;
+    const fromMs = Date.parse(footFrom + 'T00:00:00Z');
+    cardData.daySet = [];
+    for (let t = fromMs; t <= Date.parse(nowDay + 'T00:00:00Z'); t += 86400e3) {
+      cardData.daySet.push(activeSet.has(new Date(t).toISOString().slice(0, 10)));
+    }
+    cardData.dayCount2 = cardData.daySet.length;
+    cardData.footFrom = footFrom;
+  }
+  MINE_CARD = cardData;    // 切换鸡腿档位时要同步改这里的数字
+  const giftOpt = document.getElementById('mineGiftOpt');
+  if (giftOpt) giftOpt.addEventListener('change', () => giftOptSet(giftOpt.checked));
+  const scoreOpt = document.getElementById('mineScoreOpt');
+  if (scoreOpt) scoreOpt.addEventListener('change', () => scoreOptSet(scoreOpt.checked));
+  const firstOpt = document.getElementById('mineFirstOpt');
+  if (firstOpt) firstOpt.addEventListener('change', () => firstOptSet(firstOpt.checked));
+  const dl = document.getElementById('mineDl');
+  if (dl) dl.addEventListener('click', () => {
+    const memoEl = document.querySelector('#mineMemo .mine-memo');
+    const txt = memoEl ? memoEl.innerText.replace(/\s*\n\s*/g, ' ').trim() : '';
+    cardData.memoText = /正在找/.test(txt) ? '' : txt.replace(/^「|」$/g, '');
+    // 勾选状态在导出这一刻才读，改了开关立刻生效
+    cardData.showGift = !!(giftOpt && giftOpt.checked) && Number(cardData.giftTotal) > 0;
+    cardData.showScore = !!(scoreOpt && scoreOpt.checked) && Number(cardData.score26) > 0;
+    cardData.showFirst = !!(firstOpt && firstOpt.checked) && !!cardData.firstWord;
+    saveShareCard(cardData);
+  });
+
+  // 共同记忆（异步补，失败就静默去掉这块）
+  try {
+    const memo = await buildMineMemo(u, firstKey, activeSet);
+    const el = document.getElementById('mineMemo');
+    if (el && memo) el.innerHTML = '<div class="mine-memo">' + memo + '</div>';
+    else if (el) el.remove();
+  } catch (e) {
+    const el = document.getElementById('mineMemo');
+    if (el) el.remove();
+  }
+}
+
+async function buildMineMemo(u, firstKey, activeSet) {
+  const month = firstKey.slice(0, 7);
+  let herCount = 0, herLast = '';
+  try {
+    const arr = await fetchApi('/api/month?m=' + encodeURIComponent(month));
+    const day = (Array.isArray(arr) ? arr : []).filter((m) => bjDayKey(m.msgTime) === firstKey);
+    herCount = day.length;
+    const last = day[day.length - 1];
+    if (last) herLast = String(last.text || '').replace(/\s+/g, ' ').trim();
+  } catch (e) { /* 拿不到就不提 */ }
+
+  const since = Number(u.f);
+  const perfs = (DATA.performances || []).filter((p) => Number(p.stime) >= since);
+  const lives = (DATA.live || []).filter((l) => Number(l.ctime) >= since);
+  const perfTogether = perfs.filter((p) => activeSet.has(bjDayKey(p.stime))).length;
+  const liveTogether = lives.filter((l) => activeSet.has(bjDayKey(l.ctime))).length;
+
+  let html = '<div class="mine-memo-t">' + escapeHtml(firstKey) + '，你第一次在这里说话</div>';
+  if (herCount) {
+    html += '<div class="mine-memo-b">那天她写了 ' + herCount + ' 条留言'
+      + (herLast ? '，最后一句是「' + escapeHtml(herLast.slice(0, 60)) + (herLast.length > 60 ? '…' : '') + '」' : '')
+      + '。</div>';
+  }
+  const allPerf = perfs.length > 0 && perfTogether === perfs.length;
+  const allLive = lives.length > 0 && liveTogether === lives.length;
+  html += '<div class="mine-memo-b">从那天起，她开了 ' + perfs.length + ' 场公演、' + lives.length + ' 场直播，'
+    + '其中你在房间的日子赶上了 ' + perfTogether + ' 场公演、' + liveTogether + ' 场直播'
+    + (allPerf && allLive ? ' —— 一场都没落下。' : (allPerf ? ' —— 公演一场没落下。' : (allLive ? ' —— 直播一场没落下。' : '。')))
+    + '</div>';
+  return html;
+}
+
+/* ---------------- 公演（含子标签：公演回放 / 公演cut） ---------------- */
+const PERF_SUBS = [
+  ['perf', '公演回放'],
+  ['cuts', '公演cut'],
+  ['songs', '曲目']
+];
+
+function renderPerformances() {
+  const panel = panels.performances;
+  const subtabs = PERF_SUBS.map(([k, label]) =>
+    `<button class="subtab${state.perfSub === k ? ' active' : ''}" data-sub="${k}">${escapeHtml(label)}</button>`
+  ).join('');
+  panel.innerHTML = `
+    <div class="perf">
+      <div class="subtabs">${subtabs}</div>
+      <div class="perf-sub" id="perfSub"></div>
+    </div>`;
+  renderPerfSub();
+}
+
+function renderPerfSub() {
+  const box = $('#perfSub');
+  if (!box) return;
+  syncToolbarSearch();   // 曲目子标签要隐掉顶部搜索框（见 syncToolbarSearch 注释）
+  if (state.perfSub === 'cuts') { box.innerHTML = renderPerfCuts(state.query); return; }
+  if (state.perfSub === 'songs') {
+    // 🔴 曲目页只用面板内那个搜索框（`搜曲目 / 拼音`）：
+    //    顶部搜索框在这里被隐藏，且曲目列表**不吃 state.query**（传 ''），
+    //    否则「在发言页搜过的词」会顺着 state.query 把曲目列表也悄悄过滤掉。
+    state.perfJumpTo = null;    // 离开「定位视图」，下次进公演回放就是完整列表
+    box.innerHTML = (typeof renderPerfSongs === 'function') ? renderPerfSongs('') : '';
+    return;
+  }
+  // 公演回放（原 renderPerformances 内容）
+  let list = DATA.performances;
+  if (state.query) list = list.filter((m) => (m.title || '').toLowerCase().includes(state.query));
+  if (dateFilterActive()) list = list.filter((m) => inDateRange(m.stime));
+  // 挂上该场对应的 cut 数量 / 日期（用于卡片角标跳转）
+  const cutByLive = {};
+  (DATA.perfCuts ? DATA.perfCuts.cuts : []).forEach(c => {
+    if (c.liveId) { if (!cutByLive[c.liveId]) cutByLive[c.liveId] = { n: 0, date: c.date }; cutByLive[c.liveId].n++; }
+  });
+  list = list.map(p => {
+    const c = cutByLive[p.liveId];
+    const bc = biliCutFor(p);
+    const q = { ...p };
+    if (c) { q._cutCount = c.n; q._cutDate = c.date; }
+    // 「✂️ B站cut」与公演主回放(biliUrl)是同一视频时（当天无完整回放、cut 即主回放，如 2022-10-02），
+    // 不再重复显示该按钮，避免同一条 cut 既当主回放又当 cut 入口。
+    // 注意：B 站 BV 号是「BV + 10 位」共 12 位，正则必须取满 10 位，
+    // 否则只会匹配到前缀，与主回放比较时永远不等、去重判断失效。
+    const mainBvid = (p.biliUrl || '').match(/BV[0-9A-Za-z]{10}/);
+    if (bc && (!mainBvid || bc.bvid !== mainBvid[0])) { q._biliCutDate = bc.date; q._biliCutTitle = bc.title; }
+    return q;
+  });
+  if (!list.length) {
+    box.innerHTML = filterNote(0) +
+      `<div class="empty-state">${dateFilterActive() ? '该时间范围内没有公演，点上方「清除筛选」看全部。' : '暂无公演数据。'}</div>`;
+    return;
+  }
+  // 🎯 从「曲目」点「看这场」过来时：只渲染目标场次**前后各 12 场**。
+  //    🔴 手机上一次性渲染 279 张卡（每张还带封面图 + 曲目 chip + 几个按钮）要好几秒，
+  //       iOS 甚至会内存告警把页面重载 —— 表现就是「点了跳转加载不出来 / 回到首页」。
+  //       只渲一小段能秒开，也就不必再赌渲染时序；想看完整列表点「显示全部」。
+  let win = null;
+  if (state.perfJumpTo) {
+    const j = list.findIndex((p) => String(p.liveId) === String(state.perfJumpTo));
+    if (j >= 0) {
+      const W = 12;
+      win = [Math.max(0, j - W), Math.min(list.length, j + W + 1)];
+    }
+  }
+  const shown = win ? list.slice(win[0], win[1]) : list;
+  const head = win
+    ? `<div class="filter-note perf-jumpnote">🎯 已定位到这一场 · 显示第 ${win[0] + 1}–${win[1]} 场（共 ${list.length} 场）`
+      + '<button class="perf-showall" type="button" id="perfShowAll">显示全部</button></div>'
+    : filterNote(list.length);
+  box.innerHTML = head +
+    `<div class="card-grid">${shown.map((m) => renderCard(m, 'stime')).join('')}</div>`;
+  // 每场下方挂上该场唱过的曲目（数据 js/songs.js → window.__SONGS__.byLive）
+  perfSongTags(box);
+  const sa = box.querySelector('#perfShowAll');
+  if (sa) {
+    sa.addEventListener('click', () => {
+      const keep = state.perfJumpTo;
+      state.perfJumpTo = null;
+      renderPerfSub();
+      // 补成完整列表后把视野拉回同一张卡（否则上面多出 200 多张卡，人会「失位」）
+      if (keep) {
+        const el = box.querySelector('.card[data-live="' + String(keep).replace(/"/g, '') + '"]');
+        if (el) el.scrollIntoView({ block: 'center' });
+      }
+    });
+  }
+}
+
+/** 给「公演回放」每张卡片追加**该场**唱过的曲目 chip（点 chip 由 demo-features 接管弹窗）
+ *  🔴 必须按 liveId 取曲目，不能按日期：一天可能有两场（如 2026-06-13 拾忆第十场 + 王秭歆生日公演），
+ *  按日期会把两场的曲目混在一起挂到两张卡上（站长 2026-09-26 报的问题）。 */
+function perfSongTags(box) {
+  const S = (typeof window !== 'undefined') ? window.__SONGS__ : null;
+  if (!S || !S.byLive || !box) return;
+  // 大歌已在生成 songs.js 时**按剧目**剔掉（不能在这里全局剔：见 demo-features 的 sgIsDage 注释）
+  const dage = Array.isArray(S.dage) ? S.dage : [];
+  const MAX = 10;   // 一场唱 20 首时不做限制会把卡片撑得很长
+  box.querySelectorAll('.card-grid > .card').forEach((el) => {
+    const lid = el.getAttribute('data-live') || '';
+    let arr = (lid && S.byLive[lid]) || [];
+    arr = arr.filter((s) => dage.indexOf(s) < 0);
+    if (!arr.length) return;
+    const body = el.querySelector('.card-body');
+    if (!body || body.querySelector('.sg-tags')) return;
+    const shown = arr.slice(0, MAX);
+    const rest = arr.length - shown.length;
+    const div = document.createElement('div');
+    div.className = 'sg-tags' + (rest > 0 ? ' is-fold' : '');
+    div.innerHTML = shown.map((s) =>
+      `<button class="sg-tag" type="button" data-song="${escapeHtml(s)}">${escapeHtml(s)}</button>`).join('')
+      + (rest > 0 ? `<button class="sg-tag sg-more" type="button" data-sg-fold="1">+${rest}</button>` : '');
+    body.appendChild(div);
+  });
+}
+
+/* ---------------- 她的公演 cut（B 站合集 season 4752040，UP: Chzhnh） ----------------
+ * 数据来自 demo 专属静态文件 js/bili-cuts.js → window.__BILI_CUTS__ = [[日期, 标题, BV号], ...]
+ * 与微博「公演cut」的区别：那边是应援会的单曲片段（34 条，按曲分），这边是 UP 主整场个人 cut（154 条，按场分）。
+ */
+function biliCutsAll() {
+  return (typeof window !== 'undefined' && Array.isArray(window.__BILI_CUTS__)) ? window.__BILI_CUTS__ : [];
+}
+// 一场公演 → 对应的 B 站个人 cut（同日有多条时用剧目名二次匹配）
+function biliCutFor(p) {
+  const day = fmtDate(p.stime || p.ctime);
+  if (!day) return null;
+  const same = biliCutsAll().filter((c) => c[0] === day);
+  if (same.length === 1) return { date: day, title: same[0][1], bvid: same[0][2] };
+  if (same.length > 1) {
+    // 同日多场（如生日冷餐会 + NIII 常规公演）：拿公演名里的《剧目》去对
+    const m = String(p.subTitle || p.title || '').match(/《([^》]+)》/);
+    const key = m ? m[1] : '';
+    const hit = key && same.find((c) => c[1].includes(key));
+    return { date: day, title: (hit || same[0])[1], bvid: (hit || same[0])[2] };
+  }
+  // same.length === 0：bili-cuts.js（Chzhnh 合集 2024+）未覆盖的老公演 cut，
+  // 可能以 kind:"cut"、无合集形式躺在 live-cuts.js（标题含「公演cut」，已随抓取进 KV）。
+  // 按公演日期兜底匹配，命中则让「公演回放」卡片显示「✂️ B站cut」入口。
+  const lcHits = (DATA.liveCuts && DATA.liveCuts.cuts ? DATA.liveCuts.cuts : [])
+    .filter((c) => /公演\s*cut/i.test(c.title || '') && (c.titleDate || c.date) === day);
+  if (lcHits.length) {
+    const c0 = lcHits[0];
+    return { date: day, title: c0.title || day, bvid: c0.bvid };
+  }
+  return null;
+}
+/* 「公演cut」页：B 站合集（整场个人 cut）+ 微博应援会（按单曲切）**按日期混排**，
+ * 每张卡片右上角标来源（B站 / 微博），卡片样式统一用封面卡；同一天里 B 站排前面。 */
+function renderPerfCuts(query) {
+  const wb = (DATA.perfCuts ? DATA.perfCuts.cuts : []).map((c) => ({
+    date: c.date, src: 'wb', title: c.song || c.perf || '公演 cut',
+    url: c.url, cover: cutCoverUrl(c.cover), song: c.song || '',
+  }));
+  const bl = biliCutsAll().map((c) => ({
+    date: c[0], src: 'bl', title: c[1],
+    url: 'https://www.bilibili.com/video/' + c[2], cover: cutCoverUrl(c[3]), song: '',
+  }));
+  // 2026-09-25：同步把 live-cuts.js 里「公演cut」类条目拉进来。
+  // bili-cuts.js 只覆盖 Chzhnh 单个合集 2024-04→2026-09，老公演 cut 不在此范围，
+  // 它们以 kind:"cut"、无合集形式躺在 live-cuts.js（已随抓取进 KV），之前在「公演cut」页读不到。
+  const lc = (DATA.liveCuts && DATA.liveCuts.cuts ? DATA.liveCuts.cuts : [])
+    .filter((c) => /公演\s*cut/i.test(c.title || ''))
+    .map((c) => ({
+      date: c.titleDate || c.date, src: 'bl', title: c.title || (c.titleDate || ''),
+      url: c.url || ('https://www.bilibili.com/video/' + c.bvid),
+      cover: cutCoverUrl(c.cover), song: '',
+    }));
+  // 合并去重（按 BV 号），避免与 bili-cuts.js 重叠的 2024+ 公演cut 重复出现
+  const seen = new Set();
+  const all = [];
+  for (const it of bl.concat(lc, wb)) {
+    const bv = (it.url.match(/BV[0-9A-Za-z]{10}/) || [])[0];
+    if (bv) { if (seen.has(bv)) continue; seen.add(bv); }
+    all.push(it);
+  }
+  if (!all.length) return '<div class="empty">暂无公演 cut。</div>';
+  const q = (query || '').trim().toLowerCase();
+  const list = all.filter((c) => !q || c.title.toLowerCase().includes(q) || c.date.includes(q));
+  if (!list.length) return '<div class="empty">没有匹配的 cut。</div>';
+  const groups = {}, order = [];
+  list.forEach((c) => { if (!groups[c.date]) { groups[c.date] = []; order.push(c.date); } groups[c.date].push(c); });
+  order.sort((a, b) => b.localeCompare(a));
+  const nBl = list.filter((c) => c.src === 'bl').length;
+  const nWb = list.length - nBl;
+  let html = `<div class="pc-note">B 站 ${nBl} 条（整场个人 cut）+ 微博 ${nWb} 条（应援会，按单曲切），按日期混排 · 角标区分来源</div>`;
+  order.forEach((date) => {
+    const arr = groups[date];
+    html += `<section class="pc-group" id="pc-group-${escapeHtml(date)}">`
+      + `<h2 class="pc-group-h"><span class="ym">${escapeHtml(date)}</span>`
+      + `<span class="n">${arr.length} 条</span></h2>`
+      + '<div class="pc-grid">';
+    arr.forEach((c) => {
+      const isBl = c.src === 'bl';
+      const cover = cutCoverTag(c.cover);
+      html += `<a class="pc-card${isBl ? ' is-bl' : ' is-wb'}" href="${escapeHtml(c.url)}" target="_blank" rel="noopener">${cover}`
+        + '<div class="pc-scrim"></div>'
+        + `<span class="pc-src ${isBl ? 'bl' : 'wb'}">${isBl ? 'B站' : '微博'}</span>`
+        + (c.song ? `<span class="pc-ov song">${escapeHtml(c.song)}</span>` : '')
+        + `<span class="pc-ov title">${escapeHtml(c.title)}</span>`
+        + `<span class="pc-ov go">${isBl ? 'B 站观看' : '微博观看'} ↗</span>`
+        + '</a>';
+    });
+    html += '</div></section>';
+  });
+  return html;
+}
+
+function gotoPerfCuts(date) {
+  state.perfSub = 'cuts';
+  switchTab('performances');
+  setTimeout(() => {
+    const el = document.getElementById('pc-group-' + date);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 60);
+}
+
+/* ---------------- 新粉指南（含子标签：新粉指南 / 公式照 / 经历备注） ---------------- */
+const GUIDE_SUBS = [
+  ['guide', '新粉指南'],
+  ['starter', '入坑必看'],
+  ['social', '社媒美图'],
+  ['cards', '生写小卡'],
+  ['sticker', '饭制表情包'],
+  ['gallery', '公式照'],
+  ['exp', '经历备注']
+];
+
+function renderGuide() {
+  const panel = panels.guide;
+  const subtabs = GUIDE_SUBS.map(([k, label]) =>
+    `<button class="subtab${state.guideSub === k ? ' active' : ''}" data-sub="${k}">${escapeHtml(label)}</button>`
+  ).join('');
+  panel.innerHTML = `
+    <div class="guide">
+      <div class="subtabs">${subtabs}</div>
+      <div class="guide-sub" id="guideSub"></div>
+    </div>`;
+  renderGuideSub();
+}
+
+// 仅刷新子标签内容，不重建整块（切换更快，且保留滚动位置）
+function renderGuideSub() {
+  const box = $('#guideSub');
+  if (!box) return;
+  if (state.guideSub === 'cards') { box.innerHTML = (typeof renderCards === 'function') ? renderCards() : ''; return; }
+  if (state.guideSub === 'sticker') { box.innerHTML = (typeof renderSticker === 'function') ? renderSticker() : ''; return; }
+  if (state.guideSub === 'starter') { box.innerHTML = (typeof renderStarter === 'function') ? renderStarter() : ''; return; }
+  if (state.guideSub === 'social') { box.innerHTML = renderSocialGallery(); renderSocialWall(); }
+  else if (state.guideSub === 'gallery') box.innerHTML = renderGallery();
+  else if (state.guideSub === 'exp') box.innerHTML = renderExperience();
+  else box.innerHTML = renderGuideMain();
+}
+
+// 子标签一：新粉指南（资料卡 + 社交账号）
+function renderGuideMain() {
+  const facts = PROFILE.facts
+    .map(([k, v]) => `<div class="fact"><span class="fact-k">${escapeHtml(k)}</span><span class="fact-v">${escapeHtml(v)}</span></div>`)
+    .join('');
+
+  const groups = PROFILE.groups.map((g) => {
+    const accounts = g.accounts.map((a) =>
+      `<button class="social-btn" style="--social:${g.color}" data-web="${escapeHtml(a.web)}" data-scheme="${escapeHtml(a.scheme || g.scheme)}">
+        <span class="social-handle">@${escapeHtml(a.handle)}</span>
+        ${a.note ? `<span class="social-note">${escapeHtml(a.note)}</span>` : ''}
+        <span class="social-go">打开主页 ›</span>
+      </button>`
+    ).join('');
+    return `<div class="social-group">
+      <div class="social-label"><span class="social-dot" style="background:${g.color}"></span>${escapeHtml(g.label)}</div>
+      <div class="social-list">${accounts}</div>
+    </div>`;
+  }).join('');
+
+  return `
+    <div class="guide-card">
+      <div class="guide-facts">
+        <div class="guide-aliases">昵称：${escapeHtml(PROFILE.aliases)}</div>
+        <div class="facts-grid">${facts}</div>
+        <div class="guide-code">神秘代码：<strong>${escapeHtml(PROFILE.secretCode)}</strong></div>
+      </div>
+      <img class="guide-poster" src="./assets/newfan-guide.jpg" alt="王语晨 新粉指南" loading="lazy" />
+    </div>
+    <div class="guide-socials">${groups}</div>
+    <p class="guide-tip">在手机上点击会直接打开对应 App 并进入 TA 的主页；未安装 App 或唤起失败时，会自动跳转到网页版。</p>`;
+}
+
+// 子标签二：公式照（按年份分组：2024 / 2025 / 2026）
+function renderGallery() {
+  const groups = (PROFILE.galleryByYear || []).map((g) => {
+    const items = g.photos.map((src, i) =>
+      `<figure class="formula-item"><img src="${escapeHtml(src)}" alt="${escapeHtml(g.year)} 公式照 ${i + 1}" loading="lazy" referrerpolicy="no-referrer" onclick="window.__lightboxShow(this.src)" onerror="this.closest('figure').classList.add('broken')" /><figcaption>${g.photos.length > 1 ? `${i + 1} / ${g.photos.length}` : '公式照'}</figcaption></figure>`
+    ).join('');
+    return `
+      <section class="formula-year">
+        <h3 class="formula-year-title">${escapeHtml(g.year)} 年公式照<span class="formula-year-count">${g.photos.length} 张</span></h3>
+        <div class="formula-gallery">${items}</div>
+        <p class="formula-year-source">来源：${escapeHtml(g.source)}</p>
+      </section>`;
+  }).join('');
+  return `<section class="profile-block">${groups}</section>`;
+}
+
+// 子标签三：经历备注（SNH48 官网，新→旧）
+function renderExperience() {
+  const exp = (PROFILE.experience || []).map((e) => {
+    const tag = e.tag
+      ? `<span class="exp-tag exp-tag-${escapeHtml(e.tag)}">${escapeHtml(e.tag)}</span>`
+      : '';
+    return `<li class="exp-item">
+      <div class="exp-dot"></div>
+      <div class="exp-body">
+        <div class="exp-date">${escapeHtml(e.date)}</div>
+        <div class="exp-text">${tag}${escapeHtml(e.text)}</div>
+      </div>
+    </li>`;
+  }).join('');
+  return `<section class="profile-block">
+    <ul class="exp-timeline">${exp}</ul>
+    ${renderOfficialMentions()}
+  </section>`;
+}
+
+// 经历备注下方：各官微提到王语晨的微博（按时间线倒序合并，带官微深链）
+function renderOfficialMentions() {
+  const list = (PROFILE.officialMentions || []).slice();
+  if (!list.length) return '';
+  // 按 date（YYYY.MM.DD）倒序排成一条时间线
+  const keyOf = (d) => { const p = String(d).split('.').map(Number); return (p[0] || 0) * 10000 + (p[1] || 0) * 100 + (p[2] || 0); };
+  list.sort((a, b) => keyOf(b.date) - keyOf(a.date));
+  // 标题：列出所有出现过的来源账号
+  const sources = [...new Set(list.map((m) => m.source).filter(Boolean))];
+  const title = sources.length ? sources.join(' / ') : '@SNH48';
+  const items = list.map((m) => `
+    <li class="exp-item exp-mention">
+      <div class="exp-dot exp-dot-mention"></div>
+      <div class="exp-body">
+        <div class="exp-date">${escapeHtml(m.date)}${m.source ? `<span class="exp-src">${escapeHtml(m.source)}</span>` : ''}</div>
+        <div class="exp-text"><a class="exp-link" href="${escapeHtml(m.url)}" target="_blank" rel="noopener">${escapeHtml(m.text)}</a></div>
+      </div>
+    </li>`).join('');
+  return `<h4 class="exp-subtitle">官方微博提及 · ${escapeHtml(title)}</h4><ul class="exp-timeline exp-mention-list">${items}</ul>`;
+}
+
+// 一条消息可用于搜索的全部文字
+function msgSearchText(m) {
+  return [m.text, m.reply?.name, m.reply?.text, m.card?.title, m.card?.desc]
+    .filter(Boolean).join(' ').toLowerCase();
+}
+
+function matchQuery(m) {
+  if (!state.query) return true;
+  const q = state.query.toLowerCase();
+  return msgSearchText(m).includes(q) || (m.sender?.nickname || '').toLowerCase().includes(q);
+}
+
+function renderMessages() {
+  const panel = panels.messages;
+  let list = DATA.messages;
+  const filtering = !!(state.dateFrom || state.dateTo || state.query);
+  if (state.dateFrom || state.dateTo) {
+    list = list.filter((m) => {
+      const t = m.msgTime;
+      if (state.dateFrom && t < state.dateFrom) return false;
+      if (state.dateTo && t > state.dateTo) return false;
+      return true;
+    });
+  }
+  if (state.query) list = list.filter((m) => matchQuery(m));
+
+  if (!list.length) {
+    // 历史月还没拉完就先说「没有」会严重误导。此时**完全不碰面板**（完全静默），
+    // 只在工具栏挂一个「搜索中…/筛选中…」小字，数据到齐后会自动重绘出真实结果。
+    // 是否「还在等数据」：有搜索词 → 必须全量；纯时间筛选 → 只看区间内那几个月。
+    // 🔴 不能一律用 !allMonthsLoaded：选「近 30 天」时那两个月早就下载好了、结果也该立刻显示，
+    //    却因为其它 42 个月还没下完而空着面板转圈 —— 站长说的「卡很久」有一半是这个。
+    const needMore = state.query ? !allMonthsLoaded : pendingMonthsInFilterRange().length > 0;
+    if (filtering && needMore) {
+      const job = state.query ? loadRemainingMonths() : loadMonthsInFilterRange();
+      loadMonthsWithBusy(state.query ? '搜索中…' : '筛选中…', job, state.query ? 20000 : 12000).then(() => {
+        if (state.query || dateFilterActive()) renderMessages();
+      });
+      return;
+    }
+    panel.innerHTML = filterNote(0) +
+      `<div class="empty-state">${dateFilterActive() ? '该时间范围内没有发言，点上方「清除筛选」看全部。' : '暂无口袋发言数据。<br/>若尚未抓取，请设置 <code>POCKET48_TOKEN</code> 后运行 <code>node scrape.mjs</code>。'}${silentHintForRange()}</div>`;
+    return;
+  }
+
+  const groups = {};
+  for (const m of list) {
+    const d = fmtDate(m.msgTime) || '未知日期';
+    (groups[d] ||= []).push(m);
+  }
+  const sortedDays = Object.keys(groups).sort((a, b) => (b > a ? 1 : -1));
+  const matchedCount = sortedDays.reduce((n, d) => n + groups[d].length, 0);
+
+  // 全量存档有 400+ 天、上万条，一次性渲染会让手机卡顿/内存吃紧：
+  // 默认只渲染最近若干天，底部提供「加载更早」。
+  // 🔴 搜索 / 时间筛选也**不再无条件全量**：选「近 30 天」命中上千条时，
+  //    一次性 innerHTML 一千多张卡片（含头像、图片、按钮）在手机上要好几秒 ——
+  //    这也是「点确定卡很久」的一半原因。命中不多（≤300 条）时仍一次全展示，体验不变。
+  let limit;
+  if (!filtering) {
+    limit = Math.min(state.dayLimit, sortedDays.length);
+  } else if (matchedCount <= MATCH_RENDER_LIMIT) {
+    limit = sortedDays.length;
+  } else {
+    limit = 1;
+    let n = groups[sortedDays[0]].length;
+    while (limit < sortedDays.length && n < state.matchLimit) { n += groups[sortedDays[limit]].length; limit++; }
+  }
+  const shown = sortedDays.slice(0, limit);
+  const restDays = sortedDays.length - limit;
+  const restCount = restDays > 0
+    ? sortedDays.slice(limit).reduce((n, d) => n + groups[d].length, 0)
+    : 0;
+
+  // 单条消息渲染异常不应拖垮整个列表
+  const renderDay = (day) => `<div class="day-group">
+      <div class="day-label">${day}（${groups[day].length}）</div>
+      ${groups[day].map((m) => {
+        try {
+          return renderMsg(m);
+        } catch (err) {
+          return `<div class="msg"><div class="msg-body empty">［该条消息渲染失败］</div></div>`;
+        }
+      }).join('')}
+    </div>`;
+
+  let listHtml = '';
+  for (let i = 0; i < shown.length; i++) {
+    listHtml += renderDay(shown[i]);
+    for (const ym of silentMonthsBetween(shown[i], shown[i + 1])) {
+      listHtml += `<div class="silence-note">${ym.replace('-', '.')} 整月没有她的发言<span class="silence-sub">真实沉默期，不是漏抓</span></div>`;
+    }
+  }
+  panel.innerHTML = filterNote(matchedCount) + listHtml
+    + (restDays > 0
+      ? `<button class="load-more" id="loadMore" type="button">${filtering
+        ? `加载更多（还有 ${restCount} 条 / ${restDays} 天）`
+        : `加载更早的消息（还有 ${restCount} 条 / ${restDays} 天）`}</button>`
+      : '');
+
+  const moreBtn = document.getElementById('loadMore');
+  if (moreBtn) {
+    moreBtn.addEventListener('click', async () => {
+      const y = window.scrollY;
+      if (filtering) {
+        state.matchLimit += MATCH_RENDER_LIMIT;   // 筛选/搜索态：每次多展开一批
+      } else {
+        state.dayLimit += 7;
+        // 还有更早的月份未加载 → 惰性拉一个进来（append 到 DATA.messages）
+        const next = ALL_MONTHS.find((m) => !loadedMonths.has(m));
+        if (next) { try { await loadMonth(next); } catch (_) {} }
+      }
+      renderMessages();
+      window.scrollTo(0, y);
+    });
+  }
+
+  // 已展开的消息：若译文块还停留在「翻译中…」占位（缓存缺失），异步补抓
+  if (state.lang !== 'zh' && state.expanded.size) {
+    shown.forEach((day) => groups[day].forEach((m) => {
+      const mid = msgKey(m);
+      if (!state.expanded.has(mid)) return;
+      const box = document.getElementById('tr-' + mid);
+      if (box && box.querySelector('.tr-loading')) doTranslate(mid);
+    }));
+  }
+}
+
+// 回复 / 礼物回复的引用块：她回复了谁、原话是什么
+function renderQuote(reply) {
+  if (!reply || (!reply.name && !reply.text)) return '';
+  const who = reply.name ? `回复 <b>@${escapeHtml(reply.name)}</b>` : '引用';
+  return `<div class="msg-quote">
+    <div class="msg-quote-who">↩︎ ${who}</div>
+    ${reply.text ? `<div class="msg-quote-text">${withEmoji(escapeHtml(reply.text))}</div>` : ''}
+  </div>`;
+}
+
+// 卡片消息（直播推送 / 分享 / 红包）
+// 注意：函数名必须区别于直播面板的 renderCard(item, timeKey)，否则会被后者覆盖
+/** 图片：点击放大预览，预览层支持「打开原图 / 下载 / 关闭」 */
+function imgHtml(url, cls) {
+  const u = escapeHtml(toUrl(url));
+  return `<img class="${cls}" loading="lazy" decoding="async" referrerpolicy="no-referrer"
+    src="${u}" alt="图片"
+    onclick="window.__lightboxShow(this.src)"
+    onerror="this.classList.add('failed');this.setAttribute('data-src',this.src)" />`;
+}
+
+function renderMsgCard(card) {
+  if (!card) return '';
+  const pic = card.pic ? imgHtml(card.pic, 'msg-card-pic') : '';
+  // 开播推送：跳站内「直播 / 录播」页（原始 shortPath 无跳转意义）
+  const link = card.kind === 'live'
+    ? `<button class="msg-card-link as-btn" type="button" data-goto="live">前往直播 ›</button>`
+    : (card.url
+      ? (/^https?:/i.test(card.url)
+        ? `<a class="msg-card-link" href="${escapeHtml(card.url)}" target="_blank" rel="noopener">查看详情 ›</a>`
+        : `<span class="msg-card-link muted">${escapeHtml(card.url)}</span>`)
+      : '');
+  return `<div class="msg-card msg-card-${escapeHtml(card.kind || 'info')}">
+    ${pic}
+    <div class="msg-card-main">
+      <div class="msg-card-title">${escapeHtml(card.title || '')}</div>
+      ${card.desc ? `<div class="msg-card-desc">${escapeHtml(card.desc)}</div>` : ''}
+      ${link}
+    </div>
+  </div>`;
+}
+
+function renderMsg(m) {
+  const typeLabel = TYPE_LABEL[m.msgType] || m.msgType || '其他';
+  let body = '';
+
+  // 1) 引用块（回复谁 / 什么礼物 / 什么提问）
+  body += renderQuote(m.reply);
+  // 2) 正文
+  if (m.text) body += `<div class="msg-body">${withEmoji(escapeHtml(m.text))}</div>`;
+  // 3) 媒体
+  if (m.images?.length) {
+    body += `<div class="msg-images">${m.images.map((u) => imgHtml(u, '')).join('')}</div>`;
+  }
+  if (m.audio) {
+    const dur = fmtDur(m.duration);
+    body += `<div class="msg-media msg-audio">
+      ${dur ? `<span class="voice-badge">语音 ${dur}</span>` : ''}
+      <audio controls preload="none" src="${escapeHtml(toUrl(m.audio))}"></audio>
+    </div>`;
+  }
+  if (m.video) {
+    body += `<div class="msg-media"><video controls preload="metadata" src="${escapeHtml(toUrl(m.video))}"></video></div>`;
+  }
+  if (m.link) body += `<div class="msg-link">🔗 <a href="${escapeHtml(m.link)}" target="_blank" rel="noopener">${escapeHtml(m.link)}</a></div>`;
+  // 4) 卡片
+  body += renderMsgCard(m.card);
+
+  if (!body) {
+    body = `<div class="msg-body empty">［${typeLabel}］无文本内容</div>
+      <div class="msg-raw"><details><summary>${trUI('viewRaw', state.lang)}</summary><pre>${escapeHtml(JSON.stringify(m.raw, null, 2))}</pre></details></div>`;
+  }
+
+  // 她本人的消息不重复标注昵称；房间里其他人的消息（粉丝 / 袋王 / 队友）标注出来
+  const isSelf = String(m.sender?.userId || '') === SELF_ID;
+  const sender = !isSelf && m.sender?.nickname
+    ? `<span class="msg-sender other">@${escapeHtml(m.sender.nickname)}</span>`
+    : '';
+
+  // 多语言：选择非中文语言后，每条含文字的发言显示「翻译」开关（点开才请求，避免一次性打爆接口）
+  let footer = '';
+  if (state.lang !== 'zh' && hasTranslatable(m)) {
+    const mid = msgKey(m);
+    const expanded = state.expanded.has(mid);
+    footer = `<div class="msg-tr-row">
+      <button class="tr-btn" type="button" data-mid="${escapeHtml(mid)}">${expanded ? trUI('hide', state.lang) : trUI('translate', state.lang)}</button>
+      <div class="msg-tr" id="tr-${escapeHtml(mid)}">${expanded ? trBlocksHtml(m, state.lang) : ''}</div>
+    </div>`;
+  }
+
+  return `<div class="msg${isSelf ? '' : ' from-other'}" data-mid="${escapeHtml(msgKey(m))}">
+    <div class="msg-head">
+      <span class="msg-time">${fmtTime(m.msgTime)}</span>
+      <span class="msg-type">${typeLabel}</span>
+      ${sender}
+    </div>
+    ${body}
+    ${footer}
+  </div>`;
+}
+
+function liveStatusBadge(status, kind) {
+  const s = Number(status);
+  if (s === 2) return '<span class="badge live">直播中</span>';
+  if (s === 1) return '<span class="badge rec">录播</span>';
+  if (s === 0) return `<span class="badge soon">${kind === 'perf' ? '未开始' : '预告'}</span>`;
+  return '<span class="badge end">已结束</span>';
+}
+
+// ⚠️ 口袋48 的 status 对「还没开演」的场次完全不可信：官方一放出排期就可能直接给
+//   3（已结束）或 1（录播）。线上曾把 9-26 / 9-27 两场未来公演显示成「录播」「已结束」。
+//   所以「开始时间」永远优先于 status：
+//     · 现在 < 开始时间        → 0 未开始 / 预告（不看 status）
+//     · 开始后仍在合理时长内且 status=2 → 直播中
+//     · 开播已远超该时长仍挂在 status=2 → 状态没更新，按已结束呈现
+const LIVE_STALE_MS = 6 * 3600 * 1000;   // 单场口袋直播极少超过 6 小时
+const PERF_STALE_MS = 5 * 3600 * 1000;   // 公演一般 2.5~3.5 小时，留足富余
+function displayStatus(item, timeKey) {
+  const s = Number(item.status);
+  const key = timeKey === 'stime' ? 'stime' : 'ctime';
+  const start = Number(item[key] || 0);
+  if (!Number.isFinite(start) || start <= 0) return s;   // 没有开始时间就只能信 status
+  const now = Date.now();
+  if (now < start) return 0;                             // 还没开演 → 未开始 / 预告
+  const stale = key === 'stime' ? PERF_STALE_MS : LIVE_STALE_MS;
+  if (s === 2 && now - start > stale) return 3;           // 状态卡在「直播中」→ 已结束
+  return s;
+}
+
+// 视频播放器（hls.js 播放 m3u8；Safari 原生支持）
+let hlsInstance = null;
+function setPlayerStatus(text, isError) {
+  const hint = $('#playerHint');
+  if (!hint) return;
+  hint.textContent = text || '';
+  hint.style.color = isError ? '#ff9a9a' : '#cfe';
+}
+function openPlayer(playUrl, title) {
+  const modal = $('#playerModal');
+  const video = $('#playerVideo');
+  // rtmp:// 是直播拉流地址（浏览器无法直接播），只有 http(s) 的 m3u8 才能用 hls.js 播放
+  if (!playUrl || !/^https?:/i.test(playUrl)) {
+    $('#playerTitle').textContent = title || '视频回放';
+    setPlayerStatus(playUrl
+      ? '回放尚未生成（官方通常在直播结束后一段时间才生成），请稍后再来看看。'
+      : '该条目暂无可用播放地址（可能是尚未生成录播的旧公演）。', true);
+    modal.hidden = false;
+    return;
+  }
+  $('#playerTitle').textContent = title || '视频回放';
+  modal.hidden = false;
+
+  // 释放上一次
+  if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
+  video.pause();
+  video.removeAttribute('src');
+  video.load();
+
+  const url = playUrl.replace(/^http:/, 'https:');
+  setPlayerStatus('正在加载视频流…');
+  const rawLine = `\n直链（可复制到 VLC 等播放器打开）：${url}`;
+
+  if (window.Hls && window.Hls.isSupported()) {
+    const hls = new window.Hls({ lowLatencyMode: false, enableWorker: true });
+    hlsInstance = hls;
+    hls.loadSource(url);
+    hls.attachMedia(video);
+    hls.on(window.Hls.Events.MANIFEST_PARSED, () => {
+      setPlayerStatus('已解析，正在缓冲…（若未自动播放，请点播放器上的 ▶）');
+      video.play().catch(() => {});
+    });
+    hls.on(window.Hls.Events.FRAG_LOADED, () => setPlayerStatus(''));
+    hls.on(window.Hls.Events.ERROR, (_e, data) => {
+      if (!data.fatal) return;
+      let msg = '播放失败：' + (data.details || data.type);
+      if (data.type === window.Hls.ErrorTypes.NETWORK_ERROR) {
+        msg += '（网络请求被拦截 / 跨域 / 源受限）';
+      } else if (data.type === window.Hls.ErrorTypes.MEDIA_ERROR) {
+        try { hls.recoverMediaError(); msg += '（已尝试自动恢复）'; } catch { /* ignore */ }
+      }
+      setPlayerStatus(msg + rawLine, true);
+    });
+  } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    video.src = url;
+    video.play().catch(() => {});
+    setPlayerStatus('使用浏览器原生播放器（Safari / 部分 iOS）');
+  } else {
+    setPlayerStatus('当前环境无法内嵌播放 m3u8（hls.js 未加载或被拦截）。' + rawLine, true);
+  }
+}
+function closePlayer() {
+  const modal = $('#playerModal');
+  const video = $('#playerVideo');
+  if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
+  video.pause();
+  video.removeAttribute('src');
+  video.load();
+  modal.hidden = true;
+}
+
+function renderCard(item, timeKey) {
+  const cover = toUrl(item.coverPath || item.cover);
+  // 直播标题常为默认数字（如 "1"），回退到成员昵称；公演用 title + subTitle
+  const rawTitle = item.title || item.subTitle || '';
+  const isGeneric = /^\d+$/.test(rawTitle.trim());
+  const fallback = item.userInfo?.nickname || item.teamList?.[0]?.teamName || '';
+  const title = !rawTitle || isGeneric ? (fallback || '未命名') : rawTitle;
+  const sub = item.subTitle && item.subTitle !== title ? item.subTitle : '';
+  const time = fmtDate(item[timeKey]) + ' ' + fmtTime(item[timeKey]);
+  const playNum = item.playNum || item.playCount || '';
+  // 只有 http(s) 的 m3u8 能播；rtmp:// 是直播拉流地址（浏览器播不了），不能给「▶ 播放」按钮
+  const canPlay = !!item.playUrl && /^https?:/i.test(item.playUrl);
+  const st = displayStatus(item, timeKey);
+  // 未开演的场次只显示「未开始」；playUrlDead = 官方回放流已失效（ts.48.cn），
+  // 此时若挂了 B 站备用源就只显示 B 站按钮
+  const noPlayText = st === 0 ? (timeKey === 'stime' ? '未开始' : '未开播')
+    : (item.playUrlDead ? '官方回放已失效'
+    : (item.playUrl && !canPlay ? (st === 2 ? '直播中' : '回放生成中')
+    : (timeKey === 'ctime' && st === 3 ? '无回放' : '无视频')));
+  const playBtn = canPlay
+    ? `<button class="play-btn" data-play="${escapeHtml(item.playUrl)}" data-title="${escapeHtml(title + ' · ' + time)}">▶ 播放</button>`
+    : (item.biliUrl || st === 0 ? '' : `<span class="no-play">${noPlayText}</span>`);   // 未开演时角标已说明，不再重复一行
+  // 无录播（或有）时的 B 站跳转（按名称手工匹配挂上）
+  const biliBtn = item.biliUrl
+    ? `<a class="bili-btn" href="${escapeHtml(item.biliUrl)}" target="_blank" rel="noopener">📺 B 站观看</a>`
+    : '';
+  // 该场对应的公演 cut（来自微博切片）：角标跳转到「公演cut」分组
+  const cutBtn = (item._cutCount)
+    ? `<button class="cut-btn" type="button" onclick="gotoPerfCuts('${escapeHtml(item._cutDate)}')">🎬 ${item._cutCount} cut</button>`
+    : '';
+  // 该场对应的她的个人 cut（B 站合集）：角标跳到「她的cut」栏的对应日期
+  const biliCutBtn = item._biliCutDate
+    ? `<button class="cut-btn bc-btn" type="button" title="${escapeHtml(item._biliCutTitle || '')}" onclick="gotoPerfCuts('${escapeHtml(item._biliCutDate)}')">✂️ B站cut</button>`
+    : '';
+  // 该场直播对应的 B 站切片 / 回放：角标跳到「直播切片」栏的对应日期
+  const liveCutBtn = (item._liveCutCount)
+    ? `<button class="cut-btn" type="button" onclick="gotoLiveCuts('${escapeHtml(item._liveCutId)}')">🎬 ${item._liveCutCount} 切片</button>`
+    : '';
+  const demoT = timeKey === 'ctime' ? 'live' : 'perf';
+  const demoK = (item.liveId ? demoT + ':' + item.liveId : demoT + ':' + title + ':' + time);
+  return `<div class="card" data-k="${escapeHtml(String(demoK))}" data-t="${demoT}" data-title="${escapeHtml(title)}" data-time="${escapeHtml(time)}" data-live="${escapeHtml(String(item.liveId || ''))}">
+    ${cover ? `<img class="card-img" loading="lazy" referrerpolicy="no-referrer" src="${escapeHtml(cover)}" alt="" onclick="window.__lightboxShow(this.src)" onerror="this.classList.add('failed')" />` : ''}
+    <div class="card-body">
+      <p class="card-title">${escapeHtml(title)}</p>
+      ${sub ? `<p class="card-sub">${escapeHtml(sub)}</p>` : ''}
+      <div class="card-meta">
+        ${liveStatusBadge(st, timeKey === 'stime' ? 'perf' : 'live')}
+        <span>🕒 ${escapeHtml(time)}</span>
+        ${playNum ? `<span>▶ ${escapeHtml(String(playNum))}</span>` : ''}
+      </div>
+      <div class="card-actions">${playBtn}${biliBtn}${biliCutBtn}${cutBtn}${liveCutBtn}</div>
+    </div>
+  </div>`;
+}
+
+/* ---------------- 直播 / 录播（含子标签：直播回放 / 直播切片） ---------------- */
+const LIVE_SUBS = [
+  ['replay', '直播回放'],
+  ['cuts', '直播切片']
+];
+// 「直播切片」栏收录范围（用户 2026-09-22 两轮明确后的最终口径）：
+//   ✅ 收：「王语晨直播回放」合集 + 「王语晨直播cut」合集 + 无合集 UP（忘记自己是猪，其投稿本身即切片）
+//   ❌ 不收：公演cut / 官方视频cut / unit-mc cut / 2025特殊舞台 / 口袋语音 / 其他成员直播cut
+//     （数据仍完整保留在 live-cuts.js，将来要放进来只改这一行）
+// 有合集 → 以 UP 的归类为准（含合集内的电台回放 —— 电台也是直播的一种形式）。
+const LIVE_CUT_COLLECTIONS = /王语晨直播回放|王语晨直播cut/;
+function liveCutList() {
+  const all = (DATA.liveCuts && DATA.liveCuts.cuts) || [];
+  // 有合集 → 以 UP 的归类为准：「王语晨直播cut」合集里的**全部**内容都收。
+  //   ⚠️ 该合集里混有 2 条「电台直播回放」（20260711 / 20251216 第二段）——
+  //   电台也是她的一种直播形式，属于本栏，不能因为标题带「回放」就排除。
+  // 无合集 → 该号投稿本身即切片（忘记自己是猪），但标题带「回放」的仍排除。
+  // 公演cut 不归本栏（按既定口径它进「公演cut」页），避免同一条出现在两个板块。
+  return all.filter((c) => !/公演\s*cut/i.test(c.title || '')
+    && (c.collection ? LIVE_CUT_COLLECTIONS.test(c.collection) : c.kind === "cut"));
+}
+
+function renderLive() {
+  const panel = panels.live;
+  const subtabs = LIVE_SUBS.map(([k, label]) =>
+    `<button class="subtab${state.liveSub === k ? ' active' : ''}" data-sub="${k}">${escapeHtml(label)}</button>`
+  ).join('');
+  panel.innerHTML = `
+    <div class="perf">
+      <div class="subtabs">${subtabs}</div>
+      <div class="perf-sub" id="liveSub"></div>
+    </div>`;
+  renderLiveSub();
+}
+
+function renderLiveSub() {
+  const box = $('#liveSub');
+  if (!box) return;
+  if (state.liveSub === 'cuts') { box.innerHTML = renderLiveCuts(); return; }
+  // 直播回放（原 renderLive 内容）
+  let list = DATA.live;
+  if (state.query) list = list.filter((m) =>
+    (m.title || '').toLowerCase().includes(state.query) ||
+    (m.userInfo?.nickname || '').toLowerCase().includes(state.query)
+  );
+  if (dateFilterActive()) list = list.filter((m) => inDateRange(m.ctime));
+  if (!list.length) {
+    box.innerHTML = filterNote(0) +
+      `<div class="empty-state">${dateFilterActive() ? '该时间范围内没有直播，点上方「清除筛选」看全部。' : '暂无直播数据。'}</div>`;
+    return;
+  }
+  // 按 liveId 统计该场直播有几个 B 站切片/回放 → 卡片上出现「🎬 N 切片」角标，点了跳到切片栏对应日期
+  const byLive = {};
+  for (const c of liveCutList()) {
+    if (!c.liveId) continue;
+    const k = String(c.liveId);
+    if (!byLive[k]) byLive[k] = { n: 0 };
+    byLive[k].n++;
+  }
+  const list2 = list.map((p) => {
+    const c = byLive[String(p.liveId)];
+    // 用 liveId 定位（而不是日期）：切片发布日不等于直播日，按日期跳转会跳错组
+    return c ? { ...p, _liveCutCount: c.n, _liveCutId: String(p.liveId) } : p;
+  });
+  box.innerHTML = filterNote(list2.length) +
+    `<div class="card-grid">${list2.map((m) => renderCard(m, 'ctime')).join('')}</div>`;
+}
+
+// 直播切片 / 直播回放列表：按【标题日期优先、否则发布时间】分天倒序，
+// 同一天里该 UP 的切片与回放并列，方便对照「这场直播有哪些片段」。
+function renderLiveCuts() {
+  const data = liveCutList();
+  if (!data.length) return '<div class="empty">暂无直播切片。数据随抓取自动更新，若刚上线请稍后再看。</div>';
+  // ★ 分组键用「直播场次」而不是日期：
+  //   切片是直播结束后才剪出来发的（实测同一直播的切片可跨 3 天发布），
+  //   若按发布时间分组，同一场直播的回放与切片会被拆散，还会把「09-16 的直播」
+  //   和「09-16 发布的切片」混为一谈。
+  //   所以：能对上直播的 → 按 liveId 归组；对不上的 → 按发布日排在时间线上。
+  const groups = new Map();
+  data.forEach((c) => {
+    const day = c.liveDate || c.titleDate || c.date;
+    const key = c.liveId ? ('live:' + c.liveId) : ('day:' + day);
+    let g = groups.get(key);
+    if (!g) { g = { live: !!c.liveId, liveId: c.liveId || '', day, items: [] }; groups.set(key, g); }
+    g.items.push(c);
+  });
+  const list = [...groups.values()].sort((a, b) => String(b.day).localeCompare(String(a.day)));
+  let html = '';
+  list.forEach((g) => {
+    // 组内：回放排最前，其余（切片）按发布时间正序
+    const arr = g.items.slice().sort((a, b) =>
+      (a.kind === 'replay' ? 0 : 1) - (b.kind === 'replay' ? 0 : 1) || a.created - b.created);
+    const nReplay = arr.filter((x) => x.kind === 'replay').length;
+    const nCut = arr.length - nReplay;
+    const parts = [];
+    if (nCut) parts.push(`切片 ${nCut}`);
+    if (nReplay) parts.push(`回放 ${nReplay}`);   // 仅「直播cut」合集内混入的电台回放会走到这
+    const gid = 'lc-group-' + (g.live ? 'live-' + g.liveId : 'day-' + g.day);
+    html += `<section class="pc-group" id="${escapeHtml(gid)}">`
+      + `<h2 class="pc-group-h"><span class="ym">${escapeHtml(g.day)}</span>`
+      + (g.live ? '' : '<span class="pub">未对上直播 · 按发布日</span>')
+      + `<span class="perf">${parts.join(' · ')}</span>`
+      + `<span class="n">${arr.length} 条</span></h2><div class="pc-grid">`;
+    arr.forEach((c) => {
+      // 封面统一走 cutCoverUrl：B 站图床直链 https（别经 /img 代理，会被 403）+ 失败兜底不塌陷
+      const cover = cutCoverTag(cutCoverUrl(c.cover));
+      // 左下角标出「UP · 发布 MM-DD」：组标题是直播日，而这条的发布日可能晚一两天，
+      // 标出来才不会让人误以为它和直播同一天。
+      const meta = `${c.up || ''} · 发布 ${String(c.date || '').slice(5)}`;
+      html += `<a class="pc-card" href="${escapeHtml(c.url)}" target="_blank" rel="noopener">${cover}`
+        + '<div class="pc-scrim"></div>'
+        + (c.kind ? `<span class="pc-ov song">${c.kind === 'replay' ? '回放' : '切片'}</span>` : '')
+        + `<span class="pc-ov date">${escapeHtml(meta)}</span>`
+        + '<span class="pc-ov go">去 B 站看 ↗</span>'
+        + '</a>';
+    });
+    html += '</div></section>';
+  });
+  return html;
+}
+
+// 从直播回放卡片的「🎬 N 切片」跳到切片栏对应的那一场（按 liveId 定位，不依赖日期）
+function gotoLiveCuts(liveId) {
+  state.liveSub = 'cuts';
+  switchTab('live');
+  setTimeout(() => {
+    const el = document.getElementById('lc-group-live-' + liveId);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 60);
+}
+
+// 启动（脚本位于 </body> 前，DOM 已就绪；注意：这一行曾被补丁误删过，勿移除）
+init();
+
+/* ---------------- 新粉指南子标签：社媒美图（@忘记自己是鱼_ 本人发的照片/视频） ----------------
+   数据来自 DATA.social（site/data/social-media.js，自动生成）。
+   图片为微博图床原始 URL，经站点图片代理 /img/?u=<encoded> 获取（直链会被 403 拦截）。
+   已剔除：① mymblog 混入的「她赞过的微博」卡片（非本人发布）；② 本人发的表情包/文字图/截图。 */
+let socialFilter = 'all';
+
+function proxyImg(url) {
+  // 正式站与 Worker 同域 → 相对路径即可；UAT 预览站在别的域名 → 必须带上 API_BASE，否则图全 404
+  try { return (typeof API_BASE === 'string' ? API_BASE : '') + '/img?u=' + encodeURIComponent(url); } catch (e) { return url; }
+}
+
+/* 切片封面（公演cut / 直播切片）取图地址：
+ * ① B 站图床 i0/i1/i2.hdslb.com —— 防盗链只认 Referer，用 <img referrerpolicy="no-referrer"> 直链即可；
+ *    千万不能走 /img 代理：代理白名单只放行新浪/网易图床，B 站一律 403（2026-09-25 修的 bug——
+ *    live-cuts 里 627 条封面全是 http://*.hdslb.com，经代理全 403 → 图片挂掉卡片塌成一条线）。
+ * ② 其他图床（新浪 sinaimg / 微博 weibocdn 等）：直链 403，必须走 /img 代理。
+ * ③ 一律 http → https：站点本身是 https，混合内容会被浏览器拦掉。 */
+function cutCoverUrl(url) {
+  const u = String(url || '').trim();
+  if (!u) return '';
+  const httpsUrl = u.replace(/^http:\/\//i, 'https://');
+  let host = '';
+  try { host = new URL(httpsUrl).hostname; } catch (e) { return httpsUrl; }
+  // 写成函数内正则而非顶层 const：本文件末尾才 init()，避免顶层声明落在 TDZ 里被提前取用
+  if (/(^|\.)hdslb\.com$/i.test(host)) return httpsUrl;
+  return proxyImg(httpsUrl);
+}
+
+/* 切片封面 <img>：加载失败时**不能**只是 display:none（卡片会塌成 2px 边框，看起来像一条线），
+ * 要给卡片挂 noimg 让 CSS ::before 撑出与正常封面同高的占位块（见 demo.css .pc-card.noimg）。 */
+function cutCoverTag(cover) {
+  if (!cover) return '<div class="pc-void">▶</div>';
+  return `<img src="${escapeHtml(cover)}" loading="lazy" referrerpolicy="no-referrer" alt=""`
+    + ` onerror="this.onerror=null;this.style.display='none';this.parentNode.classList.add('noimg')">`;
+}
+
+function ensureSocialModal() {
+  if (document.getElementById('sgModal')) return;
+  const d = document.createElement('div');
+  d.className = 'sg-modal';
+  d.id = 'sgModal';
+  d.setAttribute('onclick', "if(event.target===this)closeSocialModal()");
+  d.innerHTML =
+    '<div class="sg-mbox"><div class="sg-mhead">'
+    + '<span class="who">忘记自己是鱼_</span><span class="plat">微博</span>'
+    + '<span class="date" id="sgMDate"></span>'
+    + '<button class="x" onclick="closeSocialModal()">✕</button></div>'
+    + '<div class="sg-mbody"><p class="sg-mtext" id="sgMText"></p><div id="sgMMedia"></div></div>'
+    + '<div class="sg-mfoot"><a class="sg-btn" id="sgMLink" target="_blank" rel="noopener">' + trUI('viewOriginal', state.lang) + ' ↗</a></div></div>';
+  document.body.appendChild(d);
+}
+
+function renderSocialGallery() {
+  ensureSocialModal();
+  return ''
+    // 同顶部搜索：改成「输完点搜索 / 回车」，不再 oninput 边打边搜（中文输入法会被重渲打断）
+    + '<div class="sg-toolbar"><div class="search-wrap">'
+    + '<input id="sgSearch" type="text" placeholder="搜索文字内容…" enterkeyhint="search" onkeydown="sgSocialEnter(event)">'
+    + '<button class="search-clear" type="button" title="清空" onclick="sgSocialClear()">✕</button>'
+    + '<button class="search-btn" type="button" onclick="renderSocialWall()">搜索</button>'
+    + '</div>'
+    + '<div class="sg-filters">'
+    + '<button class="sg-fbtn' + (socialFilter === 'all' ? ' active' : '') + '" data-f="all" onclick="setSocialFilter(\'all\')">全部</button>'
+    + '<button class="sg-fbtn' + (socialFilter === 'photo' ? ' active' : '') + '" data-f="photo" onclick="setSocialFilter(\'photo\')">照片</button>'
+    + '<button class="sg-fbtn' + (socialFilter === 'video' ? ' active' : '') + '" data-f="video" onclick="setSocialFilter(\'video\')">视频</button>'
+    + '</div></div>'
+    + '<div class="sg-count" id="sgCount"></div><div id="sgGallery"></div>';
+}
+
+/** 社媒美图搜索：回车提交（输入期间不重渲，中文才能正常打） */
+function sgSocialEnter(e) {
+  if (e.key === 'Enter' || e.keyCode === 13) { e.preventDefault(); renderSocialWall(); }
+}
+function sgSocialClear() {
+  const el = document.getElementById('sgSearch');
+  if (el) el.value = '';
+  renderSocialWall();
+}
+
+function setSocialFilter(f) {
+  socialFilter = f;
+  document.querySelectorAll('.sg-fbtn').forEach(b => b.classList.toggle('active', b.dataset.f === f));
+  renderSocialWall();
+}
+
+function socialVisible() {
+  const data = DATA.social || [];
+  const q = (document.getElementById('sgSearch').value || '').trim().toLowerCase();
+  return data.filter(it => {
+    if (socialFilter !== 'all' && it.k !== socialFilter) return false;
+    if (q && (it.t || '').toLowerCase().indexOf(q) < 0) return false;
+    return true;
+  });
+}
+
+function renderSocialWall() {
+  const data = DATA.social || [];
+  const sel = socialVisible();
+  const count = document.getElementById('sgCount');
+  if (count) count.innerHTML = '显示 <b>' + sel.length + '</b> / ' + data.length + ' 条' + (socialFilter === 'all' ? '' : '（' + (socialFilter === 'photo' ? '照片' : '视频') + '）');
+  const g = document.getElementById('sgGallery');
+  if (!g) return;
+  if (!sel.length) { g.innerHTML = '<div class="empty">没有匹配的内容</div>'; return; }
+  const months = [], map = {};
+  sel.forEach(it => { if (!map[it.m]) { map[it.m] = []; months.push(it.m); } map[it.m].push(it); });
+  months.sort((a, b) => b.localeCompare(a));
+  let html = '';
+  months.forEach(m => {
+    const arr = map[m];
+    html += '<section class="sg-month"><h2 class="sg-month-h"><span class="ym">' + escapeHtml(m) + '</span><span class="n">' + arr.length + ' 条</span></h2><div class="sg-grid">';
+    arr.forEach(it => {
+      const idx = data.indexOf(it);
+      const cnt = it.k === 'video'
+        ? '<span class="sg-ov cnt v">▶ 视频</span>'
+        : (it.n > 1 ? '<span class="sg-ov cnt">×' + it.n + '</span>' : '');
+      // 照片取首图作封面；视频取视频封面（多数拿不到 → 占位）
+      const cover = it.k === 'video' ? it.cover : (it.p && it.p[0]);
+      const media = cover
+        ? '<img src="' + escapeHtml(proxyImg(cover)) + '" loading="lazy" alt="">'
+        : '<div class="sg-void">▶<span class="t">' + escapeHtml((it.t || '').slice(0, 22)) + '</span></div>';
+      html += '<div class="sg-card" onclick="openSocialModal(' + idx + ')">' + media
+        + '<div class="sg-scrim"></div>'
+        + '<span class="sg-ov who">忘记自己是鱼_</span>' + cnt
+        + '<span class="sg-ov plat">微博</span>'
+        + '<span class="sg-ov date">' + escapeHtml(it.d) + '</span>'
+        + '</div>';
+    });
+    html += '</div></section>';
+  });
+  g.innerHTML = html;
+}
+
+function openSocialModal(i) {
+  const it = (DATA.social || [])[i];
+  if (!it) return;
+  track('social:open');
+  document.getElementById('sgMDate').textContent = it.d;
+  document.getElementById('sgMText').textContent = it.t || '';
+  document.getElementById('sgMLink').href = it.u;
+  const mm = document.getElementById('sgMMedia');
+  if (it.k === 'video') {
+    mm.innerHTML = '<div class="sg-mvid"><div class="big">▶</div><div>' + trUI('videoGoOriginal', state.lang) + '</div>'
+      + (it.cover ? '<img src="' + escapeHtml(proxyImg(it.cover)) + '" style="width:100%;max-width:420px;border-radius:10px;" alt="">' : '') + '</div>';
+  } else if (it.p && it.p.length) {
+    mm.innerHTML = '<div class="sg-mmedia">' + it.p.map(u =>
+      '<img src="' + escapeHtml(proxyImg(u)) + '" loading="lazy" onclick="window.open(\'' + escapeHtml(proxyImg(u)) + '\',\'_blank\')" alt="">'
+    ).join('') + '</div>';
+  } else { mm.innerHTML = ''; }
+  document.getElementById('sgModal').classList.add('on');
+}
+
+function closeSocialModal() {
+  const m = document.getElementById('sgModal');
+  if (m) m.classList.remove('on');
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { const m = document.getElementById('sgModal'); if (m && m.classList.contains('on')) closeSocialModal(); }
+});

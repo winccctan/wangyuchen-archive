@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>王语晨 · 补档站</title>
+  <meta name="description" content="王语晨（GNZ48 TEAM NIII）口袋发言 / 直播 / 公演 / 行程补档存档站。" />
+  <!-- 分享卡片：og.png 是 1200×630 静态图（无真人数据），改图后记得 bump ?v= 否则平台一直用旧缓存 -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="王语晨 · 补档站" />
+  <meta property="og:description" content="王语晨（GNZ48 TEAM NIII）口袋发言 / 直播 / 公演 / 行程补档存档站。" />
+  <meta property="og:image" content="https://idol.wyc0518.cc/og.png?v=20260926a28" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:url" content="https://idol.wyc0518.cc/" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="https://idol.wyc0518.cc/og.png?v=20260926a28" />
+  <!-- ?v= 每次改动都要 bump：否则浏览器/预览沙箱会继续用缓存的旧 js/css（曾导致"改了但看起来没变"） -->
+  <link rel="stylesheet" href="./css/style.css?v=20260926a28" />
+  <link rel="stylesheet" href="./css/demo.css?v=20260926a34" />
+  <link rel="icon" type="image/png" href="./assets/avatar-round.png?v=1790448512326" />
+  <link rel="apple-touch-icon" href="./assets/avatar-round.png?v=1790448512326" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <img class="avatar" id="memberAvatar" src="./assets/avatar.png?v=1790448512326" alt="王语晨" width="201" height="304" decoding="async" />
+      <div class="member-meta">
+        <h1 id="memberName">王语晨</h1>
+        <p id="memberSub">GNZ48 TEAM NIII · 十三期生</p>
+      </div>
+      <div class="stat" id="statBox">
+        <div class="stat-item"><span class="num" id="statMsg">0</span><span class="lbl">口袋发言</span></div>
+        <div class="stat-item"><span class="num" id="statLive">0</span><span class="lbl">直播</span></div>
+        <div class="stat-item"><span class="num" id="statPerf">0</span><span class="lbl">公演</span></div>
+      </div>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="messages">口袋发言</button>
+    <button class="tab" data-tab="live">直播</button>
+    <button class="tab" data-tab="performances">公演</button>
+    <button class="tab" data-tab="schedule">行程</button>
+    <button class="tab" data-tab="guide">新粉指南</button>
+    <button class="tab" data-tab="mine">我的</button>
+  </nav>
+
+  <div class="toolbar">
+    <!-- 搜索：输入完点「搜索」或按回车才执行（2026-09-26）。
+         不再边打边搜 —— 中文输入法每敲一个字母重渲一次会导致打不出中文、页面乱跳。 -->
+    <div class="search-wrap" id="searchWrap">
+      <input type="search" id="searchInput" placeholder="搜索发言内容 / 标题…" enterkeyhint="search" />
+      <button id="searchClear" class="search-clear" type="button" title="清空">✕</button>
+      <button id="searchBtn" class="search-btn" type="button">搜索</button>
+    </div>
+    <button id="dateToggleBtn" class="date-toggle-btn" type="button" title="按时间筛选" hidden>📅 时间</button>
+    <div class="toolbar-actions">
+      <span class="busy-note" id="busyNote" hidden></span>
+      <span class="updated" id="updatedAt"></span>
+      <button id="trAllBtn" class="tr-all-btn" type="button" hidden>🌐 翻译本页</button>
+      <select id="langSelect" class="lang-select" title="选择翻译语言">
+        <option value="zh">中文</option>
+        <option value="en">English</option>
+        <option value="es">Español</option>
+        <option value="fr">Français</option>
+        <option value="nl">Nederlands</option>
+        <option value="pt">Português</option>
+        <option value="ro">Română</option>
+        <option value="ja">日本語</option>
+        <option value="vi">Tiếng Việt</option>
+        <option value="ko">한국어</option>
+        <option value="th">ภาษาไทย</option>
+      </select>
+      <button id="refreshBtn" class="refresh-btn" type="button" title="刷新最新补档（会触发一次后台抓取，每小时也会自动更新）">🔄 刷新</button>
+    </div>
+  </div>
+
+  <main class="content">
+    <section id="panel-messages" class="panel active"></section>
+    <section id="panel-live" class="panel"></section>
+    <section id="panel-performances" class="panel"></section>
+    <section id="panel-schedule" class="panel"></section>
+    <section id="panel-guide" class="panel"></section>
+    <section id="panel-mine" class="panel"></section>
+  </main>
+
+  <!-- 视频播放器（hls.js 支持 m3u8 直播/录播播放） -->
+  <div class="player-modal" id="playerModal" hidden>
+    <div class="player-box">
+      <button class="player-close" id="playerClose" aria-label="关闭">×</button>
+      <div class="player-title" id="playerTitle"></div>
+      <video id="playerVideo" controls autoplay playsinline></video>
+      <div class="player-hint" id="playerHint"></div>
+    </div>
+  </div>
+
+  <!-- 时间筛选弹窗（点确认才刷新） -->
+  <div class="date-modal" id="dateModal" hidden>
+    <div class="date-box">
+      <div class="date-title">按时间筛选</div>
+      <label class="date-field"><span class="date-label">从（年月日）</span><input type="date" id="dateFrom" /></label>
+      <label class="date-field"><span class="date-label">至（年月日）</span><input type="date" id="dateTo" /></label>
+      <div class="date-quick">
+        <button type="button" data-quick="all">全部</button>
+        <button type="button" data-quick="7">近 7 天</button>
+        <button type="button" data-quick="30">近 30 天</button>
+        <button type="button" data-quick="90">近 90 天</button>
+      </div>
+      <div class="date-actions">
+        <button type="button" id="dateCancel">取消</button>
+        <button type="button" id="dateConfirm" class="primary">确认</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="./js/songs.js?v=20260927a36"></script>
+  <script src="./js/schedule.js?v=20260926a28"></script>
+  <script src="./js/theater-schedule.js?v=20260926a28"></script>
+  <script src="./js/bili-cuts.js?v=20260927a36"></script>
+  <script src="./vendor/hls.min.js?v=20260926a28"></script>
+  <script src="./js/app.js?v=20260926a28"></script>
+  <script src="./js/demo-features.js?v=20260926a34"></script>
+</body>
+</html>
