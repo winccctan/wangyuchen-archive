@@ -121,8 +121,14 @@ function attachBiliAndPruneDead(list) {
         if (/王语晨/.test(v.title)) s += 0.5;
         return s;
       };
+      // 🔴 排除「直播回放 / VLOG / 豪歌」这类**不是公演**的视频：
+      //    给企理鹅大帝加了空间快扫后，Chzhnh 空间的「20260825 直播回放」「VLOG」也被带进库，
+      //    它们的标题同样含「王语晨 + 8位日期」，仅靠「日期+队伍+剧目」打分会拿到 0.5 分混过门槛，
+      //    在当天没有其它候选时被当成公演回放挂上去。
+      const NOT_STAGE = /直播回放|直播录播|回放剪辑|vlog|豪歌|切条|弹幕/i;
       const scored = cands
         .filter((v) => /王语晨|niii|gnz48/i.test(v.title))
+        .filter((v) => !NOT_STAGE.test(v.title))
         .map((v) => ({ v, s: scoreOf(v) }))
         .filter((x) => x.s > 0)
         .sort((a, b) => b.s - a.s);

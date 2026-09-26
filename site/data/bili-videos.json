@@ -1,6 +1,6 @@
 {
-  "updatedAt": "2026-09-24T15:18:02.076Z",
-  "count": 1152,
+  "updatedAt": "2026-09-26T17:36:20.974Z",
+  "count": 1189,
   "targets": [
     {
       "mid": "2086351451",
@@ -26,9 +26,172 @@
     "358477444:season:7130625": 2,
     "358477444:season:6805043": 2,
     "358477444:season:2812669": 2,
-    "358477444:space": 1
+    "358477444:space": 1,
+    "2086351451:space": 2
   },
   "videos": [
+    {
+      "bvid": "BV1hPho6REKn",
+      "aid": 117338154211915,
+      "title": "【CKG48】20260926 Team C《第一人称》中秋节主题公演",
+      "created": 1790438449,
+      "duration": 9992,
+      "play": 400,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1QAho6xE2i",
+      "aid": 117338103943182,
+      "title": "【SNH48】20260926 Team SII 《INTO THE LIGHT》公演（田姝丽普通公演千秋乐）",
+      "created": 1790437898,
+      "duration": 13859,
+      "play": 211,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1wsho6GEPU",
+      "aid": 117337936238532,
+      "title": "【GNZ48】20260926 偶像研究计划I组《代号I》首演第一场",
+      "created": 1790435216,
+      "duration": 11186,
+      "play": 843,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1vXh96sEEn",
+      "aid": 117337382457531,
+      "title": "【BEJ48】20260926 《帅瓜美花降临》BEJ48中秋联合公演第2场（张雅童千秋乐）",
+      "created": 1790426798,
+      "duration": 17786,
+      "play": 1109,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1ZCh96hEMt",
+      "aid": 117337281859136,
+      "title": "【王语晨】20260926 GNZ48 Team NIII 《拾忆：TEAM NIII》公演cut",
+      "created": 1790424948,
+      "duration": 1780,
+      "play": 55,
+      "mid": "358477444"
+    },
+    {
+      "bvid": "BV1f1h96FEnJ",
+      "aid": 117337265084164,
+      "title": "【CKG48】20260926 《Fearless》公演",
+      "created": 1790424790,
+      "duration": 11093,
+      "play": 629,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1B2h968E6v",
+      "aid": 117337181327839,
+      "title": "【SNH48】20260926 Team HII 《赫兹共振》2.0公演",
+      "created": 1790423830,
+      "duration": 11153,
+      "play": 457,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1qthR6hEfe",
+      "aid": 117337063756864,
+      "title": "【GNZ48】20260926 Team NIII 《拾忆：TEAM NIII》项宇婧生日公演",
+      "created": 1790421748,
+      "duration": 12545,
+      "play": 1399,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1KkhD6vEyf",
+      "aid": 117335167867028,
+      "title": "【SNH48】20260925 《月下奇妙夜》中秋特别公演",
+      "created": 1790393019,
+      "duration": 14756,
+      "play": 1703,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1dNhQ6UEFv",
+      "aid": 117334983317625,
+      "title": "【BEJ48】20260925 《帅瓜美花降临》BEJ48中秋联合公演第1场",
+      "created": 1790390071,
+      "duration": 14634,
+      "play": 1363,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1fRhD6xEvc",
+      "aid": 117334765210954,
+      "title": "【王语晨】20221021 GNZ48 梦想奋进计划《偶像研究计划》云公演cut",
+      "created": 1790386542,
+      "duration": 2392,
+      "play": 58,
+      "mid": "358477444"
+    },
+    {
+      "bvid": "BV1MqhU6cEF1",
+      "aid": 117332315739599,
+      "title": "【CKG48】20260925 Team C《Carnival》三周年纪念公演",
+      "created": 1790349545,
+      "duration": 10559,
+      "play": 2063,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1MvhU6aEaP",
+      "aid": 117332265409113,
+      "title": "【GNZ48】20260925 Team Z《Zenith ·穹顶之上》公演",
+      "created": 1790348656,
+      "duration": 9876,
+      "play": 2171,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV13bhU6qEr1",
+      "aid": 117332064278611,
+      "title": "【CKG48】20260925 Team K《我的太阳》中秋节主题公演",
+      "created": 1790345572,
+      "duration": 10917,
+      "play": 1596,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1hCh16bEmb",
+      "aid": 117331996973211,
+      "title": "【GNZ48】20260925 Team G《拾忆：TEAM G》公演",
+      "created": 1790344547,
+      "duration": 10971,
+      "play": 2472,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1Smh16dEsj",
+      "aid": 117331946706123,
+      "title": "【SNH48】20260924 Team HII 《赫兹共振》2.0公演",
+      "created": 1790343949,
+      "duration": 12361,
+      "play": 984,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1Lghy6AEqb",
+      "aid": 117330872896387,
+      "title": "【王语晨】20221019 GNZ48 梦想奋进计划B组《与星空手牵手》公演cut",
+      "created": 1790327224,
+      "duration": 1694,
+      "play": 147,
+      "mid": "358477444"
+    },
+    {
+      "bvid": "BV1cZhC6GERu",
+      "aid": 117330738810132,
+      "title": "【王语晨】20221013 GNZ48 梦想奋进计划B组《与星空手牵手》公演cut",
+      "created": 1790325058,
+      "duration": 1384,
+      "play": 50,
+      "mid": "358477444"
+    },
     {
       "bvid": "BV13oaN6HECj",
       "aid": 117325822954467,
@@ -46,6 +209,15 @@
       "duration": 162,
       "play": 410,
       "mid": "358477444"
+    },
+    {
+      "bvid": "BV187hb6GE51",
+      "aid": 117321108557831,
+      "title": "【SNH48】20260923 《心的旅程》新生公演",
+      "created": 1790178441,
+      "duration": 11030,
+      "play": 1764,
+      "mid": "2086351451"
     },
     {
       "bvid": "BV1W8hk6rEvi",
@@ -84,6 +256,33 @@
       "mid": "358477444"
     },
     {
+      "bvid": "BV12nei6PEqf",
+      "aid": 117300992678126,
+      "title": "【BEJ48】20260919 Team E《遗忘的国度》公演",
+      "created": 1789871553,
+      "duration": 11071,
+      "play": 1814,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1Aje86CEL1",
+      "aid": 117298526494645,
+      "title": "【SNH48】20260919 Team NII《肆·时墟》公演",
+      "created": 1789834017,
+      "duration": 13400,
+      "play": 2497,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1CZe86yEzU",
+      "aid": 117298409050384,
+      "title": "【GNZ48】20260919 Team G《拾忆：TEAM G》公演",
+      "created": 1789832020,
+      "duration": 10419,
+      "play": 4374,
+      "mid": "2086351451"
+    },
+    {
       "bvid": "BV1upeh6tE4M",
       "aid": 117298140548243,
       "title": "【王语晨】20260919 直播回放",
@@ -93,12 +292,57 @@
       "mid": "358477444"
     },
     {
+      "bvid": "BV1Hyeh6VETa",
+      "aid": 117297838625082,
+      "title": "【CKG48】20260919 Team K《我的太阳》公演",
+      "created": 1789823440,
+      "duration": 9454,
+      "play": 2019,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1jueb6bETo",
+      "aid": 117297385574886,
+      "title": "【BEJ48】20260919 Team B《B.RISE 梦之门》公演",
+      "created": 1789816466,
+      "duration": 9436,
+      "play": 1394,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1nfet6KE8k",
+      "aid": 117297234581616,
+      "title": "【GNZ48】20260919 Team NIII 《拾忆：TEAM NIII》公演",
+      "created": 1789814355,
+      "duration": 10348,
+      "play": 3990,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1Freb6qE5b",
+      "aid": 117297033256563,
+      "title": "【SNH48】20260919 Team X 《Fire X》2.0公演",
+      "created": 1789811167,
+      "duration": 10617,
+      "play": 3343,
+      "mid": "2086351451"
+    },
+    {
       "bvid": "BV1z1eQ6AEkf",
       "aid": 117295439483336,
       "title": "【GNZ48】20260918 Team Z《Zenith ·穹顶之上》公演",
       "created": 1789786789,
       "duration": 10524,
       "play": 383,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1xheQ6kEar",
+      "aid": 117295389087265,
+      "title": "【SNH48】20260918 Team SII 《INTO THE LIGHT》公演",
+      "created": 1789785972,
+      "duration": 11153,
+      "play": 1416,
       "mid": "2086351451"
     },
     {
@@ -129,6 +373,15 @@
       "mid": "358477444"
     },
     {
+      "bvid": "BV1x3er61Eii",
+      "aid": 117287403132222,
+      "title": "【SNH48】20260917 Team HII 《赫兹共振》2.0公演",
+      "created": 1789664225,
+      "duration": 10537,
+      "play": 2812,
+      "mid": "2086351451"
+    },
+    {
       "bvid": "BV1eQe66bEBs",
       "aid": 117287352796261,
       "title": "【王语晨】20260917 直播回放",
@@ -154,6 +407,15 @@
       "duration": 171,
       "play": 873,
       "mid": "358477444"
+    },
+    {
+      "bvid": "BV1jHeA6sEsw",
+      "aid": 117281514329273,
+      "title": "【SNH48】20260916 《心的旅程》新生公演",
+      "created": 1789574503,
+      "duration": 11251,
+      "play": 1947,
+      "mid": "2086351451"
     },
     {
       "bvid": "BV1ZYeF6JEwv",
@@ -312,6 +574,14 @@
       "play": 2374,
       "sid": "4158846",
       "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1xUYW6YEzL",
+      "aid": 117239252519972,
+      "title": "【王语晨】2026SNH48GROUP年度青春盛典-GNZ48 VLOG(3)-cut",
+      "created": 1788929098,
+      "duration": 0,
+      "mid": "358477444"
     },
     {
       "bvid": "BV1MxYs6MEhU",
@@ -530,6 +800,14 @@
       "mid": "2086351451"
     },
     {
+      "bvid": "BV1BY416aE6j",
+      "aid": 117179508985257,
+      "title": "【王语晨】20260829 直播回放",
+      "created": 1788017844,
+      "duration": 0,
+      "mid": "358477444"
+    },
+    {
       "bvid": "BV1fv416FEsk",
       "aid": 117179492079846,
       "title": "【GNZ48】20260829 Team NIII 《拾忆：TEAM NIII》公演",
@@ -538,6 +816,14 @@
       "play": 4402,
       "sid": "4158846",
       "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1Sm4C6VEVj",
+      "aid": 117178451889201,
+      "title": "【王语晨】20260829 GNZ48 team NIII《拾忆：TEAM NIII》公演cut",
+      "created": 1788001378,
+      "duration": 0,
+      "mid": "358477444"
     },
     {
       "bvid": "BV1HHtP6QEJi",
@@ -612,6 +898,14 @@
       "created": 1787671638,
       "duration": 166,
       "play": 1101,
+      "mid": "358477444"
+    },
+    {
+      "bvid": "BV1TXhV6PEqS",
+      "aid": 117156624862111,
+      "title": "【王语晨】20260825 直播回放",
+      "created": 1787668585,
+      "duration": 0,
       "mid": "358477444"
     },
     {
@@ -699,6 +993,14 @@
       "play": 3896,
       "sid": "4158846",
       "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1Jm866tECA",
+      "aid": 117134998963888,
+      "title": "【王语晨】我是中华大曲库，上次豪歌猜歌游戏，好多歌都没去抢都夺冠了（本视频包含豪歌高光时刻）",
+      "created": 1787338470,
+      "duration": 0,
+      "mid": "358477444"
     },
     {
       "bvid": "BV1AB866eE1u",
@@ -868,6 +1170,15 @@
       "mid": "358477444"
     },
     {
+      "bvid": "BV1kvM16sEpW",
+      "aid": 117044049610860,
+      "title": "【王语晨】20260805 直播回放",
+      "created": 1785950697,
+      "duration": 8760,
+      "play": 366,
+      "mid": "358477444"
+    },
+    {
       "bvid": "BV1kaMC6UErW",
       "aid": 117041096819496,
       "title": "【王语晨】就算别人做错了什么，咱们也是没必要审判人家的，另外希望大家饭我是开心的",
@@ -949,6 +1260,15 @@
       "sid": "4158846"
     },
     {
+      "bvid": "BV1k23B6yE9E",
+      "aid": 116998734351197,
+      "title": "【王语晨】20260728 直播回放",
+      "created": 1785259401,
+      "duration": 9419,
+      "play": 239,
+      "mid": "358477444"
+    },
+    {
       "bvid": "BV1uvgX6xEjM",
       "aid": 116986939969551,
       "title": "【GNZ48】20260726 偶像研究计划H组《心的旅程》公演（青春时刻：王紫萱 王紫媛）",
@@ -986,6 +1306,15 @@
       "play": 15539,
       "sid": "4158846",
       "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1Fp3g6tEAX",
+      "aid": 116980212303394,
+      "title": "【王语晨】20260725 GNZ48 Team NIII 《拾忆：TEAM NIII》公演cut",
+      "created": 1784976454,
+      "duration": 2037,
+      "play": 154,
+      "mid": "358477444"
     },
     {
       "bvid": "BV1Co3g6PER7",
