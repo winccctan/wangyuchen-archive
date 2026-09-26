@@ -1,10 +1,12 @@
 /* 她的公演 cut · B 站合集 season 4752040（UP: Chzhnh / space.bilibili.com/358477444）
- * 共 154 条，覆盖 2024-04-19 → 2026-09-13。
+ * 共 155 条，覆盖 2022-10-21（手工补录云公演cut）+ 2024-04-19 → 2026-09-13（Chzhnh 合集 season 4752040 自动生成）。
  * 由 tools/fetch-bili-cuts.mjs 自动生成（B 站合集接口 /x/polymer/web-space/seasons_archives_list，无需 wbi 签名）。
  * 字段：[日期, 标题, BV号, 封面URL]。日期从标题里的 8 位(20240419)或 6 位(260425)数字解析而来。
  * ⚠️ demo(UAT) 专属数据，只存在于 demo-wyc/js/bili-cuts.js，正式站没有。
+ * ⚠️ 2022-10-21 这条为手工补录（不在 Chzhnh 合集内，fetch-bili-cuts 重跑不会包含）：【王语晨】20221021 云公演cut。
  */
 window.__BILI_CUTS__ = [
+  ["2022-10-21","【王语晨】20221021 GNZ48 梦想奋进计划《偶像研究计划》云公演cut","BV1fRhD6xEvc",""],
   ["2024-04-19","最佳拍档公演cut","BV1uw4m1U7jr","https://i0.hdslb.com/bfs/archive/87f603c47358424d528a856aa4dcebabcedbaced.png"],
   ["2024-04-27","《启程:Team NIII》千秋乐公演cut","BV1gH4y1V72k","https://i2.hdslb.com/bfs/archive/74e0838adcc5c173299168fc9c5c75e8706c5dbd.jpg"],
   ["2024-05-04","GNZ48 team NIII《天枢之弈》首演第一场cut","BV1Wi421y723","https://i1.hdslb.com/bfs/archive/4d4f016954d6d3ea6851fd76fbdf678dc13a00e7.jpg"],
