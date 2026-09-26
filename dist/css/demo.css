@@ -1177,10 +1177,41 @@ button, select, input, textarea, a, .tkc-cell, .tkc-nav, .tkc-btn, .tkc-sel { to
   border: 1px solid #ffd2df; border-radius: 10px; background: #fff6f9; color: #e0518a;
   font-size: 12.5px; text-decoration: none; white-space: nowrap; }
 .sg-vid:hover { border-color: #ff8bb0; background: #ffeaf1; }
+/* 多版本「只看这首」：带一个下拉小箭头，点开选来源面板（站长 2026-09-27 定的形态，不要两个按钮并排） */
+.sg-vid.is-multi { cursor: pointer; gap: 2px; }
+.sg-vid-c { font-style: normal; font-size: 10px; opacity: .8; margin-top: 1px; }
+/* 选版本的悬浮层（fixed：弹窗的 .sg-rows 是 overflow:auto，绝对定位会被裁一半） */
+.sg-vs-wrap { position: fixed; inset: 0; z-index: 1050; display: flex;
+  align-items: flex-end; justify-content: center; }
+.sg-vs-mask { position: absolute; inset: 0; background: rgba(24, 24, 30, .42); }
+.sg-vs { position: relative; width: 100%; max-width: 460px; background: #fff;
+  border-radius: 16px 16px 0 0; padding: 14px 14px calc(12px + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -8px 30px rgba(15, 23, 42, .18); animation: sgVsUp .18s ease; }
+@keyframes sgVsUp { from { transform: translateY(14px); opacity: .6; } to { transform: none; opacity: 1; } }
+.sg-vs-h { font-size: 13px; color: #8a97a4; padding: 2px 4px 10px; }
+.sg-vs-i { display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
+  padding: 12px; border: 1px solid #ffd2df; border-radius: 12px; background: #fff6f9;
+  text-decoration: none; }
+.sg-vs-i:active { background: #ffeaf1; }
+.sg-vs-t { flex: 0 0 auto; font-size: 14px; font-weight: 600; color: #c93b70; }
+.sg-vs-b { margin-left: auto; flex: 0 0 auto; font-size: 12px; color: #98a5b3; }
+.sg-vs-x { width: 100%; height: 40px; border: 0; border-radius: 10px; background: #f4f7fa;
+  color: #7b8a99; font-size: 13.5px; cursor: pointer; }
+@media (min-width: 700px) {
+  .sg-vs-wrap { align-items: center; }
+  .sg-vs { border-radius: 16px; box-shadow: 0 10px 40px rgba(15, 23, 42, .22); }
+}
 @media (max-width: 480px) {
   .sg-line { gap: 5px; }
   .sg-line .sg-main { padding: 9px 10px; gap: 8px; }
   .sg-vid { padding: 0 8px; font-size: 12px; }
+}
+/* 320~380 窄屏：「日期 + 看这场 →」这一行原本会溢出 ~12px（挤到右边的按钮上）——缩字号 + 缩间距让它回到一行里。
+   🔴 这个 bug 线上的 a33 就有（不是多版本功能引入的），实测 19 行里 16 行中招。 */
+@media (max-width: 380px) {
+  .sg-line .sg-main { padding: 8px 9px; }
+  .sg-line .sg-sub { gap: 6px; }
+  .sg-line .sg-rd, .sg-line .sg-ra { font-size: 11.5px; }
 }
 /* 从曲目跳到回放时的高亮 */
 /* 目标场次高亮：脉冲 3 次（约 4.2s）后仍留一圈常驻描边 ——

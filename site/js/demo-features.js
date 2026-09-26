@@ -4048,19 +4048,57 @@
     return '<div class="sg-box">' + bar + head + body + '</div>';
   };
 
-  /** 这一场、这一首的 B 站视频（songs.js 的 `vid`：`"<liveId>|<曲名>" → [[bvid, p, 来源],...]`）
+  /** 这一场、这一首的**全部** B 站视频（songs.js 的 `vid`：`"<liveId>|<曲名>" → [[bvid, p, 来源],...]`）
    *  - p > 1 才拼 `?p=N`（Chzhnh 的全场 cut 分 P）；甜橙小铺是整条单曲视频，直接跳
-   *  - 数据由 scripts/build-song-videos.py 生成，源是站长 2026-09-26 勾出来的 385 条 */
-  function sgVidOf(lid, song) {
+   *  - 数据由 scripts/build-song-videos.py 生成，源是站长 2026-09-26 勾出来的 385 条
+   *  - 🔴 两个号都有的情况**两个都返回**（数据层已排好序：甜橙小铺在前），由界面决定怎么展示 */
+  function sgVidList(lid, song) {
     const S = SONGS();
-    const v = (S && S.vid) ? S.vid[lid + '|' + song] : null;
-    if (!v || !v.length) return null;
-    const it = v[0];
-    return {
-      url: 'https://www.bilibili.com/video/' + it[0] + (it[1] > 1 ? '?p=' + it[1] : ''),
-      src: it[2] || '',
-      more: v.length - 1
-    };
+    const raw = (S && S.vid) ? S.vid[lid + '|' + song] : null;
+    if (!raw || !raw.length) return [];
+    return raw.map((it) => {
+      const src = it[2] || '';
+      const p = it[1] | 0;
+      // 🔴 判断「是不是单曲直拍」要看来源名，**不能看 p** —— 2024-09-17《大小孩》Chzhnh 是 P1，也是全场 cut
+      const direct = /甜橙/.test(src);       // 甜橙小铺 = 一视频一首的单曲直拍
+      return {
+        url: 'https://www.bilibili.com/video/' + it[0] + (p > 1 ? '?p=' + p : ''),
+        src: src, p: p,
+        label: direct ? '甜橙小铺' : (src || 'B站'),
+        sub: direct ? '单曲直拍 · 点开就是这首'
+          : '全场 cut · 第 ' + Math.max(1, p) + ' 段'
+      };
+    });
+  }
+  /** 首选的那一个（给「只有一个源」的场次直接用；多源的场次不走这里，走选择面板） */
+  function sgVidOf(lid, song) {
+    const l = sgVidList(lid, song);
+    return l.length ? l[0] : null;
+  }
+
+  /* 「只看这首」有多个版本时弹出选择面板（2026-09-27 站长定：一个按钮，点开选来源，不要两个按钮挤一起）。
+     🔴 做成 **fixed 悬浮层** 而不是挂在按钮下面：弹窗里 `.sg-rows` 是 `overflow:auto`，
+        绝对定位的浮层会被它裁掉一半；条目写成 `<a target=_blank>`，微信里才一定跳得出去。 */
+  let sgVsEl = null;
+  function sgCloseVs() { if (sgVsEl) { sgVsEl.remove(); sgVsEl = null; } }
+  function sgOpenVs(song, list) {
+    sgCloseVs();
+    const box = document.createElement('div');
+    box.className = 'sg-vs-wrap';
+    box.innerHTML = '<div class="sg-vs-mask"></div>'
+      + '<div class="sg-vs" role="menu">'
+      + '<div class="sg-vs-h">' + esc(song) + ' · 选一个版本</div>'
+      + list.map((v) => `<a class="sg-vs-i" href="${esc(v.url)}" target="_blank" rel="noopener noreferrer">`
+        + `<span class="sg-vs-t">${esc(v.label)}</span>`
+        + `<span class="sg-vs-b">${esc(v.sub)}</span></a>`).join('')
+      + '<button class="sg-vs-x" type="button">关闭</button></div>';
+    document.body.appendChild(box);
+    sgVsEl = box;
+    box.querySelector('.sg-vs-mask').addEventListener('click', sgCloseVs);
+    box.querySelector('.sg-vs-x').addEventListener('click', sgCloseVs);
+    Array.prototype.forEach.call(box.querySelectorAll('.sg-vs-i'), (a) => {
+      a.addEventListener('click', () => setTimeout(sgCloseVs, 400));
+    });
   }
 
   /** 曲目弹窗：唱过的每一场（场次名/时间/日期），一行两个按钮
@@ -4079,11 +4117,18 @@
     const rows = lids.map(sgInfo).filter(Boolean).reverse().map((x) => {
       // 日期写成 2025.12.28（站长口径）；站点没收录的场次没有确切时间，就不显示时间
       const d = String(x.d || '').replace(/-/g, '.') + (x.t ? ' ' + x.t : '');
-      const v = sgVidOf(x.lid, name);
-      const vidBtn = v
-        ? `<a class="sg-vid" href="${esc(v.url)}" target="_blank" rel="noopener noreferrer"`
-          + ` title="来源：${esc(v.src)}">只看这首</a>`
-        : '';
+      const vs = sgVidList(x.lid, name);
+      let vidBtn = '';
+      if (vs.length === 1) {
+        // 只有一个版本：直接就是链接，点一下就跳（371/378 走这条，不给多余步骤）
+        const v = vs[0];
+        vidBtn = `<a class="sg-vid" href="${esc(v.url)}" target="_blank" rel="noopener noreferrer"`
+          + ` title="来源：${esc(v.src)}">只看这首</a>`;
+      } else if (vs.length > 1) {
+        // 两个号都有：一个按钮，点开选来源（站长 2026-09-27 定的形态）
+        vidBtn = `<button class="sg-vid is-multi" type="button" data-sg-vid="${esc(x.lid)}|${esc(name)}">`
+          + '只看这首<i class="sg-vid-c">▾</i></button>';
+      }
       if (x.v || !sgHasCard(x.lid)) {
         return '<div class="sg-line is-no"><div class="sg-main">'
           + '<span class="sg-rt">' + esc(x.n) + '</span>'
@@ -4159,6 +4204,16 @@
     if (songBtn) { sgSongModal(songBtn.getAttribute('data-song')); return; }
     const goBtn = e.target.closest('[data-sg-go]');
     if (goBtn) { sgGoPerf(goBtn.getAttribute('data-sg-go')); return; }
+    // 「只看这首」有多个版本：弹选择面板（一个 button + 悬浮层，不是两个按钮）
+    const vidBtn2 = e.target.closest('[data-sg-vid]');
+    if (vidBtn2) {
+      const raw = vidBtn2.getAttribute('data-sg-vid') || '';
+      const i = raw.indexOf('|');
+      if (i > 0) {
+        const vs = sgVidList(raw.slice(0, i), raw.slice(i + 1));
+        if (vs.length > 1) { sgOpenVs(raw.slice(i + 1), vs); return; }
+      }
+    }
     // 公演卡片上「+N」：展开该场全部曲目（默认只显示前 10 首）
     const foldBtn = e.target.closest('[data-sg-fold]');
     if (foldBtn) {
