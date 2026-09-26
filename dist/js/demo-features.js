@@ -3822,6 +3822,31 @@
     return { lid: lid, d: it.d, t: it.t || '', n: it.n || '公演', v: !!it.v };
   }
 
+  /* 站点**当前实际收录**的公演回放 liveId 集合（懒建 + 缓存）。
+     🔴 「看这场」能不能给，必须以它为准，不能只看 songs.js 里的 info[lid].v：
+        v 只是生成曲目数据那一刻的快照，站点后来新增/缺少都可能对不上，
+        对不上就会出现「按钮写着看这场、点了却找不到那一场」——
+        站长 2026-09-26 反馈的「有的曲目能定位、有的点了没反应」，
+        以及「没有卡片的就不应该支持跳转」。 */
+  let sgLiveSet = null;
+  /** 重建集合（每次打开曲目弹窗都重建一次：站点数据刷新后不能还用旧快照；
+   *  279 项的遍历可忽略，弹窗本身也不会高频打开） */
+  function sgLiveSetBuild() {
+    const set = new Set();
+    try {
+      const arr = (typeof DATA !== 'undefined' && DATA.performances) ? DATA.performances : [];
+      arr.forEach((x) => { if (x && x.liveId) set.add(String(x.liveId)); });
+    } catch (_) { /* 忽略 */ }
+    return set;
+  }
+  function sgHasCard(lid) {
+    if (!lid) return false;
+    if (!sgLiveSet) sgLiveSet = sgLiveSetBuild();
+    // 数据异常/还没就绪时保守放行：宁可给入口，也别把本来能跳的场次藏掉
+    if (!sgLiveSet.size) return true;
+    return sgLiveSet.has(String(lid));
+  }
+
   /* ---- 曲目检索状态：排序方式（持久化）+ 面板内搜索词 ---- */
   const SG_LS_SORT = 'wyc-demo-sgsort';
   let sgSort = 'az';
@@ -3926,10 +3951,13 @@
     const lids = (S.bySong && S.bySong[name]) || [];
     if (!lids.length) { sgToast('这首没有记录'); return; }
     trk('song:view');
+    sgLiveSet = sgLiveSetBuild();       // 每次打开都按站点当下的数据重建
     const rows = lids.map(sgInfo).filter(Boolean).reverse().map((x) => {
       // 日期写成 2025.12.28（站长口径）；站点没收录的场次没有确切时间，就不显示时间
       const d = String(x.d || '').replace(/-/g, '.') + (x.t ? ' ' + x.t : '');
-      if (x.v) {
+      // 🔴 只给「站点当下真有这一场回放卡片」的场次挂「看这场 →」；
+      //    其余一律显示「无回放」不可点（站长 2026-09-26：没有卡片的就不该能跳）。
+      if (x.v || !sgHasCard(x.lid)) {
         return '<div class="sg-row is-no"><span class="sg-rd">' + esc(d) + '</span>'
           + '<span class="sg-rt">' + esc(x.n) + '</span>'
           + '<span class="sg-ra">无回放</span></div>';
@@ -3947,7 +3975,18 @@
     closeModal();
     const it = sgInfo(lid);
     try {
-      if (typeof state !== 'undefined') { state.perfSub = 'perf'; }
+      // 🔴 公演页可能还留着上次的搜索词 / 时间筛选，那一场会被过滤掉 ⇒ 卡片根本不存在，
+      //    于是「点了没反应」或退到别的地方（站长 2026-09-26 报的「有的点进去首页」）。
+      //    既然用户明确点了「看这场」，就把会挡住它的筛选清掉。
+      if (typeof state !== 'undefined') {
+        state.perfSub = 'perf';
+        state.query = '';
+        state.dateFrom = null;
+        state.dateTo = null;
+        state.dayLimit = 3;
+        const si = document.getElementById('searchInput');
+        if (si) si.value = '';
+      }
       // switchTab 内部会 renderAll()（含公演面板重建），所以不必再单独 renderPerformances()——
       // 多渲一次只会让刚建好的卡片立刻又被替换，滚动更容易被打断。
       if (typeof switchTab === 'function') switchTab('performances');
@@ -3981,8 +4020,10 @@
         return;
       }
       if (tries >= 60) {                                   // ~3s 仍没有这一场的卡片
-        if (it && typeof gotoPerfCuts === 'function') gotoPerfCuts(it.d);
-        else sgToast('这场没有可跳转的回放');
+        // 不再自动退到「公演cut」——那会让页面莫名跳到别处（站长反感）；
+        // 按钮只在「站点确有这一场」时才会出现，正常不会走到这里。
+        sgToast('这一场暂时没有回放卡片');
+        void it;
         return;
       }
       setTimeout(tick, 50);
