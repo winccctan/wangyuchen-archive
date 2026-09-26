@@ -38,6 +38,13 @@ jobs:
           python-version: '3.11'
       - name: 装 pypinyin（只有新增曲目时才用到）
         run: pip install --quiet pypinyin
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: 抓「甜橙小铺」新视频（曲目「只看这首」的数据源之一）
+        # 增量并入 scripts/orange-shop.json；新出现的写进 scripts/orange-new.json，供下一轮人工勾选。
+        # 失败不影响本轮（下轮会重试，且清单本身不会被写坏：脚本全程只做 bvid 级增量合并）。
+        run: node scripts/fetch-orange-shop.mjs || true
       - name: 解析新 cut 的分 P → unit 清单
         run: python scripts/sync-cut-units.py --fetch ${{ github.event.inputs.all == 'true' && '--all' || '' }}
       - name: 合并进曲目库
@@ -48,6 +55,7 @@ jobs:
           git config user.name  "songs-sync bot"
           git config user.email "archive@local"
           git add scripts/cut-units.json scripts/cut-units-scanned.json \
+                  scripts/orange-shop.json scripts/orange-new.json \
                   site/js/songs.js dist/js/songs.js site/index.html dist/index.html
           if git diff --cached --quiet; then
             echo "本次没有新增曲目，跳过提交"
