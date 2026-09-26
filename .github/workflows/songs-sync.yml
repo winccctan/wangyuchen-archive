@@ -53,8 +53,9 @@ jobs:
             echo "本次没有新增曲目，跳过提交"
           else
             git commit -m "auto: 曲库增量·cut unit $(TZ=Asia/Shanghai date '+%Y-%m-%d')"
-            git fetch origin main
-            git rebase origin/main
-            git push origin main
+            BR="${GITHUB_REF#refs/heads/}"
+            git fetch origin "$BR"
+            git rebase "origin/$BR"
+            git push origin "HEAD:$BR"
             echo "已提交，Cloudflare 约 1~3 分钟生效"
           fi
