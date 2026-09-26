@@ -89,6 +89,13 @@ function main() {
     return;
   }
 
+  // 🔴 没变化就别写、更别 bump index.html：它是静态文件 ⇒ 一 bump 就触发一次全站构建。
+  //    12 小时跑一次，若每次都无条件 bump，等于每天白白多构建两次。
+  if (added === 0 && merged.length === base.length) {
+    console.log(`[sync-bili-cuts] 没有新增（${merged.length} 条与现有一致）⇒ 不写文件、不 bump 版本号`);
+    return;
+  }
+
   const head =
 `/**
  * 王语晨补档站 - B 站个人 cut 清单（公演cut 页 / 公演回放页「✂️ B站cut」入口共用的数据源）
