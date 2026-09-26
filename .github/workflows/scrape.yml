@@ -33,7 +33,9 @@ jobs:
       MAX_DETAILS: "40"
       BILI_PAGE_BUDGET: "6"
       PAGE_SLEEP: "1500"
-      BILI_SPACE_BAN_TRIES: "2"
+      # 🔴 空间通道（x/series/recArchivesByKeywords）是「新投稿」唯一的入口（合集翻页是历史续跑），
+      #    它被 B 站 -412 风控挡掉就等于当天的新回放 / 新 cut 全部进不了库 ⇒ 重试次数给足。
+      BILI_SPACE_BAN_TRIES: "4"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
