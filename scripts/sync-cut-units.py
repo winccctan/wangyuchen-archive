@@ -262,9 +262,41 @@ def load_songs(path):
     return json.loads(body), head
 
 
+# 🔴 线上最新场次 ＞ 本地快照（详见 load_archive 注释）
+PERF_API = 'https://idol.wyc0518.cc/api/performances'
+
+
 def load_archive():
-    s = open(ARCHIVE, encoding='utf-8').read()
-    return json.loads(s[s.index('{'):s.rindex('}') + 1])['performances']
+    """「日期 → liveId」的场次清单：**线上 API 优先 + 本地 archive.js 兜底**，两者取并集。
+
+    🔴 只信本地快照 ⇒ 所有新公演的 unit 都会被静默跳过：
+    scrape.yml 改成「只写 KV、不写仓库」之后，site/data/archive.js 就停在最后一次手工提交那天
+    （2026-09-27 实况：线上 279 场，本地只有 277 场、最晚 9/13；9/26《拾忆·TEAM NIII·第二十八场》
+    只在线上有）⇒ pick_live('2026-09-26') 返 None ⇒ 那场的 cut unit 永远进不了曲目库。
+    线上 KV 由 CF Cron 每 15 分钟刷新，是新场次唯一的第一手来源（公开读，但**必须带浏览器 UA，否则 403**）。
+    """
+    by_id = {}
+    local, online = [], []
+    try:
+        s = open(ARCHIVE, encoding='utf-8').read()
+        local = json.loads(s[s.index('{'):s.rindex('}') + 1])['performances']
+    except Exception as e:
+        print('  ! 本地 %s 读失败：%s' % (os.path.basename(ARCHIVE), e))
+    for p in local:
+        by_id.setdefault(str(p.get('liveId')), p)
+
+    try:
+        req = urllib.request.Request(PERF_API, headers={'User-Agent': UA, 'Accept': 'application/json'})
+        op = urllib.request.build_opener(urllib.request.ProxyHandler({}))   # 绕开本机/沙箱代理
+        online = json.loads(op.open(req, timeout=25).read().decode('utf-8'))
+    except Exception as e:
+        print('  ! 拉不到线上场次（%s），本次只用本地快照：%s' % (PERF_API, e))
+    for p in online:
+        by_id.setdefault(str(p.get('liveId')), p)          # 本地已有的不动（保原有字段口径）
+
+    print('  场次源：本地 %d 场 + 线上 %d 场 → 去重 %d 场'
+          % (len(local), len(online), len(by_id)))
+    return list(by_id.values())
 
 
 def pick_live(day, perfs, title_hint=''):
