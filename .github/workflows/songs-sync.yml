@@ -10,7 +10,11 @@ name: 曲库增量·cut unit
 
 on:
   schedule:
-    - cron: '23 21 * * *'          # 北京 05:23
+    # 北京 05:23 / 17:23 —— 12 小时一次（2026-09-27 站长定）。
+    # 为什么不是更密：曲目库 songs.js / bili-cuts.js 是**前端静态文件**，只能靠提交 → Cloudflare 从 main 构建才会更新，
+    # 每跑一次就是一次全站构建。12 小时 = 2 次/天，够用又不至于刷屏。
+    - cron: '23 21 * * *'
+    - cron: '23 9 * * *'
   workflow_dispatch:
     inputs:
       all:
@@ -29,6 +33,10 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      # 微博 Cookie 存在 Cloudflare KV（SECRETS 命名空间，键 WEIBO_COOKIE），用它去取
+      SYNC_TOKEN: ${{ secrets.SYNC_TOKEN }}
+      WORKER_URL: ${{ secrets.WORKER_URL || 'https://idol.wyc0518.cc' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -41,6 +49,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: 微博「公演cut」深翻页回填（WB_PAGES=20）
+        # 日常那轮（scrape.yml，每 5 分钟）只翻 8 页够覆盖最近的；这里翻 20 页把更老的也捞进来，
+        # 并把结果提交回仓库 ⇒ 下一次所有轮次都以它为基底，越攒越全。失败不影响后续（下轮再试）。
+        run: WB_PAGES=20 node scripts/fetch-weibo-cuts.mjs || true
+      - name: B站 cut 清单合并（Chzhnh 新投稿 → bili-cuts.js）
+        # 以前这脚本**没有任何调用方**（注释谎称由 scrape.mjs 调用）⇒ ✂️B站cut 从不自动更新，
+        # 线上一直停在我手敲出来的那份。放这里 12 小时跑一次并提交，自动跟着新投稿走。
+        run: node scripts/sync-bili-cuts.mjs
       - name: 抓「甜橙小铺」新视频（曲目「只看这首」的数据源之一）
         # 增量并入 scripts/orange-shop.json；新出现的写进 scripts/orange-new.json，供下一轮人工勾选。
         # 失败不影响本轮（下轮会重试，且清单本身不会被写坏：脚本全程只做 bvid 级增量合并）。
@@ -56,7 +72,11 @@ jobs:
           git config user.email "archive@local"
           git add scripts/cut-units.json scripts/cut-units-scanned.json \
                   scripts/orange-shop.json scripts/orange-new.json \
-                  site/js/songs.js dist/js/songs.js site/index.html dist/index.html
+                  scripts/song-pending.json scripts/song-aliases.json \
+                  site/data/performance-cuts.js \
+                  site/js/songs.js dist/js/songs.js \
+                  site/js/bili-cuts.js dist/js/bili-cuts.js \
+                  site/index.html dist/index.html
           if git diff --cached --quiet; then
             echo "本次没有新增曲目，跳过提交"
           else
