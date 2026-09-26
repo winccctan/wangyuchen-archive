@@ -3465,12 +3465,24 @@
      素材 = 站长本机微信导出后压成的「微信可直接添加」规格；
      assets/sticker 由 scripts/build-dist.mjs 整目录复制，别漏 dirs 白名单。 */
   const STK_DIR = './assets/sticker/';
-  const STK_GIF = new Set([1, 4, 7, 8, 10, 11, 13, 15, 18, 21, 24, 27, 30, 33, 36, 41]);
-  const STK_EMO = Array.from({ length: 42 }, (_, i) =>
-    'e' + String(i + 1).padStart(2, '0') + (STK_GIF.has(i + 1) ? '.gif' : '.png'));
-  const STK_MID = Array.from({ length: 9 }, (_, i) => 'm' + String(i + 1).padStart(2, '0') + '.png');
+  // 🔴 编号按「内容」追加，不是按下载编号：e01..e42 是 a17 起就在线的那批（文件名/内容一字未改），
+  //    e43..e74 是 2026-09-26 新导出、且内容与旧的确实不重复的（用 md5 比对过）。
+  const STK_GIF = new Set([1, 4, 7, 8, 10, 11, 13, 15, 18, 21, 24, 27, 30, 33, 36, 41, 43, 52, 54, 57, 60, 63, 66, 69, 74]);
+  const STK_EMO = [
+    'e01.gif', 'e02.png', 'e03.png', 'e04.gif', 'e05.png', 'e06.png', 'e07.gif', 'e08.gif', 'e09.png', 'e10.gif',
+    'e11.gif', 'e12.png', 'e13.gif', 'e14.png', 'e15.gif', 'e16.png', 'e17.png', 'e18.gif', 'e19.png', 'e20.png',
+    'e21.gif', 'e22.png', 'e23.png', 'e24.gif', 'e25.png', 'e26.png', 'e27.gif', 'e28.png', 'e29.png', 'e30.gif',
+    'e31.png', 'e32.png', 'e33.gif', 'e34.png', 'e35.png', 'e36.gif', 'e37.png', 'e38.png', 'e39.png', 'e40.png',
+    'e41.gif', 'e42.png', 'e43.gif', 'e44.png', 'e45.png', 'e46.png', 'e47.png', 'e48.png', 'e49.png', 'e50.png',
+    'e51.png', 'e52.gif', 'e53.png', 'e54.gif', 'e55.png', 'e56.png', 'e57.gif', 'e58.png', 'e59.png', 'e60.gif',
+    'e61.png', 'e62.png', 'e63.gif', 'e64.png', 'e65.png', 'e66.gif', 'e67.png', 'e68.png', 'e69.gif', 'e70.png',
+    'e71.png', 'e72.png', 'e73.png', 'e74.gif'
+  ];
+  const STK_MID = [
+    'm01.png', 'm02.png', 'm03.png', 'm04.png', 'm05.png', 'm06.png', 'm07.png', 'm08.png', 'm09.png'
+  ];
 
-  // 分类：三类**并列不重叠**（动 16 + 静 26 + 中秋 9 = 全部 51，静图不含中秋）
+  // 分类：三类**并列不重叠**（动 25 + 静 49 + 中秋 9 = 全部 83，静图不含中秋）
   const STK_POOL = {
     all: STK_EMO.concat(STK_MID),
     ani: STK_EMO.filter((f) => f.endsWith('.gif')),
