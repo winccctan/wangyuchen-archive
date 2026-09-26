@@ -2201,6 +2201,62 @@
      不进 KV、不接登录。代价：换设备 / 清缓存会丢，可接受。
      ===================================================================== */
   const CAL_LS = 'wyc-demo-cal-v1';
+  /* 🔴 本机存储「能不能写」必须先探一次（d57，站长 2026-09-26 报「标了我要去，重新打开又没了」）。
+     两种情况都会让 localStorage.setItem 抛异常，而 LS.set 的 try/catch 会**静默吞掉**：
+       ① 无痕 / 隐私模式（iOS Safari、微信内置浏览器都可能拒绝写入）
+       ② 存储写满（照片记录是 base64 缩略图，9 张/场，很容易逼近 5MB 上限）
+     原来「我要去」的 toggle 完全不检查返回值 ⇒ 界面上勾上了、实际没落盘、还不提示，
+     站长看到的就是「明明记了，关掉页面就没了」。
+     处理：① 启动时探测一次；② 每次写入都检查返回值；③ 写不进去就把内存状态回滚（别让 UI 说谎）+ 出声；
+           ④ 快满时提前提醒。 */
+  let calStoreOk = true, calStoreBytes = 0;
+  function calStoreProbe() {
+    try {
+      localStorage.setItem('__wyc_probe__', '1');
+      localStorage.removeItem('__wyc_probe__');
+      calStoreOk = true;
+    } catch (_) { calStoreOk = false; }
+    try { calStoreBytes = (localStorage.getItem(CAL_LS) || '').length; } catch (_) { calStoreBytes = 0; }
+  }
+  // 写入失败：回滚由调用方做，这里只负责出声 + 更新可用标志
+  function calStoreFail(what) {
+    calStoreOk = false;
+    if (typeof toast === 'function') {
+      toast(what || '这台手机存不下这个标记（无痕模式 / 存储已满），关掉页面就不会保留', 3600);
+    }
+  }
+  /* 🔴 所有对 CAL_LS 的写入**都必须走这里**（d57）—— 直接调 LS.set 会漏掉「失败要出声 + 回滚」。
+     调用方约定：先改内存 → calSave() → 返回 false 就把内存改回去。 */
+  function calSave(what) {
+    const ok = LS.set(CAL_LS, calStore);
+    if (ok) {
+      calStoreOk = true;
+      try { calStoreBytes = (localStorage.getItem(CAL_LS) || '').length; } catch (_) {}
+    } else {
+      calStoreFail(what);
+    }
+    return ok;
+  }
+  /* 顶部告警条：区分两件事，别让站长为照片的问题白担心标记的丢失。
+     「标记」= CAL_LS（我要去 / 我去了），几乎不可能满；「照片」= CAL_PH_LS，占大头的那个。 */
+  function calStoreWarnHtml() {
+    let h = '';
+    if (!calStoreOk) {
+      h += '<div class="tkc-warn">⚠️ 这台手机的浏览器不允许保存（无痕模式或存储已满）'
+        + ' —— 「我要去 / 我去了」这次不会被记住，换普通模式打开或清一下浏览器缓存</div>';
+    } else if (calStoreBytes > 4 * 1024 * 1024) {
+      h += '<div class="tkc-warn">⚠️ 本地存储快满了（已用 ' + (calStoreBytes / 1048576).toFixed(1)
+        + 'MB）—— 标记可能记不住，删掉一些照片记录会好些</div>';
+    }
+    if (!calPhotoOk) {
+      h += '<div class="tkc-warn is-photo">🖼 照片记录存不下了（本地存储已满）—— '
+        + '「我要去 / 我去了」照常记得住，删掉一些照片就能继续加</div>';
+    } else if (calPhotoBytes > 3 * 1024 * 1024) {
+      h += '<div class="tkc-warn is-photo">🖼 照片记录已占 ' + (calPhotoBytes / 1048576).toFixed(1)
+        + 'MB —— 快到本地上限了，删掉不用的照片可以避免以后加不进去</div>';
+    }
+    return h;
+  }
   const CAL_MONTH_KEY = 'wyc-demo-cal-month-v1';   // 记住上次看的月份（换月即存）
   const CAL_KINDS = { '公演': '#185FA5', '见面会': '#993556' };
   // 🔴 站长 2026-09-25 定的两张卡口径，**别再互相串**：
@@ -2208,6 +2264,14 @@
   //    我的公演档案 = 我打卡的（本月 / 今年 / 认识以后）→ 「认识以后」只认我自己 uid 的认识日，
   //    uid 没填或被清除 → 这一档整个不显示，不猜、不写死日期。
   const CAL_MAX_PHOTOS = 9;       // 每场最多留 9 张照片记录（本地缩略图，原图不上传）
+  /* 🔴🔴 照片必须**单独一个 key**（d57，根治「标了我要去，重开页面又没了」）。
+     原来 photos 塞在 calStore.went[k] 里，跟「我要去 / 我去了」共用 CAL_LS —— 而 localStorage
+     整站上限只有约 5MB：缩略图一张上百 KB、一场最多 9 张，**照片把额度撑爆之后，
+     连「我要去」这种几字节的标记也一起写不进去了**，于是站长看到的就是「明明勾上了，重开就没了」。
+     拆开之后：CAL_LS 永远只有几 KB ⇒ 标记几乎不可能写不进去；照片存不下也**只丢照片**，不影响打卡。 */
+  const CAL_PH_LS = 'wyc-demo-cal-ph-v1';
+  let calPhotoStore = LS.get(CAL_PH_LS, {}) || {};
+  let calPhotoOk = true, calPhotoBytes = 0;
   const calColor = (k) => CAL_KINDS[k] || '#888780';
   let calStore = LS.get(CAL_LS, { going: {}, went: {} });
   // 迁移：早期 went[k].photo 是 true / 单张字符串，统一成 photos 数组
@@ -2237,7 +2301,25 @@
       });
     };
     fix(calStore.went); fix(calStore.going);
-    if (ch) LS.set(CAL_LS, calStore);
+    if (ch) calSave();   // 迁移写不进不打断使用（下次渲染提示条会说明），但不能直接调 LS.set
+  })();
+  calStoreProbe();   // 探一次本机存储能不能写（见 CAL_LS 处的说明）
+  /* 迁移（d57）：把老数据里 went[k].photos 搬到独立照片 key，主 key 瘦身。
+     搬完之后 CAL_LS 只剩「几月几号几点 · 去过/要去」，永远是小数据。 */
+  (function calMigratePhotos() {
+    let moved = false, stripped = false;
+    Object.keys(calStore.went || {}).forEach((k) => {
+      const r = calStore.went[k];
+      if (!r || typeof r !== 'object') return;
+      const ps = Array.isArray(r.photos) ? r.photos : (typeof r.photo === 'string' && r.photo ? [r.photo] : []);
+      if (ps.length && !calPhotoStore[k]) { calPhotoStore[k] = ps; moved = true; }
+      if ('photos' in r || 'photo' in r) { delete r.photos; delete r.photo; stripped = true; }
+    });
+    if (moved) LS.set(CAL_PH_LS, calPhotoStore);
+    if (stripped) calSave();      // 写不进不打断使用，告警条会说明
+  })();
+  (function calPhotoProbe() {
+    try { calPhotoBytes = (localStorage.getItem(CAL_PH_LS) || '').length; } catch (_) { calPhotoBytes = 0; }
   })();
   /* 🔴「认识以后」起点 = 我的档案里那个 uid 的认识日（/api/mine 的 f = 他最早留下记录的时间戳）。
      站长 2026-09-25 定的规则：uid 在（没被清除）就显示这一档；uid 清掉了 → 整档不显示，不猜、不写死日期。 */
@@ -2370,12 +2452,12 @@
       if (!gk || !calStore.going[gk]) return;
       const wk = calWentKeyOf(x) || calKey(x);
       if (calStartMs(x) < now - 6 * 3600e3 && !calStore.went[wk]) {
-        calStore.went[wk] = { ts: Date.now(), auto: true, photos: [] };
+        calStore.went[wk] = { ts: Date.now(), auto: true };
         delete calStore.going[gk];
         changed = true;
       }
     });
-    if (changed) LS.set(CAL_LS, calStore);
+    if (changed) calSave();
   }
   // 有效「我去了」= 有记录且未被取消
   function calIsWent(k) { const r = calStore.went[k]; return !!(r && !r.cancelled); }
@@ -2403,13 +2485,23 @@
   }
   const calWentKeyOf = (it) => calKeyOf(calStore.went, it);
   const calGoingKeyOf = (it) => calKeyOf(calStore.going, it);
-  function calPhotos(k) { const r = calStore.went[k]; return (r && Array.isArray(r.photos)) ? r.photos : []; }
+  /* 照片记录走自己的 key（见 CAL_PH_LS 处的说明），跟「我要去 / 我去了」不共用空间。 */
+  function calPhotos(k) { return Array.isArray(calPhotoStore[k]) ? calPhotoStore[k].slice() : []; }
   function calSavePhotos(k, arr) {
-    if (!calStore.went[k]) return true;
-    calStore.went[k].photos = arr;
-    const ok = LS.set(CAL_LS, calStore);
-    if (!ok && typeof toast === 'function') toast('本地存不下了，照片可能太多');
-    return ok;
+    if (!k) return false;
+    const prev = Array.isArray(calPhotoStore[k]) ? calPhotoStore[k] : [];
+    calPhotoStore[k] = arr;
+    // 🔴 失败要**回滚内存**（d57）：原来只弹个 toast、内存里照片已经加上去了，
+    //    于是界面照样显示这张照片，一刷新就没了 —— 站长问的「上传照片会不会丢」正是这个。
+    if (!LS.set(CAL_PH_LS, calPhotoStore)) {
+      calPhotoStore[k] = prev;
+      calPhotoOk = false;
+      if (typeof toast === 'function') toast('这台手机存不下照片了（本地存储满了），「我要去 / 我去了」照常记住了', 3600);
+      return false;
+    }
+    calPhotoOk = true;
+    try { calPhotoBytes = (localStorage.getItem(CAL_PH_LS) || '').length; } catch (_) { calPhotoBytes = 0; }
+    return true;
   }
 
   // demo 域名下 API_BASE 指向生产 Worker；拿不到就用页面自带的 js/schedule.js 快照
@@ -2574,6 +2666,7 @@
     let mopts = '';
     for (let mm = 1; mm <= 12; mm++) mopts += '<option value="' + p2(mm) + '"' + (mm === m ? ' selected' : '') + '>' + mm + ' 月</option>';
     box.innerHTML = '<div class="tkc">'
+      + calStoreWarnHtml()
       + '<div class="tkc-meet">'
       + '<div class="tkc-meet-c"><span class="tkc-meet-l">上次见面</span><b id="calLast">' + esc(calLastMetText()) + '</b></div>'
       + '<div class="tkc-meet-c"><span class="tkc-meet-l">下次见面</span><b id="calCount">' + esc(calCountText()) + '</b></div>'
@@ -2611,8 +2704,11 @@
   /* ---- 照片记录打卡：图只在本地走一趟 Canvas ---- */
   let calFile = null, calPending = null, calDelIdx = 0;
   function calHasPhoto(k) { return calPhotos(k).length > 0; }
-  // 每张照片只存一张缩略图（长边 ≤720px，卡片里放大也不糊），原图绝不上传
-  const CAL_THUMB = 720;
+  /* 每张照片只存一张缩略图，原图绝不上传。
+     🔴 d57：720px/q0.85 一张约 100–200KB，9 张一场就近 1.5MB —— photos 现在虽然独立成一个 key，
+        但 5MB 是**整站**上限，图太大迟早还是会把自己和别人挤出去。
+        卡片里照片最宽也就 550px（见 calGridGeom 的 pw），⇒ 压到 560px/q0.82 视觉无损、体积降到约 1/3。 */
+  const CAL_THUMB = 560;
   function calMakeThumb(src) {
     return new Promise((ok) => {
       const im = new Image();
@@ -2624,7 +2720,7 @@
         const cx = c.getContext('2d');
         cx.fillStyle = '#fff'; cx.fillRect(0, 0, w, h);   // 透明 PNG 垫白，避免卡片里发黑
         cx.drawImage(im, 0, 0, w, h);
-        try { ok(c.toDataURL('image/jpeg', 0.85)); } catch (e) { ok(''); }
+        try { ok(c.toDataURL('image/jpeg', 0.82)); } catch (e) { ok(''); }
       };
       im.onerror = () => ok('');
       im.src = src;
@@ -2648,10 +2744,10 @@
         + '<button type="button" class="tkc-btn ghost" id="calSkip">就这样</button>' });
   }
   function calMarkWent(k) {
-    calStore.went[k] = { ts: Date.now(), photos: [] };
-    // 写不进去（本机存储满了 / 无痕模式）必须出声，否则站长看到的就是「打了卡，关掉页面就没了」
-    if (!LS.set(CAL_LS, calStore)) {
-      if (typeof toast === 'function') toast('这台机器存不下了，打卡没记住');
+    calStore.went[k] = { ts: Date.now() };
+    // 写不进去（本机存储满了 / 无痕模式）必须出声 + 回滚，
+    // 否则站长看到的就是「打了卡，关掉页面就没了」
+    if (!calSave('这台手机存不下打卡记录（无痕模式 / 存储已满），刚才那次没记住')) {
       delete calStore.went[k];
       return;
     }
@@ -2686,9 +2782,11 @@
   }
   function calCancelWent() {
     const k = calKey(calPending);
-    calStore.went[k] = { cancelled: true, photos: [] };
+    calStore.went[k] = { cancelled: true };
     delete calStore.going[k];
-    LS.set(CAL_LS, calStore);
+    delete calPhotoStore[k];
+    LS.set(CAL_PH_LS, calPhotoStore);
+    calSave('这台手机存不下改动（无痕模式 / 存储已满），取消没生效');
     closeModal();
     calSig = ''; calRender();
     if (typeof toast === 'function') toast('已取消这场的打卡');
@@ -3191,8 +3289,15 @@
     const go = e.target.closest('[data-cal-go]');
     if (go) {
       const k = go.dataset.calGo;
-      if (calStore.going[k]) delete calStore.going[k]; else calStore.going[k] = 1;
-      LS.set(CAL_LS, calStore); calSig = ''; calRender(); return;
+      const had = !!calStore.going[k];
+      if (had) delete calStore.going[k]; else calStore.going[k] = 1;
+      // 🔴 必须检查有没有真的落盘（d57）：无痕模式 / 存储写满时 setItem 抛异常、LS.set 静默返回 false。
+      //    不检查 ⇒ 按钮显示「我要去 ✓」但根本没存，关掉页面就没了 —— 站长 2026-09-26 报的正是这个。
+      //    写不进去就**把内存回滚**，让 UI 如实反映「没记住」，并明确出声。
+      if (!calSave()) {
+        if (had) calStore.going[k] = 1; else delete calStore.going[k];
+      }
+      calSig = ''; calRender(); return;
     }
     const went = e.target.closest('[data-cal-went]');
     if (went) { calMarkWent(went.dataset.calWent); return; }

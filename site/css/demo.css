@@ -1229,3 +1229,15 @@ button, select, input, textarea, a, .tkc-cell, .tkc-nav, .tkc-btn, .tkc-sel { to
   background: #fff; color: var(--primary-dark, #0f9fc4); border-radius: 999px;
   font-size: 12.5px; font-weight: 600; cursor: pointer; white-space: nowrap; }
 .perf-showall:active { opacity: .7; }
+
+/* ⑰ d57/d58（a28 搬到生产）：本机存储「不可用 / 快满」提示条 —— 只在真出问题时出现，平时不占版面
+   （站长偏好极简，所以不做常驻说明，只在这台机器真的记不住时才说一句） */
+.tkc-warn {
+  background: #fff4e5; border: 1px solid #ffd9a8; color: #8a4b00;
+  font-size: 12.5px; line-height: 1.55; padding: 9px 12px;
+  border-radius: 10px; margin-bottom: 10px;
+}
+/* 照片那条只是「照片存不下」，跟上面的「标记记不住」严重程度不同 —— 换成中性蓝灰，别让站长虚惊一场 */
+.tkc-warn.is-photo {
+  background: #eef4f8; border-color: #cfe0ea; color: #2b556b;
+}
