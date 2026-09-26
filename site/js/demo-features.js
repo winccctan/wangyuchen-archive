@@ -3967,7 +3967,7 @@
         // 用默认（auto）滚动：微信 / iOS 常忽略 behavior:'smooth'，那就等于没滚
         hit.scrollIntoView({ block: 'center' });
         hit.classList.add('sg-hl');
-        setTimeout(() => hit.classList.remove('sg-hl'), 4000);
+        setTimeout(() => hit.classList.remove('sg-hl'), 4400);
         // 二次校正：卡片图是懒加载，高度会随图片落位变化，1s 后再对一次位置
         setTimeout(() => {
           if (!document.body.contains(hit)) return;
