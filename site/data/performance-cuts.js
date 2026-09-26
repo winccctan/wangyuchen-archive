@@ -1,7 +1,7 @@
 window.PERF_CUTS = {
  "uid": 7794095795,
  "account": "GNZ48王语晨的甜橙小铺",
- "updatedAt": "2026-09-26T18:43:18.150Z",
+ "updatedAt": "2026-09-26T19:18:27.467Z",
  "cuts": [
   {
    "date": "2026-09-13",
@@ -880,6 +880,102 @@ window.PERF_CUTS = {
    "liveId": "1274007923875188736"
   },
   {
+   "date": "2026-06-13",
+   "perf": "TEAM NIII·第十场《拾忆：TEAM NIII 》",
+   "song": "HighLight",
+   "mblogid": "R3YWJsOnr",
+   "uid": 7794095795,
+   "url": "https://weibo.com/7794095795/R3YWJsOnr",
+   "h5": "https://video.weibo.com/show?fid=1034:5309490518491224",
+   "cover": "https://wx3.sinaimg.cn/orj1080/008vtemvgy1ie43ugxzmvj31hc0u0tan.jpg",
+   "text": "#王语晨[超话]# \n【GNZ48王语晨 | 公演cut】20260613\nTEAM NIII·第十场《拾忆：TEAM NIII 》\n\n《HighLight 》\n\n王语晨cut http://t.cn/AXaVMGVD ​​​",
+   "liveId": ""
+  },
+  {
+   "date": "2026-06-13",
+   "perf": "TEAM NIII·第十场《拾忆：TEAM NIII 》",
+   "song": "续集",
+   "mblogid": "R3YT61obH",
+   "uid": 7794095795,
+   "url": "https://weibo.com/7794095795/R3YT61obH",
+   "h5": "https://video.weibo.com/show?fid=1034:5309488110960751",
+   "cover": "https://wx1.sinaimg.cn/orj1080/008vtemvgy1ie43k5uuywj31fz0u0dl8.jpg",
+   "text": "#王语晨[超话]# \n【GNZ48王语晨 | 公演cut】20260613\nTEAM NIII·第十场《拾忆：TEAM NIII 》\n\n《续集》\n\n王语晨cut http://t.cn/AXaVfVO4 ​​​",
+   "liveId": ""
+  },
+  {
+   "date": "2026-06-13",
+   "perf": "TEAM NIII·第十场《拾忆：TEAM NIII 》",
+   "song": "Love Me Love Me",
+   "mblogid": "R3Vyu9SkT",
+   "uid": 7794095795,
+   "url": "https://weibo.com/7794095795/R3Vyu9SkT",
+   "h5": "https://video.weibo.com/show?fid=1034:5309360482484260",
+   "cover": "https://wx3.sinaimg.cn/orj1080/008vtemvgy1ie3owcpbdhj31fy0u0jtt.jpg",
+   "text": "#王语晨[超话]# \n【GNZ48王语晨 | 公演cut】20260613\nTEAM NIII·第十场《拾忆：TEAM NIII 》\n\n《 Love Me Love Me》\n\n王语晨cut http://t.cn/AXa5u23Y ​​​",
+   "liveId": ""
+  },
+  {
+   "date": "2026-06-13",
+   "perf": "TEAM NIII·第十场《拾忆：TEAM NIII 》",
+   "song": "MC1",
+   "mblogid": "R3VpfgJjl",
+   "uid": 7794095795,
+   "url": "https://weibo.com/7794095795/R3VpfgJjl",
+   "h5": "https://video.weibo.com/show?fid=1034:5309355675811849",
+   "cover": "https://wx4.sinaimg.cn/orj1080/008vtemvgy1ie3o8rflpoj31g30u076d.jpg",
+   "text": "#王语晨[超话]# \n【GNZ48王语晨 | 公演cut】20260613\nTEAM NIII·第十场《拾忆：TEAM NIII 》\n\nMC1   “你的朋友圈有没有每天发十条朋友圈的人”\n\n王语晨cut http://t.cn/AXa5RwWb ​​​",
+   "liveId": ""
+  },
+  {
+   "date": "2026-06-11",
+   "perf": "TEAM NIII·第九场《拾忆：TEAM NIII 》",
+   "song": "续集",
+   "mblogid": "R3G4PrbiH",
+   "uid": 7794095795,
+   "url": "https://weibo.com/7794095795/R3G4PrbiH",
+   "h5": "https://video.weibo.com/show?fid=1034:5308765231054852",
+   "cover": "https://wx4.sinaimg.cn/orj1080/008vtemvgy1ie1sjcw9k4j31hc0u0jwe.jpg",
+   "text": "#王语晨[超话]# \n【GNZ48王语晨 | 公演cut】20260611\nTEAM NIII·第九场《拾忆：TEAM NIII 》\n\n《续集》\n\n王语晨cut http://t.cn/AXaAM7dH ​​​",
+   "liveId": "1271481460043091968"
+  },
+  {
+   "date": "2026-06-11",
+   "perf": "TEAM NIII·第九场《拾忆：TEAM NIII 》",
+   "song": "HighLight",
+   "mblogid": "R3G28tYmy",
+   "uid": 7794095795,
+   "url": "https://weibo.com/7794095795/R3G28tYmy",
+   "h5": "https://video.weibo.com/show?fid=1034:5308763838545982",
+   "cover": "https://wx3.sinaimg.cn/orj1080/008vtemvgy1ie1scz84c1j31hc0u00um.jpg",
+   "text": "#王语晨[超话]# \n【GNZ48王语晨 | 公演cut】20260611\nTEAM NIII·第九场《拾忆：TEAM NIII 》\n\n《HighLight》\n\n王语晨cut http://t.cn/AXaAfC6x ​​​",
+   "liveId": "1271481460043091968"
+  },
+  {
+   "date": "2026-06-11",
+   "perf": "TEAM NIII·第九场《拾忆：TEAM NIII 》",
+   "song": "Love Me Love Me",
+   "mblogid": "R3G0cqheg",
+   "uid": 7794095795,
+   "url": "https://weibo.com/7794095795/R3G0cqheg",
+   "h5": "https://video.weibo.com/show?fid=1034:5308762479591441",
+   "cover": "https://wx1.sinaimg.cn/orj1080/008vtemvgy1ie1s76htp3j31hc0u0q5o.jpg",
+   "text": "#王语晨[超话]# \n【GNZ48王语晨 | 公演cut】20260611\nTEAM NIII·第九场《拾忆：TEAM NIII 》\n\n《Love Me Love Me》\n\n王语晨cut http://t.cn/AXaAVXIu ​​​",
+   "liveId": "1271481460043091968"
+  },
+  {
+   "date": "2026-06-11",
+   "perf": "TEAM NIII·第九场《拾忆：TEAM NIII 》",
+   "song": "MC1",
+   "mblogid": "R3FXgnNxf",
+   "uid": 7794095795,
+   "url": "https://weibo.com/7794095795/R3FXgnNxf",
+   "h5": "https://video.weibo.com/show?fid=1034:5308762181795912",
+   "cover": "https://wx3.sinaimg.cn/orj1080/008vtemvgy1ie1s18d5dmj31hc0u0wh3.jpg",
+   "text": "#王语晨[超话]# \n【GNZ48王语晨 | 公演cut】20260611\nTEAM NIII·第九场《拾忆：TEAM NIII 》\n\nMC1   “这个夏天你排在前三的续命神器”\n\n王语晨cut http://t.cn/AXaAtRbK ​​​",
+   "liveId": "1271481460043091968"
+  },
+  {
    "date": "2026-06-07",
    "perf": "TEAM NIII·第八场《拾忆：TEAM NIII 》",
    "song": "",
@@ -892,6 +988,90 @@ window.PERF_CUTS = {
    "liveId": "1268894097353805824"
   },
   {
+   "date": "2026-06-07",
+   "perf": "TEAM NIII·第八场《 拾忆：TEAM NIII 》",
+   "song": "续集",
+   "mblogid": "R31crA5HS",
+   "uid": 7794095795,
+   "url": "https://weibo.com/7794095795/R31crA5HS",
+   "h5": "https://video.weibo.com/show?fid=1034:5307193952501780",
+   "cover": "https://wx1.sinaimg.cn/orj1080/008vtemvgy1idws2oazf0j31g30u0te3.jpg",
+   "text": "#王语晨[超话]# \n【GNZ48王语晨 | 公演cut】20260607\nTEAM NIII·第八场《 拾忆：TEAM NIII 》\n\n《续集》\n\n王语晨cut http://t.cn/AXXYD4RX ​​​",
+   "liveId": "1268894097353805824"
+  },
+  {
+   "date": "2026-06-07",
+   "perf": "TEAM NIII·第八场《 拾忆：TEAM NIII 》",
+   "song": "HighLight",
+   "mblogid": "R317wlBT1",
+   "uid": 7794095795,
+   "url": "https://weibo.com/7794095795/R317wlBT1",
+   "h5": "https://video.weibo.com/show?fid=1034:5307191347839090",
+   "cover": "https://wx4.sinaimg.cn/orj1080/008vtemvgy1idwrpcuzf7j31g10u0tat.jpg",
+   "text": "#王语晨[超话]# \n【GNZ48王语晨 | 公演cut】20260607\nTEAM NIII·第八场《 拾忆：TEAM NIII 》\n\n《HighLight》\n\n王语晨cut http://t.cn/AXXYdHXF ​​​",
+   "liveId": "1268894097353805824"
+  },
+  {
+   "date": "2026-06-07",
+   "perf": "TEAM NIII·第八场《 拾忆：TEAM NIII 》",
+   "song": "Love Me Love Me",
+   "mblogid": "R314Pdpqr",
+   "uid": 7794095795,
+   "url": "https://weibo.com/7794095795/R314Pdpqr",
+   "h5": "https://video.weibo.com/show?fid=1034:5307185228349509",
+   "cover": "https://wx3.sinaimg.cn/orj1080/008vtemvgy1idwr1uxmjxj31g30u0mzu.jpg",
+   "text": "#王语晨[超话]# \n【GNZ48王语晨 | 公演cut】20260607\nTEAM NIII·第八场《 拾忆：TEAM NIII 》\n\n《Love Me Love Me》\n\n王语晨cut http://t.cn/AXXYrJBp ​​​",
+   "liveId": "1268894097353805824"
+  },
+  {
+   "date": "2026-06-05",
+   "perf": "TEAM NIII·第七场《 拾忆：TEAM NIII 》",
+   "song": "HighLight",
+   "mblogid": "R2Krt4CLf",
+   "uid": 7794095795,
+   "url": "https://weibo.com/7794095795/R2Krt4CLf",
+   "h5": "https://video.weibo.com/show?fid=1034:5306550097477744",
+   "cover": "https://wx4.sinaimg.cn/orj1080/008vtemvgy1iduq373beij31g60u0413.jpg",
+   "text": "#王语晨[超话]# \n【GNZ48王语晨 | 公演cut】20260605\nTEAM NIII·第七场《 拾忆：TEAM NIII 》\n\n《HighLight》\n\n王语晨cut http://t.cn/AXXKjwna ​​​",
+   "liveId": "1268893710932578304"
+  },
+  {
+   "date": "2026-06-05",
+   "perf": "TEAM NIII·第七场《 拾忆：TEAM NIII 》",
+   "song": "续集",
+   "mblogid": "R2Kmly2gy",
+   "uid": 7794095795,
+   "url": "https://weibo.com/7794095795/R2Kmly2gy",
+   "h5": "https://video.weibo.com/show?fid=1034:5306546683314401",
+   "cover": "https://wx1.sinaimg.cn/orj1080/008vtemvgy1iduppfuctgj31fz0u0wie.jpg",
+   "text": "#王语晨[超话]# \n【GNZ48王语晨 | 公演cut】20260605\nTEAM NIII·第七场《 拾忆：TEAM NIII 》\n\n《续集》\n\n王语晨cut http://t.cn/AXXKCbI7 ​​​",
+   "liveId": "1268893710932578304"
+  },
+  {
+   "date": "2026-06-05",
+   "perf": "TEAM NIII·第七场《 拾忆：TEAM NIII 》",
+   "song": "Love Me Love Me",
+   "mblogid": "R2KgTf0mD",
+   "uid": 7794095795,
+   "url": "https://weibo.com/7794095795/R2KgTf0mD",
+   "h5": "https://video.weibo.com/show?fid=1034:5306543499837443",
+   "cover": "https://wx1.sinaimg.cn/orj1080/008vtemvgy1idupbnohlfj31g10u00vr.jpg",
+   "text": "#王语晨[超话]# \n【GNZ48王语晨 | 公演cut】20260605\nTEAM NIII·第七场《 拾忆：TEAM NIII 》\n\n《Love Me Love Me》\n\n王语晨cut http://t.cn/AXXKi1ii ​​​",
+   "liveId": "1268893710932578304"
+  },
+  {
+   "date": "2026-06-05",
+   "perf": "TEAM NIII·第七场《拾忆：TEAM NIII 》",
+   "song": "MC1",
+   "mblogid": "R2K7uk8o4",
+   "uid": 7794095795,
+   "url": "https://weibo.com/7794095795/R2K7uk8o4",
+   "h5": "https://video.weibo.com/show?fid=1034:5306538718330982",
+   "cover": "https://wx4.sinaimg.cn/orj1080/008vtemvgy1iduoqm98gyj31g30u0jtj.jpg",
+   "text": "#王语晨[超话]# \n【GNZ48王语晨 | 公演cut】20260605\nTEAM NIII·第七场《拾忆：TEAM NIII 》\n\nMC1   “马上要高考了，给高考生加油打气吧”\n\n王语晨cut http://t.cn/AXXKbIQD ​​​",
+   "liveId": "1268893710932578304"
+  },
+  {
    "date": "2026-05-31",
    "perf": "TEAM NIII·第六场《拾忆：TEAM NIII 》",
    "song": "续集",
@@ -901,6 +1081,42 @@ window.PERF_CUTS = {
    "h5": "https://video.weibo.com/show?fid=1034:5304768524910612",
    "cover": "https://wx2.sinaimg.cn/orj1080/008vtemvgy1idp1hnk8n3j31hc0u0q54.jpg",
    "text": "#王语晨[超话]# \n【GNZ48王语晨 | 公演cut】20260531\nTEAM NIII·第六场《拾忆：TEAM NIII 》\n\n《续集》\n\n王语晨cut ​​​",
+   "liveId": "1266760740926984192"
+  },
+  {
+   "date": "2026-05-31",
+   "perf": "TEAM NIII·第六场《拾忆：TEAM NIII 》",
+   "song": "Love Me Love Me",
+   "mblogid": "R20bMFfNb",
+   "uid": 7794095795,
+   "url": "https://weibo.com/7794095795/R20bMFfNb",
+   "h5": "https://video.weibo.com/show?fid=1034:5304772081680467",
+   "cover": "https://wx1.sinaimg.cn/orj1080/008vtemvgy1idp1vu6a3lj31hc0u041a.jpg",
+   "text": "#王语晨[超话]# \n【GNZ48王语晨 | 公演cut】20260531\nTEAM NIII·第六场《拾忆：TEAM NIII 》\n\n《Love Me Love Me》\n\n王语晨cut http://t.cn/AXXzAc2e ​​​",
+   "liveId": "1266760740926984192"
+  },
+  {
+   "date": "2026-05-31",
+   "perf": "TEAM NIII·第六场《拾忆：TEAM NIII 》",
+   "song": "High Light",
+   "mblogid": "R204IbY8H",
+   "uid": 7794095795,
+   "url": "https://weibo.com/7794095795/R204IbY8H",
+   "h5": "https://video.weibo.com/show?fid=1034:5304766805245997",
+   "cover": "https://wx1.sinaimg.cn/orj1080/008vtemvgy1idp1ad50j7j31hc0u00un.jpg",
+   "text": "#王语晨[超话]# \n【GNZ48王语晨 | 公演cut】20260531\nTEAM NIII·第六场《拾忆：TEAM NIII 》\n\n《High Light》\n\n王语晨cut http://t.cn/AXXz7HxD ​​​",
+   "liveId": "1266760740926984192"
+  },
+  {
+   "date": "2026-05-31",
+   "perf": "TEAM NIII·第六场《拾忆：TEAM NIII 》",
+   "song": "MC1",
+   "mblogid": "R20123IHB",
+   "uid": 7794095795,
+   "url": "https://weibo.com/7794095795/R20123IHB",
+   "h5": "https://video.weibo.com/show?fid=1034:5304764217360465",
+   "cover": "https://wx2.sinaimg.cn/orj1080/008vtemvgy1idp15uw484j31hc0u0ju0.jpg",
+   "text": "#王语晨[超话]# \n【GNZ48王语晨 | 公演cut】20260531\nTEAM NIII·第六场《拾忆：TEAM NIII 》\n\nMC1   “吃过特别难咽的药是什么味道的”\n\n王语晨cut http://t.cn/AXXzPdaZ ​​​",
    "liveId": "1266760740926984192"
   }
  ]
