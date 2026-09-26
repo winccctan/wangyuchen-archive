@@ -3948,23 +3948,46 @@
     const it = sgInfo(lid);
     try {
       if (typeof state !== 'undefined') { state.perfSub = 'perf'; }
+      // switchTab 内部会 renderAll()（含公演面板重建），所以不必再单独 renderPerformances()——
+      // 多渲一次只会让刚建好的卡片立刻又被替换，滚动更容易被打断。
       if (typeof switchTab === 'function') switchTab('performances');
-      if (typeof renderPerformances === 'function') renderPerformances();
+      else if (typeof renderPerformances === 'function') renderPerformances();
     } catch (_) { /* 忽略 */ }
-    setTimeout(() => {
+
+    // 🔴 绝不能用固定延时找卡片（原先写死 200ms）：切到公演回放要重建 279 张卡片，
+    //    真机 + 微信里这一步经常 >200ms，那时 cards 为空 ⇒ hit 找不到 ⇒ 静默什么都不做，
+    //    站长看到的就是「点了场次只跳到公演页顶部（＝主页）」（2026-09-26 反馈）。
+    //    改成轮询等卡片真正出现，出现才滚；超过 3s 才退到「公演cut」/提示。
+    let tries = 0;
+    const tick = () => {
+      tries += 1;
       const cards = Array.prototype.slice.call(document.querySelectorAll('#perfSub .card'));
       const hit = cards.filter((el) => el.getAttribute('data-live') === lid)[0];
       if (hit) {
-        hit.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // 用默认（auto）滚动：微信 / iOS 常忽略 behavior:'smooth'，那就等于没滚
+        hit.scrollIntoView({ block: 'center' });
         hit.classList.add('sg-hl');
-        setTimeout(() => hit.classList.remove('sg-hl'), 2400);
-      } else if (it && typeof gotoPerfCuts === 'function') {
-        // 该场在「公演回放」里没有卡片（如站点没收录）→ 退到「公演cut」按日期找
-        gotoPerfCuts(it.d);
-      } else {
-        sgToast('这场没有可跳转的回放');
+        setTimeout(() => hit.classList.remove('sg-hl'), 4000);
+        // 二次校正：卡片图是懒加载，高度会随图片落位变化，1s 后再对一次位置
+        setTimeout(() => {
+          if (!document.body.contains(hit)) return;
+          const r = hit.getBoundingClientRect();
+          if (Math.abs(r.top + r.height / 2 - window.innerHeight / 2) > 120) {
+            hit.scrollIntoView({ block: 'center' });
+            hit.classList.add('sg-hl');
+            setTimeout(() => hit.classList.remove('sg-hl'), 2000);
+          }
+        }, 1000);
+        return;
       }
-    }, 200);
+      if (tries >= 60) {                                   // ~3s 仍没有这一场的卡片
+        if (it && typeof gotoPerfCuts === 'function') gotoPerfCuts(it.d);
+        else sgToast('这场没有可跳转的回放');
+        return;
+      }
+      setTimeout(tick, 50);
+    };
+    setTimeout(tick, 50);
   }
 
   document.addEventListener('click', (e) => {
