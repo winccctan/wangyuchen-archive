@@ -6,9 +6,10 @@
  * 字段：[日期, 标题, BV号, 封面URL]。日期为北京时间 YYYY-MM-DD（优先从标题 8 位日期解析，
  *       解析不到回退上传时间），与公演 stime 转北京时间一致，确保能挂到对应公演。
  * 注：本文件随站上线（静态资源，不进 KV）；改它并 bump index.html 的 ?v= 即生效。
- * 共 160 条，覆盖 2022-10-02 → 2026-09-13。
+ * 共 161 条，覆盖 2022-10-02 → 2026-09-26。
  */
 window.__BILI_CUTS__ = [
+  ["2026-09-26","【王语晨】20260926 GNZ48 Team NIII 《拾忆：TEAM NIII》公演cut","BV1ZCh96hEMt",""],
   ["2026-09-13","GNZ48 Team NIII 《拾忆：TEAM NIII》公演cut","BV17vYz6tEn7","https://i1.hdslb.com/bfs/archive/cac219ce572990cabc5744857a05d2c239c92278.jpg"],
   ["2026-09-12","GNZ48 Team NIII 《拾忆：TEAM NIII》公演cut","BV1emYa6KEeT","https://i0.hdslb.com/bfs/archive/a1d95531c9e281623eec6dd3eb941727a85bc6d9.jpg"],
   ["2026-09-05","GNZ48 team NIII《拾忆：TEAM NIII》公演cut","BV1pet26CE4r","https://i1.hdslb.com/bfs/archive/a5e5d6594ee21c915fa21ee0055bf92b3260b9cc.jpg"],
