@@ -12,14 +12,16 @@
  *   1) 合集：GET /x/polymer/web-space/seasons_series_list?mid=            → 列出合集(seasons)/系列(series)
  *           GET /x/polymer/web-space/seasons_archives_list?mid=&season_id=&page_num=&page_size=30&sort_reverse=false
  *   2) 系列：GET /x/series/archives?mid=&series_id=&only_normal=true&sort=desc&pn=&ps=30
- *   3) 空间投稿列表：GET /x/space/arc/search?mid=&ps=50&pn=&order=pubdate
- *      —— 风控最严（-412 request was banned / -799 / WAF HTML），时通时断，故**可断点续传**慢慢补。
+ *   3) 空间投稿列表兜底：GET /x/series/recArchivesByKeywords?mid=&keywords=&pn=&ps=30（appkey 签名）
+ *      —— /x/space/arc/search 已停用且需 wbi 签名（nav 现强要登录态、拿不到 wbi 密钥），
+ *         改用阈值更宽松的 recArchivesByKeywords；仍可能 -412，故**可断点续传**慢慢补。
  *
  * 用法：node scripts/fetch-bili-videos.mjs
  *   RESET=1        忽略进度从头抓
  *   PAGE_SLEEP=... 每页间隔（默认 2000ms）
  */
 import { writeFileSync, readFileSync, existsSync, renameSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import https from 'node:https';
 import tls from 'node:tls';
 import { fileURLToPath } from 'node:url';
@@ -49,22 +51,23 @@ const UP_TARGETS = [
 
 /* 出口：直连优先，遇 B 站 WAF 风控（-412/-799）自动改走 SCRAPE_PROXY 隧道兜底
  * （与 fetch-live-cuts.mjs 同款逻辑，实测杭州阿里云出口可绕过数据中心 IP 限流） */
-function directGet(urlStr, referer) {
+function directGet(urlStr, referer, ua = UA) {
   return new Promise((resolve, reject) => {
+    const headers = { 'User-Agent': ua, Referer: referer, Accept: 'application/json, text/plain, */*' };
     const req = https.get(urlStr, {
-      headers: { 'User-Agent': UA, Referer: referer, Accept: 'application/json, text/plain, */*' },
+      headers,
       timeout: 20000
     }, (res) => {
       const chunks = [];
       res.on('data', (c) => chunks.push(c));
-      res.on('end', () => resolve({ status: res.statusCode, text: Buffer.concat(chunks).toString('utf8') }));
+      res.on('end', () => resolve({ status: res.statusCode, text: Buffer.concat(chunks).toString('utf8'), headers: res.headers }));
     });
     req.on('timeout', () => req.destroy(new Error('timeout')));
     req.on('error', reject);
   });
 }
 
-function proxyGet(urlStr, referer) {
+function proxyGet(urlStr, referer, ua = UA) {
   return new Promise((resolve, reject) => {
     const p = new URL(PROXY_URL);
     const t = new URL(urlStr);
@@ -84,7 +87,7 @@ function proxyGet(urlStr, referer) {
         s.write([
           `GET ${t.pathname}${t.search} HTTP/1.1`,
           `Host: ${t.hostname}`,
-          `User-Agent: ${UA}`,
+          `User-Agent: ${ua}`,
           `Referer: ${referer}`,
           'Accept: application/json, text/plain, */*',
           'Accept-Encoding: identity',
@@ -122,7 +125,7 @@ function proxyGet(urlStr, referer) {
   });
 }
 
-function getJson(urlStr, referer, tries = 4, banTries = Number(process.env.BILI_BAN_TRIES ?? 2)) {
+function getJson(urlStr, referer, tries = 4, banTries = Number(process.env.BILI_BAN_TRIES ?? 2), ua = UA) {
   return new Promise(async (resolveP, rejectP) => {
     const routes = PROXY_URL ? ['direct', 'proxy'] : ['direct'];
     let lastMsg = '';
@@ -130,7 +133,7 @@ function getJson(urlStr, referer, tries = 4, banTries = Number(process.env.BILI_
       for (let n = 0; n < tries; n++) {
         let res;
         try {
-          res = route === 'proxy' ? await proxyGet(urlStr, referer) : await directGet(urlStr, referer);
+          res = route === 'proxy' ? await proxyGet(urlStr, referer, ua) : await directGet(urlStr, referer, ua);
         } catch (e) {
           lastMsg = `${route}:${e.message}`;
           await sleep(1500 * (n + 1));
@@ -155,6 +158,21 @@ function getJson(urlStr, referer, tries = 4, banTries = Number(process.env.BILI_
 }
 
 const cleanTitle = (t) => String(t || '').replace(/<[^>]+>/g, '').trim();
+
+/* ---------------- 空间投稿列表兜底通道：recArchivesByKeywords（appkey 签名） ---------------- */
+// 参考 bilibili-scrape-safe 技能：/x/space/arc/search 已停用且需 wbi 签名，而 wbi 密钥要从
+// /x/web-interface/nav 取，但该接口现强要登录态（直连/代理都回 -101），拿不到密钥，故 wbi 路线走不通。
+// 改用 recArchivesByKeywords：只需公开的 appkey 签名、阈值宽松得多，是空间列表最稳的兜底通道。
+const APPKEY = '1d8b6e7d45233436';
+const APPSEC = '560c52ccd288fed045859ed18bffd973';
+const BILI_DROID_UA = 'Mozilla/5.0 BiliDroid/7.0.0';
+function appkeySign(params) {
+  const p = { ...params, ts: Math.round(Date.now() / 1000) };
+  const q = Object.keys(p).sort()
+    .map((k) => `${encodeURIComponent(k)}=${encodeURIComponent(String(p[k]))}`).join('&');
+  return q + '&sign=' + createHash('md5').update(q + APPSEC).digest('hex');
+}
+
 
 /* ---------------- 状态：增量 + 断点续传 ---------------- */
 const prev = existsSync(OUT) ? JSON.parse(readFileSync(OUT, 'utf8')) : null;
@@ -260,31 +278,33 @@ async function crawlSeries(mid, sid, name, totalHint) {
   }
 }
 
-/* ---------------- 通道 3：空间投稿列表（风控严，可续传，按标题过滤） ---------------- */
+/* ---------------- 通道 3：空间投稿列表兜底（recArchivesByKeywords，appkey 签名，可续传） ---------------- */
 async function crawlSpace(mid, keep, maxPages) {
   const key = `${mid}:space`;
   const referer = `https://space.bilibili.com/${mid}/video`;
-  let total = 0;
-  for (let pn = Math.max(1, Number(progress[key]) || 1); pn <= maxPages; pn++) {
+  // 用 recArchivesByKeywords（appkey 签名，阈值宽松；比已停用的 wbi/arc/search 稳）兜底抓空间投稿。
+  // 每次都从第 1 页开始扫：新上传/重投的视频会被推荐到前面，断点续传会跳过它们，故强制从 pn=1 起；
+  // 已入库的 bvid 由 put() 去重，重复扫描安全。
+  for (let pn = 1; pn <= maxPages; pn++) {
     if (!budgetLeft()) { console.log('   [预算] 本轮页数已用完，保存进度下次续跑'); save(); return; }
     pagesUsed++;
     let d;
     try {
-      d = await getJson(`https://api.bilibili.com/x/space/arc/search?mid=${mid}&ps=50&pn=${pn}&order=pubdate`, referer, 2, Number(process.env.BILI_SPACE_BAN_TRIES ?? 2));
+      const qs = appkeySign({ mid, keywords: '', pn, ps: 30 });
+      d = await getJson(`https://api.bilibili.com/x/series/recArchivesByKeywords?${qs}`, referer, 2, Number(process.env.BILI_SPACE_BAN_TRIES ?? 3), BILI_DROID_UA);
     } catch (e) {
       console.warn(`   [空间 ${mid}] 第 ${pn} 页失败：${e.message} → 保存进度，下次续跑`);
       progress[key] = pn;
       save();
       return;
     }
-    total = d.data?.page?.count || total;
-    const vl = d.data?.list?.vlist || [];
-    if (!vl.length) { progress[key] = pn + 1; save(); break; }
+    const ar = d.data?.archives || [];
+    if (!ar.length) { progress[key] = pn + 1; save(); break; }
     const before = merged.size;
-    vl.filter((v) => keep.test(cleanTitle(v.title))).forEach((v) => put(v, mid));
+    ar.filter((v) => keep.test(cleanTitle(v.title))).forEach((v) => put(v, mid));
     progress[key] = pn + 1;
     save();
-    console.log(`   [空间 ${mid}] 第 ${pn}/${Math.ceil(total / 50)} 页（保留 ${merged.size - before}/${vl.length}，库 ${merged.size}）`);
+    console.log(`   [空间 ${mid}] 第 ${pn} 页 +${ar.length}（命中 ${merged.size - before}，库 ${merged.size}）`);
     await sleep(PAGE_SLEEP);
   }
 }
