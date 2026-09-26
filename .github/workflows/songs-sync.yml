@@ -1,0 +1,60 @@
+# 曲库增量：把 B 站新抓到的公演 cut 的 unit 分 P，自动补进曲目库 site/js/songs.js
+#
+# 🔴 为什么单独一个 workflow：主抓取（scrape.yml）是「只写 KV、不写仓库」（permissions: contents: read），
+#    而曲目库 songs.js 是**前端静态文件**，只能靠提交 → Cloudflare 从 main 构建才会更新。
+#    两者混在一起会让 scrape.yml 每 30 分钟提一次 ⇒ 一天 48 次 CF 构建，所以这里**每天只跑一次**。
+#
+# 触发：北京时间每天 05:23（UTC 21:23），也可手动 workflow_dispatch（勾选 all 全量重扫老 cut）。
+# 只处理「扫描清单里没有的新投稿」——历史那 133 条已标记为已扫，不会一次性灌几百首没核对过的歌。
+name: 曲库增量·cut unit
+
+on:
+  schedule:
+    - cron: '23 21 * * *'          # 北京 05:23
+  workflow_dispatch:
+    inputs:
+      all:
+        description: '全量重扫（含历史老 cut，会补一大批次，产出需人工核对）'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write                  # 需要提交 songs.js / index.html 版本号
+
+concurrency:
+  group: songs-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: 装 pypinyin（只有新增曲目时才用到）
+        run: pip install --quiet pypinyin
+      - name: 解析新 cut 的分 P → unit 清单
+        run: python scripts/sync-cut-units.py --fetch ${{ github.event.inputs.all == 'true' && '--all' || '' }}
+      - name: 合并进曲目库
+        id: merge
+        run: python scripts/sync-cut-units.py --ver "$(date +%s)000"
+      - name: 有改动就提交（不带 site/data 等抓取产物）
+        run: |
+          git config user.name  "songs-sync bot"
+          git config user.email "archive@local"
+          git add scripts/cut-units.json scripts/cut-units-scanned.json \
+                  site/js/songs.js dist/js/songs.js site/index.html dist/index.html
+          if git diff --cached --quiet; then
+            echo "本次没有新增曲目，跳过提交"
+          else
+            git commit -m "auto: 曲库增量·cut unit $(TZ=Asia/Shanghai date '+%Y-%m-%d')"
+            git fetch origin main
+            git rebase origin/main
+            git push origin main
+            echo "已提交，Cloudflare 约 1~3 分钟生效"
+          fi

@@ -9,6 +9,7 @@
 数据分层：
   scripts/cut-units.json   本次及以后解析出来的 unit 清单（仓库内的**源数据**，可累积、可人工改）
                            字段：[{bvid, p, d, occ, song, type}]
+  scripts/cut-units-scanned.json  已扫过分 P 的 BV 清单（避免重复请求；换 `--all` 可全量重扫）
   site/js/songs.js         站点曲目库（生成物，本脚本只做**增量合并**）
   site/data/archive.js     日期 → 场次 liveId 的唯一真相（🔴 不是 performances.json：
                            performances.json 缺 2022-10-21 这类场次，只看它会误判「没这一场」）
@@ -34,6 +35,10 @@ import json, os, re, sys, time, urllib.request, datetime, shutil, argparse
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 UNITS = os.path.join(ROOT, 'scripts', 'cut-units.json')
+# 「已经扫过分 P 的 BV」清单。存在的意义：把历史上那 133 条老 cut 标记为「已看过」，
+# 免得第一次接 CI 就把几百首歌一次性灌进曲目库（没人工核对过的新Project／脏写法会污染曲目）。
+# 想补老账就用 `--all`（会忽略这个清单，全量重扫）。
+SCANNED = os.path.join(ROOT, 'scripts', 'cut-units-scanned.json')
 VIDEOS = os.path.join(ROOT, 'site', 'data', 'bili-videos.json')
 ARCHIVE = os.path.join(ROOT, 'site', 'data', 'archive.js')
 SONGS_SITE = os.path.join(ROOT, 'site', 'js', 'songs.js')
@@ -101,6 +106,7 @@ def fetch(args):
     print('Chzhnh 投稿里她的「公演cut / 云公演」共 %d 条' % len(mine))
 
     old = json.load(open(UNITS, encoding='utf-8')) if os.path.exists(UNITS) else []
+    scanned = set(json.load(open(SCANNED, encoding='utf-8'))) if os.path.exists(SCANNED) else set()
     seen = {(u.get('bvid'), str(u.get('p'))) for u in old}
     known_bv = {u.get('bvid') for u in old}
 
@@ -111,7 +117,7 @@ def fetch(args):
             continue
         if args.only and bv != args.only:
             continue
-        if not args.all and bv in known_bv:
+        if not args.all and (bv in known_bv or bv in scanned):
             continue
         todo.append((bv, v.get('title') or ''))
 
@@ -136,9 +142,11 @@ def fetch(args):
                 got += 1
         skipped.append([bv, len(pages), got])
         print('  [%d/%d] %s %s  分P=%d 提取unit=%d' % (i, len(todo), bv, title[:28], len(pages), got))
-        time.sleep(1.2)      # 别惹风控
+        scanned.add(bv)                              # 扫过就记下，下次不再白请求
+        time.sleep(1.2)                              # 别惹风控
 
     json.dump(old, open(UNITS, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+    json.dump(sorted(scanned), open(SCANNED, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
     print('\n新增 %d 条 unit → %s（现共 %d 条）' % (len(added), os.path.basename(UNITS), len(old)))
     for a in added:
         print('   ', a)
