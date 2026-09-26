@@ -3261,9 +3261,8 @@
     });
     obs.observe(document.body, { childList: true, subtree: true });
 
-    // 搜索 / 筛选变化 → 重新高亮
-    const si = $('#searchInput');
-    if (si) si.addEventListener('input', () => setTimeout(() => { decorate(); }, 200));
+    // 搜索提交后 renderAll() 会改 DOM → 上面的 MutationObserver 自动 decorate()，
+    // 这里**不再**挂 input 监听（输入期间做任何 DOM 工作都会干扰中文输入法，2026-09-26）。
 
     $('#dmCatchup').addEventListener('click', openCatchup);
 

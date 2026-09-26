@@ -951,20 +951,50 @@ function bindEvents() {
   document.querySelectorAll('.tab').forEach((btn) => {
     btn.addEventListener('click', () => { switchTab(btn.dataset.tab); track('tab:' + btn.dataset.tab); });
   });
-  $('#searchInput').addEventListener('input', (e) => {
-    state.query = e.target.value.trim().toLowerCase();
+  /* ★ 顶部搜索：**输完点「搜索」或按回车**才执行（2026-09-26）
+     🔴 原来挂在 input 上、每敲一个字符就 renderAll()：中文输入法每打一个拼音字母就整页重渲，
+        候选框被重建 → 打不出中文；列表还跟着跳 → 「输入一个字母还没输完就乱跳」。
+        现在输入期间**一个 DOM 都不动**，只在这三个时机真正执行：点「搜索」/ 按回车 / 点「清空」。 */
+  /* 拉全量历史月（搜索 / 时间筛选都需要）——**唯一入口**：失败要吞、超时要兜，最后一定 hideBusy()。
+     🔴 站长 2026-09-26 报「点确定出不去」＝ busy「筛选中…」常驻：原来只 .then()，某个历史月请求
+        挂掉/reject 就永远等不到 → 转圈不收、页面像卡死。 */
+  function loadAllMonthsWithBusy(msg) {
+    showBusy(msg);
+    const done = loadRemainingMonths().catch(() => { /* 个别历史月挂了也别阻塞 */ });
+    const timeout = new Promise((res) => setTimeout(res, 20000));  // 20s 硬兜底
+    return Promise.race([done, timeout]).then(() => { hideBusy(); });
+  }
+  function runSearch() {
+    const el = $('#searchInput');
+    state.query = String((el && el.value) || '').trim().toLowerCase();
     renderAll();
     if (state.query) trackSearch(); // 只在真的输入了内容时才记
     // ★ 搜索必须覆盖「全部历史」，否则就是假阴性：数据按月分键、首屏只有 recent+当月，
     //   历史月还在后台拉的时候立刻下结论，用户就会以为「搜不到老发言」。
     //   故搜索时等全量补齐后再重渲一次（并行 8 路，实测约 2 秒），期间在工具栏显示「搜索中…」。
     if (state.query && !allMonthsLoaded) {
-      showBusy('搜索中…');
-      loadRemainingMonths().then(() => { if (state.query) renderAll(); });
+      loadAllMonthsWithBusy('搜索中…').then(() => { if (state.query) renderAll(); });
     } else if (!state.query) {
       hideBusy();
     }
+    // 手机上收起键盘，否则结果被键盘挡住
+    if (el && document.activeElement === el) el.blur();
+  }
+  function clearSearch() {
+    const el = $('#searchInput');
+    if (el) el.value = '';
+    state.query = '';
+    hideBusy();
+    renderAll();
+  }
+  const si0 = $('#searchInput');
+  if (si0) si0.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.keyCode === 13) { e.preventDefault(); runSearch(); }
   });
+  const sb0 = $('#searchBtn');
+  if (sb0) sb0.addEventListener('click', runSearch);
+  const sc0 = $('#searchClear');
+  if (sc0) sc0.addEventListener('click', clearSearch);
   // 时间筛选：弹窗 + 点「确认」才刷新；含「全部 / 近 N 天」快捷
   const dateModal = document.getElementById('dateModal');
   const openDateModal = () => {
@@ -998,8 +1028,7 @@ function bindEvents() {
       showToast(state.dateFrom || state.dateTo ? '✅ 已按时间筛选' : '✅ 已显示全部时间');
       // 同搜索：按时间筛选也必须覆盖全部历史月，否则早年区间会显示「没有发言」。
       if ((state.dateFrom || state.dateTo) && !allMonthsLoaded) {
-        showBusy('筛选中…');
-        loadRemainingMonths().then(() => renderAll());
+        loadAllMonthsWithBusy('筛选中…').then(() => renderAll());
       } else {
         hideBusy();
       }
@@ -1153,7 +1182,9 @@ function switchTab(name) {
   const isGuide = name === 'guide' || name === 'schedule' || name === 'mine';
   const df = $('#dateToggleBtn');
   if (df) df.hidden = isGuide;
-  const si = $('#searchInput');
+  // 🔴 隐藏的是整个 .search-wrap（输入框 + ✕ + 搜索按钮），只藏 input 会剩两个按钮在外面；
+  //    并且 style.css 里必须有 `.search-wrap[hidden]{display:none}` —— 显式 display:flex 会盖掉 UA 的 [hidden]。
+  const si = $('#searchWrap') || $('#searchInput');
   if (si) si.hidden = isGuide;
   renderAll();
 }
@@ -3653,7 +3684,12 @@ function renderMessages() {
     // 只在工具栏挂一个「搜索中…/筛选中…」小字，数据到齐后会自动重绘出真实结果。
     if (filtering && !allMonthsLoaded) {
       showBusy(state.query ? '搜索中…' : '筛选中…');
-      loadRemainingMonths().then(() => { if (state.query || dateFilterActive()) renderMessages(); });
+      // 失败/超时也要把「搜索中…」收掉，否则转圈常驻、页面像卡死（站长 2026-09-26 报的「出不去」）
+      const done = loadRemainingMonths().catch(() => { /* 个别历史月挂了别阻塞 */ });
+      Promise.race([done, new Promise((res) => setTimeout(res, 20000))]).then(() => {
+        hideBusy();
+        if (state.query || dateFilterActive()) renderMessages();
+      });
       return;
     }
     panel.innerHTML = filterNote(0) +
@@ -4170,13 +4206,28 @@ function ensureSocialModal() {
 function renderSocialGallery() {
   ensureSocialModal();
   return ''
-    + '<div class="sg-toolbar"><input id="sgSearch" type="text" placeholder="搜索文字内容…" oninput="renderSocialWall()">'
+    // 同顶部搜索：改成「输完点搜索 / 回车」，不再 oninput 边打边搜（中文输入法会被重渲打断）
+    + '<div class="sg-toolbar"><div class="search-wrap">'
+    + '<input id="sgSearch" type="text" placeholder="搜索文字内容…" enterkeyhint="search" onkeydown="sgSocialEnter(event)">'
+    + '<button class="search-clear" type="button" title="清空" onclick="sgSocialClear()">✕</button>'
+    + '<button class="search-btn" type="button" onclick="renderSocialWall()">搜索</button>'
+    + '</div>'
     + '<div class="sg-filters">'
     + '<button class="sg-fbtn' + (socialFilter === 'all' ? ' active' : '') + '" data-f="all" onclick="setSocialFilter(\'all\')">全部</button>'
     + '<button class="sg-fbtn' + (socialFilter === 'photo' ? ' active' : '') + '" data-f="photo" onclick="setSocialFilter(\'photo\')">照片</button>'
     + '<button class="sg-fbtn' + (socialFilter === 'video' ? ' active' : '') + '" data-f="video" onclick="setSocialFilter(\'video\')">视频</button>'
     + '</div></div>'
     + '<div class="sg-count" id="sgCount"></div><div id="sgGallery"></div>';
+}
+
+/** 社媒美图搜索：回车提交（输入期间不重渲，中文才能正常打） */
+function sgSocialEnter(e) {
+  if (e.key === 'Enter' || e.keyCode === 13) { e.preventDefault(); renderSocialWall(); }
+}
+function sgSocialClear() {
+  const el = document.getElementById('sgSearch');
+  if (el) el.value = '';
+  renderSocialWall();
 }
 
 function setSocialFilter(f) {

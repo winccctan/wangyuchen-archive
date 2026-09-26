@@ -77,13 +77,36 @@ body {
   max-width: 960px; margin: 4px auto 0; padding: 12px 16px;
   display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
 }
-#searchInput {
-  flex: 1 1 160px; min-width: 0;   /* flex-basis 仅作换行阈值：始终与「时间」按钮同排，实际宽度由剩余空间决定 */
-  padding: 10px 14px; border: 1px solid var(--border);
-  border-radius: 999px; font-size: 14px; outline: none;
-  background: var(--card);
+.search-wrap {
+  /* grow=2：比右侧工具栏组抢到更多宽度，否则桌面上输入框被「✕+搜索」挤到 110px、placeholder 被截断 */
+  flex: 2 1 240px; min-width: 0;   /* flex-basis 仅作换行阈值：始终与「时间」按钮同排 */
+  /* 🔴 center（不是 stretch）：stretch 时固定高度的「✕」会贴顶，看起来不在中间（站长 2026-09-26） */
+  display: flex; align-items: center; gap: 6px;
 }
-#searchInput:focus { border-color: var(--primary); }
+/* 🔴 必须有这条：显式 display:flex 会盖掉 UA 的 [hidden]{display:none}，
+   于是「新粉指南/行程页隐藏搜索框」失效。 */
+.search-wrap[hidden] { display: none; }
+#searchInput {
+  flex: 1 1 auto; min-width: 0;
+  height: 32px; padding: 0 14px; border: 1px solid var(--border);
+  border-radius: 999px; outline: none;
+  /* 视觉字号与「刷新」按钮一致（站长 2026-09-26：别比刷新按钮大/高）；
+     🔴 但**聚焦时必须是 16px**：iOS/安卓聚焦 <16px 的输入框会自动放大整页且不缩回（＝站长报的「乱跳/放大」）。
+     高度写死 32px，聚焦时字号变大也不改变尺寸，所以不会跳。 */
+  font-size: 13.5px; background: var(--card); color: var(--text);
+}
+#searchInput:focus { border-color: var(--primary); font-size: 16px; }
+.search-btn {
+  flex: 0 0 auto; height: 32px; border: 0; background: var(--primary); color: #fff;
+  border-radius: 999px; padding: 0 16px; font-size: 13px; cursor: pointer; white-space: nowrap;
+}
+.search-btn:active { opacity: .8; }
+.search-clear {
+  flex: 0 0 auto; width: 28px; height: 28px; padding: 0;
+  display: flex; align-items: center; justify-content: center;  /* ✕ 才真的在圆心 */
+  border: 1px solid var(--border); border-radius: 50%;
+  background: var(--card); color: var(--muted); font-size: 13px; line-height: 1; cursor: pointer;
+}
 .date-toggle-btn {
   border: 1px solid var(--primary); background: transparent; color: var(--primary);
   border-radius: 999px; padding: 7px 14px; font-size: 13px; cursor: pointer; white-space: nowrap;
@@ -602,7 +625,9 @@ body {
 
 /* ---------------- 社媒美图（新粉指南子标签） ---------------- */
 .sg-toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 6px 0 2px; }
-#sgSearch { flex: 1 1 220px; min-width: 0; padding: 9px 12px; border: 1px solid var(--border); border-radius: 10px; font-size: 14px; outline: none; background: var(--card); color: var(--text); }
+/* 同顶部搜索：平时 13.5px（视觉和按钮一致），聚焦时才 16px（防手机自动放大整页） */
+#sgSearch { flex: 1 1 auto; min-width: 0; height: 34px; padding: 0 12px; border: 1px solid var(--border); border-radius: 10px; font-size: 13.5px; outline: none; background: var(--card); color: var(--text); }
+#sgSearch:focus { border-color: var(--primary); font-size: 16px; }
 #sgSearch:focus { border-color: var(--primary); }
 .sg-filters { display: flex; gap: 8px; }
 .sg-fbtn { border: 1px solid var(--border); background: var(--card); color: var(--muted); padding: 8px 14px; border-radius: 20px; cursor: pointer; font-size: 14px; transition: all .15s; }
@@ -674,3 +699,13 @@ body {
 /* 公演卡片上的 cut 角标（跳转「公演cut」分组） */
 .cut-btn { display: inline-flex; align-items: center; gap: 4px; background: var(--plat); color: #fff; border: none; padding: 6px 13px; border-radius: 999px; font-size: 13px; font-weight: 600; cursor: pointer; transition: background .15s; }
 .cut-btn:hover { background: #e0502f; }
+
+/* ============ 移动端输入控件：防「点一下整页放大」 ============
+   🔴 iOS Safari / 安卓浏览器在**聚焦** font-size < 16px 的 input/textarea 时，
+      会自动把整页放大（zoom）且 blur 后不缩回 —— 站长 2026-09-26 报的
+      「点击搜索框 / 点搜索 页面会放大」就是这个。
+   只兜「聚焦时」，常态字号保持小（视觉和「刷新」按钮一致，站长要求）；
+   也不要带上 select（语言下拉是原生弹层，不触发放大，带上会把它顶大）。 */
+@media (max-width: 767px) {
+  input:focus, textarea:focus { font-size: 16px !important; }
+}
