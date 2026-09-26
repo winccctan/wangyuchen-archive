@@ -313,7 +313,24 @@ async function crawlSpace(mid, keep, maxPages) {
   }
 }
 
-/* ---------------- 主流程 ---------------- */
+/* ---------------- 主流程 ----------------
+ * 分两遍：①「新投稿快扫」→ ② 历史续跑。
+ * 🔴 为什么必须先跑①：预算会被历史续跑吃光，导致新投稿永远进不了库。
+ *    实测 2026-09-27：BILI_PAGE_BUDGET=6 全被「企理鹅大帝」两个历史合集的翻页用掉
+ *    （日志里两次「本轮页数已用完」），排在后面的 Chzhnh 空间通道**一次都没执行过**
+ *    ⇒ B 站库卡在 1152 条不增长 ⇒ Chzhnh 当天新传的公演 cut 既进不了 bili-cuts（✂️B站cut），
+ *    也挂不上 biliUrl（公演页的备用回放），2026-09-26 那场就是这么「看起来没切片」的。
+ *    第 ① 遍给每个 UP 只扫 1 页（空间通道强制从 pn=1 起，最新投稿就在第一页），成本约 2 秒，
+ *    由 put() 按 bvid 去重，重复扫描安全。
+ */
+console.log('—— ① 新投稿快扫（每个 UP 第 1 页）——');
+for (const t of UP_TARGETS) {
+  if (t.space) {
+    try { await crawlSpace(t.mid, t.space.keep, 1); } catch (e) { console.warn('  快扫失败：' + e.message); }
+  }
+}
+
+console.log('\n—— ② 历史续跑（用剩余页数预算）——');
 for (const t of UP_TARGETS) {
   console.log(`\n===== ${t.label}（mid=${t.mid}）=====`);
   if (t.seasons || t.series) {
