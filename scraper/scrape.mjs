@@ -393,6 +393,17 @@ async function run() {
     console.log('[跳过] B 站视频库（SKIP_BILI_VIDEOS=1）');
   }
 
+  // 自动把 Chzhnh 老公演cut 合并进 bili-cuts.js（公演cut 页 / 公演回放页 ✂️ 入口共用数据源）。
+  // 依赖上一步刷新的 bili-videos.json；失败仅警告，不影响主数据与后续流程（下轮续跑）。
+  try {
+    const { execFileSync: ef2 } = await import('node:child_process');
+    const syncBili = resolve(__dirname, '../scripts/sync-bili-cuts.mjs');
+    console.log('[B站cut] 合并老公演cut 进 bili-cuts.js...');
+    ef2(process.execPath, [syncBili], { stdio: 'inherit' });
+  } catch (e) {
+    console.warn('[警告] bili-cuts 合并失败（不影响其它数据，下轮续跑）：' + e.message);
+  }
+
   // 生成 archive.js（供 file:// 直接打开时也能加载数据，无需本地服务器）
   try {
     const { execFileSync } = await import('node:child_process');
