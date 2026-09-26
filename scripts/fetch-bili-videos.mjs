@@ -44,7 +44,12 @@ const PROXY_URL = process.env.SCRAPE_PROXY || process.env.HTTPS_PROXY || process
 // （寒影AkiNa 已移除：非用户指定，且多为 SNH48 内容，对王语晨无意义且易被 WAF 封）
 const UP_TARGETS = [
   // 企理鹅大帝：公演录像按团体放在「合集」里（稳定、快）
-  { mid: '2086351451', label: '企理鹅大帝', seasons: ['4158846', '4158274'] },
+  //    🔴 space 快扫（2026-09-27 加）：**完整公演回放入库全靠它**。
+  //    合集的翻页是接着 progress 往下走的历史续跑，而 UP 当天新传的回放**排在合集最后一页**，
+  //    要翻到那里可能得几十轮 ⇒ 以前企理鹅大帝的新回放永远进不了库（2026-09-26 回放 BV1qthR6hEfe 就是这么漏的，
+  //    结果那场被 Chzhnh 的个人切片占了「B站回放」位 —— 站长明确口径：**企理鹅大帝=回放，Chzhnh=切片，不得混用**）。
+  //    给它也加 space 通道后，第①遍快扫每轮都会抓它空间第 1 页（最新 30 条），新回放当天就能入库。
+  { mid: '2086351451', label: '企理鹅大帝', seasons: ['4158846', '4158274'], space: { keep: /GNZ48|公演|Team\s*NIII/i, maxPages: 1 } },
   // Chzhnh：有合集（含公演 cut），与直播切片同源；直连/代理均可，空间列表兜底
   { mid: '358477444', label: 'Chzhnh', seasons: [], space: { keep: /GNZ48|公演|特别|王语晨|语晨/i, maxPages: 300 } },
 ];
