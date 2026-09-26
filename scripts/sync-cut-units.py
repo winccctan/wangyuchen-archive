@@ -255,11 +255,23 @@ def merge(args):
     added, nomatch = [], []
     new_lids = set()
     for u in units:
-        day, raw_song = u.get('d') or '', u.get('song')
-        if not day or not raw_song:
+        raw_song = u.get('song')
+        if not raw_song:
             continue
+        # 🔴 人工指定的场次优先：同一天有多场公演时脚本不敢猜，站长说挂哪场就挂哪场
+        #    （在 cut-units.json 里给该条写 `"lid": "<liveId>"` 即可）
+        forced = str(u.get('lid') or '')
+        p = None
+        if forced:
+            p = next((x for x in perfs if str(x.get('liveId')) == forced), None)
+        if p is not None:
+            day = u.get('d') or bj(p['stime'], '%Y-%m-%d')
+        else:
+            day = u.get('d') or ''
+            if not day:
+                continue
+            p = pick_live(day, perfs, '')
         song = canon(raw_song, idx)
-        p = pick_live(day, perfs, '')
         if not p:
             nomatch.append([day, song, '当天没有唯一对应的公演场次'])
             continue
