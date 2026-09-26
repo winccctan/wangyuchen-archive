@@ -125,12 +125,14 @@ function proxyGet(urlStr, referer, ua = UA) {
   });
 }
 
-function getJson(urlStr, referer, tries = 4, banTries = Number(process.env.BILI_BAN_TRIES ?? 2), ua = UA) {
+function getJson(urlStr, referer, tries = 4, banTries = Number(process.env.BILI_BAN_TRIES ?? 2), ua = UA, proxyFirst = false) {
   return new Promise(async (resolveP, rejectP) => {
-    const routes = PROXY_URL ? ['direct', 'proxy'] : ['direct'];
+    // 默认直连优先；空间投稿列表走 proxyFirst（直连是数据中心 IP，必被 -412，住宅代理才是通的）
+    const routes = PROXY_URL ? (proxyFirst ? ['proxy', 'direct'] : ['direct', 'proxy']) : ['direct'];
     let lastMsg = '';
+    const maxAttempts = Math.max(tries, banTries);
     for (const route of routes) {
-      for (let n = 0; n < tries; n++) {
+      for (let n = 0; n < maxAttempts; n++) {
         let res;
         try {
           res = route === 'proxy' ? await proxyGet(urlStr, referer, ua) : await directGet(urlStr, referer, ua);
@@ -145,7 +147,9 @@ function getJson(urlStr, referer, tries = 4, banTries = Number(process.env.BILI_
         const msg = d ? `code=${d.code} ${d.message || ''}` : `HTTP ${res.status} 非 JSON`;
         lastMsg = `${route}:${msg}`;
         const ban = /-412|-799/.test(msg);
-        if (n < (ban ? banTries : tries)) {
+        // 修正旧 bug：banTries 之前被外层 tries 卡死（只试 2 次）。现按 ban/普通分别用各自上限。
+        const limit = ban ? banTries : tries;
+        if (n < limit - 1) {
           const wait = ban ? 60000 * (n + 1) : 1500 * (n + 1);
           console.warn(`  [重试] ${lastMsg} → 等 ${Math.round(wait / 1000)}s`);
           await sleep(wait);
@@ -291,7 +295,7 @@ async function crawlSpace(mid, keep, maxPages) {
     let d;
     try {
       const qs = appkeySign({ mid, keywords: '', pn, ps: 30 });
-      d = await getJson(`https://api.bilibili.com/x/series/recArchivesByKeywords?${qs}`, referer, 2, Number(process.env.BILI_SPACE_BAN_TRIES ?? 3), BILI_DROID_UA);
+      d = await getJson(`https://api.bilibili.com/x/series/recArchivesByKeywords?${qs}`, referer, 2, Number(process.env.BILI_SPACE_BAN_TRIES ?? 3), BILI_DROID_UA, true);
     } catch (e) {
       console.warn(`   [空间 ${mid}] 第 ${pn} 页失败：${e.message} → 保存进度，下次续跑`);
       progress[key] = pn;

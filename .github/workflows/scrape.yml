@@ -33,7 +33,7 @@ jobs:
       MAX_DETAILS: "40"
       BILI_PAGE_BUDGET: "6"
       PAGE_SLEEP: "1500"
-      BILI_SPACE_BAN_TRIES: "0"
+      BILI_SPACE_BAN_TRIES: "2"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
