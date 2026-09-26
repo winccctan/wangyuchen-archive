@@ -76,15 +76,26 @@ function getJson(urlStr, referer, tries = 3) {
 }
 
 const cleanTitle = (t) => String(t || '').replace(/<[^>]+>/g, '').trim();
-// 标题里的日期：优先抓紧跟在方括号后的 8 位数字（【…】20231217 夜行的黑猫）
+// 标题里的公演日期：先找 8 位（20231217），找不到再找 6 位（230501 → 2023-05-01）。
+// 🔴 必须支持 6 位：VR Focus / 公演cut 那批标题就写 230501、250531 这种，漏了它血亏一整类视频。
 const dateOf = (t) => {
-  const m = String(t || '').match(/(20\d{2})(\d{2})(\d{2})/);
-  if (!m) return '';
-  const y = +m[1], mo = +m[2], d = +m[3];
-  if (mo < 1 || mo > 12 || d < 1 || d > 31) return '';
-  if (y < 2022 || y > 2100) return '';
-  return `${m[1]}-${m[2]}-${m[3]}`;
+  const s = String(t || '');
+  const m8 = s.match(/(20)(\d{2})(\d{2})(\d{2})/);
+  if (m8) {
+    const [, y4, mo, d] = m8;
+    return ok(y4, mo, d) ? `${y4}-${mo}-${d}` : '';
+  }
+  const m6 = s.match(/(?<![0-9])(2[2-9])(\d{2})(\d{2})(?![0-9])/);
+  if (m6) {
+    const [, yy, mo, d] = m6;
+    return ok('20' + yy, mo, d) ? `20${yy}-${mo}-${d}` : '';
+  }
+  return '';
 };
+function ok(y4, mo, d) {
+  const Y = Number(y4), M = Number(mo), D = Number(d);
+  return Y >= 2022 && Y <= 2100 && M >= 1 && M <= 12 && D >= 1 && D <= 31;
+}
 
 /* ---------------- 已有的：增量合并 ---------------- */
 const prev = existsSync(OUT) ? JSON.parse(readFileSync(OUT, 'utf8')) : [];
