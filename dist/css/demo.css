@@ -1132,3 +1132,87 @@ button.sc-btn { border: 0; cursor: pointer; font-family: inherit; line-height: 1
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 html, body { touch-action: manipulation; }
 button, select, input, textarea, a, .tkc-cell, .tkc-nav, .tkc-btn, .tkc-sel { touch-action: manipulation; }
+/* ===== ⑮ 曲目查询（2026-09-26） ===== */
+.sg-box { padding: 2px 0 10px; }
+.sg-head { font-size: 12.5px; color: #8a97a4; margin: 2px 2px 10px; }
+.sg-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.sg-chip { display: inline-flex; align-items: center; gap: 6px; max-width: 100%;
+  padding: 7px 12px; border-radius: 999px; border: 1px solid #e3e8ef; background: #fff;
+  color: #334155; font-size: 13.5px; cursor: pointer; transition: .15s; }
+.sg-chip:hover { border-color: #2bc4e0; color: #0e7490; }
+.sg-chip .sg-n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sg-chip .sg-d { flex: 0 0 auto; font-size: 11.5px; color: #93a2b1; background: #f4f7fa;
+  border-radius: 999px; padding: 1px 6px; font-variant-numeric: tabular-nums; }
+/* 公演回放卡片下的曲目 chip */
+.sg-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+.sg-tag { padding: 3px 9px; border-radius: 999px; border: 1px solid #dbe4ee; background: #f7fafc;
+  color: #4a6572; font-size: 12px; cursor: pointer; }
+.sg-tag:hover { border-color: #2bc4e0; color: #0e7490; }
+/* 曲目弹窗 */
+.sg-meta { font-size: 12.5px; color: #8a97a4; margin: -2px 0 10px; }
+.sg-rows { display: flex; flex-direction: column; gap: 6px; max-height: 56vh; overflow: auto; }
+.sg-row { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+  padding: 10px 12px; border: 1px solid #e3e8ef; border-radius: 10px; background: #fff;
+  cursor: pointer; font-size: 13.5px; }
+.sg-row:hover { border-color: #2bc4e0; background: #f4fdff; }
+.sg-row.is-no { background: #fafbfc; cursor: default; color: #98a5b3; }
+.sg-row.is-no:hover { border-color: #e3e8ef; background: #fafbfc; }
+.sg-rd { flex: 0 0 auto; color: #8a97a4; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.sg-rt { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #334155; }
+.sg-ra { flex: 0 0 auto; font-size: 12.5px; color: #2bc4e0; }
+/* 从曲目跳到回放时的高亮 */
+.sg-hl { animation: sgFlash 2.2s ease; }
+@keyframes sgFlash { 0%, 100% { box-shadow: none; } 15%, 60% { box-shadow: 0 0 0 3px rgba(43, 196, 224, .45); } }
+@media (max-width: 480px) {
+  .sg-chip { font-size: 13px; padding: 6px 11px; }
+  .sg-grid { gap: 6px; }
+}
+
+/* ===== ⑮ 曲目：搜索 / A-Z 分组 / 字母索引（2026-09-26） ===== */
+/* align-items:stretch + 按钮 flex 居中：A-Z/热度按钮高度自动跟着输入框走
+   （输入框字号 16px、按钮 13px，写死 padding 会让两者差 4px） */
+.sg-bar { display: flex; gap: 8px; align-items: stretch; flex-wrap: wrap; margin: 0 2px 10px; }
+.sg-search-wrap { flex: 1 1 180px; min-width: 0; display: flex; align-items: stretch; gap: 6px; }
+.sg-go { flex: 0 0 auto; height: 34px; border: 0; background: #2bc4e0; color: #fff; border-radius: 10px;
+  padding: 0 16px; font-size: 13px; cursor: pointer; white-space: nowrap; }
+.sg-go:active { opacity: .8; }
+.sg-clear { flex: 0 0 auto; align-self: center; width: 28px; height: 28px; padding: 0; line-height: 1;
+  display: flex; align-items: center; justify-content: center;   /* ✕ 才真的在圆心 */
+  border: 1px solid #e3e8ef; border-radius: 50%; background: #fff; color: #7b8a99; font-size: 12px; cursor: pointer; }
+/* 平时 13.5px（视觉和 A-Z/热度、刷新按钮一致），**聚焦时才 16px** ——
+   🔴 iOS/安卓在聚焦 <16px 的输入框时会自动把整页放大且不缩回（站长报的「乱跳 / 一点就放大」）。
+   高度写死 34px：聚焦字号变大也不改变尺寸，不会跳。 */
+.sg-input { flex: 1 1 auto; min-width: 0; height: 34px; padding: 0 12px; border: 1px solid #e3e8ef;
+  border-radius: 10px; font-size: 13.5px; line-height: 1.2; color: #334155; background: #fff; outline: none; }
+.sg-input:focus { border-color: #2bc4e0; font-size: 16px; }
+.sg-seg { flex: 0 0 auto; display: flex; border: 1px solid #e3e8ef; border-radius: 10px; overflow: hidden; }
+.sg-seg-btn { display: flex; align-items: center; justify-content: center;
+  padding: 0 12px; border: 0; background: #fff; color: #7b8a99;
+  font-size: 13px; cursor: pointer; }
+.sg-seg-btn + .sg-seg-btn { border-left: 1px solid #e3e8ef; }
+.sg-seg-btn.on { background: #2bc4e0; color: #fff; }
+.sg-az { position: sticky; top: 0; z-index: 2; display: flex; flex-wrap: wrap; gap: 4px;
+  padding: 8px 0; margin-bottom: 4px; background: #fff; }
+.sg-az-b { min-width: 28px; padding: 4px 6px; border: 1px solid #e3e8ef; border-radius: 6px;
+  background: #f7fafc; color: #5b6b7c; font-size: 12.5px; cursor: pointer; font-variant-numeric: tabular-nums; }
+.sg-az-b:hover { border-color: #2bc4e0; color: #0e7490; background: #f4fdff; }
+.sg-group { margin-bottom: 12px; scroll-margin-top: 8px; }
+.sg-letter { font-size: 12px; font-weight: 600; color: #2bc4e0; letter-spacing: .06em;
+  padding: 4px 2px 6px; border-bottom: 1px solid #f0f4f8; margin-bottom: 8px; }
+@media (max-width: 480px) {
+  /* 手机上也保持「平时 13.5px / 聚焦 16px」——别改成常驻 16px，站长会一眼看出它比旁边的按钮大 */
+  .sg-input { font-size: 13.5px; padding: 0 10px; }
+  .sg-input:focus { font-size: 16px; }
+  /* 手机上一行放不下「输入框 + ✕ + 搜索 + A-Z/热度」→ 拆两行：
+     第一行 = 输入框 + ✕ + 搜索（一整行给搜索用），第二行 = A-Z | 热度 各占一半。
+     否则输入框只剩 150px，placeholder 都被截断。 */
+  .sg-search-wrap { flex: 1 1 100%; }
+  .sg-seg { flex: 1 1 100%; }
+  .sg-seg-btn { flex: 1 1 50%; }
+  .sg-seg-btn { padding: 7px 10px; font-size: 12.5px; }
+  .sg-az-b { min-width: 25px; font-size: 12px; padding: 3px 5px; }
+}
+
+/* ⑮ d45：一场曲目太多时折叠 */
+.sg-tag.sg-more { border-style: dashed; color: #2bc4e0; }
+.sg-tags.is-fold .sg-tag { opacity: .95; }

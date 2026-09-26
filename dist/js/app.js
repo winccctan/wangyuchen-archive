@@ -1238,15 +1238,27 @@ function switchTab(name) {
   state.tab = name;
   document.querySelectorAll('.tab').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
   Object.entries(panels).forEach(([k, el]) => el.classList.toggle('active', k === name));
-  // 「📅 时间」筛选与「搜索」仅对「发言 / 直播 / 公演」有意义；新粉指南、行程页自带内容，隐藏这两项
-  const isGuide = name === 'guide' || name === 'schedule' || name === 'mine';
-  const df = $('#dateToggleBtn');
-  if (df) df.hidden = isGuide;
-  // 🔴 隐藏的是整个 .search-wrap（输入框 + ✕ + 搜索按钮），只藏 input 会剩两个按钮在外面；
-  //    并且 style.css 里必须有 `.search-wrap[hidden]{display:none}` —— 显式 display:flex 会盖掉 UA 的 [hidden]。
-  const si = $('#searchWrap') || $('#searchInput');
-  if (si) si.hidden = isGuide;
+  // 「📅 时间」筛选与「搜索」的显隐统一走 syncToolbarSearch()（唯一出口）
+  syncToolbarSearch();
   renderAll();
+}
+
+/** 顶部搜索框的显隐（唯一出口，别在别处直接改 si.hidden）
+ *  - 新粉指南 / 行程 / 我的：整页自带内容，不用搜索框
+ *  - 公演 → 「曲目」子标签：**面板内自带**「搜曲目 / 拼音」输入框，顶部再来一个就是两个搜索框
+ *    （站长 2026-09-26：「曲目这边不应该两个搜索框，留下面的就行」）。
+ *    两个并存时顶部那个会走 state.query → renderAll() 整页重渲，页面乱跳。 */
+function syncToolbarSearch() {
+  // 🔴 隐藏的是整个 .search-wrap（输入框 + 清空 + 搜索按钮），只藏 input 会剩两个按钮在外面；
+  //    并且 style.css 里必须有 `.search-wrap[hidden]{display:none}` —— 显式 display:flex 会盖掉 UA 的 [hidden]。
+  const w = $('#searchWrap') || $('#searchInput');
+  const isGuide = state.tab === 'guide' || state.tab === 'schedule' || state.tab === 'mine';
+  const isSongs = state.tab === 'performances' && state.perfSub === 'songs';
+  const hide = isGuide || isSongs;
+  if (w) w.hidden = hide;
+  // 📅 时间按钮同进退：曲目列表不吃时间筛选，留着它是误导（点了没反应）
+  const df = $('#dateToggleBtn');
+  if (df) df.hidden = hide;
 }
 
 /* ---------- 时间筛选（发言 / 直播录播 / 公演 共用 state.dateFrom/dateTo） ---------- */
@@ -3445,7 +3457,8 @@ async function buildMineMemo(u, firstKey, activeSet) {
 /* ---------------- 公演（含子标签：公演回放 / 公演cut） ---------------- */
 const PERF_SUBS = [
   ['perf', '公演回放'],
-  ['cuts', '公演cut']
+  ['cuts', '公演cut'],
+  ['songs', '曲目']
 ];
 
 function renderPerformances() {
@@ -3464,7 +3477,15 @@ function renderPerformances() {
 function renderPerfSub() {
   const box = $('#perfSub');
   if (!box) return;
+  syncToolbarSearch();   // 曲目子标签要隐掉顶部搜索框（见 syncToolbarSearch 注释）
   if (state.perfSub === 'cuts') { box.innerHTML = renderPerfCuts(state.query); return; }
+  if (state.perfSub === 'songs') {
+    // 🔴 曲目页只用面板内那个搜索框（`搜曲目 / 拼音`）：
+    //    顶部搜索框在这里被隐藏，且曲目列表**不吃 state.query**（传 ''），
+    //    否则「在发言页搜过的词」会顺着 state.query 把曲目列表也悄悄过滤掉。
+    box.innerHTML = (typeof renderPerfSongs === 'function') ? renderPerfSongs('') : '';
+    return;
+  }
   // 公演回放（原 renderPerformances 内容）
   let list = DATA.performances;
   if (state.query) list = list.filter((m) => (m.title || '').toLowerCase().includes(state.query));
@@ -3494,6 +3515,35 @@ function renderPerfSub() {
   }
   box.innerHTML = filterNote(list.length) +
     `<div class="card-grid">${list.map((m) => renderCard(m, 'stime')).join('')}</div>`;
+  // 每场下方挂上该场唱过的曲目（数据 js/songs.js → window.__SONGS__.byLive）
+  perfSongTags(box);
+}
+
+/** 给「公演回放」每张卡片追加**该场**唱过的曲目 chip（点 chip 由 demo-features 接管弹窗）
+ *  🔴 必须按 liveId 取曲目，不能按日期：一天可能有两场（如 2026-06-13 拾忆第十场 + 王秭歆生日公演），
+ *  按日期会把两场的曲目混在一起挂到两张卡上（站长 2026-09-26 报的问题）。 */
+function perfSongTags(box) {
+  const S = (typeof window !== 'undefined') ? window.__SONGS__ : null;
+  if (!S || !S.byLive || !box) return;
+  // 大歌已在生成 songs.js 时**按剧目**剔掉（不能在这里全局剔：见 demo-features 的 sgIsDage 注释）
+  const dage = Array.isArray(S.dage) ? S.dage : [];
+  const MAX = 10;   // 一场唱 20 首时不做限制会把卡片撑得很长
+  box.querySelectorAll('.card-grid > .card').forEach((el) => {
+    const lid = el.getAttribute('data-live') || '';
+    let arr = (lid && S.byLive[lid]) || [];
+    arr = arr.filter((s) => dage.indexOf(s) < 0);
+    if (!arr.length) return;
+    const body = el.querySelector('.card-body');
+    if (!body || body.querySelector('.sg-tags')) return;
+    const shown = arr.slice(0, MAX);
+    const rest = arr.length - shown.length;
+    const div = document.createElement('div');
+    div.className = 'sg-tags' + (rest > 0 ? ' is-fold' : '');
+    div.innerHTML = shown.map((s) =>
+      `<button class="sg-tag" type="button" data-song="${escapeHtml(s)}">${escapeHtml(s)}</button>`).join('')
+      + (rest > 0 ? `<button class="sg-tag sg-more" type="button" data-sg-fold="1">+${rest}</button>` : '');
+    body.appendChild(div);
+  });
 }
 
 /* ---------------- 她的公演 cut（B 站合集 season 4752040，UP: Chzhnh） ----------------
@@ -4092,7 +4142,7 @@ function renderCard(item, timeKey) {
     : '';
   const demoT = timeKey === 'ctime' ? 'live' : 'perf';
   const demoK = (item.liveId ? demoT + ':' + item.liveId : demoT + ':' + title + ':' + time);
-  return `<div class="card" data-k="${escapeHtml(String(demoK))}" data-t="${demoT}" data-title="${escapeHtml(title)}" data-time="${escapeHtml(time)}">
+  return `<div class="card" data-k="${escapeHtml(String(demoK))}" data-t="${demoT}" data-title="${escapeHtml(title)}" data-time="${escapeHtml(time)}" data-live="${escapeHtml(String(item.liveId || ''))}">
     ${cover ? `<img class="card-img" loading="lazy" referrerpolicy="no-referrer" src="${escapeHtml(cover)}" alt="" onclick="window.__lightboxShow(this.src)" onerror="this.classList.add('failed')" />` : ''}
     <div class="card-body">
       <p class="card-title">${escapeHtml(title)}</p>

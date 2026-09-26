@@ -3780,6 +3780,251 @@
     }
   });
 
+  /* =====================================================================
+     功能 ⑮ 曲目查询（站长 2026-09-26 提出，demo d45 起按场次组织；a22 搬到生产）
+     数据 js/songs.js → window.__SONGS__ = { byLive, bySong, info, order, py, dage }
+     - 曲目归属到**具体场次 liveId**（不再按日期）：一天有两场也不会互相串（站长报的 bug）
+     - 公演 tab 第三个子标签「曲目」：点一首 → 弹出唱过的每一场（场次名 + 时间 + 日期），
+       点场次跳到「公演回放」**那一场**并高亮；站点没收录的场次标「无回放」不可点
+     - 「公演回放」每张卡片下方由 app.js 的 perfSongTags() 挂上**该场**的曲目 chip
+     ===================================================================== */
+  const SONGS = () => ((typeof window !== 'undefined' && window.__SONGS__) ? window.__SONGS__ : null);
+  /** 提示：demo 站有全局 toast，生产站是 showToast —— 两边都兼容 */
+  const sgToast = (m) => {
+    try { if (typeof toast === 'function') { toast(m); return; } } catch (_) { /* 忽略 */ }
+    try { if (typeof showToast === 'function') showToast(m); } catch (_) { /* 忽略 */ }
+  };
+  /** 是否是大歌。
+   *  d45+：songs.js 里已经把大歌**按剧目**剔过了（因为「耳语者」在拾忆是大歌、
+   *  在天枢之弈里她真唱过，全局剔会误删），所以前端默认不再过滤；
+   *  只有 dage 是扁平数组时才兜底过滤（兼容旧数据）。 */
+  const sgIsDage = (name) => {
+    const g = (SONGS() && SONGS().dage) || null;
+    return Array.isArray(g) && g.indexOf(name) >= 0;
+  };
+  /** 某场次的展示信息（场次名 / 时间 / 日期 / 是否站点没收录） */
+  function sgInfo(lid) {
+    const S = SONGS();
+    const it = (S && S.info && S.info[lid]) || null;
+    if (!it) return null;
+    return { lid: lid, d: it.d, t: it.t || '', n: it.n || '公演', v: !!it.v };
+  }
+
+  /* ---- 曲目检索状态：排序方式（持久化）+ 面板内搜索词 ---- */
+  const SG_LS_SORT = 'wyc-demo-sgsort';
+  let sgSort = 'az';
+  let sgQ = '';
+  try { const v = localStorage.getItem(SG_LS_SORT); if (v === 'az' || v === 'hot') sgSort = v; } catch (_) { /* 忽略 */ }
+
+  /** 曲目名 / 全拼 / 首字母缩写 任一命中即算匹配 */
+  function sgMatch(name, q) {
+    if (!q) return true;
+    if (String(name).toLowerCase().indexOf(q) >= 0) return true;
+    const p = (SONGS() && SONGS().py) ? SONGS().py[name] : null;
+    if (!p) return false;
+    return (String(p[0] || '').indexOf(q) >= 0) || (String(p[1] || '').indexOf(q) >= 0);
+  }
+  /** 排序键：中文用全拼，英文/数字用原名小写 */
+  function sgSortKey(name) {
+    const p = (SONGS() && SONGS().py) ? SONGS().py[name] : null;
+    const k = p && p[0] ? p[0] : String(name).toLowerCase();
+    return k || String(name).toLowerCase();
+  }
+  function sgLetter(name) {
+    const p = (SONGS() && SONGS().py) ? SONGS().py[name] : null;
+    return (p && p[2]) ? p[2] : '#';
+  }
+  function sgChip(x) {
+    return `<button class="sg-chip" type="button" data-song="${esc(x[0])}">`
+      + `<span class="sg-n">${esc(x[0])}</span><span class="sg-d">${x[1]}</span></button>`;
+  }
+  /** 重渲染曲目面板（保留搜索框焦点与光标）
+   *  🔴 只吃面板内那个搜索框（sgQ），**不传 state.query**：曲目页顶部搜索框已被隐藏
+   *  （app.js syncToolbarSearch），再吃全局 query 会让「发言页搜过的词」把曲目列表过滤掉。
+   *  🔴 输入框 id 用 **sgSongSearch**，别用 `sgSearch` —— 那是「社媒美图」子标签的搜索框 id，
+   *  同名会让 style.css 的 `#sgSearch{font-size:14px}` 盖住这里的 16px，还会让社媒页输入误触发曲目重渲。 */
+  function sgRefresh() {
+    const box = document.getElementById('perfSub');
+    if (!box) return;
+    const el = document.getElementById('sgSongSearch');
+    const focused = el && document.activeElement === el;
+    const pos = el ? el.selectionStart : 0;
+    box.innerHTML = window.renderPerfSongs('');
+    const el2 = document.getElementById('sgSongSearch');
+    if (el2 && focused) { el2.focus(); try { el2.setSelectionRange(pos, pos); } catch (_) { /* 忽略 */ } }
+  }
+
+  /** 「曲目」子标签页：真曲目，chip 上带唱过场次数
+      支持：面板内搜索（曲目名 / 全拼 / 首字母缩写）+ A-Z 分组与字母索引 + 热度排序切换
+      ⚠️ 大歌（每场都唱的固定曲目）不展示 —— 列表和卡片都不出现，站长 2026-09-26 提出 */
+  window.renderPerfSongs = function (query) {
+    const S = SONGS();
+    if (!S || !S.bySong) return '<div class="empty-state">曲目数据未加载。</div>';
+    const q = String(query || '').trim().toLowerCase();
+    const lq = String(sgQ || '').trim().toLowerCase();
+    let list = S.order || Object.keys(S.bySong).map((n) => [n, (S.bySong[n] || []).length]);
+    list = list.filter((x) => !sgIsDage(x[0]));
+    if (q) list = list.filter((x) => sgMatch(x[0], q));
+    if (lq) list = list.filter((x) => sgMatch(x[0], lq));
+
+    /* 🔴 输入期间**绝不重渲**：只认「点搜索」或「回车」。
+       以前挂在 input 上边打边搜 → 中文输入法打不出字（候选框被重建）、英文打一半列表就跳。 */
+    const bar = '<div class="sg-bar">'
+      + '<div class="sg-search-wrap">'
+      + '<input id="sgSongSearch" class="sg-input" type="text" autocomplete="off" enterkeyhint="search"'
+      + ` placeholder="搜曲目 / 拼音（gaobie、gb）" value="${esc(sgQ)}" />`
+      + '<button type="button" class="sg-clear" data-sg-clear="1" title="清空">✕</button>'
+      + '<button type="button" class="sg-go" data-sg-search="1">搜索</button>'
+      + '</div>'
+      + '<div class="sg-seg">'
+      + `<button type="button" class="sg-seg-btn${sgSort === 'az' ? ' on' : ''}" data-sg-sort="az">A-Z</button>`
+      + `<button type="button" class="sg-seg-btn${sgSort === 'hot' ? ' on' : ''}" data-sg-sort="hot">热度</button>`
+      + '</div></div>';
+    // 总数始终显示（筛选时另外标出匹配数），站长 2026-09-26
+    const total = Object.keys(S.bySong || {}).length;
+    const head = `<div class="sg-head">曲目总数 ${total} 首${lq ? ` · 匹配 ${list.length} 首（「${esc(sgQ)}」）` : ''}</div>`;
+    if (!list.length) {
+      return '<div class="sg-box">' + bar + head + '<div class="empty-state">没有匹配的曲目，换个词或拼音试试。</div></div>';
+    }
+
+    let body;
+    if (sgSort === 'hot') {
+      body = '<div class="sg-grid">' + list.map(sgChip).join('') + '</div>';
+    } else {
+      const groups = {};
+      list.forEach((x) => { const L = sgLetter(x[0]); (groups[L] = groups[L] || []).push(x); });
+      const letters = Object.keys(groups).sort((a, b) => (a === '#' ? 1 : b === '#' ? -1 : a < b ? -1 : 1));
+      // 组内：唱过场次多的在前（同场次再按拼音），站长 2026-09-26
+      letters.forEach((L) => groups[L].sort((a, b) =>
+        (b[1] - a[1]) || (sgSortKey(a[0]) < sgSortKey(b[0]) ? -1 : 1)));
+      const rail = '<div class="sg-az">' + letters.map((L) =>
+        `<button type="button" class="sg-az-b" data-sg-jump="${esc(L)}">${esc(L)}</button>`).join('') + '</div>';
+      body = rail + letters.map((L) =>
+        `<div class="sg-group" id="sgL-${esc(L)}"><div class="sg-letter">${esc(L)} · ${groups[L].length}</div>`
+        + '<div class="sg-grid">' + groups[L].map(sgChip).join('') + '</div></div>').join('');
+    }
+    return '<div class="sg-box">' + bar + head + body + '</div>';
+  };
+
+  /** 曲目弹窗：唱过的每一场（场次名/时间/日期），可跳到那一场
+   *  🔴 按 liveId 跳，不按日期 —— 一天两场时按日期会跳到第一张卡（站长报的「跳转不对」） */
+  function sgSongModal(name) {
+    const S = SONGS();
+    if (!S) return;
+    const lids = (S.bySong && S.bySong[name]) || [];
+    if (!lids.length) { sgToast('这首没有记录'); return; }
+    trk('song:view');
+    const rows = lids.map(sgInfo).filter(Boolean).reverse().map((x) => {
+      // 日期写成 2025.12.28（站长口径）；站点没收录的场次没有确切时间，就不显示时间
+      const d = String(x.d || '').replace(/-/g, '.') + (x.t ? ' ' + x.t : '');
+      if (x.v) {
+        return '<div class="sg-row is-no"><span class="sg-rd">' + esc(d) + '</span>'
+          + '<span class="sg-rt">' + esc(x.n) + '</span>'
+          + '<span class="sg-ra">无回放</span></div>';
+      }
+      return `<button class="sg-row" type="button" data-sg-go="${esc(x.lid)}">`
+        + `<span class="sg-rd">${esc(d)}</span>`
+        + `<span class="sg-rt">${esc(x.n)}</span>`
+        + '<span class="sg-ra">看这场 →</span></button>';
+    }).join('');
+    modal(name, `<div class="sg-meta">${lids.length} 场</div><div class="sg-rows">${rows}</div>`);
+  }
+
+  /** 跳到「公演回放」里**那一场**（按 liveId 定位）并高亮 */
+  function sgGoPerf(lid) {
+    closeModal();
+    const it = sgInfo(lid);
+    try {
+      if (typeof state !== 'undefined') { state.perfSub = 'perf'; }
+      if (typeof switchTab === 'function') switchTab('performances');
+      if (typeof renderPerformances === 'function') renderPerformances();
+    } catch (_) { /* 忽略 */ }
+    setTimeout(() => {
+      const cards = Array.prototype.slice.call(document.querySelectorAll('#perfSub .card'));
+      const hit = cards.filter((el) => el.getAttribute('data-live') === lid)[0];
+      if (hit) {
+        hit.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        hit.classList.add('sg-hl');
+        setTimeout(() => hit.classList.remove('sg-hl'), 2400);
+      } else if (it && typeof gotoPerfCuts === 'function') {
+        // 该场在「公演回放」里没有卡片（如站点没收录）→ 退到「公演cut」按日期找
+        gotoPerfCuts(it.d);
+      } else {
+        sgToast('这场没有可跳转的回放');
+      }
+    }, 200);
+  }
+
+  document.addEventListener('click', (e) => {
+    const songBtn = e.target.closest('[data-song]');
+    if (songBtn) { sgSongModal(songBtn.getAttribute('data-song')); return; }
+    const goBtn = e.target.closest('[data-sg-go]');
+    if (goBtn) { sgGoPerf(goBtn.getAttribute('data-sg-go')); return; }
+    // 公演卡片上「+N」：展开该场全部曲目（默认只显示前 10 首）
+    const foldBtn = e.target.closest('[data-sg-fold]');
+    if (foldBtn) {
+      const card = foldBtn.closest('.card');
+      const lid = card ? (card.getAttribute('data-live') || '') : '';
+      const S2 = SONGS();
+      const all = ((S2 && S2.byLive && S2.byLive[lid]) || []).filter((s) => !sgIsDage(s));
+      const div = foldBtn.parentNode;
+      if (div && all.length) {
+        div.classList.remove('is-fold');
+        div.innerHTML = all.map((s) => `<button class="sg-tag" type="button" data-song="${esc(s)}">${esc(s)}</button>`).join('');
+      }
+      return;
+    }
+    // 曲目：点「搜索」提交（输入期间不重渲，中文才能正常打）
+    if (e.target.closest('[data-sg-search]')) { sgSubmit(); return; }
+    // 曲目：点「✕」清空搜索词并恢复全量
+    if (e.target.closest('[data-sg-clear]')) {
+      sgQ = '';
+      sgRefresh();
+      const el = document.getElementById('sgSongSearch');
+      if (el) el.focus();
+      return;
+    }
+    // 曲目：排序方式切换
+    const sortBtn = e.target.closest('[data-sg-sort]');
+    if (sortBtn) {
+      sgSort = sortBtn.getAttribute('data-sg-sort');
+      try { localStorage.setItem(SG_LS_SORT, sgSort); } catch (_) { /* 忽略 */ }
+      sgRefresh();
+      return;
+    }
+    // 曲目：A-Z 字母索引跳转
+    const jumpBtn = e.target.closest('[data-sg-jump]');
+    if (jumpBtn) {
+      const L = jumpBtn.getAttribute('data-sg-jump');
+      const g = document.getElementById('sgL-' + L);
+      if (g) g.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+  });
+
+  /* 曲目：面板内搜索 —— **点「搜索」或按回车**才提交（含拼音 / 首字母缩写）
+     ⚠️ 判断用 sgSongSearch（不是社媒美图的 sgSearch），否则在社媒页打字会误触发曲目重渲
+     🔴 不要再挂 input 事件边打边搜：中文输入法候选框会被 innerHTML 重建打断（打不出中文），
+        英文打一半列表就开始跳。输入期间零重渲，只有 sgSubmit() 才刷列表。 */
+  function sgSubmit() {
+    const el = document.getElementById('sgSongSearch');
+    sgQ = String((el && el.value) || '').trim();
+    sgRefresh();
+    // 手机上收起键盘，结果才看得见
+    const el2 = document.getElementById('sgSongSearch');
+    if (el2 && document.activeElement === el2) el2.blur();
+  }
+  document.addEventListener('keydown', (e) => {
+    if (!e.target || e.target.id !== 'sgSongSearch') return;
+    if (e.key === 'Enter' || e.keyCode === 13) { e.preventDefault(); sgSubmit(); }
+  });
+
+  /* 埋点「进入曲目」：🔴 app.js 对 `.subtab` 的点击在容器委托里 stopPropagation，
+     document 上的**冒泡**监听收不到 ⇒ 必须用捕获阶段（true）。 */
+  document.addEventListener('click', (e) => {
+    if (e.target && e.target.closest && e.target.closest('[data-sub="songs"]')) trk('song:open');
+  }, true);
+
   // 等 app.js 的 init() 把数据拉回来再启动
   (function waitData(n) {
     const ok = (typeof DATA !== 'undefined') && (DATA.messages.length > 0 || DATA.live.length > 0);
