@@ -4048,8 +4048,27 @@
     return '<div class="sg-box">' + bar + head + body + '</div>';
   };
 
-  /** 曲目弹窗：唱过的每一场（场次名/时间/日期），可跳到那一场
-   *  🔴 按 liveId 跳，不按日期 —— 一天两场时按日期会跳到第一张卡（站长报的「跳转不对」） */
+  /** 这一场、这一首的 B 站视频（songs.js 的 `vid`：`"<liveId>|<曲名>" → [[bvid, p, 来源],...]`）
+   *  - p > 1 才拼 `?p=N`（Chzhnh 的全场 cut 分 P）；甜橙小铺是整条单曲视频，直接跳
+   *  - 数据由 scripts/build-song-videos.py 生成，源是站长 2026-09-26 勾出来的 385 条 */
+  function sgVidOf(lid, song) {
+    const S = SONGS();
+    const v = (S && S.vid) ? S.vid[lid + '|' + song] : null;
+    if (!v || !v.length) return null;
+    const it = v[0];
+    return {
+      url: 'https://www.bilibili.com/video/' + it[0] + (it[1] > 1 ? '?p=' + it[1] : ''),
+      src: it[2] || '',
+      more: v.length - 1
+    };
+  }
+
+  /** 曲目弹窗：唱过的每一场（场次名/时间/日期），一行两个按钮
+   *  🔴 按 liveId 跳，不按日期 —— 一天两场时按日期会跳到第一张卡（站长报的「跳转不对」）
+   *  「看这场 →」= 跳到站内这一场的回放卡片；「只看这首」= 直接去 B 站看这一首的视频
+   *     （是 `<a target=_blank>`：微信内置浏览器常拦 window.open，链接本身才一定跳得出去）
+   *  🔴 只给「站点当下真有这一场回放卡片」的场次挂「看这场 →」；
+   *    其余一律显示「无回放」不可点（站长 2026-09-26：没有卡片的就不该能跳）。 */
   function sgSongModal(name) {
     const S = SONGS();
     if (!S) return;
@@ -4060,19 +4079,25 @@
     const rows = lids.map(sgInfo).filter(Boolean).reverse().map((x) => {
       // 日期写成 2025.12.28（站长口径）；站点没收录的场次没有确切时间，就不显示时间
       const d = String(x.d || '').replace(/-/g, '.') + (x.t ? ' ' + x.t : '');
-      // 🔴 只给「站点当下真有这一场回放卡片」的场次挂「看这场 →」；
-      //    其余一律显示「无回放」不可点（站长 2026-09-26：没有卡片的就不该能跳）。
+      const v = sgVidOf(x.lid, name);
+      const vidBtn = v
+        ? `<a class="sg-vid" href="${esc(v.url)}" target="_blank" rel="noopener noreferrer"`
+          + ` title="来源：${esc(v.src)}">只看这首</a>`
+        : '';
       if (x.v || !sgHasCard(x.lid)) {
-        return '<div class="sg-row is-no"><span class="sg-rd">' + esc(d) + '</span>'
+        return '<div class="sg-line is-no"><div class="sg-main">'
           + '<span class="sg-rt">' + esc(x.n) + '</span>'
-          + '<span class="sg-ra">无回放</span></div>';
+          + '<span class="sg-sub"><span class="sg-rd">' + esc(d) + '</span>'
+          + '<span class="sg-ra">无回放</span></span></div>' + vidBtn + '</div>';
       }
-      return `<button class="sg-row" type="button" data-sg-go="${esc(x.lid)}">`
-        + `<span class="sg-rd">${esc(d)}</span>`
+      return `<div class="sg-line"><button class="sg-main" type="button" data-sg-go="${esc(x.lid)}">`
         + `<span class="sg-rt">${esc(x.n)}</span>`
-        + '<span class="sg-ra">看这场 →</span></button>';
+        + `<span class="sg-sub"><span class="sg-rd">${esc(d)}</span>`
+        + '<span class="sg-ra">看这场 →</span></span></button>' + vidBtn + '</div>';
     }).join('');
-    modal(name, `<div class="sg-meta">${lids.length} 场</div><div class="sg-rows">${rows}</div>`);
+    const nv = lids.filter((l) => sgVidOf(l, name)).length;
+    modal(name, `<div class="sg-meta">${lids.length} 场${nv ? ' · ' + nv + ' 场有单曲视频' : ''}</div>`
+      + `<div class="sg-rows">${rows}</div>`);
   }
 
   /** 跳到「公演回放」里**那一场**（按 liveId 定位）并高亮 */
