@@ -32,7 +32,11 @@ function silentHintForRange() {
 const API_BASE = /(^|\.)wyc0518\.cc$/.test(location.hostname) ? '' : 'https://idol.wyc0518.cc';
 // msgKey → message，便于翻译时按 id 取到原文（重新渲染后 DOM 里只剩 mid）
 const MSG_INDEX = new Map();
-const state = { tab: 'messages', query: '', dateFrom: null, dateTo: null, dayLimit: 3, lang: 'zh', expanded: new Set(), guideSub: 'guide', perfSub: 'perf', liveSub: 'replay' };
+const state = { tab: 'messages', query: '', dateFrom: null, dateTo: null, dayLimit: 3, matchLimit: 300, lang: 'zh', expanded: new Set(), guideSub: 'guide', perfSub: 'perf', liveSub: 'replay' };
+
+// 搜索 / 时间筛选时一次最多渲染这么多条（超了分批处理，点底部按钮继续展开）。
+// 见 renderMessages 里的注释：手机上一次性渲染上千张卡片要卡好几秒。
+const MATCH_RENDER_LIMIT = 300;
 
 const $ = (sel) => document.querySelector(sel);
 const panels = {
@@ -406,6 +410,12 @@ function msgKey(m) {
   return m.msgIdServer || ('k' + strHash((m.text || '') + (m.reply?.text || '') + m.msgTime));
 }
 
+// 已入库消息的 key 集合：供 loadMonth 做 O(1) 去重（只在 DATA.messages 被**整体替换**时随 rebuildIndex 重建）
+// 🔴 原来 loadMonth 每拉一个月就「全量建 Map + 全量展开成新数组」：
+//    到第 30~40 个月时 DATA.messages 已有四、五万条，一次合并就要几万次 msgKey（含字符串 hash），
+//    44 个月累计上百万次 —— 手机上每次几百毫秒，叠起来就是「点确定卡很久」（站长 2026-09-26）。
+const MSG_KEYS = new Set();
+
 // 调接口翻译单段文本（失败抛错，由调用方决定如何展示）
 // 多翻译源按顺序尝试，任一成功即用（覆盖国内/海外、镜像/file:// 各种网络环境）：
 //   1) /translate   ：本站 Cloudflare 边缘代理（国内可用、质量最佳；未部署时 404 自动跳过）
@@ -568,10 +578,14 @@ async function loadMonth(m, silent) {
     loadedMonths.add(m);
     try {
       const arr = await fetchApi('/api/month?m=' + encodeURIComponent(m));
-      const map = new Map();
-      for (const x of DATA.messages) map.set(msgKey(x), x);
-      for (const x of arr) map.set(msgKey(x), x);
-      DATA.messages = [...map.values()];
+      // 增量合并：只追加没见过的，不动已有条目（顺序与原来的「旧在前 + 新在后」完全一致）
+      for (const x of arr || []) {
+        const k = msgKey(x);
+        if (MSG_KEYS.has(k)) continue;
+        MSG_KEYS.add(k);
+        DATA.messages.push(x);
+        MSG_INDEX.set(k, x); // 索引同步增量更新：数据还没全拉完时也能查到已到的那些
+      }
     } catch (e) {
       loadedMonths.delete(m); // 允许重试
       if (!silent) throw e;
@@ -586,6 +600,43 @@ async function loadMonth(m, silent) {
 function bjMonth(ts) {
   const d = new Date((ts == null ? Date.now() : ts) + 8 * 3600 * 1000);
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
+// 时间区间覆盖了哪些月份（'YYYY-MM' 可直接字符串比较）。
+// 🔴 这条是「点确定卡很久」的主因修法：以前无论选「近 7 天」还是「近 30 天」，
+//    都一律去补齐**全部 44 个月**（约 25MB），手机上要等十几秒才出结果。
+//    其实筛选哪一段就只需要哪几个月的数据（近 30 天 = 1~2 个月）。
+function monthsInRange(from, to) {
+  const a = from ? bjMonth(from) : null;
+  const b = to ? bjMonth(to - 1) : null;   // to 存的是「次日 0 点」，减 1ms 回到当天
+  if (!a && !b) return [];
+  return ALL_MONTHS.filter((m) => (!a || m >= a) && (!b || m <= b));
+}
+
+/** 带并发上限地批量加载指定月份（并发 8：实测 44 个月串行 54s / 并行 2.1s；再高会被同域连接数拖慢） */
+async function loadMonths(list) {
+  let i = 0;
+  const worker = async () => {
+    while (i < list.length) {
+      const m = list[i++];
+      try { await loadMonth(m, true); } catch (_) { /* 单月失败不影响其余 */ }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(MONTH_CONCURRENCY, list.length) }, worker));
+}
+
+/** 区间内「还没拿到数据」的月份：未加载 + **正在加载中**（loadMonth 一开工就把月塞进 loadedMonths，
+ *  所以只看 loadedMonths 会把「正在下」误判成「已下完」，结果就是筛选结果缺一段）。 */
+function pendingMonthsInFilterRange() {
+  return monthsInRange(state.dateFrom, state.dateTo)
+    .filter((m) => !loadedMonths.has(m) || monthPromises.has(m));
+}
+
+/** 只补「区间内缺的月份」（幂等：都到齐了就直接 resolve，一次网络请求都不发） */
+function loadMonthsInFilterRange() {
+  const pending = pendingMonthsInFilterRange();
+  if (!pending.length) return Promise.resolve();
+  return loadMonths(pending);
 }
 
 // 后台静默补齐「其余历史月份」。
@@ -659,16 +710,19 @@ async function loadArchive() {
       DATA.messages = idx.recent || [];
       ALL_MONTHS = (idx.months || []).slice();    // 降序，最新月份在前
       loadedMonths = new Set();
+      rebuildIndex();   // 🔴 建 MSG_KEYS：loadMonth 靠它做增量去重，漏了会整月重复灌入
       // ★ 重载时必须把「月份加载状态」一并复位。否则 loadRemainingMonths() 会直接返回
       //   上一次已经完成的 Promise，历史月再也不会被拉进来 —— 刷新之后搜索/时间筛选就失效了
       //   （表现为「刷新完反而搜不到以前的数据」）。
       allMonthsPromise = null;
       allMonthsLoaded = false;
       monthPromises.clear();
-      // ★ 历史月是「搜索 / 时间筛选 / 加载更早」的前提，必须在拿到月份清单的**那一刻**就
-      //   最优先开始下载——不能排在 live/performances/social 后面，否则用户要多等同样长的时间
-      //   才能搜到历史。这里立刻启动（不 await，不阻塞首屏；搜索/筛选会 await 同一个 Promise）。
-      loadRemainingMonths();
+      // ★ 历史月是「搜索 / 加载更早」的前提（时间筛选现在只补区间内的月，不必等全量）。
+      //   这里就启动（不 await，不阻塞首屏；搜索/筛选会 await 同一个 Promise）。
+      //   🔴 但**延后 1.2 秒**再开：首屏的 live / 公演 / 社媒 / 切片 正在下载，
+      //      同时再开 8 路去下 25MB 历史月会把首屏拖慢（手机上尤其明显）。
+      //      搜索若在这 1.2s 内发生，会自己调 loadRemainingMonths() 立刻开始，不会多等。
+      setTimeout(() => { loadRemainingMonths(); }, 1200);
       // 首屏只额外等「当月」补全（它就在上面那批并行下载里，await 到的是同一个 Promise）
       await loadMonth(bjMonth(Date.now()), true);
       const [live, perfs, social, perfCuts, liveCuts] = await Promise.all([
@@ -745,7 +799,12 @@ async function init() {
 
 function rebuildIndex() {
   MSG_INDEX.clear();
-  for (const m of DATA.messages) MSG_INDEX.set(msgKey(m), m);
+  MSG_KEYS.clear();
+  for (const m of DATA.messages) {
+    const k = msgKey(m);
+    MSG_INDEX.set(k, m);
+    MSG_KEYS.add(k);
+  }
 }
 
 async function fetchJson(name) {
@@ -955,18 +1014,13 @@ function bindEvents() {
      🔴 原来挂在 input 上、每敲一个字符就 renderAll()：中文输入法每打一个拼音字母就整页重渲，
         候选框被重建 → 打不出中文；列表还跟着跳 → 「输入一个字母还没输完就乱跳」。
         现在输入期间**一个 DOM 都不动**，只在这三个时机真正执行：点「搜索」/ 按回车 / 点「清空」。 */
-  /* 拉全量历史月（搜索 / 时间筛选都需要）——**唯一入口**：失败要吞、超时要兜，最后一定 hideBusy()。
-     🔴 站长 2026-09-26 报「点确定出不去」＝ busy「筛选中…」常驻：原来只 .then()，某个历史月请求
-        挂掉/reject 就永远等不到 → 转圈不收、页面像卡死。 */
   function loadAllMonthsWithBusy(msg) {
-    showBusy(msg);
-    const done = loadRemainingMonths().catch(() => { /* 个别历史月挂了也别阻塞 */ });
-    const timeout = new Promise((res) => setTimeout(res, 20000));  // 20s 硬兜底
-    return Promise.race([done, timeout]).then(() => { hideBusy(); });
+    return loadMonthsWithBusy(msg, loadRemainingMonths(), 20000);
   }
   function runSearch() {
     const el = $('#searchInput');
     state.query = String((el && el.value) || '').trim().toLowerCase();
+    state.matchLimit = MATCH_RENDER_LIMIT;   // 新一轮搜索：分批展开从头计
     renderAll();
     if (state.query) trackSearch(); // 只在真的输入了内容时才记
     // ★ 搜索必须覆盖「全部历史」，否则就是假阴性：数据按月分键、首屏只有 recent+当月，
@@ -1024,11 +1078,17 @@ function bindEvents() {
       state.dateTo = t ? new Date(t + 'T00:00:00+08:00').getTime() + 86400000 : null; // 次日 0 点（含当天）
       closeDateModal();
       state.dayLimit = 3;
+      state.matchLimit = MATCH_RENDER_LIMIT;   // 新一轮筛选：分批展开从头计
       renderAll(); // 发言 / 直播录播 / 公演 三个页都要按新时间范围刷新
       showToast(state.dateFrom || state.dateTo ? '✅ 已按时间筛选' : '✅ 已显示全部时间');
-      // 同搜索：按时间筛选也必须覆盖全部历史月，否则早年区间会显示「没有发言」。
-      if ((state.dateFrom || state.dateTo) && !allMonthsLoaded) {
-        loadAllMonthsWithBusy('筛选中…').then(() => renderAll());
+      // 已加载的数据先渲染出来（即时反馈），再补「区间内缺的月份」后重渲一次。
+      // 🔴 只补区间内的月：选「近 30 天」= 下 1~2 个月（几百毫秒），
+      //    以前是补齐全部 44 个月（约 25MB）后才出结果，手机上要等十几秒 —— 即「点确定卡很久」。
+      //    例外：如果同时还有搜索词，关键词可能在任何月份，这时才需要全量。
+      if (state.query && !allMonthsLoaded) {
+        loadAllMonthsWithBusy('搜索中…').then(() => renderAll());
+      } else if (state.dateFrom || state.dateTo) {
+        loadMonthsWithBusy('筛选中…', loadMonthsInFilterRange(), 12000).then(() => renderAll());
       } else {
         hideBusy();
       }
@@ -1210,6 +1270,17 @@ function filterNote(count) {
 // 工具栏「更新于」左侧的忙碌小字：只在「搜索 / 筛选正等着历史数据就绪」时出现，
 // 数据一到就消失。后台静默补齐历史**不显示任何提示**（用户明确要求完全静默）。
 let busyTimer = null;
+/* busy 提示的唯一收口：失败要吞、超时要兜，最后一定 hideBusy()。
+   🔴 站长 2026-09-26 报「点确定出不去」＝ busy「筛选中…」常驻：原来只 .then()，
+      某个请求挂掉/reject 就永远等不到 → 转圈不收、页面像卡死。
+   ⚠️ 这里必须是**顶层函数**：renderMessages()（不经过 bindEvents）也会用到它。 */
+function loadMonthsWithBusy(msg, done, timeoutMs) {
+  showBusy(msg);
+  const timeout = new Promise((res) => setTimeout(res, timeoutMs));  // 硬兜底
+  return Promise.race([Promise.resolve(done).catch(() => { /* 个别历史月挂了也别阻塞 */ }), timeout])
+    .then(() => { hideBusy(); });
+}
+
 function showBusy(text) {
   const el = document.getElementById('busyNote');
   if (!el) return;
@@ -3682,12 +3753,13 @@ function renderMessages() {
   if (!list.length) {
     // 历史月还没拉完就先说「没有」会严重误导。此时**完全不碰面板**（完全静默），
     // 只在工具栏挂一个「搜索中…/筛选中…」小字，数据到齐后会自动重绘出真实结果。
-    if (filtering && !allMonthsLoaded) {
-      showBusy(state.query ? '搜索中…' : '筛选中…');
-      // 失败/超时也要把「搜索中…」收掉，否则转圈常驻、页面像卡死（站长 2026-09-26 报的「出不去」）
-      const done = loadRemainingMonths().catch(() => { /* 个别历史月挂了别阻塞 */ });
-      Promise.race([done, new Promise((res) => setTimeout(res, 20000))]).then(() => {
-        hideBusy();
+    // 是否「还在等数据」：有搜索词 → 必须全量；纯时间筛选 → 只看区间内那几个月。
+    // 🔴 不能一律用 !allMonthsLoaded：选「近 30 天」时那两个月早就下载好了、结果也该立刻显示，
+    //    却因为其它 42 个月还没下完而空着面板转圈 —— 站长说的「卡很久」有一半是这个。
+    const needMore = state.query ? !allMonthsLoaded : pendingMonthsInFilterRange().length > 0;
+    if (filtering && needMore) {
+      const job = state.query ? loadRemainingMonths() : loadMonthsInFilterRange();
+      loadMonthsWithBusy(state.query ? '搜索中…' : '筛选中…', job, state.query ? 20000 : 12000).then(() => {
         if (state.query || dateFilterActive()) renderMessages();
       });
       return;
@@ -3703,10 +3775,23 @@ function renderMessages() {
     (groups[d] ||= []).push(m);
   }
   const sortedDays = Object.keys(groups).sort((a, b) => (b > a ? 1 : -1));
+  const matchedCount = sortedDays.reduce((n, d) => n + groups[d].length, 0);
 
-  // 全量存档有 400+ 天、1.5 万条，一次性渲染会让手机卡顿/内存吃紧：
-  // 默认只渲染最近若干天，底部提供「加载更早」；搜索或日期筛选时直接全量展示。
-  const limit = filtering ? sortedDays.length : Math.min(state.dayLimit, sortedDays.length);
+  // 全量存档有 400+ 天、上万条，一次性渲染会让手机卡顿/内存吃紧：
+  // 默认只渲染最近若干天，底部提供「加载更早」。
+  // 🔴 搜索 / 时间筛选也**不再无条件全量**：选「近 30 天」命中上千条时，
+  //    一次性 innerHTML 一千多张卡片（含头像、图片、按钮）在手机上要好几秒 ——
+  //    这也是「点确定卡很久」的一半原因。命中不多（≤300 条）时仍一次全展示，体验不变。
+  let limit;
+  if (!filtering) {
+    limit = Math.min(state.dayLimit, sortedDays.length);
+  } else if (matchedCount <= MATCH_RENDER_LIMIT) {
+    limit = sortedDays.length;
+  } else {
+    limit = 1;
+    let n = groups[sortedDays[0]].length;
+    while (limit < sortedDays.length && n < state.matchLimit) { n += groups[sortedDays[limit]].length; limit++; }
+  }
   const shown = sortedDays.slice(0, limit);
   const restDays = sortedDays.length - limit;
   const restCount = restDays > 0
@@ -3725,7 +3810,6 @@ function renderMessages() {
       }).join('')}
     </div>`;
 
-  const matchedCount = sortedDays.reduce((n, d) => n + groups[d].length, 0);
   let listHtml = '';
   for (let i = 0; i < shown.length; i++) {
     listHtml += renderDay(shown[i]);
@@ -3735,17 +3819,23 @@ function renderMessages() {
   }
   panel.innerHTML = filterNote(matchedCount) + listHtml
     + (restDays > 0
-      ? `<button class="load-more" id="loadMore" type="button">加载更早的消息（还有 ${restCount} 条 / ${restDays} 天）</button>`
+      ? `<button class="load-more" id="loadMore" type="button">${filtering
+        ? `加载更多（还有 ${restCount} 条 / ${restDays} 天）`
+        : `加载更早的消息（还有 ${restCount} 条 / ${restDays} 天）`}</button>`
       : '');
 
   const moreBtn = document.getElementById('loadMore');
   if (moreBtn) {
     moreBtn.addEventListener('click', async () => {
       const y = window.scrollY;
-      state.dayLimit += 7;
-      // 还有更早的月份未加载 → 惰性拉一个进来（append 到 DATA.messages）
-      const next = ALL_MONTHS.find(m => !loadedMonths.has(m));
-      if (next) { try { await loadMonth(next); } catch (_) {} }
+      if (filtering) {
+        state.matchLimit += MATCH_RENDER_LIMIT;   // 筛选/搜索态：每次多展开一批
+      } else {
+        state.dayLimit += 7;
+        // 还有更早的月份未加载 → 惰性拉一个进来（append 到 DATA.messages）
+        const next = ALL_MONTHS.find((m) => !loadedMonths.has(m));
+        if (next) { try { await loadMonth(next); } catch (_) {} }
+      }
       renderMessages();
       window.scrollTo(0, y);
     });
