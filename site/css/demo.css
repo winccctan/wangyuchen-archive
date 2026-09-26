@@ -1222,3 +1222,10 @@ button, select, input, textarea, a, .tkc-cell, .tkc-nav, .tkc-btn, .tkc-sel { to
 /* ⑮ d45：一场曲目太多时折叠 */
 .sg-tag.sg-more { border-style: dashed; color: #2bc4e0; }
 .sg-tags.is-fold .sg-tag { opacity: .95; }
+
+/* 曲目 → 场次定位时的提示条 + 「显示全部」（app.js 里只渲目标附近一小段，手机上才秒开） */
+.perf-jumpnote { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.perf-showall { margin-left: auto; padding: 3px 12px; border: 1px solid var(--primary, #2bc4e0);
+  background: #fff; color: var(--primary-dark, #0f9fc4); border-radius: 999px;
+  font-size: 12.5px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.perf-showall:active { opacity: .7; }

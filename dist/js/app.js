@@ -32,7 +32,7 @@ function silentHintForRange() {
 const API_BASE = /(^|\.)wyc0518\.cc$/.test(location.hostname) ? '' : 'https://idol.wyc0518.cc';
 // msgKey → message，便于翻译时按 id 取到原文（重新渲染后 DOM 里只剩 mid）
 const MSG_INDEX = new Map();
-const state = { tab: 'messages', query: '', dateFrom: null, dateTo: null, dayLimit: 3, matchLimit: 300, lang: 'zh', expanded: new Set(), guideSub: 'guide', perfSub: 'perf', liveSub: 'replay' };
+const state = { tab: 'messages', query: '', dateFrom: null, dateTo: null, dayLimit: 3, matchLimit: 300, lang: 'zh', expanded: new Set(), guideSub: 'guide', perfSub: 'perf', liveSub: 'replay', perfJumpTo: null };
 
 // 搜索 / 时间筛选时一次最多渲染这么多条（超了分批处理，点底部按钮继续展开）。
 // 见 renderMessages 里的注释：手机上一次性渲染上千张卡片要卡好几秒。
@@ -3483,6 +3483,7 @@ function renderPerfSub() {
     // 🔴 曲目页只用面板内那个搜索框（`搜曲目 / 拼音`）：
     //    顶部搜索框在这里被隐藏，且曲目列表**不吃 state.query**（传 ''），
     //    否则「在发言页搜过的词」会顺着 state.query 把曲目列表也悄悄过滤掉。
+    state.perfJumpTo = null;    // 离开「定位视图」，下次进公演回放就是完整列表
     box.innerHTML = (typeof renderPerfSongs === 'function') ? renderPerfSongs('') : '';
     return;
   }
@@ -3513,10 +3514,40 @@ function renderPerfSub() {
       `<div class="empty-state">${dateFilterActive() ? '该时间范围内没有公演，点上方「清除筛选」看全部。' : '暂无公演数据。'}</div>`;
     return;
   }
-  box.innerHTML = filterNote(list.length) +
-    `<div class="card-grid">${list.map((m) => renderCard(m, 'stime')).join('')}</div>`;
+  // 🎯 从「曲目」点「看这场」过来时：只渲染目标场次**前后各 12 场**。
+  //    🔴 手机上一次性渲染 279 张卡（每张还带封面图 + 曲目 chip + 几个按钮）要好几秒，
+  //       iOS 甚至会内存告警把页面重载 —— 表现就是「点了跳转加载不出来 / 回到首页」。
+  //       只渲一小段能秒开，也就不必再赌渲染时序；想看完整列表点「显示全部」。
+  let win = null;
+  if (state.perfJumpTo) {
+    const j = list.findIndex((p) => String(p.liveId) === String(state.perfJumpTo));
+    if (j >= 0) {
+      const W = 12;
+      win = [Math.max(0, j - W), Math.min(list.length, j + W + 1)];
+    }
+  }
+  const shown = win ? list.slice(win[0], win[1]) : list;
+  const head = win
+    ? `<div class="filter-note perf-jumpnote">🎯 已定位到这一场 · 显示第 ${win[0] + 1}–${win[1]} 场（共 ${list.length} 场）`
+      + '<button class="perf-showall" type="button" id="perfShowAll">显示全部</button></div>'
+    : filterNote(list.length);
+  box.innerHTML = head +
+    `<div class="card-grid">${shown.map((m) => renderCard(m, 'stime')).join('')}</div>`;
   // 每场下方挂上该场唱过的曲目（数据 js/songs.js → window.__SONGS__.byLive）
   perfSongTags(box);
+  const sa = box.querySelector('#perfShowAll');
+  if (sa) {
+    sa.addEventListener('click', () => {
+      const keep = state.perfJumpTo;
+      state.perfJumpTo = null;
+      renderPerfSub();
+      // 补成完整列表后把视野拉回同一张卡（否则上面多出 200 多张卡，人会「失位」）
+      if (keep) {
+        const el = box.querySelector('.card[data-live="' + String(keep).replace(/"/g, '') + '"]');
+        if (el) el.scrollIntoView({ block: 'center' });
+      }
+    });
+  }
 }
 
 /** 给「公演回放」每张卡片追加**该场**唱过的曲目 chip（点 chip 由 demo-features 接管弹窗）
