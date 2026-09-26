@@ -43,6 +43,14 @@ VIDEOS = os.path.join(ROOT, 'site', 'data', 'bili-videos.json')
 # 第二个源：她本人的应援号「GNZ48王语晨的甜橙小铺」（scripts/fetch-orange-shop.mjs 每日更新，已按曲目口径过滤）。
 # 之前只扫 Chzhnh，甜橙小铺自己的公演 cut（标题同样带日期 + 分 P）完全没进过这条通道。
 ORANGE = os.path.join(ROOT, 'scripts', 'orange-shop.json')
+# 第三个源：应援会「甜橙小铺」在微博发的【公演cut】（scripts/fetch-weibo-cuts.mjs 抓取）。
+# 每条就是一首歌（标题里《曲名》），场次 liveId 抓取时已挂好 ⇒ 直接转成 unit 进曲目库。
+PERFCUTS = os.path.join(ROOT, 'site', 'data', 'performance-cuts.js')
+# 待定清单：新出现的曲名没匹配上已有 201 首 → **不直接建新歌**，写这里等站长确认
+# （站长 2026-09-27 定：「能匹配的自动生成，不能匹配的有问题的放清单让我确认」）。
+PENDING = os.path.join(ROOT, 'scripts', 'song-pending.json')
+# 别名表：{"原始写法": "规范曲名"}。站长确认后由人工写入（也可指向一个全新的曲名 ⇒ 确认即建新歌）。
+ALIASES = os.path.join(ROOT, 'scripts', 'song-aliases.json')
 ARCHIVE = os.path.join(ROOT, 'site', 'data', 'archive.js')
 SONGS_SITE = os.path.join(ROOT, 'site', 'js', 'songs.js')
 SONGS_DIST = os.path.join(ROOT, 'dist', 'js', 'songs.js')
@@ -109,6 +117,28 @@ def http_json(url, referer):
         return None
 
 
+def load_perf_cuts():
+    """微博「公演cut」→ unit 清单。每条微博就是一首歌（标题里《曲名》），
+    场次 liveId 由 fetch-weibo-cuts.mjs 抓取时挂好；MC 环节（song=MC1 这类）不是曲目，丢掉。"""
+    out = []
+    if not os.path.exists(PERFCUTS):
+        return out
+    try:
+        s = open(PERFCUTS, encoding='utf-8').read()
+        d = json.loads(s[s.index('{'):s.rindex('}') + 1])
+    except Exception as e:
+        print('  ! %s 解析失败：%s' % (os.path.basename(PERFCUTS), e))
+        return out
+    for c in d.get('cuts') or []:
+        song = (c.get('song') or '').strip()
+        if not song or re.match(r'^MC\s*\d', song, re.I):
+            continue
+        out.append({'bvid': '', 'p': 0, 'd': c.get('date') or '', 'occ': '',
+                    'song': song, 'type': 'unit', 'src': '微博',
+                    'lid': str(c.get('liveId') or ''), 'mblogid': c.get('mblogid') or ''})
+    return out
+
+
 def load_sources():
     """两个源合并：Chzhnh（站点抓取产物）+ 甜橙小铺（本仓库维护的清单）。
     口径一致，都只收「她的 + 标题里有公演cut/云公演」。"""
@@ -156,6 +186,25 @@ def fetch(args):
     scanned = set(json.load(open(SCANNED, encoding='utf-8'))) if os.path.exists(SCANNED) else set()
     seen = {(u.get('bvid'), str(u.get('p'))) for u in old}
     known_bv = {u.get('bvid') for u in old}
+
+    # 微博「公演cut」：不需要调分 P 接口（一条 = 一首），按 (场次, 曲名) 去重直接并入
+    wb = load_perf_cuts()
+    if wb:
+        wb_seen = {(u.get('lid'), u.get('song')) for u in old if u.get('src') == '微博'}
+        wb_add = []
+        for u in wb:
+            k = (u.get('lid'), u.get('song'))
+            if k in wb_seen:
+                continue
+            wb_seen.add(k)
+            old.append(u)
+            wb_add.append(u)
+        print('微博「公演cut」%d 条 → 新增 %d 条 unit' % (len(wb), len(wb_add)))
+        for u in wb_add[:10]:
+            print('    %s 《%s》 %s' % (u['d'], u['song'], (u.get('mblogid') or '')))
+    else:
+        print('  ! %s 里没有可用的「公演cut」（先跑 node scripts/fetch-weibo-cuts.mjs）'
+              % os.path.basename(PERFCUTS))
 
     todo = []
     for bv, title, src in mine:
@@ -218,20 +267,64 @@ def lcs_len(a, b):
     return best
 
 
-def canon(song, idx):
-    """新曲名 → 曲库里的规范名（idx = {norm: 原名}）"""
+def load_aliases():
+    """曲名别名表：{norm(原始写法): 规范曲名}。站长确认过的写法放这里，命中即按规范名入库。"""
+    if not os.path.exists(ALIASES):
+        return {}
+    try:
+        raw = json.load(open(ALIASES, encoding='utf-8'))
+        # 下划线开头的是注释键（如 "_说明"），不能当别名用
+        return {norm(k): v for k, v in raw.items() if v and not str(k).startswith('_')}
+    except Exception as e:
+        print('  ! %s 解析失败：%s' % (os.path.basename(ALIASES), e))
+        return {}
+
+
+def canon(song, idx, aliases=None):
+    """新曲名 → 曲库里的规范名；**认不出来返回 None**（交给待定清单，绝不擅自建新歌）。
+
+    判定顺序（严格从「最确定」到「最不确定」）：
+      1. 规范化后完全一致        → 老歌，自动入库
+      2. 别名表（站长已确认过）  → 按别名入库（别名也可以指向一个全新曲名 ⇒ 确认即建新歌）
+      3. 最长公共子串模糊匹配    → 老歌，自动入库（口径沿用历史：l>=2 且占比 >=0.6）
+      4. 都认不出                → None（进待定清单）
+    """
     k = norm(song)
     if k in idx:
         return idx[k]
+    if aliases:
+        a = aliases.get(k)
+        if a:
+            idx.setdefault(norm(a), a)
+            return a
     best, bl = None, 0
     for kk, nn in idx.items():
         l = lcs_len(k, kk)
         if l >= 2 and l / max(len(k), len(kk)) >= 0.6 and l > bl:
             best, bl = nn, l
-    if best:
-        return best
-    idx.setdefault(k, song)
-    return song
+    return best
+
+
+def save_pending(rows):
+    """待定清单累加（按 曲名+来源 去重），不动已有条目。"""
+    old = []
+    if os.path.exists(PENDING):
+        try:
+            old = json.load(open(PENDING, encoding='utf-8'))
+        except Exception:
+            old = []
+    seen = {(x.get('song'), x.get('src'), x.get('d')) for x in old}
+    n = 0
+    for r in rows:
+        key = (r.get('song'), r.get('src'), r.get('d'))
+        if key in seen:
+            continue
+        seen.add(key)
+        old.append(r)
+        n += 1
+    old.sort(key=lambda x: (str(x.get('d') or ''), str(x.get('song') or '')), reverse=True)
+    json.dump(old, open(PENDING, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+    return n, len(old)
 
 
 def py_of(name):
@@ -322,11 +415,21 @@ def merge(args):
     perfs = load_archive()
 
     idx = {norm(k): k for k in d['bySong']}
-    added, nomatch = [], []
+    aliases = load_aliases()
+    added, nomatch, unknown = [], [], []
     new_lids = set()
     for u in units:
         raw_song = u.get('song')
         if not raw_song:
+            continue
+        # 🔴 认不出的曲名**不建新歌**：进待定清单等站长确认（2026-09-27 定）
+        song = canon(raw_song, idx, aliases)
+        if song is None:
+            unknown.append({'song': raw_song, 'd': u.get('d') or '', 'src': u.get('src') or '',
+                            'bvid': u.get('bvid') or '', 'p': u.get('p') or '',
+                            'lid': str(u.get('lid') or ''),
+                            'occ': (u.get('occ') or ''),
+                            'note': '曲库里没有这个曲名，也没能模糊匹配上（待确认）'})
             continue
         # 🔴 人工指定的场次优先：同一天有多场公演时脚本不敢猜，站长说挂哪场就挂哪场
         #    （在 cut-units.json 里给该条写 `"lid": "<liveId>"` 即可）
@@ -341,7 +444,6 @@ def merge(args):
             if not day:
                 continue
             p = pick_live(day, perfs, '')
-        song = canon(raw_song, idx)
         if not p:
             nomatch.append([day, song, '当天没有唯一对应的公演场次'])
             continue
@@ -357,6 +459,14 @@ def merge(args):
         if song not in d['py']:
             d['py'][song] = py_of(song)
         added.append([day, (p.get('subTitle') or p.get('title') or '')[:26], song])
+
+    # 待定清单（无论本次有没有新增都要落盘，别让「没新增」把待确认的曲名吞掉）
+    if unknown:
+        n_new, n_all = save_pending(unknown)
+        print('⚠️ 认不出的曲名 %d 条（本次新增 %d）→ 待定清单 %s（共 %d 条，等站长确认后才会进曲目库）'
+              % (len(unknown), n_new, os.path.basename(PENDING), n_all))
+        for x in unknown[:20]:
+            print('   《%s》  %s  来源=%s  %s' % (x['song'], x['d'], x['src'], x['bvid'] or x['lid'] or ''))
 
     if not added:
         print('没有需要新增的曲目（已全部收录）')

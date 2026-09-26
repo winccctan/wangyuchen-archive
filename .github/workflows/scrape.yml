@@ -15,6 +15,7 @@ on:
 
 permissions:
   contents: read                 # 只读取仓库（不再写入 / 推送）
+  issues: write                  # 微博 Cookie 失效时自动开 issue（会邮件通知站长）
 
 concurrency:
   group: scrape
@@ -28,7 +29,9 @@ jobs:
       POCKET48_TOKEN: ${{ secrets.POCKET48_TOKEN }}
       SCRAPE_PROXY: ${{ secrets.SCRAPE_PROXY }}
       SYNC_TOKEN: ${{ secrets.SYNC_TOKEN }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}   # 微博 Cookie 失效时开告警 issue 用
       WORKER_URL: ${{ secrets.WORKER_URL || 'https://idol.wyc0518.cc' }}
+      WB_PAGES: "8"                 # 微博翻页深度（够覆盖最近几个月；回填历史在 songs-sync 里用 20）
       MAX_PAGES: "3"
       MAX_DETAILS: "40"
       BILI_PAGE_BUDGET: "6"
@@ -63,6 +66,13 @@ jobs:
         run: BILI_CUT_SPACE_PAGES=2 node scripts/fetch-live-cuts.mjs || true
       - name: 合并生成 archive.js（公演筛选 / B站挂源 / 消息瘦身）
         run: node scripts/build-archive.mjs
+      - name: 抓取微博「公演cut」（甜橙小铺）
+        # 🔴 这条以前根本没有自动脚本，仓库里那份是手工导出的旧快照（34 条），
+        #    应援会之后发的 cut 一条都上不了站。Cookie 从 Cloudflare KV 读（不进仓库）。
+        # 失败绝不中断后续步骤：脚本自带三道闸门，拿不到 Cookie / 抓到 0 条 ⇒ 一个字节都不写，
+        #    老数据完好；同时开一个 issue 邮件通知站长去更新 Cookie。
+        continue-on-error: true
+        run: node scripts/fetch-weibo-cuts.mjs
       - name: 同步数据到 KV（替代提交 git → 部署）
         # 手动触发且勾选 rebuild 时，全量重建 KV（修正历史脏数据）；定时/普通运行只做增量。
         run: node scripts/sync-kv.mjs ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.rebuild == 'true') && '--rebuild' || '' }}

@@ -1087,6 +1087,39 @@ async function handleApi(url, request, env, ctx) {
     return handleD1Refill(request, env);
   }
 
+  /* ---- 微博 Cookie（抓取「甜橙小铺」公演 cut 用）----
+   * 🔴 为什么放 KV 而不是仓库：Cookie 是应援会账号的登录态，进仓库等于把账号公开；
+   *    而且它会过期，放 KV 站长可以在 Cloudflare 面板直接改，不用动仓库、不用重新部署。
+   *    Cloudflare 面板：Workers & Pages → KV → 命名空间 SECRETS → 加键 WEIBO_COOKIE。
+   * GET  /api/_secret/weibo-cookie   取（需 sync token，CI 抓取脚本用）
+   * POST /api/_secret/weibo-cookie   写（body 可为 JSON {"cookie":"..."} 或纯文本）
+   */
+  if (p === '/api/_secret/weibo-cookie') {
+    if (!(await isSyncAuthorized(request, env) || await isGhAuthorized(request, env))) {
+      return json({ error: 'forbidden: sync token required' }, 403);
+    }
+    if (request.method === 'POST') {
+      const ctype = request.headers.get('content-type') || '';
+      let cookie = '';
+      if (ctype.includes('application/json')) {
+        const b = await request.json().catch(() => ({}));
+        cookie = String((b && b.cookie) || '').trim();
+      } else {
+        cookie = (await request.text()).trim();
+      }
+      if (!cookie) return json({ error: 'empty cookie' }, 400);
+      try {
+        await env.SECRETS.put('WEIBO_COOKIE', cookie);
+      } catch (e) {
+        return json({ error: 'kv-write-failed: ' + String(e && e.message || e) }, 500);
+      }
+      // 只回长度，不回显明文（日志/浏览器历史里都不留）
+      return json({ ok: true, len: cookie.length, savedAt: new Date().toISOString() });
+    }
+    const v = (env && env.SECRETS) ? await env.SECRETS.get('WEIBO_COOKIE') : null;
+    return json({ has: !!v, len: (v || '').length, cookie: v || '' });
+  }
+
   /* ---- 行程存档 / 手机后台（站长专用）----
    * GET  /api/schedule        公开读，边缘缓存 60s（行程页读它，读不到就回退本地 js 文件）
    * POST /api/admin/login     密码换 token
