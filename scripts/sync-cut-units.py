@@ -40,6 +40,9 @@ UNITS = os.path.join(ROOT, 'scripts', 'cut-units.json')
 # 想补老账就用 `--all`（会忽略这个清单，全量重扫）。
 SCANNED = os.path.join(ROOT, 'scripts', 'cut-units-scanned.json')
 VIDEOS = os.path.join(ROOT, 'site', 'data', 'bili-videos.json')
+# 第二个源：她本人的应援号「GNZ48王语晨的甜橙小铺」（scripts/fetch-orange-shop.mjs 每日更新，已按曲目口径过滤）。
+# 之前只扫 Chzhnh，甜橙小铺自己的公演 cut（标题同样带日期 + 分 P）完全没进过这条通道。
+ORANGE = os.path.join(ROOT, 'scripts', 'orange-shop.json')
 ARCHIVE = os.path.join(ROOT, 'site', 'data', 'archive.js')
 SONGS_SITE = os.path.join(ROOT, 'site', 'js', 'songs.js')
 SONGS_DIST = os.path.join(ROOT, 'dist', 'js', 'songs.js')
@@ -68,7 +71,9 @@ BAD_PART = re.compile(r'环节|读信|^生日|全程|返场|^MC|【|^\d{6,}'
 # 类型前缀：`unit:糖` → 糖（与已有 406 条同口径）
 # 🔴 分隔符必须**可选**：Chzhnh 有一部分分 P 直接写 `unit米迦勒`（没冒号），
 #    剥不掉就会以「unit米迦勒」这种脏名字进曲目库，跟已有的「米迦勒」变成两首歌。
-PREFIX_RE = re.compile(r'^(大歌|unit|乐曜曲|助演|前座曲|才艺表演|MVP舞台|两分半|生日表演)\s*[:：·\-\s]*', re.I)
+# 🔴 `unit` 后面还可能带序号：甜橙小铺的分 P 写 `unit2《过敏》`、`unit3《某某》`，
+#    正则不加 `\d*` 会剥成「2过敏」这种脏名字 —— 实测它真的进了曲目库才发现（2026-09-27）。
+PREFIX_RE = re.compile(r'^(大歌|unit\d*|乐曜曲|助演|前座曲|才艺表演|MVP舞台|两分半|生日表演)\s*[:：·\-\s]*', re.I)
 
 
 def part_to_songs(part):
@@ -104,13 +109,48 @@ def http_json(url, referer):
         return None
 
 
+def load_sources():
+    """两个源合并：Chzhnh（站点抓取产物）+ 甜橙小铺（本仓库维护的清单）。
+    口径一致，都只收「她的 + 标题里有公演cut/云公演」。"""
+    out = []
+    if os.path.exists(VIDEOS):
+        vids = json.load(open(VIDEOS, encoding='utf-8'))['videos']
+        for v in vids:
+            t = v.get('title') or ''
+            mid = str(v.get('mid') or (v.get('owner') or {}).get('mid') or '')
+            if mid == CH_MID and HER.search(t) and KEEP.search(t):
+                out.append((v.get('bvid') or '', t, 'Chzhnh'))
+    if os.path.exists(ORANGE):
+        for v in json.load(open(ORANGE, encoding='utf-8')):
+            t = v.get('title') or ''
+            if v.get('bvid') and HER.search(t) and KEEP.search(t):
+                out.append((v['bvid'], t, '甜橙小铺'))
+    return out
+
+
+# 🔴 日期要同时认 8 位（20231217）和 6 位（230501 → 2023-05-01）：
+#    甜橙小铺的 VR Focus / 公演cut 标题多写 6 位，只认 8 位会整类解析不出日期 ⇒ merge 时找不到场次被静默跳掉。
+def day_of_title(title):
+    m = re.search(r'(20\d{2})(\d{2})(\d{2})', title)
+    if m:
+        y, mo, d = m.groups()
+    else:
+        m = re.search(r'(?<![0-9])(2[2-9])(\d{2})(\d{2})(?![0-9])', title)
+        if not m:
+            return ''
+        yy, mo, d = m.groups()
+        y = '20' + yy
+    if not (2022 <= int(y) <= 2100 and 1 <= int(mo) <= 12 and 1 <= int(d) <= 31):
+        return ''
+    return '%s-%s-%s' % (y, mo, d)
+
+
 def fetch(args):
-    if not os.path.exists(VIDEOS):
-        print('缺少', VIDEOS); return 1
-    vids = json.load(open(VIDEOS, encoding='utf-8'))['videos']
-    mine = [v for v in vids if str(v.get('mid') or v.get('owner', {}).get('mid') or '') == CH_MID
-            and HER.search(v.get('title') or '') and KEEP.search(v.get('title') or '')]
-    print('Chzhnh 投稿里她的「公演cut / 云公演」共 %d 条' % len(mine))
+    mine = load_sources()
+    for src in sorted(set(s for _, _, s in mine)):
+        print('%s 的「公演cut / 云公演」共 %d 条' % (src, sum(1 for x in mine if x[2] == src)))
+    if not mine:
+        print('⚠️ 两个源都没取到她的公演 cut，检查 %s / %s' % (os.path.basename(VIDEOS), os.path.basename(ORANGE)))
 
     old = json.load(open(UNITS, encoding='utf-8')) if os.path.exists(UNITS) else []
     scanned = set(json.load(open(SCANNED, encoding='utf-8'))) if os.path.exists(SCANNED) else set()
@@ -118,21 +158,19 @@ def fetch(args):
     known_bv = {u.get('bvid') for u in old}
 
     todo = []
-    for v in mine:
-        bv = v.get('bvid') or v.get('BV号') or ''
+    for bv, title, src in mine:
         if not bv:
             continue
         if args.only and bv != args.only:
             continue
         if not args.all and (bv in known_bv or bv in scanned):
             continue
-        todo.append((bv, v.get('title') or ''))
+        todo.append((bv, title, src))
 
     print('待扫 %d 条%s' % (len(todo), ('（限定 %s）' % args.only) if args.only else ''))
     added, skipped = [], []
-    for i, (bv, title) in enumerate(todo, 1):
-        d = re.search(r'(\d{4})(\d{2})(\d{2})', title)          # 日期优先取标题里的 8 位
-        day = ('%s-%s-%s' % d.groups()) if d else ''
+    for i, (bv, title, src) in enumerate(todo, 1):
+        day = day_of_title(title)                      # 8 位优先，兼容 6 位（230501）
         url = ('https://api.bilibili.com/x/player/pagelist?bvid=%s&jsonp=jsonp' % bv)
         r = http_json(url, 'https://www.bilibili.com/video/' + bv)
         pages = (r or {}).get('data') or []
@@ -144,7 +182,7 @@ def fetch(args):
                     continue
                 seen.add(key)
                 old.append({'bvid': bv, 'p': p.get('page'), 'd': day, 'occ': '',
-                            'song': song, 'type': 'unit'})
+                            'song': song, 'type': 'unit', 'src': src})
                 added.append([day, bv, 'P%s' % p.get('page'), song])
                 got += 1
         skipped.append([bv, len(pages), got])

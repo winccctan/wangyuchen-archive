@@ -162,5 +162,41 @@
   "song": "ROSE'S SECRET",
   "type": "unit",
   "lid": "1261375667511824384"
+ },
+ {
+  "bvid": "BV1yBTazwEE9",
+  "p": 2,
+  "d": "2025-05-31",
+  "occ": "",
+  "song": "失焦",
+  "type": "unit",
+  "src": "甜橙小铺"
+ },
+ {
+  "bvid": "BV1yBTazwEE9",
+  "p": 3,
+  "d": "2025-05-31",
+  "occ": "",
+  "song": "过敏",
+  "type": "unit",
+  "src": "甜橙小铺"
+ },
+ {
+  "bvid": "BV1ZCh96hEMt",
+  "p": 2,
+  "d": "2026-09-26",
+  "occ": "",
+  "song": "HIGHLIGHT",
+  "type": "unit",
+  "src": "Chzhnh"
+ },
+ {
+  "bvid": "BV1ZCh96hEMt",
+  "p": 3,
+  "d": "2026-09-26",
+  "occ": "",
+  "song": "续集",
+  "type": "unit",
+  "src": "Chzhnh"
  }
 ]
