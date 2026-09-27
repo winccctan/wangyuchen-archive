@@ -2779,8 +2779,15 @@ async function runPushCheck(env, opts) {
         for (const f of fresh) {
           if (Number(f.msgTime) > newest) newest = Number(f.msgTime);
           if (now - Number(f.msgTime) > PUSH_FRESH_MS) { stale += 1; continue; }
+          // 🔴 去重哨兵：值守探针已经推过的，这里就别再推一遍
+          if (!(await markMsgSent(env, Number(f.msgTime)))) {
+            o.skipped.dupMsgs = (o.skipped.dupMsgs || 0) + 1;
+            continue;
+          }
           const r = await pushBroadcast(env, {
-            title: '王语晨', body: pushMsgText(f.m), tag: 'wyc-msg', url: './', topic: 'msg'
+            title: '王语晨', body: pushMsgText(f.m),
+            tag: 'wyc-msg-' + Number(f.msgTime),   // 同一条发言 tag 相同 ⇒ 万一重复也会被手机替换成一条
+            url: './', topic: 'msg'
           }, 'msg');
           o.msg = r;
         }
@@ -2953,6 +2960,30 @@ function pocketMsgText(m) {
  */
 const POCKET_FROM_CF_BLOCKED = true;
 
+/**
+ * 🔴 同一条发言**只准推一次**的哨兵（2026-09-27 加）。
+ * 为什么会重复：现在有两条路都会推「新发言」——
+ *   ① 值守探针（GitHub Actions，每分钟）→ /api/push/notify
+ *   ② 老检测 runPushCheck（CF Cron 每 5 分钟，读 D1）
+ * 它们共享游标 push:last:msg，但两边取的**时间戳来源不同**（接口 vs 数据库），
+ * 一旦有偏差就会各推一遍 ⇒ 站长手机上一模一样的消息收到好几条。
+ * 现在两边推之前都要先抢这个哨兵：抢到才推，抢不到就跳过。
+ *   （KV 写：每条发言 1 次，一天几十条，可忽略）
+ */
+async function markMsgSent(env, t) {
+  const kv = env && env.KV;
+  const key = 'push:sent:' + String(Number(t) || 0);
+  if (!kv) return true;
+  try {
+    const old = await kv.get(key);
+    if (old) return false;
+    await kv.put(key, '1', { expirationTtl: 86400 });   // 一天后自动过期，不留垃圾
+    return true;
+  } catch (_) {
+    return true;   // 哨兵本身出错时宁可照推，不要因为去重把推送全掐了
+  }
+}
+
 /** 快车道：直查口袋 → 有新且够新鲜就立刻推（不写库、不动档案数据） */
 async function pushFastTick(env, opts) {
   const o = { ok: true, reason: (opts && opts.reason) || 'fast', msg: null, skipped: {} };
@@ -3066,8 +3097,12 @@ async function handlePushNotify(request, env) {
     await kv.put(PUSH_LAST + 'msg', String(t));
     o.last = t;
     if (Date.now() - t > PUSH_FRESH_MS) { o.skipped = 'stale'; return json(o); }
+    // 🔴 去重哨兵：老检测（读库那条路）已经推过的，这里不再推
+    if (!(await markMsgSent(env, t))) { o.skipped = 'dup'; return json(o); }
     o.msg = await pushBroadcast(env, {
-      title: '王语晨', body: text || '［新消息］', tag: 'wyc-msg', url: './', topic: 'msg'
+      title: '王语晨', body: text || '［新消息］',
+      tag: 'wyc-msg-' + t,   // 同一条发言 tag 相同 ⇒ 万一重复也会被手机替换成一条
+      url: './', topic: 'msg'
     }, 'msg');
   } catch (e) {
     o.ok = false;
