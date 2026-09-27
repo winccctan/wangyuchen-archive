@@ -10,8 +10,13 @@ import { request as httpsRequest } from 'node:https';
 import { connect as tlsConnect } from 'node:tls';
 import { URL } from 'node:url';
 
-const PROXY_URL =
-  process.env.SCRAPE_PROXY || process.env.HTTPS_PROXY || process.env.https_proxy || '';
+// 支持填**多个**备用代理（逗号分隔）：前一个坏了自动换下一个，全坏才回退直连。
+// 例：SCRAPE_PROXY=https://u:p@home-jp.gmdns.net:8443,https://u:p@home-jp2.gmdns.net:8443
+const PROXY_LIST = (process.env.SCRAPE_PROXY || process.env.HTTPS_PROXY || process.env.https_proxy || '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+let PROXY_IDX = 0;   // 当前用第几个
 
 // 代理熔断标志：代理一旦证实不可用（407 要认证 / 401 / 403 / 连不上），
 // 本轮后续请求直接走直连，不再每个请求都白等一次代理超时。
@@ -19,15 +24,16 @@ const PROXY_URL =
 //    而口袋接口**直连其实是通的** —— 结果整整 3 个半小时发言没更新，还是站长先发现的。
 let PROXY_DEAD = false;
 
-if (PROXY_URL) {
-  console.log('[代理] 已启用，请求经代理出口发出：' + PROXY_URL.replace(/\/\/[^@/]*@/, '//***@'));
+if (PROXY_LIST.length) {
+  console.log('[代理] 已启用 ' + PROXY_LIST.length + ' 个（坏一个自动换下一个）：' +
+    PROXY_LIST.map((u) => u.replace(/\/\/[^@/]*@/, '//***@')).join(' , '));
 }
 
 // 经代理发起一次 HTTPS POST（CONNECT 隧道）
-function requestViaProxy(url, { method, headers, body }) {
+function requestViaProxy(url, { method, headers, body }, proxyUrl) {
   return new Promise((resolve, reject) => {
     const target = new URL(url);
-    const proxy = new URL(PROXY_URL);
+    const proxy = new URL(proxyUrl);
     const hostPort = `${target.hostname}:${target.port || 443}`;
     const connectHeaders = { Host: hostPort };
     if (proxy.username) {
@@ -150,24 +156,29 @@ async function postJsonOnce(path, body, { token } = {}) {
   const headers = await buildHeaders(token);
   const payload = JSON.stringify(body);
 
-  // 有代理且代理还活着：走 CONNECT 隧道
-  if (PROXY_URL && !PROXY_DEAD) {
-    try {
-      const res = await requestViaProxy(url, { method: 'POST', headers, body: payload });
-      if (res.status < 200 || res.status >= 300) {
-        throw new Error(`请求失败 ${res.status} ${path}: ${res.text.slice(0, 200)}`);
-      }
-      return JSON.parse(res.text);
-    } catch (e) {
-      const msg = String((e && e.message) || e);
-      // 只有「代理本身坏了」才熔断；接口层的错误照常抛出，交给上层重试
-      if (/CONNECT 失败：HTTP (407|401|403)|ECONNREFUSED|ENOTFOUND|EAI_AGAIN|ETIMEDOUT/.test(msg)) {
-        PROXY_DEAD = true;
-        console.warn(`[代理失效] ${msg.slice(0, 90)} ⇒ 后续请求改走直连`);
-      } else {
+  // 有代理且代理还活着：走 CONNECT 隧道（坏一个自动换下一个，全坏才直连）
+  if (!PROXY_DEAD) {
+    while (PROXY_IDX < PROXY_LIST.length) {
+      const pu = PROXY_LIST[PROXY_IDX];
+      try {
+        const res = await requestViaProxy(url, { method: 'POST', headers, body: payload }, pu);
+        if (res.status < 200 || res.status >= 300) {
+          throw new Error(`请求失败 ${res.status} ${path}: ${res.text.slice(0, 200)}`);
+        }
+        return JSON.parse(res.text);
+      } catch (e) {
+        const msg = String((e && e.message) || e);
+        // 只有「代理本身坏了」才换下一个；接口层的错误照常抛出，交给上层重试
+        if (/CONNECT 失败：HTTP (407|401|403)|ECONNREFUSED|ENOTFOUND|EAI_AGAIN|ETIMEDOUT|代理 CONNECT 超时/.test(msg)) {
+          console.warn(`[代理失效] ${pu.replace(/\/\/[^@/]*@/, '//***@')} ${msg.slice(0, 60)} ⇒ 换下一个`);
+          PROXY_IDX += 1;
+          continue;
+        }
         throw e;
       }
     }
+    PROXY_DEAD = true;
+    if (PROXY_LIST.length) console.warn('[代理] 全部不可用 ⇒ 后续请求改走直连');
   }
 
   // 无代理 / 代理已熔断：直连（原生 fetch）
@@ -309,8 +320,8 @@ export async function loginMobileCode(mobile, code) {
   const payload = JSON.stringify({ mobile, code });
 
   let res;
-  if (PROXY_URL && !PROXY_DEAD) {
-    res = await requestViaProxy(url, { method: 'POST', headers, body: payload });
+  if (PROXY_LIST[PROXY_IDX] && !PROXY_DEAD) {
+    res = await requestViaProxy(url, { method: 'POST', headers, body: payload }, PROXY_LIST[PROXY_IDX]);
   } else {
     const r = await fetch(url, { method: 'POST', headers, body: payload });
     res = { status: r.status, text: await r.text() };
