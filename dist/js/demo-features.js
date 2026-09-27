@@ -3312,16 +3312,18 @@
     { k: 'live', n: '她开直播了',         s: '她一开播就提醒',            ex: '🔴 王语晨开播啦！' },
     { k: 'perf', n: '公演开播了',         s: '开演时提醒',                ex: '今晚 19:00 公演开演' }
   ];
-  const P = { on: false, topics: { msg: true, live: true, perf: true }, sub: null };
+  // srv = 服务器有没有真的收到订阅（null=还不知道 / true=收到了 / false=没收到）
+  const P = { on: false, topics: { msg: true, live: true, perf: true }, sub: null, srv: null };
   (function initPush() {
     const v = LS.get(PUSH_KEY, null);
     if (v && typeof v === 'object') {
       P.on = !!v.on;
       P.topics = Object.assign({ msg: true, live: true, perf: true }, v.topics || {});
       P.sub = v.sub || null;
+      P.srv = (typeof v.srv === 'boolean') ? v.srv : null;
     }
   })();
-  const pushSave = () => LS.set(PUSH_KEY, { on: P.on, topics: P.topics, sub: P.sub });
+  const pushSave = () => LS.set(PUSH_KEY, { on: P.on, topics: P.topics, sub: P.sub, srv: P.srv });
   const pushCount = () => PUSH_TOPICS.filter((x) => P.topics[x.k]).length;
 
   const pushUA = () => ({
@@ -3382,7 +3384,14 @@
     if (u.wx) { toast('微信里收不到通知：点右上角「…」→ 用浏览器打开'); return false; }
     if (u.ios && u.other) { toast('iPhone 上只有 Safari 能收推送：用 Safari 打开 → 分享 → 添加到主屏幕'); return false; }
     if (u.ios && !u.standalone) { toast('iPhone 要先「添加到主屏幕」，再从桌面图标打开'); return false; }
-    if (!pushSupported()) { toast('这个浏览器不支持消息推送'); return false; }
+    if (!pushSupported()) {
+      // 🔴 iPhone 上最坑的一种：明明是从桌面图标打开的，却还是没有 PushManager / Notification。
+      //    原因不是「不支持」——是**这个图标太旧**：添加的时候站点还没有 manifest，
+      //    iOS 只把它当成书签（用 Safari 打开），压根不给推送能力。删掉重新添加一次就好了。
+      if (u.ios) toast('这个桌面图标是旧的：长按删掉它，再用 Safari 重新「添加到主屏幕」');
+      else toast('这个浏览器不支持消息推送');
+      return false;
+    }
     // 🔴🔴 iOS 死规矩：权限弹窗必须**在用户点下去的同一刻同步发起**。
     //   原来写成 `await pushReg()` 之后才 requestPermission ⇒ 已经脱离用户手势，
     //   iOS 会直接按「拒绝」处理且**连弹框都不给你看**（桌面 Chrome 宽容，所以本地测不出来）。
@@ -3396,7 +3405,10 @@
       let sub = await reg.pushManager.getSubscription();
       // 🔴 本机已经订阅过、但绑的是**旧公钥**（换密钥对 / 换域名后会发生）：
       //    必须退掉重订。否则服务器用新私钥签名、推送服务拿旧公钥验 ⇒ 一条都发不出去。
-      if (sub && vapidOfSub(sub) !== PUSH_VAPID) { await sub.unsubscribe(); sub = null; }
+      // cur 为空 = 这个浏览器没暴露订阅时用的公钥（iOS 就是这样）⇒ **不要动它**，
+      // 否则每次点开关都要退订再订一次，反而更容易失败。只在明确拿到「不一样的公钥」时才重订。
+      const cur = vapidOfSub(sub);
+      if (sub && cur && cur !== PUSH_VAPID) { await sub.unsubscribe(); sub = null; }
       if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: vapidBytes(PUSH_VAPID) });
       P.sub = JSON.parse(JSON.stringify(sub));   // 存下来的订阅对象 = 服务器推给你的「地址」
       return true;
@@ -3415,17 +3427,24 @@
     P.sub = null;
   }
 
-  /** 把「推给谁 + 推哪些内容」告诉服务器；失败不影响本机开关（下次开面板会再试一次） */
+  /** 把「推给谁 + 推哪些内容」告诉服务器；失败不影响本机开关（下次开面板会再试一次）
+   *  🔴 但**必须把结果记下来**：开关看着是开的、服务器却没收到 ⇒ 一条都收不到，
+   *     这种「静悄悄的失败」最难查，所以面板上要显示出来。 */
   async function pushSyncServer(on) {
-    if (!P.sub) return;
+    if (!P.sub) return false;
+    let ok = false;
     try {
       const base = (typeof API_BASE === 'string') ? API_BASE : '';
-      await fetch(base + (on ? '/api/push/subscribe' : '/api/push/unsubscribe'), {
+      const r = await fetch(base + (on ? '/api/push/subscribe' : '/api/push/unsubscribe'), {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ sub: P.sub, topics: P.topics })
       });
-    } catch (_) {}
+      ok = !!(r && r.ok);
+    } catch (_) { ok = false; }
+    if (on) { P.srv = ok; pushSave(); }
+    if ($('#dmModal .pb')) pushRender();
+    return ok;
   }
 
   async function pushToggle() {
@@ -3482,8 +3501,12 @@
       if (u.other) return { c: 'warn', t: 'iPhone 上要用 Safari 添加到主屏幕' };
       if (!u.standalone) return { c: 'tip', t: '要从主屏幕图标打开（现在不是）' };
     }
+    // 🔴 从桌面图标进来却拿不到 PushManager ⇒ 图标是「站点还没有 manifest 那会儿」加的（见 pushTurnOn）
+    if (u.ios && u.standalone && (!u.pm || !u.nt)) return { c: 'warn', t: '桌面图标是旧的：删掉它，重新添加一次' };
     if (!u.sw || !u.pm || !u.nt) return { c: 'warn', t: '这个浏览器不支持消息推送' };
     if (perm === 'denied') return { c: 'warn', t: '通知被系统关掉了：设置 → 通知里打开' };
+    // 开关看着是开的、但服务器没收到订阅 ⇒ 一定会「收不到」，必须让站长一眼看见
+    if (P.on && P.srv === false) return { c: 'warn', t: '已开启 · ' + pushCount() + ' 类提醒 · 服务器没收到，重开一次' };
     if (P.on) return { c: 'ok', t: '已开启 · ' + pushCount() + ' 类提醒' };
     return { c: '', t: '未开启' };
   }
@@ -3506,7 +3529,7 @@
           ${sw(P.on, false, 'push', '')}
         </div>
         <div class="pb-list">${rows}</div>
-        ${(n.c === 'warn' || n.c === 'tip') ? `<div class="pb-env">${esc(pushEnv())}</div>` : ''}
+        ${(n.c === 'warn' || n.c === 'tip' || P.on) ? `<div class="pb-env">${esc(pushEnv() + (P.on ? ' · 服务器' + (P.srv === false ? '❌' : '✅') : ''))}</div>` : ''}
       </div>`;
   }
 
