@@ -9,7 +9,7 @@
 #    （那次线上发言整整停了 4 小时）。
 #    现在拆成两段：
 #      【快通道】每轮都跑：抓发言/直播/公演 → 立即同步 KV（约 1~2 分钟，绝不碰 B 站）
-#      【重活】每 4 小时跑一轮：B 站视频库 / B 站切片 / 微博 cut / 她的公演记录 … 排在同步之后
+#      【重活】排在同步之后：微博 cut / 她的公演记录 4 小时一次，**B 站 12 小时一次**（2026-09-27 站长定）
 #    这样即使重活卡死或超时被杀，发言早已经进 KV 了，不会被拖累。
 name: 抓取并同步到 KV
 
@@ -23,7 +23,11 @@ on:
         type: boolean
         default: false
       heavy:
-        description: '强制本轮也跑重活（B站/微博/公演记录，默认按 4 小时节奏自动判断）'
+        description: '强制本轮跑重活（微博cut/公演记录/… 不含 B站，默认按 4 小时节奏自动判断）'
+        type: boolean
+        default: false
+      bili:
+        description: '强制本轮跑 B站抓取（含 B站重活，默认 12 小时一次，见站长 2026-09-27 要求）'
         type: boolean
         default: false
 
@@ -69,20 +73,27 @@ jobs:
         working-directory: scraper
         run: npm ci
 
-      # ——— 本轮是否跑【重活】：每 4 小时一轮（UTC 01/05/09/13/17/21 点的前 5 分钟内触发的那次）———
+      # ——— 本轮是否跑【重活】：按 UTC 小时判定，落在每点前 5 分钟内触发的那次才跑 ———
       # 不用 GitHub 原生 schedule：它经常延迟几十分钟甚至整天丢跑；交给每 5 分钟一次的
       # Cloudflare Cron 驱动更可靠，5 分钟窗口内必有至少一轮落进去。
+      #   heavy = 4 小时一次（UTC 01/05/09/13/17/21 → 北京 09/13/17/21/01/05）：微博cut / 公演记录 / 名单 …
+      #   bili  = 12 小时一次（UTC 01/13 → 北京 09/21）：B站视频库 / B站切片
+      #     🔴 B 站为什么只 12 小时一次（站长 2026-09-27 定）：①它不需要近实时，新投稿晚半天进库无所谓；
+      #        ②它是唯一会被 -412 风控拖住几分钟的东西，跑得越少、快通道被阻塞的机会越少。
       - name: 判断是否跑重活
         id: gate
         run: |
           H=$(date -u +%H); M=$(date -u +%M)
-          if [ "${{ github.event.inputs.heavy }}" = "true" ]; then
-            echo "heavy=1" >> "$GITHUB_OUTPUT"; echo "本轮：手动指定跑重活"
-          elif [ $((10#$H % 4)) -eq 1 ] && [ $((10#$M)) -lt 5 ]; then
-            echo "heavy=1" >> "$GITHUB_OUTPUT"; echo "本轮：命中 4 小时窗口（UTC ${H}:${M}）→ 跑重活"
-          else
-            echo "heavy=0" >> "$GITHUB_OUTPUT"; echo "本轮：只跑快通道（UTC ${H}:${M}）"
+          heavy=0; bili=0
+          [ "${{ github.event.inputs.heavy }}" = "true" ] && heavy=1
+          if [ "${{ github.event.inputs.bili }}" = "true" ]; then bili=1; heavy=1; fi
+          if [ $((10#$M)) -lt 5 ]; then
+            [ $((10#$H % 4)) -eq 1 ] && heavy=1
+            if [ $((10#$H % 12)) -eq 1 ]; then bili=1; heavy=1; fi
           fi
+          echo "heavy=$heavy" >> "$GITHUB_OUTPUT"
+          echo "bili=$bili" >> "$GITHUB_OUTPUT"
+          echo "本轮：UTC ${H}:${M} → 重活=${heavy}（其中 B站=${bili}）"
 
       # ============================ 【快通道】每轮必跑 ============================
       - name: 抓取口袋发言 / 直播 / 公演（不碰 B 站）
@@ -106,11 +117,11 @@ jobs:
       - name: 抓取她的公演记录
         if: steps.gate.outputs.heavy == '1'
         run: MAX_DETAILS=40 node scripts/scrape-hers-performances.mjs || true
-      - name: 抓取 B站 公演录像备用源
-        if: steps.gate.outputs.heavy == '1'
+      - name: 抓取 B站 公演录像备用源（12 小时一次）
+        if: steps.gate.outputs.bili == '1'
         run: BILI_PAGE_BUDGET=6 PAGE_SLEEP=1500 BILI_SPACE_BAN_TRIES=4 node scripts/fetch-bili-videos.mjs || true
-      - name: 抓取 B站 直播切片 / 直播回放（两个粉丝 UP）
-        if: steps.gate.outputs.heavy == '1'
+      - name: 抓取 B站 直播切片 / 直播回放（两个粉丝 UP，12 小时一次）
+        if: steps.gate.outputs.bili == '1'
         run: BILI_CUT_SPACE_PAGES=2 node scripts/fetch-live-cuts.mjs || true
       - name: 抓取微博「公演cut」（甜橙小铺）
         # 🔴 这条以前根本没有自动脚本，仓库里那份是手工导出的旧快照（34 条），
