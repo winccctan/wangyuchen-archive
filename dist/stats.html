@@ -47,11 +47,14 @@ async function sha256(s) {
 }
 
 function render(d) {
+  const p = d.push || { subs: 0, msg: 0, live: 0, perf: 0 };
   const cards =
     '<div class="cards">' +
       '<div class="card"><div class="k">累计翻译次数</div><div class="v">' + d.total + '</div></div>' +
       '<div class="card"><div class="k">今日次数</div><div class="v">' + d.today.count + '</div></div>' +
       '<div class="card"><div class="k">今日独立访客</div><div class="v">' + d.today.visitors + '</div></div>' +
+      '<div class="card"><div class="k">通知订阅人数</div><div class="v">' + p.subs + '</div>' +
+        '<div class="k" style="margin-top:6px">发言 ' + p.msg + ' · 开播 ' + p.live + ' · 公演 ' + p.perf + '</div></div>' +
     '</div>';
   const ctryRows = (d.countries && d.countries.length)
     ? d.countries.map(c => '<tr><td>' + c.name + '</td><td class="n">' + c.today + '</td><td class="n">' + c.d7 + '</td></tr>').join('')
@@ -71,7 +74,7 @@ function render(d) {
 
   const el = document.getElementById('body');
   el.innerHTML =
-    '<p class="dim">「独立访客」按 IP 短哈希去重估算（不保存明文 IP），同一 WiFi 下多人会算作 1 人，实际人数只会更多。功能表里的「独立累计 / 独立今日」＝该功能一共有多少人 / 今天有多少人用过（不是次数）。数据约 1 分钟同步延迟。</p>' +
+    '<p class="dim">「独立访客」按 IP 短哈希去重估算（不保存明文 IP），同一 WiFi 下多人会算作 1 人，实际人数只会更多。功能表里的「独立累计 / 独立今日」＝该功能一共有多少人 / 今天有多少人用过（不是次数）。「通知订阅人数」＝在手机上开了提醒的人，发言 / 开播 / 公演是各人自己勾的。数据约 1 分钟同步延迟。</p>' +
     cards +
     '<h2>访客来自哪里（今日 / 近 7 天）</h2><table><tr><td>国家·地区</td><td class="n">今日</td><td class="n">近 7 天</td></tr>' + ctryRows + '</table>' +
     '<p class="dim">按 Cloudflare 给出的国家统计独立访客，不记 IP 明文。近 7 天＝每天独立访客相加，同一个人多天都来会重复计；数据从启用当天开始累计。</p>' +
