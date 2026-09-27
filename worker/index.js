@@ -2776,6 +2776,23 @@ async function handlePushSubscribe(request, env) {
     at: Date.now()
   }));
   await pushDiag(env, request, { ok: true, why: 'saved', host: host });
+
+  // 订阅一存下就立刻发一条「开好了」的确认 —— 目的有两个：
+  //   ① 用户点完开关马上能看见成效，不用猜；
+  //   ② 这条推送会**真的走一遍发送**。若订阅其实是旧的（换过 VAPID 密钥对），
+  //      推送服务会回 410 Gone ⇒ 我们当场知道「这条订阅发不出去」，
+  //      立刻删掉并让前端重订 —— 否则会变成「订阅库里有人、但一条也收不到」的哑巴状态。
+  try {
+    const r = await sendPush(env, { endpoint: sub.endpoint, keys: sub.keys }, {
+      title: '✅ 通知已开启', body: '她有新动态，手机就会收到', tag: 'wyc-welcome', url: './', topic: 'msg'
+    });
+    if (r && r.gone) {
+      await kv.delete(await pushSubKeyOf(sub.endpoint)).catch(() => {});
+      await pushDiag(env, request, { ok: false, why: 'welcome-gone', host: host });
+      return json({ ok: true, gone: true, resubscribe: true });
+    }
+    await pushDiag(env, request, { ok: true, why: 'welcome-sent', host: host });
+  } catch (_) { /* 确认推送失败不影响订阅本身 */ }
   return json({ ok: true });
 }
 

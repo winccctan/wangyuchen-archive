@@ -3307,6 +3307,8 @@
   //    公钥换了 ⇒ 之前订阅过的手机必须**重新订阅**，否则服务器用新私钥签的名对不上旧订阅，
   //    推送服务会直接拒（表现：开关是开的，一条都收不到）。下面的 pushTurnOn 会自动重订。
   const PUSH_VAPID = 'BHsKyNfuylIjD8OFM74lXmrSO0lNQsr2x_JaHOgcu1hZlYuKfaAtya8iTCTvyvU0DGpBVxJIKI9eK5HIB0oYpJo';
+  // 公钥指纹：存在本地，用来判断「手上这个订阅是不是当前这把公钥订的」（iOS 不暴露公钥，只能靠它）
+  const PUSH_VK = PUSH_VAPID.slice(0, 12);
   const PUSH_TOPICS = [
     { k: 'msg',  n: '她发了新的口袋发言', s: '新的口袋发言，一条一条提醒', ex: '王语晨：今天公演好开心呀' },
     { k: 'live', n: '她开直播了',         s: '她一开播就提醒',            ex: '🔴 王语晨开播啦！' },
@@ -3415,14 +3417,18 @@
     if (!reg) { toast('推送服务启动失败'); return false; }
     try {
       let sub = await reg.pushManager.getSubscription();
-      // 🔴 本机已经订阅过、但绑的是**旧公钥**（换密钥对 / 换域名后会发生）：
-      //    必须退掉重订。否则服务器用新私钥签名、推送服务拿旧公钥验 ⇒ 一条都发不出去。
-      // cur 为空 = 这个浏览器没暴露订阅时用的公钥（iOS 就是这样）⇒ **不要动它**，
-      // 否则每次点开关都要退订再订一次，反而更容易失败。只在明确拿到「不一样的公钥」时才重订。
+      // 🔴🔴 本机已经订阅过、但绑的是**旧公钥**（换密钥对后必然发生；2026-09-27 实测踩到）：
+      //    服务器用新私钥签名、推送服务拿旧公钥验 ⇒ 每条都回 410 Gone，一条都发不出去，
+      //    而且订阅还老老实实躺在库里 —— 从外面看就是「订阅了却收不到」。必须退掉重订。
+      //    两种判定，任一命中就重订：
+      //      ① 浏览器直接暴露了订阅所用的公钥（桌面 Chrome）且和当前不一致；
+      //      ② 我们自己记的指纹（P.vk）和当前不一致 —— iOS 不暴露公钥，只能靠这个兜住。
       const cur = vapidOfSub(sub);
-      if (sub && cur && cur !== PUSH_VAPID) { await sub.unsubscribe(); sub = null; }
+      const stale = !!sub && ((cur && cur !== PUSH_VAPID) || (P.vk && P.vk !== PUSH_VK));
+      if (stale) { try { await sub.unsubscribe(); } catch (_) {} sub = null; }
       if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: vapidBytes(PUSH_VAPID) });
       P.sub = JSON.parse(JSON.stringify(sub));   // 存下来的订阅对象 = 服务器推给你的「地址」
+      P.vk = PUSH_VK;                            // 记下这次订阅用的是哪把公钥，下次好比对
       return true;
     } catch (_) {
       toast('订阅失败，换个浏览器试试');
@@ -3442,6 +3448,21 @@
   /** 把「推给谁 + 推哪些内容」告诉服务器；失败不影响本机开关（下次开面板会再试一次）
    *  🔴 但**必须把结果记下来**：开关看着是开的、服务器却没收到 ⇒ 一条都收不到，
    *     这种「静悄悄的失败」最难查，所以面板上要显示出来。 */
+  /** 服务器说「这条订阅发出去被退回来了」⇒ 退掉旧的、用当前公钥重新订一次 */
+  async function pushResubscribe() {
+    try {
+      const reg = await pushReg();
+      if (!reg) return false;
+      let s = await reg.pushManager.getSubscription();
+      if (s) { try { await s.unsubscribe(); } catch (_) {} }
+      s = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: vapidBytes(PUSH_VAPID) });
+      P.sub = JSON.parse(JSON.stringify(s));
+      P.vk = PUSH_VK;
+      pushSave();
+      return true;
+    } catch (_) { return false; }
+  }
+
   async function pushSyncServer(on) {
     if (!P.sub) return false;
     let ok = false, msg = '';
@@ -3454,6 +3475,20 @@
       });
       ok = !!(r && r.ok);
       msg = r ? ('HTTP ' + r.status) : 'no-response';
+      // 服务器刚试着发了一条、被推送服务退回（订阅绑的是旧公钥）⇒ 当场退掉重订、再上报一次
+      let j = null;
+      try { j = await r.clone().json(); } catch (_) {}
+      if (r && r.ok && j && j.resubscribe && on) {
+        if (await pushResubscribe()) {
+          const r2 = await fetch(base + '/api/push/subscribe', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ sub: P.sub, topics: P.topics })
+          });
+          ok = !!(r2 && r2.ok);
+          msg = (r2 ? 'HTTP ' + r2.status : 'no-response') + '(重订后)';
+        }
+      }
       // 把服务端拒绝的原因也带回来（如 403 same-site / 400 host not allowed），排查时一眼就能看到
       if (!ok && r) { try { const t = await r.text(); const m = String(t || '').match(/"error":"([^"]*)"/); if (m) msg += ' ' + m[1]; } catch (_) {} }
     } catch (_) { ok = false; msg = '网络失败'; }
