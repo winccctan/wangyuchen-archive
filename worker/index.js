@@ -2656,27 +2656,37 @@ function pushMsgText(m) {
   return '［新消息］';
 }
 
+/**
+ * 取「游标之后的发言」，**返回按时间升序**（旧的在前，推的时候顺序才对）。
+ * 🔴 取的是「最新的 limit 条」，不是「最早的那几条」—— 2026-09-27 事故的根因就在这里：
+ *    原来是 `ORDER BY msgTime ASC LIMIT 3`，游标一旦落后（首次上线 / 抓取停摆过），
+ *    每轮拿到的都是游标后面**最旧**的三条 ⇒ 推的一直是几小时前的旧内容，而且永远追不上新的。
+ *    现在倒过来取最新的三条：积压再多，一轮就能把游标带到最新，之后推的都是真新内容。
+ */
 async function pushLatestMsgs(env, since, limit) {
+  const n = Number(limit) || 3;
   // 优先 D1（发言的真身在 D1，且按时间有索引）；D1 不可用时退回 KV 索引里的 recent
   if (env && env.DB) {
     try {
       const r = await env.DB.prepare(
-        'SELECT msgTime, data FROM messages WHERE msgTime > ? ORDER BY msgTime ASC LIMIT ?'
-      ).bind(Number(since) || 0, Number(limit) || 3).all();
+        'SELECT msgTime, data FROM messages WHERE msgTime > ? ORDER BY msgTime DESC LIMIT ?'
+      ).bind(Number(since) || 0, n).all();
       const rows = (r && r.results) || [];
       return rows.map((x) => {
         let m = null;
         try { m = JSON.parse(x.data); } catch (_) { m = null; }
         return { msgTime: Number(x.msgTime) || 0, m: m };
-      }).filter((x) => x.msgTime > 0);
+      }).filter((x) => x.msgTime > 0)
+        .sort((a, b) => a.msgTime - b.msgTime);   // 倒序取 → 还原成正序再推
     } catch (_) { /* D1 挂了走 KV */ }
   }
   const idx = await env.KV.get('index', { type: 'json' }) || {};
   return (idx.recent || [])
     .filter((x) => (Number(x.msgTime) || 0) > (Number(since) || 0))
-    .sort((a, b) => (Number(a.msgTime) || 0) - (Number(b.msgTime) || 0))
-    .slice(0, limit)
-    .map((x) => ({ msgTime: Number(x.msgTime) || 0, m: x }));
+    .sort((a, b) => (Number(b.msgTime) || 0) - (Number(a.msgTime) || 0))
+    .slice(0, n)
+    .map((x) => ({ msgTime: Number(x.msgTime) || 0, m: x }))
+    .sort((a, b) => a.msgTime - b.msgTime);
 }
 
 /** 取一条发言：不传 before = 最新一条（D1 优先，退回 KV 索引） */
@@ -2900,7 +2910,7 @@ async function handlePushCount(env) {
     if (s.t.perf !== false) t.perf += 1;
   }
   // freshMs / off 顺便当部署指纹：改了推送参数后 curl 一眼就能确认线上是不是新代码
-  return json({ ok: true, subs: subs.length, topics: t, freshMs: PUSH_FRESH_MS, off: PUSH_OFF,
+  return json({ ok: true, subs: subs.length, topics: t, freshMs: PUSH_FRESH_MS, off: PUSH_OFF, ver: 'a46c',
     keys: subs.slice(0, 10).map((s) => s.key) });
 }
 
