@@ -2954,9 +2954,13 @@ async function pushFastTick(env, opts) {
     const subs = await pushAllSubs(env);
     if (!subs.length) { o.skipped.noSub = true; return o; }   // 没人订阅 ⇒ 一个请求都不发
     o.subs = subs.length;
+    // 🔴 没有凭证就别发请求：口袋必然 403，一分钟一次纯属白撞墙（也省得被当成异常流量）
+    if (!(await pocketToken(env))) { o.skipped.noToken = true; return o; }
     const r = await pocketLatest(env, 5);
     o.probe = { status: r.status, count: r.count, hasToken: r.hasToken };
     if (r.status !== 200 || !r.count) {
+      // 「缺凭证」不算接口故障，别熔断（否则站长刚填好 token 还要干等熔断解除）
+      if (!r.hasToken) { o.skipped.noToken = true; return o; }
       POCKET_DEAD_UNTIL = now + 5 * 60 * 1000;
       o.skipped.badStatus = r.status;
       if (r.raw) o.skipped.rawHead = r.raw.slice(0, 120);
