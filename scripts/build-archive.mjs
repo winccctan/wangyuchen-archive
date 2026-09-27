@@ -18,6 +18,18 @@ function read(name, key) {
   }
 }
 
+// 持久化「公演 liveId → B 站 bvid」映射，跨运行保留（落盘到 site/data/bili-link-map.json）。
+// 背景：attachBiliAndPruneDead 每轮从当前 B 站库全量重算匹配，是无状态的。
+// 若某场因元数据被重新抓取改动、或 B 站库临时缺视频导致新算没挂上，就回退到上轮已挂的链接
+// （前提是该 BV 仍在库里、没被删），从而做到「老的就一直保留」，杜绝挂源数字莫名波动。
+const LINK_MAP_FILE = resolve(DATA_DIR, 'bili-link-map.json');
+function readLinkMap() {
+  try { return JSON.parse(readFileSync(LINK_MAP_FILE, 'utf8')) || {}; } catch { return {}; }
+}
+function writeLinkMap(map) {
+  try { writeFileSync(LINK_MAP_FILE, JSON.stringify(map) + '\n'); } catch { /* 忽略写入失败 */ }
+}
+
 // 网页端瘦身：消息的 raw（原始接口报文）占了约一半体积，
 // 但它只在「无正文可显示」时用于展示原始数据，因此对有内容的消息直接剔除。
 // messages.json 仍保留全量存档，这里只压缩给网页用的 bundle。
@@ -72,7 +84,11 @@ for (const v of biliData.videos || []) {
 }
 
 function attachBiliAndPruneDead(list) {
-  let biliHit = 0, pruned = 0;
+  let biliHit = 0, pruned = 0, preserved = 0;
+  const videos = biliData.videos || [];
+  const biliBvSet = new Set(videos.map((v) => v.bvid));
+  const biliByBv = new Map(videos.map((v) => [v.bvid, v]));
+  const prevMap = readLinkMap(); // 上轮已挂的 { [liveId]: bvid }
   for (const p of list) {
     // 1) 修正失效的官方流域名（ts.48.cn → perform-vod.48.cn，路径一致）
     if (p.playUrl) {
@@ -140,7 +156,30 @@ function attachBiliAndPruneDead(list) {
       }
     }
   }
-  console.log(`  公演：修正失效官方流域名 ${pruned} 条；挂 B 站源 ${biliHit} 条（B 站库 ${(biliData.videos || []).length} 个视频）`);
+
+  // 3) 保险：新算没挂上、但上轮已挂且该 BV 仍在库里 → 保留老链接（老的就一直保留）
+  for (const p of list) {
+    if (p.biliUrl) continue;
+    const prev = prevMap[String(p.liveId)];
+    if (prev && biliBvSet.has(prev)) {
+      const v = biliByBv.get(prev);
+      p.biliUrl = `https://www.bilibili.com/video/${prev}`;
+      p.biliTitle = v ? v.title : '';
+      preserved++;
+    }
+  }
+
+  // 4) 持久化本轮映射（仅保留当前列表里仍有效的条目，供下一轮回退）
+  const nextMap = {};
+  for (const p of list) {
+    if (p.biliUrl) {
+      const m = String(p.biliUrl).match(/BV[0-9A-Za-z]{10}/);
+      if (m) nextMap[String(p.liveId)] = m[0];
+    }
+  }
+  writeLinkMap(nextMap);
+
+  console.log(`  公演：修正失效官方流域名 ${pruned} 条；挂 B 站源 ${biliHit} 条（新匹配）+ ${preserved} 条（保留旧挂源）＝ ${biliHit + preserved} 条（B 站库 ${videos.length} 个视频）`);
   return list;
 }
 
