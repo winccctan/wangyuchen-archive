@@ -3463,7 +3463,9 @@
     } catch (_) { return false; }
   }
 
-  async function pushSyncServer(on) {
+  /** quiet=true = 静默补送（自动重订 / 开面板补登记），服务端不再发「已开启」确认，
+   *  免得用户一次操作收到两条通知 */
+  async function pushSyncServer(on, quiet) {
     if (!P.sub) return false;
     let ok = false, msg = '';
     try {
@@ -3471,7 +3473,7 @@
       const r = await fetch(base + (on ? '/api/push/subscribe' : '/api/push/unsubscribe'), {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ sub: P.sub, topics: P.topics })
+        body: JSON.stringify({ sub: P.sub, topics: P.topics, quiet: !!quiet })
       });
       ok = !!(r && r.ok);
       msg = r ? ('HTTP ' + r.status) : 'no-response';
@@ -3483,7 +3485,7 @@
           const r2 = await fetch(base + '/api/push/subscribe', {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ sub: P.sub, topics: P.topics })
+            body: JSON.stringify({ sub: P.sub, topics: P.topics, quiet: !!quiet })
           });
           ok = !!(r2 && r2.ok);
           msg = (r2 ? 'HTTP ' + r2.status : 'no-response') + '(重订后)';
@@ -3592,7 +3594,7 @@
     modal('推送通知', pushHtml(), { footer: '<button type="button" class="pb-btn ghost" data-push="close">关闭</button>' });
     // 开关是开的、但服务器没收到订阅 ⇒ 每次打开面板都再送一次。
     // 订阅有可能在「服务器当时正好部署/网络抖动」时丢掉，不该让用户自己猜要重开开关。
-    if (P.on && P.sub && P.srv !== true) pushSyncServer(true);
+    if (P.on && P.sub && P.srv !== true) pushSyncServer(true, true);
   }
   /** 🔔 工具栏按钮跟着订阅状态亮起来（CSS 里 .dm-tool.on 已有样式） */
   function pushBadge() {
