@@ -1152,6 +1152,12 @@ async function handleApi(url, request, env, ctx) {
     }
     return json(await pushFastTick(env, { reason: 'manual' }));
   }
+  if (p === '/api/push/notify' && request.method === 'POST') {
+    if (!(await isSyncAuthorized(request, env) || await isGhAuthorized(request, env))) {
+      return json({ error: 'forbidden: sync token required' }, 403);
+    }
+    return handlePushNotify(request, env);
+  }
   if (p === '/api/push/test' && request.method === 'POST') {
     if (!(await isSyncAuthorized(request, env) || await isGhAuthorized(request, env))) {
       return json({ error: 'forbidden: sync token required' }, 403);
@@ -2938,12 +2944,22 @@ function pocketMsgText(m) {
   return '［新消息］';
 }
 
+/**
+ * 🔴 2026-09-27 实测：**从 Cloudflare 出去请求 pocketapi.48.cn 一律 nginx 403**。
+ *    证据：把 Worker 里算出来的 pa 签名拿到本机，用同一个签名请求 → 200 成功
+ *    （⇒ 签名没问题，是 CF 的数据中心 IP 被口袋网关挡了）。
+ *    所以「每分钟问一次口袋」改由 GitHub Actions 值守（push-watch.yml → /api/push/notify）。
+ *    这个开关留着：哪天 CF 出口能通了，把它改回 false 就能切回 Worker 直查（更少一环）。
+ */
+const POCKET_FROM_CF_BLOCKED = true;
+
 /** 快车道：直查口袋 → 有新且够新鲜就立刻推（不写库、不动档案数据） */
 async function pushFastTick(env, opts) {
   const o = { ok: true, reason: (opts && opts.reason) || 'fast', msg: null, skipped: {} };
   const kv = env && env.KV;
   if (!kv) return { ok: false, error: 'kv-not-bound' };
   if (PUSH_OFF) return { ok: false, paused: true, skipped: { off: true } };
+  if (POCKET_FROM_CF_BLOCKED) { o.skipped.cfBlocked = true; return o; }
   const now = Date.now();
   if (now < POCKET_DEAD_UNTIL) { o.skipped.cooldownUntil = POCKET_DEAD_UNTIL; return o; }
   // 同一个 isolate 里 45 秒内不重复问（CF 可能同时起多个 isolate，重复也无害：游标保证不重复推）
@@ -3026,6 +3042,38 @@ async function pushProbe(env) {
     o.error = String((e && e.message) || e).slice(0, 300);
   }
   return o;
+}
+
+/**
+ * GitHub Actions 值守探针发现新发言后调这里：{ t: 发言时间戳(ms), text: 推送文案 }
+ * 职责全在 Worker 侧兜底：游标去重（同一条绝不会推两次）+ 新鲜度闸（旧的只推进游标、不推）。
+ */
+async function handlePushNotify(request, env) {
+  const kv = env && env.KV;
+  if (!kv) return json({ error: 'kv-not-bound' }, 500);
+  let b = null;
+  try { b = await request.json(); } catch (_) { return json({ error: 'bad-json' }, 400); }
+  const t = Number(b && b.t) || 0;
+  if (!t) return json({ error: 'missing t' }, 400);
+  const text = String((b && b.text) || '').slice(0, 120);
+  const o = { ok: true, t: t };
+  if (PUSH_OFF) { o.paused = true; return json(o); }
+  try {
+    if (!(await loadVapid(env))) { o.skipped = 'noVapid'; return json(o); }
+    const last = Number(await kv.get(PUSH_LAST + 'msg')) || 0;
+    if (t <= last) { o.skipped = 'already'; o.last = last; return json(o); }
+    // 游标先往前走：无论这一条推不推，都不会再回头
+    await kv.put(PUSH_LAST + 'msg', String(t));
+    o.last = t;
+    if (Date.now() - t > PUSH_FRESH_MS) { o.skipped = 'stale'; return json(o); }
+    o.msg = await pushBroadcast(env, {
+      title: '王语晨', body: text || '［新消息］', tag: 'wyc-msg', url: './', topic: 'msg'
+    }, 'msg');
+  } catch (e) {
+    o.ok = false;
+    o.error = String((e && e.message) || e).slice(0, 200);
+  }
+  return json(o);
 }
 
 /* ------------------------- HTTP 接口 ------------------------- */

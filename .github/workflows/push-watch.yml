@@ -1,0 +1,62 @@
+# 王语晨补档站 · 分钟级推送值守（2026-09-27）
+#
+# 为什么要有它：手机通知想做到「她一发言，1 分钟内到手机」。
+#   只靠 scrape.yml（5 分钟一轮）最快也要 4~7 分钟，因为数据得先落库、推送再读库。
+#   本任务专职盯梢：每 60 秒问一次口袋，发现新发言就立刻 POST /api/push/notify 让 Worker 广播。
+#
+# 为什么跑在 GitHub Actions 而不是 Cloudflare Worker：
+#   🔴 实测 **Cloudflare 出口请求 pocketapi.48.cn 一律 nginx 403**（数据中心 IP 被口袋网关挡），
+#      而本机拿 Worker 里算出的同一个 pa 签名去请求 → 200 成功（⇒ 签名没问题，是 CF 出口不通）。
+#      GitHub Actions 这条路抓了几个月一直正常（必要时还能走家里代理），故交给它。
+#
+# 🔴 与其它任务的关系（重要）：
+#   - 这是**独立的 workflow**，与 scrape.yml（抓取）/ fans-sync.yml（档案聚合）互不影响；
+#     concurrency 用自己的 group 且 cancel-in-progress: true ⇒ **永远只有 1 个值守在跑**，
+#     不会堆积成队列，也不会把别的任务挤掉。
+#   - 仓库是 **public** ⇒ GitHub 对公开仓库的 Actions **不计费分钟数**，长期值守不花钱。
+#   - 它**不写库**：只探测 + 通知，档案数据仍由 scrape.yml 那 5 分钟一轮的正路负责。
+#
+# 节奏：每 5 分钟启动一次，每次值守约 5.5 分钟（略长于间隔，保证衔接不留空档）。
+name: 分钟级推送值守
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: push-watch          # 🔴 与 scrape 用不同的 group ⇒ 互不干扰
+  cancel-in-progress: true   # 新的一轮直接接管，避免堆积排队
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      POCKET48_TOKEN: ${{ secrets.POCKET48_TOKEN }}
+      SCRAPE_PROXY: ${{ secrets.SCRAPE_PROXY }}
+      SYNC_TOKEN: ${{ secrets.SYNC_TOKEN }}
+      WORKER_URL: ${{ secrets.WORKER_URL || 'https://idol.wyc0518.cc' }}
+      WATCH_SECONDS: "330"     # 值守时长（略大于 5 分钟间隔，保证无缝）
+      WATCH_INTERVAL: "60"     # 每 60 秒问一次口袋
+      WATCH_FRESH_MIN: "10"    # 超过 10 分钟的发言不推（站长定：只推新的）
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: scraper/package-lock.json
+      - name: Install scraper deps
+        working-directory: scraper
+        run: npm ci
+      - name: 值守（每 60 秒问一次口袋，有新发言立刻推送）
+        working-directory: scraper
+        run: node push-watch.mjs
