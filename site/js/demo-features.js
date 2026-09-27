@@ -95,7 +95,6 @@
   const FAV_KEY = 'wyc-demo-fav-v1';
   const HIS_KEY = 'wyc-demo-search-his-v1';
   const RECENT_KEY = 'wyc-demo-recent-v1';
-  const NOTIFY_KEY = 'wyc-demo-notified-live-v1';
 
   const F = {
     typeFilter: 'all',       // 搜索增强：类型筛选
@@ -1010,68 +1009,6 @@
     }
   }
 
-  /* =====================================================================
-     功能 ⑧ 开播实时提醒：页面打开时轮询直播状态，开播用 Notification 弹通知
-     （移动端网页在页面打开期间可用；后台静默推送需 iOS 16.4+，不在本演示范围）
-     ===================================================================== */
-  let notifyTimer = null, notifyOn = false;
-  function fireNotify(it) {
-    trk('notify:hit');   // 真检测到开播、真的弹了提醒才记
-    const title = '🔴 王语晨开播啦！';
-    const body = (it.title && !/^\d+$/.test(String(it.title))) ? it.title : '口袋48 直播中';
-    if ('Notification' in window && Notification.permission === 'granted') {
-      try { new Notification(title, { body, tag: 'wyc-live' }); } catch (_) {}
-    }
-    toast('🔴 开播提醒：' + body);
-  }
-  async function checkLive() {
-    let live;
-    try {
-      const base = (typeof API_BASE !== 'undefined' && API_BASE) ? API_BASE : '';
-      const r = await fetch(base + '/api/live', { cache: 'no-store' });
-      if (!r.ok) return;
-      live = await r.json();
-    } catch (_) { return; }
-    if (!Array.isArray(live)) return;
-    let seen = [];
-    try { seen = JSON.parse(localStorage.getItem(NOTIFY_KEY) || '[]'); } catch (_) {}
-    const seenSet = new Set(seen);
-    let changed = false;
-    for (const it of live) {
-      const s = Number(it.status);
-      const id = String(it.id || it.liveId || it.title || '');
-      if (s === 2 && id && !seenSet.has(id)) {
-        seenSet.add(id); changed = true;
-        fireNotify(it);
-      }
-    }
-    if (changed) localStorage.setItem(NOTIFY_KEY, JSON.stringify([...seenSet].slice(-50)));
-  }
-  function startNotify() {
-    notifyOn = !notifyOn;
-    trk(notifyOn ? 'notify:on' : 'notify:off');
-    document.body.classList.toggle('dm-notify-on', notifyOn);
-    if (notifyOn) {
-      checkLive();
-      notifyTimer = setInterval(checkLive, 60000);
-      toast('🔔 开播提醒已开启（页面打开期间每 60 秒检查）');
-    } else {
-      clearInterval(notifyTimer); notifyTimer = null;
-      toast('🔕 已关闭开播提醒');
-    }
-  }
-  function toggleNotify() {
-    if (!('Notification' in window)) { toast('当前浏览器不支持通知'); return; }
-    if (Notification.permission === 'denied') { toast('通知被浏览器拒绝，请在站点设置里开启'); return; }
-    if (Notification.permission === 'default') {
-      Notification.requestPermission().then((p) => {
-        if (p === 'granted') startNotify();
-        else toast('未授权，开播提醒不会弹通知（可再点一次按钮重试）');
-      });
-      return;
-    }
-    startNotify();   // 已授权
-  }
 
   // 事件委托：收藏 / 分享 / 最近观看
   document.addEventListener('click', (e) => {
@@ -1131,7 +1068,7 @@
       <button class="dm-tool" id="dmDigBtn" type="button" title="随机考古：随便挑一天看看">🎲</button>
       <button class="dm-tool" id="dmLastYr" type="button" title="去年今日：如果有往年今天的发言就跳过去">📜</button>
       <button class="dm-tool" id="dmHeatBtn" type="button" title="发言热力图">🔥</button>
-      <button class="dm-tool" id="dmNotify" type="button" title="开播实时提醒（页面打开期间弹通知）">🔔</button>
+      <button class="dm-tool" id="dmNotify" type="button" title="推送通知设置：选要提醒的内容">🔔</button>
       <button class="dm-tool" id="dmMulti" type="button" title="多选发言，拼成一张分享图 / 复制文字" aria-label="多选分享"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
       <button class="dm-tool" id="dmCatchup" type="button" title="从头补档：按时间顺序一天天看，进度自动记住">📖</button>`;
     actions.insertBefore(wrap, actions.firstChild);
@@ -1139,7 +1076,8 @@
     $('#dmDigBtn').addEventListener('click', randomDig);
     $('#dmLastYr').addEventListener('click', lastYearToday);
     $('#dmHeatBtn').addEventListener('click', openHeatmap);
-    $('#dmNotify').addEventListener('click', toggleNotify);
+    // 🔔 打开「推送通知设置」面板（原「开播实时提醒」开关整个并进面板，功能没丢）
+    $('#dmNotify').addEventListener('click', openPush);
     $('#dmMulti').addEventListener('click', () => {
       toggleMulti();
       $('#dmMulti').classList.toggle('on', F.multi);
@@ -3408,7 +3346,7 @@
     if (!('serviceWorker' in navigator)) return null;
     try {
       let r = await navigator.serviceWorker.getRegistration();
-      if (!r) r = await navigator.serviceWorker.register('./sw.js?v=20260927a37');
+      if (!r) r = await navigator.serviceWorker.register('./sw.js?v=20260927a38');
       return r || null;
     } catch (_) { return null; }
   }
@@ -3546,9 +3484,9 @@
   function openPush() {
     modal('推送通知', pushHtml(), { footer: '<button type="button" class="pb-btn ghost" data-push="close">关闭</button>' });
   }
-  /** 🔔 顶部按钮跟着订阅状态亮起来 */
+  /** 🔔 工具栏按钮跟着订阅状态亮起来（CSS 里 .dm-tool.on 已有样式） */
   function pushBadge() {
-    const b = $('#pushBtn');
+    const b = $('#dmNotify');
     if (b) b.classList.toggle('on', P.on);
   }
   /** 只换弹窗 body，保持弹窗不闪、不重开 */
@@ -3558,10 +3496,9 @@
     pushBadge();
   }
 
-  /** 面板里的点击（委托挂 document，内容会整块重渲） */
+  /** 面板里的点击（委托挂 document，内容会整块重渲）
+   *  🔴 🔔 按钮本身在 injectToolbar 里绑 openPush，这里**不要重复绑**，否则点一次会开两次弹窗 */
   function bindPushEvents() {
-    const btn = $('#pushBtn');
-    if (btn) btn.addEventListener('click', openPush);
     document.addEventListener('click', (e) => {
       const el = e.target.closest('[data-push]');
       if (el) {
