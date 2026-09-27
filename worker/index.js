@@ -2442,6 +2442,10 @@ const PUSH_VAPID_KEY = 'PUSH_VAPID';
 const PUSH_HOST_OK = /(^|\.)(googleapis\.com|push\.services\.mozilla\.com|push\.apple\.com|mozaws\.net)$/;
 // 一次最多补推几条（正常情况每轮就 1 条；抓取停了几个小时的积压不至于把手机刷爆）
 const PUSH_CATCHUP_MAX = 3;
+// 🔴 新鲜度闸（2026-09-27 站长定「只推新的」）：超过这个年纪的发言**一律不推**，
+//    只把游标推到最新。正常抓取时延迟只有几分钟，永远碰不到这条线；
+//    它只在「抓取停了几小时又恢复」时生效 —— 宁可漏掉那几小时的旧发言，也不把过期内容推到手机上。
+const PUSH_FRESH_MS = 30 * 60 * 1000;
 
 let VAPID = null;                 // { pub, privJwk }（读一次 KV 后在进程内缓存）
 const VAPID_JWT = new Map();      // aud -> { t: jwt, exp: 秒 }（JWT 有效期很长，别每次重签）
@@ -2706,14 +2710,21 @@ async function runPushCheck(env, opts) {
     } else {
       const fresh = await pushLatestMsgs(env, lastMsg, PUSH_CATCHUP_MAX);
       if (fresh.length) {
+        // 🔴 只推「新鲜」的（2026-09-27 站长定：不要推送老的信息，只推新的）：
+        //    抓取停摆几小时后恢复时，积压的那批旧发言**一律不补推**（直接跳过），
+        //    但游标照常前进到最新 —— 下次只从这里往后推，绝不会把旧内容灌到手机上。
+        let newest = lastMsg, stale = 0;
         for (const f of fresh) {
+          if (Number(f.msgTime) > newest) newest = Number(f.msgTime);
+          if (now - Number(f.msgTime) > PUSH_FRESH_MS) { stale += 1; continue; }
           const r = await pushBroadcast(env, {
             title: '王语晨', body: pushMsgText(f.m), tag: 'wyc-msg', url: './', topic: 'msg'
           }, 'msg');
           o.msg = r;
-          lastMsg = Math.max(lastMsg, f.msgTime);
         }
-        await kv.put(PUSH_LAST + 'msg', String(lastMsg));
+        if (stale) o.skipped.staleMsgs = stale;
+        lastMsg = newest;
+        await kv.put(PUSH_LAST + 'msg', String(newest));
       }
     }
 
