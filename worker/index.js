@@ -765,12 +765,26 @@ async function handleStatsBody(url, env, kv, wantJson) {
     ? countries.map((c) => `<tr><td>${c.name}</td><td class="n">${c.today}</td><td class="n">${c.d7}</td></tr>`).join('')
     : '<tr><td colspan="3" class="dim">暂无记录（从启用当天开始累计）</td></tr>';
 
+  // 手机通知订阅人数（Web Push）：订阅现在只有个位数～几十条，list 一下几乎不花钱。
+  // 记三个分类：有人只想收「她开播」，不想收每条发言 ⇒ 光看总人数不知道该推给谁。
+  let push = { subs: 0, msg: 0, live: 0, perf: 0 };
+  try {
+    const subs = await pushAllSubs(env);
+    for (const s of subs) {
+      if (s.t.msg !== false) push.msg += 1;
+      if (s.t.live !== false) push.live += 1;
+      if (s.t.perf !== false) push.perf += 1;
+    }
+    push.subs = subs.length;
+  } catch (_) { /* 推送没配好时只是没这个数，不影响其它统计 */ }
+
   // JSON 模式：给 GitHub Pages 上的统计页面跨域读取（docs/stats.html）
   if (wantJson) {
     return new Response(JSON.stringify({
       total,
       today: { day: days[0][0], count: days[0][1], visitors: siteUvToday },
       siteUvToday,
+      push,
       langs: langRows.map(([l, n]) => ({ lang: l, name: LANG_NAME[l] || l, count: n })),
       days: days.map(([d, n, u, su]) => ({ day: d, count: n, visitors: u, siteUv: su })),
       countries: countries,
@@ -806,7 +820,9 @@ async function handleStatsBody(url, env, kv, wantJson) {
 <div class="cards"><div class="card"><div class="k">累计翻译次数</div><div class="v">${total}</div></div>
 <div class="card"><div class="k">今日次数</div><div class="v">${days[0][1]}</div></div>
 <div class="card"><div class="k">今日独立访客</div><div class="v">${siteUvToday}</div></div>
-<div class="card"><div class="k">今日记录动作 / 上限</div><div class="v" style="font-size:18px">${gateUsed} / ${STAT_WRITE_CAP}</div></div></div>
+<div class="card"><div class="k">今日记录动作 / 上限</div><div class="v" style="font-size:18px">${gateUsed} / ${STAT_WRITE_CAP}</div></div>
+<div class="card"><div class="k">通知订阅人数</div><div class="v">${push.subs}</div>
+<div class="k" style="margin-top:6px">发言 ${push.msg} · 开播 ${push.live} · 公演 ${push.perf}</div></div></div>
 <h2>各语言使用次数</h2><table>${langHtml}</table>
 <h2>访客来自哪里（今日 / 近 7 天）</h2><table><tr><td>国家·地区</td><td class="n">今日</td><td class="n">近 7 天</td></tr>${ctryHtml}</table>
 <p class="dim">按 Cloudflare 给出的国家（ISO 代码）统计。<b>这是「IP 数」，不是「人数」</b>，两个方向都会偏：<br>
@@ -2442,10 +2458,12 @@ const PUSH_VAPID_KEY = 'PUSH_VAPID';
 const PUSH_HOST_OK = /(^|\.)(googleapis\.com|push\.services\.mozilla\.com|push\.apple\.com|mozaws\.net)$/;
 // 一次最多补推几条（正常情况每轮就 1 条；抓取停了几个小时的积压不至于把手机刷爆）
 const PUSH_CATCHUP_MAX = 3;
-// 🔴 新鲜度闸（2026-09-27 站长定「只推新的」）：超过这个年纪的发言**一律不推**，
-//    只把游标推到最新。正常抓取时延迟只有几分钟，永远碰不到这条线；
-//    它只在「抓取停了几小时又恢复」时生效 —— 宁可漏掉那几小时的旧发言，也不把过期内容推到手机上。
-const PUSH_FRESH_MS = 30 * 60 * 1000;
+// 🔴 新鲜度闸（2026-09-27 站长定「不许推旧的，可以推新的」）：比这更「老」的发言**一律不推**。
+//    正常抓取时延迟只有 2~5 分钟，永远碰不到这条线；它只在「抓取停摆又恢复」时拦住积压的旧内容。
+const PUSH_FRESH_MS = 10 * 60 * 1000;
+// 总闸：true = 一条都不推（订阅/开关照常可用）。默认开着 —— 站长要的是「挡旧的」，不是「全停」。
+//    🔴 只有站长明确说「先别推了」才改成 true；改完要重新部署才生效（CF 从 main 构建）。
+const PUSH_OFF = false;
 
 let VAPID = null;                 // { pub, privJwk }（读一次 KV 后在进程内缓存）
 const VAPID_JWT = new Map();      // aud -> { t: jwt, exp: 秒 }（JWT 有效期很长，别每次重签）
@@ -2692,6 +2710,7 @@ async function runPushCheck(env, opts) {
   const o = { ok: true, reason: (opts && opts.reason) || 'manual', msg: null, live: null, perf: null, skipped: {} };
   const kv = env && env.KV;
   if (!kv) return { ok: false, error: 'kv-not-bound' };
+  if (PUSH_OFF) return { ok: false, paused: true, skipped: { off: true } };
   try {
     if (!(await loadVapid(env))) { o.skipped.noVapid = true; return o; }
     const subs = await pushAllSubs(env);
@@ -2722,7 +2741,13 @@ async function runPushCheck(env, opts) {
           }, 'msg');
           o.msg = r;
         }
-        if (stale) o.skipped.staleMsgs = stale;
+        if (stale) {
+          o.skipped.staleMsgs = stale;
+          // 🔴 追赶模式：这批全是旧的 ⇒ 游标直接跳到「当前最新」，别一条条往前挪
+          //    （否则下一轮又取到同一批旧发言，表现为「隔几分钟又推一次旧内容」）。
+          const cur = await pushLatestMsgs(env, 0, 1);
+          if (cur.length && Number(cur[0].msgTime) > newest) newest = Number(cur[0].msgTime);
+        }
         lastMsg = newest;
         await kv.put(PUSH_LAST + 'msg', String(newest));
       }
@@ -2874,7 +2899,9 @@ async function handlePushCount(env) {
     if (s.t.live !== false) t.live += 1;
     if (s.t.perf !== false) t.perf += 1;
   }
-  return json({ ok: true, subs: subs.length, topics: t, keys: subs.slice(0, 10).map((s) => s.key) });
+  // freshMs / off 顺便当部署指纹：改了推送参数后 curl 一眼就能确认线上是不是新代码
+  return json({ ok: true, subs: subs.length, topics: t, freshMs: PUSH_FRESH_MS, off: PUSH_OFF,
+    keys: subs.slice(0, 10).map((s) => s.key) });
 }
 
 /** 调试：按 KV 键直接读（token 保护）—— 用于判断「写了但 list 列不出来」这种一致性问题 */
