@@ -1085,6 +1085,12 @@ async function handleApi(url, request, env, ctx) {
     return handlePushUnsubscribe(request, env);
   }
   if (p === '/api/push/count') return handlePushCount(env);
+  if (p === '/api/push/raw') {
+    if (!(await isSyncAuthorized(request, env) || await isGhAuthorized(request, env))) {
+      return json({ error: 'forbidden: sync token required' }, 403);
+    }
+    return handlePushRaw(url, env);
+  }
   if (p === '/api/push/check' && request.method === 'POST') {
     if (!(await isSyncAuthorized(request, env) || await isGhAuthorized(request, env))) {
       return json({ error: 'forbidden: sync token required' }, 403);
@@ -2786,7 +2792,11 @@ async function handlePushSubscribe(request, env) {
     t: { msg: topics.msg !== false, live: topics.live !== false, perf: topics.perf !== false },
     at: Date.now()
   }));
-  await pushDiag(env, request, { ok: true, why: 'saved', host: host, key: await pushSubKeyOf(sub.endpoint) });
+  await pushDiag(env, request, { ok: true, why: 'saved', host: host, key: await pushSubKeyOf(sub.endpoint), quiet: !!(b && b.quiet) });
+
+  // 「静默补送」不发确认：自动重订 / 开面板补送都属于补登记，再弹一条就成了骚扰
+  // （2026-09-27 站长实测：取消再订阅收到 2 条 —— 就是这条确认被发了两次）
+  if (b && b.quiet) return json({ ok: true });
 
   // 订阅一存下就立刻发一条「开好了」的确认 —— 目的有两个：
   //   ① 用户点完开关马上能看见成效，不用猜；
@@ -2853,7 +2863,16 @@ async function handlePushCount(env) {
     if (s.t.live !== false) t.live += 1;
     if (s.t.perf !== false) t.perf += 1;
   }
-  return json({ ok: true, subs: subs.length, topics: t });
+  return json({ ok: true, subs: subs.length, topics: t, keys: subs.slice(0, 10).map((s) => s.key) });
+}
+
+/** 调试：按 KV 键直接读（token 保护）—— 用于判断「写了但 list 列不出来」这种一致性问题 */
+async function handlePushRaw(url, env) {
+  const k = url.searchParams.get('k') || '';
+  if (!/^push:(sub|diag|last:)/.test(k)) return json({ error: 'bad key' }, 400);
+  const v = await env.KV.get(k);
+  const meta = await env.KV.getWithMetadata ? await env.KV.getWithMetadata(k) : null;
+  return json({ ok: true, key: k, exists: v !== null, len: v ? v.length : 0, meta: meta ? meta.metadata : null });
 }
 
 /** 调试用：立刻给所有订阅发一条（需 sync token） */
