@@ -2869,13 +2869,28 @@ function pocketAppInfo() {
   });
 }
 
-/** 口袋 token：优先 dashboard Secret，否则读 KV 命名空间 SECRETS 的 POCKET48_TOKEN */
+/** 口袋 token：dashboard Secret → KV「SECRETS」→ KV「数据命名空间」（两个都找，站长填哪个都能生效） */
 async function pocketToken(env) {
   if (env && env.POCKET48_TOKEN) return env.POCKET48_TOKEN;
-  if (env && env.SECRETS && typeof env.SECRETS.get === 'function') {
-    try { return (await env.SECRETS.get('POCKET48_TOKEN')) || ''; } catch (_) { /* 忽略 */ }
+  for (const ns of [env && env.SECRETS, env && env.KV]) {
+    if (!ns || typeof ns.get !== 'function') continue;
+    try {
+      const v = await ns.get('POCKET48_TOKEN');
+      if (v) return String(v).trim();
+    } catch (_) { /* 换下一个 */ }
   }
   return '';
+}
+
+/** 诊断用：列出某个 KV 命名空间里的键名（只列名字，不列值） */
+async function kvKeyNames(ns) {
+  if (!ns || typeof ns.list !== 'function') return null;
+  try {
+    const page = await ns.list();
+    return (page && page.keys ? page.keys : []).map((k) => k.name);
+  } catch (e) {
+    return ['<list-failed: ' + String((e && e.message) || e).slice(0, 80) + '>'];
+  }
 }
 
 /** 直查口袋：最新 limit 条房主发言（homeowner 接口 = 只返回她自己的） */
@@ -2983,6 +2998,10 @@ async function pushFastTick(env, opts) {
 async function pushProbe(env) {
   const o = { ok: true, now: Date.now(), deadUntil: POCKET_DEAD_UNTIL };
   try {
+    // 诊断：token 到底有没有被读到（只回长度和前 4 位，不泄露完整值）+ 两个命名空间里都有哪些键
+    const tk = await pocketToken(env);
+    o.token = tk ? { len: tk.length, head: tk.slice(0, 4) } : null;
+    o.keys = { secrets: await kvKeyNames(env && env.SECRETS), data: await kvKeyNames(env && env.KV) };
     const r = await pocketLatest(env, 5);
     o.status = r.status;
     o.hasToken = r.hasToken;
