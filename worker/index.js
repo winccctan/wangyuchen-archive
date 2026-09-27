@@ -3005,6 +3005,9 @@ async function pushProbe(env) {
     // 诊断：token 到底有没有被读到（只回长度和前 4 位，不泄露完整值）+ 两个命名空间里都有哪些键
     const tk = await pocketToken(env);
     o.token = tk ? { len: tk.length, head: tk.slice(0, 4) } : null;
+    // 诊断用：把 Worker 里算出来的 pa 签名原样吐出来，好在本机拿同一个签名做 A/B 对照
+    // （判断「403」到底是签名不对，还是 Cloudflare 出口 IP 被口袋拦）
+    try { o.pa = await paSign(); } catch (e) { o.paErr = String((e && e.message) || e).slice(0, 120); }
     o.keys = { secrets: await kvKeyNames(env && env.SECRETS), data: await kvKeyNames(env && env.KV) };
     const r = await pocketLatest(env, 5);
     o.status = r.status;
