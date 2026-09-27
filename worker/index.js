@@ -2971,17 +2971,51 @@ const POCKET_FROM_CF_BLOCKED = true;
  *   （KV 写：每条发言 1 次，一天几十条，可忽略）
  */
 async function markMsgSent(env, t) {
+  const ts = Number(t) || 0;
+  if (!ts) return true;
+  // 🔴 优先用 D1：SQLite 主键冲突是**原子的**，两条路同时推也只会有一个抢到。
+  //    （KV 是最终一致的 —— 并发时两边都读到「没推过」⇒ 各推一遍，这就是重复的根源。）
+  const db = env && env.DB;
+  if (db && typeof db.prepare === 'function') {
+    const ins = db.prepare('INSERT OR IGNORE INTO push_sent (t, at) VALUES (?, ?)').bind(ts, Date.now());
+    try {
+      const r = await ins.run();
+      const n = Number((r && r.meta && (r.meta.changes ?? r.meta.rows_written)) ?? (r && r.changes) ?? 0);
+      if (n === 1) { maybePrunePushSent(db); return true; }
+      return false;                       // 已存在 ⇒ 别人（或另一条路）已经推过了
+    } catch (e) {
+      const msg = String((e && e.message) || e);
+      if (/no such table/i.test(msg)) {
+        try {
+          await db.prepare('CREATE TABLE IF NOT EXISTS push_sent (t INTEGER PRIMARY KEY, at INTEGER)').run();
+          const r2 = await db.prepare('INSERT OR IGNORE INTO push_sent (t, at) VALUES (?, ?)').bind(ts, Date.now()).run();
+          const n2 = Number((r2 && r2.meta && (r2.meta.changes ?? r2.meta.rows_written)) ?? (r2 && r2.changes) ?? 0);
+          return n2 === 1;
+        } catch (_) { /* 建表也失败就退回 KV */ }
+      }
+    }
+  }
+  // 回退：D1 不可用时才走 KV（有极小并发窗口，但那时宁可偶尔重复也不能不推）
   const kv = env && env.KV;
-  const key = 'push:sent:' + String(Number(t) || 0);
   if (!kv) return true;
   try {
-    const old = await kv.get(key);
+    const old = await kv.get('push:sent:' + String(ts));
     if (old) return false;
-    await kv.put(key, '1', { expirationTtl: 86400 });   // 一天后自动过期，不留垃圾
+    await kv.put('push:sent:' + String(ts), '1', { expirationTtl: 86400 });
     return true;
   } catch (_) {
     return true;   // 哨兵本身出错时宁可照推，不要因为去重把推送全掐了
   }
+}
+
+/** 顺手清掉 7 天前的哨兵行（约每 20 次才真跑一次，D1 写入可忽略） */
+let PRUNE_N = 0;
+function maybePrunePushSent(db) {
+  PRUNE_N += 1;
+  if (PRUNE_N % 20 !== 1) return;
+  try {
+    db.prepare('DELETE FROM push_sent WHERE at < ?').bind(Date.now() - 7 * 86400 * 1000).run().catch(() => null);
+  } catch (_) { /* 清理失败无所谓，表里有几百行也不影响查询 */ }
 }
 
 /** 快车道：直查口袋 → 有新且够新鲜就立刻推（不写库、不动档案数据） */
