@@ -131,6 +131,8 @@ export default {
   // 走的是和「🔄 刷新」按钮完全相同的 handleScrape（含 1 分钟冷却，5 分钟间隔不会误挡）。
   async scheduled(event, env, ctx) {
     ctx.waitUntil(handleScrape(env));
+    // 兜底：万一 /api/sync 那次推送没跑成（网络抖、VAPID 还没配），这里每 5 分钟还会再查一次
+    ctx.waitUntil(runPushCheck(env, { reason: 'cron' }).catch(() => null));
   }
 };
 
@@ -1050,6 +1052,30 @@ async function isGhAuthorized(request, env) {
 
 async function handleApi(url, request, env, ctx) {
   const p = url.pathname;
+  // ---- 手机通知（Web Push）----
+  // 订阅/退订只能从本站页面发起（isSameSite 挡掉脚本）；检测/测试/密钥要 sync token。
+  if (p === '/api/push/subscribe' && request.method === 'POST') {
+    if (!isSameSite(request)) return forbiddenNotSameSite();
+    return handlePushSubscribe(request, env);
+  }
+  if (p === '/api/push/unsubscribe' && request.method === 'POST') {
+    if (!isSameSite(request)) return forbiddenNotSameSite();
+    return handlePushUnsubscribe(request, env);
+  }
+  if (p === '/api/push/count') return handlePushCount(env);
+  if (p === '/api/push/check' && request.method === 'POST') {
+    if (!(await isSyncAuthorized(request, env) || await isGhAuthorized(request, env))) {
+      return json({ error: 'forbidden: sync token required' }, 403);
+    }
+    return json(await runPushCheck(env, { reason: 'manual' }));
+  }
+  if (p === '/api/push/test' && request.method === 'POST') {
+    if (!(await isSyncAuthorized(request, env) || await isGhAuthorized(request, env))) {
+      return json({ error: 'forbidden: sync token required' }, 403);
+    }
+    return handlePushTest(request, env);
+  }
+  if (p === '/api/_secret/vapid') return handleVapidSecret(request, env);
   // index 带 meta.lastUpdated，刷新按钮靠它比对 → 只缓存 15s，不影响「刷新」的即时性
   if (p === '/api/index') return withEdgeCache('/api/index', 15, () => handleApiIndex(env));
   if (p === '/api/month') return handleApiMonth(url, env);
@@ -1932,7 +1958,7 @@ async function handleApiSync(request, env, ctx) {
     indexWritten = true;
   }
 
-  return json({
+  const payload = {
     ok: true,
     dataChanged,
     indexWritten,
@@ -1943,7 +1969,14 @@ async function handleApiSync(request, env, ctx) {
       performances: idx.perfCount
     },
     wrote: result
-  });
+  };
+  // ---- 8) 数据刚落地 → 立刻查一遍「有没有该推的新东西」
+  //     这是推送的主路径：抓取（GitHub Actions）→ 同步到 KV → 这里马上判断并推。
+  //     🔴 用 waitUntil：推送再慢也不拖慢 /api/sync 的返回，推失败也绝不影响同步结果。
+  if (ctx && typeof ctx.waitUntil === 'function') {
+    ctx.waitUntil(runPushCheck(env, { reason: 'sync' }).catch(() => null));
+  }
+  return json(payload);
 }
 
 /* ===================== 行程存档 + 手机后台（2026-09-23 新增） =====================
@@ -2336,4 +2369,399 @@ async function handleAdminParse(request, env) {
   }
   const noTime = items.filter((x) => !x.time).length;
   return json({ ok: true, via: via, items: items, noTime: noTime });
+}
+
+/* ============================================================================
+ * 手机通知（Web Push）· 服务端（a40，2026-09-27）
+ * ----------------------------------------------------------------------------
+ * 前端「🔔 通知设置」只干一件事：向浏览器要一个**订阅对象**（endpoint + 两把密钥），
+ * 然后 POST 给这里存起来。「什么时候推、推什么」**全部在服务端决定**
+ * ⇒ 页面开着、关着、手机锁屏，甚至几天没打开过站点，照样能收到。
+ *
+ * 存储（数据 KV env.KV）：
+ *   push:sub:<sha256(endpoint) 前 24 位>  = { e: endpoint, k: {p:p256dh, a:auth}, t: {msg,live,perf}, at }
+ *   push:last:msg / :live / :perf        = 「已经推到哪了」的游标（防止重复推、也防首次上线把历史全推一遍）
+ * 🔴 订阅对象里只有「推送地址 + 公钥」，**不含任何粉丝身份信息**（不存 uid、不存 IP、不存 UA）。
+ *
+ * 密钥（密钥 KV env.SECRETS）：键 PUSH_VAPID = JSON { pub, privJwk }
+ * 🔴 私钥一旦进仓库 = 任何人都能冒名给站长发通知 ⇒ 只放 KV，运行时读，与 GH_TOKEN 一个待遇。
+ *
+ * 发送：VAPID（用私钥签的 ES256 JWT，证明「这条推送确实来自本站」）
+ *       + aes128gcm 加密正文（RFC 8188 / RFC 8291）——推送服务只认这两个标准，
+ *       所以整条链路上没有、也不需要任何第三方推送服务（免费）。
+ *
+ * 触发（三个入口，互为兜底）：
+ *   ① GitHub Actions 抓完数据 → POST /api/sync → 这里同步落库后**立刻**查一次（主路径，最快）
+ *   ② Cloudflare Cron 每 5 分钟 → scheduled() 里再查一次（防 ① 出问题没人推）
+ *   ③ POST /api/push/check（需 sync token）—— 手动/调试用
+ * ========================================================================== */
+const PUSH_SUB = 'push:sub:';
+const PUSH_LAST = 'push:last:';
+const PUSH_VAPID_KEY = 'PUSH_VAPID';
+// 允许的推送服务域名：只收浏览器真正给的那些，避免本站被当成免费中继给别人发垃圾
+const PUSH_HOST_OK = /(^|\.)(googleapis\.com|push\.services\.mozilla\.com|push\.apple\.com|mozaws\.net)$/;
+// 一次最多补推几条（正常情况每轮就 1 条；抓取停了几个小时的积压不至于把手机刷爆）
+const PUSH_CATCHUP_MAX = 3;
+
+let VAPID = null;                 // { pub, privJwk }（读一次 KV 后在进程内缓存）
+const VAPID_JWT = new Map();      // aud -> { t: jwt, exp: 秒 }（JWT 有效期很长，别每次重签）
+
+function b64uToBytes(s) {
+  const t = String(s || '').replace(/-/g, '+').replace(/_/g, '/');
+  const bin = atob(t + '='.repeat((4 - (t.length % 4)) % 4));
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+function bytesToB64u(u8) {
+  let s = '';
+  for (let i = 0; i < u8.length; i++) s += String.fromCharCode(u8[i]);
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function concatBytes(...parts) {
+  let n = 0;
+  for (const p of parts) n += p.length;
+  const out = new Uint8Array(n);
+  let o = 0;
+  for (const p of parts) { out.set(p, o); o += p.length; }
+  return out;
+}
+
+async function loadVapid(env) {
+  if (VAPID) return VAPID;
+  const raw = (env && env.SECRETS) ? await env.SECRETS.get(PUSH_VAPID_KEY) : null;
+  if (!raw) return null;
+  try {
+    const o = JSON.parse(raw);
+    if (o && o.pub && o.privJwk && o.privJwk.d) { VAPID = { pub: o.pub, privJwk: o.privJwk }; return VAPID; }
+  } catch (_) { /* 坏数据当没有 */ }
+  return null;
+}
+
+/** VAPID：给这个 endpoint 签一个 12 小时有效的 JWT（同一 audience 复用，省一次签名） */
+async function vapidHeader(env, endpoint) {
+  const v = await loadVapid(env);
+  if (!v) throw new Error('vapid-missing');
+  let aud;
+  try { aud = new URL(endpoint).origin; } catch (_) { throw new Error('bad-endpoint'); }
+  const now = Math.floor(Date.now() / 1000);
+  const c = VAPID_JWT.get(aud);
+  if (c && c.exp > now + 60) return 'vapid t=' + c.t + ', k=' + v.pub;
+  const head = bytesToB64u(new TextEncoder().encode(JSON.stringify({ typ: 'JWT', alg: 'ES256' })));
+  const body = bytesToB64u(new TextEncoder().encode(JSON.stringify({
+    aud: aud, exp: now + 12 * 3600, sub: 'https://idol.wyc0518.cc'
+  })));
+  const unsigned = head + '.' + body;
+  const key = await crypto.subtle.importKey('jwk', v.privJwk, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, key, new TextEncoder().encode(unsigned));
+  const t = unsigned + '.' + bytesToB64u(new Uint8Array(sig));
+  VAPID_JWT.set(aud, { t: t, exp: now + 12 * 3600 });
+  return 'vapid t=' + t + ', k=' + v.pub;
+}
+
+/**
+ * aes128gcm 加密（RFC 8188 + RFC 8291）。
+ * 返回值直接就是 HTTP body：salt(16) | rs(4) | keyid长度(1) | keyid(65) | 密文
+ * 与 http_ece（web-push 用的库）逐字节一致：padding 就 1 个字节 0x02，放在正文之后。
+ */
+async function encryptPush(sub, payloadStr) {
+  const uaPub = b64uToBytes(sub.keys.p256dh);
+  const auth = b64uToBytes(sub.keys.auth);
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const kp = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']);
+  const serverPub = new Uint8Array(await crypto.subtle.exportKey('raw', kp.publicKey));
+  const uaKey = await crypto.subtle.importKey('raw', uaPub, { name: 'ECDH', namedCurve: 'P-256' }, false, []);
+  const shared = new Uint8Array(await crypto.subtle.deriveBits({ name: 'ECDH', public: uaKey }, kp.privateKey, 256));
+
+  // ① PRK = HKDF(salt=authSecret, ikm=共享密钥, info="WebPush: info\0"+双方公钥, 32字节)
+  const sharedKey = await crypto.subtle.importKey('raw', shared, 'HKDF', false, ['deriveBits']);
+  const prk = new Uint8Array(await crypto.subtle.deriveBits({
+    name: 'HKDF', hash: 'SHA-256', salt: auth,
+    info: concatBytes(
+      new TextEncoder().encode('WebPush: info\0'),
+      uaPub,
+      serverPub
+    )
+  }, sharedKey, 256));
+  // ② 内容密钥 / nonce = HKDF(salt=本次 salt, ikm=PRK, info=…)
+  const prkKey = await crypto.subtle.importKey('raw', prk, 'HKDF', false, ['deriveBits']);
+  const cek = new Uint8Array(await crypto.subtle.deriveBits({
+    name: 'HKDF', hash: 'SHA-256', salt: salt,
+    info: new TextEncoder().encode('Content-Encoding: aes128gcm\0')
+  }, prkKey, 128));
+  const nonce = new Uint8Array(await crypto.subtle.deriveBits({
+    name: 'HKDF', hash: 'SHA-256', salt: salt,
+    info: new TextEncoder().encode('Content-Encoding: nonce\0')
+  }, prkKey, 96));
+
+  const plain = concatBytes(new TextEncoder().encode(payloadStr), new Uint8Array([2]));
+  const aesKey = await crypto.subtle.importKey('raw', cek, { name: 'AES-GCM' }, false, ['encrypt']);
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv: nonce }, aesKey, plain));
+
+  const rs = new Uint8Array(4);
+  rs[0] = 0; rs[1] = 0; rs[2] = 0x10; rs[3] = 0x00;   // 4096
+  const head = concatBytes(salt, rs, new Uint8Array([serverPub.length]), serverPub);
+  return concatBytes(head, ct);
+}
+
+/** 给一个订阅发一条；返回 { ok, gone }（gone = 订阅已失效，调用方要删掉） */
+async function sendPush(env, sub, payloadObj) {
+  if (!sub || !sub.endpoint || !sub.keys || !sub.keys.p256dh || !sub.keys.auth) return { ok: false, gone: true };
+  const auth = await vapidHeader(env, sub.endpoint);
+  const body = await encryptPush(sub, JSON.stringify(payloadObj));
+  const res = await fetch(sub.endpoint, {
+    method: 'POST',
+    headers: {
+      authorization: auth,
+      'crypto-key': 'p256ecdsa=' + (await loadVapid(env)).pub,   // 老版本推送服务还认这个头，留着无害
+      'content-encoding': 'aes128gcm',
+      'content-type': 'application/octet-stream',
+      ttl: '86400',
+      urgency: 'high'                                            // iOS / Chrome 都会立刻弹，而不是攒着
+    },
+    body: body
+  });
+  if (res.status === 404 || res.status === 410) return { ok: false, gone: true };
+  return { ok: res.status >= 200 && res.status < 300, gone: false, status: res.status };
+}
+
+/** 列出全部订阅（KV list 读，不占写入配额） */
+async function pushAllSubs(env) {
+  const kv = env && env.KV;
+  if (!kv) return [];
+  const out = [];
+  let cursor = undefined;
+  for (let i = 0; i < 20; i++) {
+    const page = await kv.list({ prefix: PUSH_SUB, cursor: cursor, limit: 1000 });
+    for (const k of page.keys || []) out.push(k);
+    if (!page.cursor) break;
+    cursor = page.cursor;
+    if (page.list_complete) break;
+  }
+  const subs = [];
+  for (const k of out) {
+    const v = await kv.get(k.name, { type: 'json' });
+    if (v && v.e && v.k) subs.push({ key: k.name, e: v.e, k: v.k, t: v.t || {}, at: v.at || 0 });
+  }
+  return subs;
+}
+
+async function pushSubKeyOf(endpoint) {
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(endpoint || '')));
+  return PUSH_SUB + Array.prototype.slice.call(new Uint8Array(d))
+    .map((x) => x.toString(16).padStart(2, '0')).join('').slice(0, 24);
+}
+
+/** 广播：只发给勾了这类提醒的人；顺手清掉失效订阅（省 KV 也省得白请求） */
+async function pushBroadcast(env, payload, topic) {
+  const subs = await pushAllSubs(env);
+  let sent = 0, gone = 0, fail = 0, skipped = 0;
+  const jobs = [];
+  for (const s of subs) {
+    if (topic && s.t && s.t[topic] === false) { skipped += 1; continue; }
+    jobs.push(sendPush(env, { endpoint: s.e, keys: s.k }, payload).then(async (r) => {
+      if (r.ok) sent += 1;
+      else if (r.gone) { gone += 1; await env.KV.delete(s.key).catch(() => {}); }
+      else fail += 1;
+    }).catch(() => { fail += 1; }));
+  }
+  // 订阅数很少（几十个），并发无所谓；真到几百个时分批跑，免得一次开太多连接
+  for (let i = 0; i < jobs.length; i += 20) await Promise.all(jobs.slice(i, i + 20));
+  return { total: subs.length, sent: sent, gone: gone, fail: fail, skipped: skipped };
+}
+
+/* ------------------------- 检测：有什么该推的 ------------------------- */
+/** 发言正文：只取她自己写的文字（🔴 绝不带上 reply 里被回复粉丝的昵称） */
+function pushMsgText(m) {
+  let t = String((m && m.text) || '').replace(/\s+/g, ' ').trim();
+  if (t) return t.length > 60 ? t.slice(0, 60) + '…' : t;
+  const n = (m && m.images && m.images.length) || 0;
+  if (n) return '［图 ' + n + ' 张］';
+  if (m && m.video) return '［视频］';
+  if (m && m.audio) return '［语音］';
+  if (m && m.card && m.card.title) return String(m.card.title).slice(0, 40);
+  return '［新消息］';
+}
+
+async function pushLatestMsgs(env, since, limit) {
+  // 优先 D1（发言的真身在 D1，且按时间有索引）；D1 不可用时退回 KV 索引里的 recent
+  if (env && env.DB) {
+    try {
+      const r = await env.DB.prepare(
+        'SELECT msgTime, data FROM messages WHERE msgTime > ? ORDER BY msgTime ASC LIMIT ?'
+      ).bind(Number(since) || 0, Number(limit) || 3).all();
+      const rows = (r && r.results) || [];
+      return rows.map((x) => {
+        let m = null;
+        try { m = JSON.parse(x.data); } catch (_) { m = null; }
+        return { msgTime: Number(x.msgTime) || 0, m: m };
+      }).filter((x) => x.msgTime > 0);
+    } catch (_) { /* D1 挂了走 KV */ }
+  }
+  const idx = await env.KV.get('index', { type: 'json' }) || {};
+  return (idx.recent || [])
+    .filter((x) => (Number(x.msgTime) || 0) > (Number(since) || 0))
+    .sort((a, b) => (Number(a.msgTime) || 0) - (Number(b.msgTime) || 0))
+    .slice(0, limit)
+    .map((x) => ({ msgTime: Number(x.msgTime) || 0, m: x }));
+}
+
+/**
+ * 一次检测：新发言 / 她开直播 / 公演开播。
+ * 🔴 所有异常都吞掉 —— 推送是锦上添花，绝不能因为它把「同步数据 / 定时任务」搞挂。
+ */
+async function runPushCheck(env, opts) {
+  const o = { ok: true, reason: (opts && opts.reason) || 'manual', msg: null, live: null, perf: null, skipped: {} };
+  const kv = env && env.KV;
+  if (!kv) return { ok: false, error: 'kv-not-bound' };
+  try {
+    if (!(await loadVapid(env))) { o.skipped.noVapid = true; return o; }
+    const subs = await pushAllSubs(env);
+    if (!subs.length) { o.skipped.noSub = true; return o; }
+    o.subs = subs.length;
+    const now = Date.now();
+
+    /* ① 新口袋发言 */
+    let lastMsg = Number(await kv.get(PUSH_LAST + 'msg')) || 0;
+    if (!lastMsg) {
+      // 第一次跑（或游标丢了）：把「现在最新」记下来就收工，绝不把历史发言一次性推给所有人
+      const cur = await pushLatestMsgs(env, 0, 1);
+      const t = cur.length ? cur[0].msgTime : now;
+      await kv.put(PUSH_LAST + 'msg', String(t));
+      o.skipped.firstRun = true;
+    } else {
+      const fresh = await pushLatestMsgs(env, lastMsg, PUSH_CATCHUP_MAX);
+      if (fresh.length) {
+        for (const f of fresh) {
+          const r = await pushBroadcast(env, {
+            title: '王语晨', body: pushMsgText(f.m), tag: 'wyc-msg', url: './', topic: 'msg'
+          }, 'msg');
+          o.msg = r;
+          lastMsg = Math.max(lastMsg, f.msgTime);
+        }
+        await kv.put(PUSH_LAST + 'msg', String(lastMsg));
+      }
+    }
+
+    /* ② 她开直播 */
+    const lastLive = (await kv.get(PUSH_LAST + 'live')) || '';
+    const live = await kv.get('live', { type: 'json' }) || [];
+    const top = Array.isArray(live) ? live[0] : null;
+    if (top && top.liveId && String(top.liveId) !== String(lastLive)
+        && now - (Number(top.ctime) || 0) < 90 * 60 * 1000) {
+      const ann = String(top.announcement || '').trim();
+      o.live = await pushBroadcast(env, {
+        title: '🔴 王语晨开播啦！',
+        body: ann ? (ann.length > 40 ? ann.slice(0, 40) + '…' : ann) : '点开看直播',
+        tag: 'wyc-live', url: './', topic: 'live'
+      }, 'live');
+      await kv.put(PUSH_LAST + 'live', String(top.liveId));
+    }
+
+    /* ③ 公演开播 */
+    const lastPerf = (await kv.get(PUSH_LAST + 'perf')) || '';
+    const perfs = await kv.get('performances', { type: 'json' }) || [];
+    let cand = null;
+    for (const p of (Array.isArray(perfs) ? perfs : [])) {
+      const st = Number(p.stime || p.ctime) || 0;
+      if (!st) continue;
+      // 「刚开演」= 已经过点、但不超过 2 小时（抓取每 5 分钟一轮，2 小时足够兜住延迟）
+      if (st <= now + 2 * 60 * 1000 && st > now - 120 * 60 * 1000) { cand = p; break; }
+    }
+    if (cand && cand.liveId && String(cand.liveId) !== String(lastPerf)) {
+      const d = new Date(Number(cand.stime) + 8 * 3600 * 1000);
+      const hhmm = String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0');
+      const sub = String(cand.subTitle || cand.title || '').trim();
+      o.perf = await pushBroadcast(env, {
+        title: '🎭 公演开演 ' + hhmm,
+        body: sub ? (sub.length > 40 ? sub.slice(0, 40) + '…' : sub) : '点开看公演',
+        tag: 'wyc-perf', url: './', topic: 'perf'
+      }, 'perf');
+      await kv.put(PUSH_LAST + 'perf', String(cand.liveId));
+    }
+  } catch (e) {
+    o.ok = false;
+    o.error = String((e && e.message) || e).slice(0, 200);
+  }
+  return o;
+}
+
+/* ------------------------- HTTP 接口 ------------------------- */
+function pushBadSub() { return json({ error: 'bad subscription' }, 400); }
+
+async function handlePushSubscribe(request, env) {
+  const kv = env && env.KV;
+  if (!kv) return json({ error: 'kv-not-bound' }, 500);
+  let b;
+  try { b = await request.json(); } catch (_) { return pushBadSub(); }
+  const sub = b && b.sub;
+  if (!sub || typeof sub.endpoint !== 'string' || !sub.keys || !sub.keys.p256dh || !sub.keys.auth) return pushBadSub();
+  let host = '';
+  try { host = new URL(sub.endpoint).hostname; } catch (_) { return pushBadSub(); }
+  if (!PUSH_HOST_OK.test(host)) return json({ error: 'endpoint host not allowed: ' + host }, 400);
+  if (b64uToBytes(sub.keys.p256dh).length !== 65) return pushBadSub();
+
+  const key = await pushSubKeyOf(sub.endpoint);
+  const topics = (b && b.topics && typeof b.topics === 'object') ? b.topics : {};
+  await kv.put(key, JSON.stringify({
+    e: sub.endpoint,
+    k: { p: sub.keys.p256dh, a: sub.keys.auth },
+    t: { msg: topics.msg !== false, live: topics.live !== false, perf: topics.perf !== false },
+    at: Date.now()
+  }));
+  return json({ ok: true });
+}
+
+async function handlePushUnsubscribe(request, env) {
+  const kv = env && env.KV;
+  if (!kv) return json({ error: 'kv-not-bound' }, 500);
+  let b = {};
+  try { b = await request.json(); } catch (_) { /* 允许空 body：按下面的 endpoint 兜底 */ }
+  const ep = (b && b.sub && b.sub.endpoint) || b.endpoint;
+  if (!ep) return pushBadSub();
+  await kv.delete(await pushSubKeyOf(ep)).catch(() => {});
+  return json({ ok: true });
+}
+
+/** 订阅人数（list 读，不占写入配额）；给统计页用 */
+async function handlePushCount(env) {
+  const subs = await pushAllSubs(env);
+  const t = { msg: 0, live: 0, perf: 0 };
+  for (const s of subs) {
+    if (s.t.msg !== false) t.msg += 1;
+    if (s.t.live !== false) t.live += 1;
+    if (s.t.perf !== false) t.perf += 1;
+  }
+  return json({ ok: true, subs: subs.length, topics: t });
+}
+
+/** 调试用：立刻给所有订阅发一条（需 sync token） */
+async function handlePushTest(request, env) {
+  let b = {};
+  try { b = await request.json(); } catch (_) { /* 用默认值 */ }
+  const payload = {
+    title: String(b.title || '王语晨 · 补档站'),
+    body: String(b.body || '推送测试：能收到就说明通了'),
+    tag: 'wyc-test', url: './', topic: 'msg'
+  };
+  const r = await pushBroadcast(env, payload, null);
+  return json({ ok: true, payload: payload, result: r });
+}
+
+/** 读写 VAPID 私钥（需 sync token）—— 私钥只落在 KV，不进仓库，所以只能这样灌进去 */
+async function handleVapidSecret(request, env) {
+  if (!(await isSyncAuthorized(request, env) || await isGhAuthorized(request, env))) {
+    return json({ error: 'forbidden: sync token required' }, 403);
+  }
+  if (request.method === 'POST') {
+    const txt = await request.text();
+    let o = null;
+    try { o = JSON.parse(txt); } catch (_) { /* 也接受 pub=…&privJwk=… 之外就只有 JSON */ }
+    if (!o || !o.pub || !o.privJwk || !o.privJwk.d) return json({ error: 'need {pub, privJwk}' }, 400);
+    await env.SECRETS.put(PUSH_VAPID_KEY, JSON.stringify({ pub: o.pub, privJwk: o.privJwk }));
+    VAPID = { pub: o.pub, privJwk: o.privJwk };   // 立刻生效，不用等下一个进程
+    return json({ ok: true, pub: o.pub });
+  }
+  const v = await loadVapid(env);
+  return json({ has: !!v, pub: v ? v.pub : '' });
 }
