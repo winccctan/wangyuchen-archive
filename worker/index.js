@@ -1091,6 +1091,18 @@ async function handleApi(url, request, env, ctx) {
     }
     return json(await runPushCheck(env, { reason: 'manual' }));
   }
+  if (p === '/api/push/replay' && request.method === 'POST') {
+    if (!(await isSyncAuthorized(request, env) || await isGhAuthorized(request, env))) {
+      return json({ error: 'forbidden: sync token required' }, 403);
+    }
+    return handlePushReplay(request, env);
+  }
+  if (p === '/api/push/diag') {
+    if (!(await isSyncAuthorized(request, env) || await isGhAuthorized(request, env))) {
+      return json({ error: 'forbidden: sync token required' }, 403);
+    }
+    return handlePushDiagView(env);
+  }
   if (p === '/api/push/test' && request.method === 'POST') {
     if (!(await isSyncAuthorized(request, env) || await isGhAuthorized(request, env))) {
       return json({ error: 'forbidden: sync token required' }, 403);
@@ -2628,6 +2640,29 @@ async function pushLatestMsgs(env, since, limit) {
     .map((x) => ({ msgTime: Number(x.msgTime) || 0, m: x }));
 }
 
+/** 取一条发言：不传 before = 最新一条（D1 优先，退回 KV 索引） */
+async function pushOneMsg(env, before) {
+  const lim = Number(before) || 0;
+  if (env && env.DB) {
+    try {
+      const r = lim
+        ? await env.DB.prepare('SELECT msgTime, data FROM messages WHERE msgTime <= ? ORDER BY msgTime DESC LIMIT 1').bind(lim).all()
+        : await env.DB.prepare('SELECT msgTime, data FROM messages ORDER BY msgTime DESC LIMIT 1').all();
+      const row = (r && r.results && r.results[0]) || null;
+      if (row) {
+        let m = null;
+        try { m = JSON.parse(row.data); } catch (_) { m = null; }
+        if (m) return { msgTime: Number(row.msgTime) || 0, m: m };
+      }
+    } catch (_) { /* 退回 KV */ }
+  }
+  const idx = (await env.KV.get('index', { type: 'json' })) || {};
+  const list = (idx.recent || [])
+    .filter((x) => (Number(x.msgTime) || 0) > 0 && (!lim || Number(x.msgTime) <= lim))
+    .sort((a, b) => (Number(b.msgTime) || 0) - (Number(a.msgTime) || 0));
+  return list.length ? { msgTime: Number(list[0].msgTime) || 0, m: list[0] } : null;
+}
+
 /**
  * 一次检测：新发言 / 她开直播 / 公演开播。
  * 🔴 所有异常都吞掉 —— 推送是锦上添花，绝不能因为它把「同步数据 / 定时任务」搞挂。
@@ -2713,15 +2748,24 @@ function pushBadSub() { return json({ error: 'bad subscription' }, 400); }
 
 async function handlePushSubscribe(request, env) {
   const kv = env && env.KV;
-  if (!kv) return json({ error: 'kv-not-bound' }, 500);
+  if (!kv) { await pushDiag(env, request, { ok: false, why: 'kv-not-bound' }); return json({ error: 'kv-not-bound' }, 500); }
   let b;
-  try { b = await request.json(); } catch (_) { return pushBadSub(); }
+  try { b = await request.json(); } catch (_) { await pushDiag(env, request, { ok: false, why: 'bad-json' }); return pushBadSub(); }
   const sub = b && b.sub;
-  if (!sub || typeof sub.endpoint !== 'string' || !sub.keys || !sub.keys.p256dh || !sub.keys.auth) return pushBadSub();
+  if (!sub || typeof sub.endpoint !== 'string' || !sub.keys || !sub.keys.p256dh || !sub.keys.auth) {
+    await pushDiag(env, request, { ok: false, why: 'sub-shape', has: !!sub, ep: sub && typeof sub.endpoint === 'string' ? sub.endpoint.slice(0, 40) : '' });
+    return pushBadSub();
+  }
   let host = '';
-  try { host = new URL(sub.endpoint).hostname; } catch (_) { return pushBadSub(); }
-  if (!PUSH_HOST_OK.test(host)) return json({ error: 'endpoint host not allowed: ' + host }, 400);
-  if (b64uToBytes(sub.keys.p256dh).length !== 65) return pushBadSub();
+  try { host = new URL(sub.endpoint).hostname; } catch (_) { await pushDiag(env, request, { ok: false, why: 'bad-endpoint' }); return pushBadSub(); }
+  if (!PUSH_HOST_OK.test(host)) {
+    await pushDiag(env, request, { ok: false, why: 'host-not-allowed', host: host });
+    return json({ error: 'endpoint host not allowed: ' + host }, 400);
+  }
+  if (b64uToBytes(sub.keys.p256dh).length !== 65) {
+    await pushDiag(env, request, { ok: false, why: 'p256dh-len', len: b64uToBytes(sub.keys.p256dh).length, host: host });
+    return pushBadSub();
+  }
 
   const key = await pushSubKeyOf(sub.endpoint);
   const topics = (b && b.topics && typeof b.topics === 'object') ? b.topics : {};
@@ -2731,7 +2775,32 @@ async function handlePushSubscribe(request, env) {
     t: { msg: topics.msg !== false, live: topics.live !== false, perf: topics.perf !== false },
     at: Date.now()
   }));
+  await pushDiag(env, request, { ok: true, why: 'saved', host: host });
   return json({ ok: true });
+}
+
+/**
+ * 订阅诊断（临时排查用）：记录最近 30 次订阅尝试的结果与请求头摘要。
+ * 「我和朋友都点了订阅、可服务端还是 0 人」—— 光看人数永远查不出原因，
+ * 必须知道请求到底有没有到、到了之后卡在哪一条校验上。
+ */
+async function pushDiag(env, request, rec) {
+  try {
+    const kv = env && env.KV;
+    if (!kv) return;
+    const h = request && request.headers ? request.headers : null;
+    const item = Object.assign({
+      at: Date.now(),
+      ua: h ? String(h.get('User-Agent') || '').slice(0, 100) : '',
+      origin: h ? String(h.get('Origin') || '') : '',
+      referer: h ? String(h.get('Referer') || '').slice(0, 60) : '',
+      fs: h ? String(h.get('Sec-Fetch-Site') || '') : '',
+      fm: h ? String(h.get('Sec-Fetch-Mode') || '') : ''
+    }, rec);
+    const cur = (await kv.get('push:diag', { type: 'json' })) || [];
+    cur.unshift(item);
+    await kv.put('push:diag', JSON.stringify(cur.slice(0, 30)));
+  } catch (_) { /* 诊断本身绝不能影响订阅 */ }
 }
 
 async function handlePushUnsubscribe(request, env) {
@@ -2768,6 +2837,54 @@ async function handlePushTest(request, env) {
   };
   const r = await pushBroadcast(env, payload, null);
   return json({ ok: true, payload: payload, result: r });
+}
+
+/**
+ * 重放一条真实内容（需 sync token）—— 用来验证「端到端到底通不通」。
+ * 和真推送走完全同一条路（同样的标题/正文/图标/点击跳转），只是不查游标、不看新旧。
+ *   { "what":"msg" }            → 最新一条发言
+ *   { "what":"msg","before":ts } → 指定时刻之前的最后一条（例：重放她下午最后那条）
+ *   { "what":"live" | "perf" }  → 当前直播 / 公演
+ */
+async function handlePushReplay(request, env) {
+  let b = {};
+  try { b = await request.json(); } catch (_) { /* 用默认值 */ }
+  const what = String(b.what || 'msg');
+  if (what === 'msg') {
+    const one = await pushOneMsg(env, Number(b.before) || 0);
+    if (!one) return json({ ok: false, error: 'no-message' });
+    const payload = { title: '王语晨', body: pushMsgText(one.m), tag: 'wyc-msg', url: './', topic: 'msg' };
+    const r = await pushBroadcast(env, payload, 'msg');
+    return json({
+      ok: true, replay: 'msg',
+      at: new Date(one.msgTime + 8 * 3600 * 1000).toISOString().replace('T', ' ').slice(5, 16) + '(北京)',
+      payload: payload, result: r
+    });
+  }
+  if (what === 'live') {
+    const live = (await env.KV.get('live', { type: 'json' })) || [];
+    const top = Array.isArray(live) ? live[0] : null;
+    if (!top) return json({ ok: false, error: 'no-live' });
+    const ann = String(top.announcement || '').trim();
+    const payload = { title: '🔴 王语晨开播啦！', body: ann ? (ann.length > 40 ? ann.slice(0, 40) + '…' : ann) : '点开看直播', tag: 'wyc-live', url: './', topic: 'live' };
+    return json({ ok: true, replay: 'live', payload: payload, result: await pushBroadcast(env, payload, 'live') });
+  }
+  if (what === 'perf') {
+    const perfs = (await env.KV.get('performances', { type: 'json' })) || [];
+    const p = Array.isArray(perfs) ? perfs[0] : null;
+    if (!p) return json({ ok: false, error: 'no-perf' });
+    const sub = String(p.subTitle || p.title || '').trim();
+    const payload = { title: '🎭 公演开演', body: sub ? (sub.length > 40 ? sub.slice(0, 40) + '…' : sub) : '点开看公演', tag: 'wyc-perf', url: './', topic: 'perf' };
+    return json({ ok: true, replay: 'perf', payload: payload, result: await pushBroadcast(env, payload, 'perf') });
+  }
+  return json({ error: 'unknown what: ' + what }, 400);
+}
+
+/** 读订阅诊断（需 sync token）：看「点了订阅的人到底有没有送到服务器」 */
+async function handlePushDiagView(env) {
+  const subs = await pushAllSubs(env);
+  const diag = (await env.KV.get('push:diag', { type: 'json' })) || [];
+  return json({ ok: true, subs: subs.length, diag: diag });
 }
 
 /** 读写 VAPID 私钥（需 sync token）—— 私钥只落在 KV，不进仓库，所以只能这样灌进去 */

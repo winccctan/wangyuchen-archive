@@ -3444,7 +3444,7 @@
    *     这种「静悄悄的失败」最难查，所以面板上要显示出来。 */
   async function pushSyncServer(on) {
     if (!P.sub) return false;
-    let ok = false;
+    let ok = false, msg = '';
     try {
       const base = (typeof API_BASE === 'string') ? API_BASE : '';
       const r = await fetch(base + (on ? '/api/push/subscribe' : '/api/push/unsubscribe'), {
@@ -3453,8 +3453,11 @@
         body: JSON.stringify({ sub: P.sub, topics: P.topics })
       });
       ok = !!(r && r.ok);
-    } catch (_) { ok = false; }
-    if (on) { P.srv = ok; pushSave(); }
+      msg = r ? ('HTTP ' + r.status) : 'no-response';
+      // 把服务端拒绝的原因也带回来（如 403 same-site / 400 host not allowed），排查时一眼就能看到
+      if (!ok && r) { try { const t = await r.text(); const m = String(t || '').match(/"error":"([^"]*)"/); if (m) msg += ' ' + m[1]; } catch (_) {} }
+    } catch (_) { ok = false; msg = '网络失败'; }
+    if (on) { P.srv = ok; P.srvMsg = ok ? '' : msg; pushSave(); }
     if ($('#dmModal .pb')) pushRender();
     return ok;
   }
@@ -3546,12 +3549,15 @@
           ${sw(P.on, false, 'push', '')}
         </div>
         <div class="pb-list">${rows}</div>
-        ${(n.c === 'warn' || n.c === 'tip' || P.on) ? `<div class="pb-env">${esc(pushEnv() + (P.on ? ' · 服务器' + (P.srv === false ? '❌' : '✅') : ''))}</div>` : ''}
+        ${(n.c === 'warn' || n.c === 'tip' || P.on) ? `<div class="pb-env">${esc(pushEnv() + (P.on ? ' · 服务器' + (P.srv === false ? '❌' + (P.srvMsg ? '(' + P.srvMsg + ')' : '') : '✅') : ''))}</div>` : ''}
       </div>`;
   }
 
   function openPush() {
     modal('推送通知', pushHtml(), { footer: '<button type="button" class="pb-btn ghost" data-push="close">关闭</button>' });
+    // 开关是开的、但服务器没收到订阅 ⇒ 每次打开面板都再送一次。
+    // 订阅有可能在「服务器当时正好部署/网络抖动」时丢掉，不该让用户自己猜要重开开关。
+    if (P.on && P.sub && P.srv !== true) pushSyncServer(true);
   }
   /** 🔔 工具栏按钮跟着订阅状态亮起来（CSS 里 .dm-tool.on 已有样式） */
   function pushBadge() {
