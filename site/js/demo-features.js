@@ -3303,7 +3303,10 @@
   const PUSH_KEY = 'wyc-push-v1';
   // 🔴 VAPID **公钥**本来就是公开的：只有配对的私钥（在服务器上）能发消息，
   //    公钥只用来让浏览器把这次订阅绑定到我们这边。私钥在 private-data/vapid.json，**不进仓库**。
-  const PUSH_VAPID = 'BPl1s9-qq0mCVkUQR93ThSwdIkWrEmZ2IG0AjVHNICAgAHS0JUKkem0FDlewyIrkCOO4sXoaX9-GyNKuoI6SXOU';
+  // 🔴 换过一次：2026-09-27 服务端上线时重新生成了密钥对（旧的只有公钥、私钥没留下来）。
+  //    公钥换了 ⇒ 之前订阅过的手机必须**重新订阅**，否则服务器用新私钥签的名对不上旧订阅，
+  //    推送服务会直接拒（表现：开关是开的，一条都收不到）。下面的 pushTurnOn 会自动重订。
+  const PUSH_VAPID = 'BHsKyNfuylIjD8OFM74lXmrSO0lNQsr2x_JaHOgcu1hZlYuKfaAtya8iTCTvyvU0DGpBVxJIKI9eK5HIB0oYpJo';
   const PUSH_TOPICS = [
     { k: 'msg',  n: '她发了新的口袋发言', s: '新的口袋发言，一条一条提醒', ex: '王语晨：今天公演好开心呀' },
     { k: 'live', n: '她开直播了',         s: '她一开播就提醒',            ex: '🔴 王语晨开播啦！' },
@@ -3345,6 +3348,18 @@
     return out;
   }
 
+  /** 已存在的订阅绑的是哪把公钥（base64url）；比对用，不match 就要重订 */
+  function vapidOfSub(sub) {
+    try {
+      const k = (sub.options && sub.options.applicationServerKey) || null;
+      if (!k) return '';
+      const b = new Uint8Array(k);
+      let s = '';
+      for (let i = 0; i < b.length; i++) s += String.fromCharCode(b[i]);
+      return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    } catch (_) { return ''; }
+  }
+
   async function pushReg() {
     if (!('serviceWorker' in navigator)) return null;
     try {
@@ -3379,6 +3394,9 @@
     if (!reg) { toast('推送服务启动失败'); return false; }
     try {
       let sub = await reg.pushManager.getSubscription();
+      // 🔴 本机已经订阅过、但绑的是**旧公钥**（换密钥对 / 换域名后会发生）：
+      //    必须退掉重订。否则服务器用新私钥签名、推送服务拿旧公钥验 ⇒ 一条都发不出去。
+      if (sub && vapidOfSub(sub) !== PUSH_VAPID) { await sub.unsubscribe(); sub = null; }
       if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: vapidBytes(PUSH_VAPID) });
       P.sub = JSON.parse(JSON.stringify(sub));   // 存下来的订阅对象 = 服务器推给你的「地址」
       return true;
