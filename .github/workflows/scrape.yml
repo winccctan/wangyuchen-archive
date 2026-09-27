@@ -1,15 +1,29 @@
 # 王语晨补档站 · 抓取并写入 KV（零部署更新）
 # 数据不再提交 git、不再触发站点部署；抓取结果由 scripts/sync-kv.mjs 直接写进 Cloudflare KV。
 # 前端从 Worker 数据 API 读取 KV → 数据更新与「代码部署」彻底解耦：只有改页面代码才部署。
+#
+# 🔴 2026-09-27 事故修复：以前本工作流**一整轮都是重活**——抓取脚本内部会刷新 B 站视频库，
+#    撞上 B 站 -412 风控就要原地等 60/120/180 秒重试，单轮被拖到 15~20 分钟。
+#    而主调度是 Cloudflare Cron 每 5 分钟触发一次 ⇒ 新的一轮把旧的挤掉，绝大多数轮次被 cancel，
+#    且唯一的 sync-kv 步骤排在最后 ⇒ 一旦被卡住/被取消，她的最新发言就**完全进不了站**
+#    （那次线上发言整整停了 4 小时）。
+#    现在拆成两段：
+#      【快通道】每轮都跑：抓发言/直播/公演 → 立即同步 KV（约 1~2 分钟，绝不碰 B 站）
+#      【重活】每 4 小时跑一轮：B 站视频库 / B 站切片 / 微博 cut / 她的公演记录 … 排在同步之后
+#    这样即使重活卡死或超时被杀，发言早已经进 KV 了，不会被拖累。
 name: 抓取并同步到 KV
 
 on:
   schedule:
-    - cron: '*/30 * * * *'         # 兜底：主调度是 Cloudflare Cron（每15分钟，见 wrangler.jsonc）
+    - cron: '*/30 * * * *'         # 兜底：主调度是 Cloudflare Cron（每5分钟，见 wrangler.jsonc）
   workflow_dispatch:
     inputs:
       rebuild:
         description: '重建 KV：全量月份 + 直播/公演整份覆盖（修正历史脏数据时用，日常勿开）'
+        type: boolean
+        default: false
+      heavy:
+        description: '强制本轮也跑重活（B站/微博/公演记录，默认按 4 小时节奏自动判断）'
         type: boolean
         default: false
 
@@ -24,13 +38,16 @@ concurrency:
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     env:
       POCKET48_TOKEN: ${{ secrets.POCKET48_TOKEN }}
       SCRAPE_PROXY: ${{ secrets.SCRAPE_PROXY }}
       SYNC_TOKEN: ${{ secrets.SYNC_TOKEN }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}   # 微博 Cookie 失效时开告警 issue 用
       WORKER_URL: ${{ secrets.WORKER_URL || 'https://idol.wyc0518.cc' }}
+      # 🔴 抓取脚本内部不再刷新 B 站视频库：那是本轮耗时的大头（撞风控要等好几分钟）。
+      #    需要刷新时由下面【重活】里独立的 fetch-bili-videos.mjs 步骤负责。
+      SKIP_BILI_VIDEOS: "1"
       WB_PAGES: "8"                 # 微博翻页深度（够覆盖最近几个月；回填历史在 songs-sync 里用 20）
       MAX_PAGES: "3"
       MAX_DETAILS: "40"
@@ -51,28 +68,61 @@ jobs:
       - name: Install scraper deps
         working-directory: scraper
         run: npm ci
-      - name: 抓取口袋发言 / 直播 / 公演
+
+      # ——— 本轮是否跑【重活】：每 4 小时一轮（UTC 01/05/09/13/17/21 点的前 5 分钟内触发的那次）———
+      # 不用 GitHub 原生 schedule：它经常延迟几十分钟甚至整天丢跑；交给每 5 分钟一次的
+      # Cloudflare Cron 驱动更可靠，5 分钟窗口内必有至少一轮落进去。
+      - name: 判断是否跑重活
+        id: gate
+        run: |
+          H=$(date -u +%H); M=$(date -u +%M)
+          if [ "${{ github.event.inputs.heavy }}" = "true" ]; then
+            echo "heavy=1" >> "$GITHUB_OUTPUT"; echo "本轮：手动指定跑重活"
+          elif [ $((10#$H % 4)) -eq 1 ] && [ $((10#$M)) -lt 5 ]; then
+            echo "heavy=1" >> "$GITHUB_OUTPUT"; echo "本轮：命中 4 小时窗口（UTC ${H}:${M}）→ 跑重活"
+          else
+            echo "heavy=0" >> "$GITHUB_OUTPUT"; echo "本轮：只跑快通道（UTC ${H}:${M}）"
+          fi
+
+      # ============================ 【快通道】每轮必跑 ============================
+      - name: 抓取口袋发言 / 直播 / 公演（不碰 B 站）
         working-directory: scraper
         run: node scrape.mjs
+
+      # 🔴 同步必须紧跟抓取：这一步才是「发言真正上站」的动作。
+      #    以前它排在所有重活之后，重活一卡住/被取消，发言就永远停在几小时前。
+      - name: 同步数据到 KV（发言优先入库）
+        # 手动触发且勾选 rebuild 时，全量重建 KV（修正历史脏数据）；定时/普通运行只做增量。
+        run: node scripts/sync-kv.mjs ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.rebuild == 'true') && '--rebuild' || '' }}
+
+      # ============================ 【重活】每 4 小时一轮 ============================
+      # 全部排在同步之后：跑多久、甚至超时被杀，都不影响本轮发言已经进 KV。
       - name: 重解析历史消息（幂等）
+        if: steps.gate.outputs.heavy == '1'
         run: node scripts/reparse-messages.mjs || true
       - name: 累积当前场次参演名单（前瞻）
+        if: steps.gate.outputs.heavy == '1'
         run: node scripts/capture-roster.mjs || true
       - name: 抓取她的公演记录
+        if: steps.gate.outputs.heavy == '1'
         run: MAX_DETAILS=40 node scripts/scrape-hers-performances.mjs || true
       - name: 抓取 B站 公演录像备用源
-        run: BILI_PAGE_BUDGET=6 PAGE_SLEEP=1500 BILI_SPACE_BAN_TRIES=0 node scripts/fetch-bili-videos.mjs || true
+        if: steps.gate.outputs.heavy == '1'
+        run: BILI_PAGE_BUDGET=6 PAGE_SLEEP=1500 BILI_SPACE_BAN_TRIES=4 node scripts/fetch-bili-videos.mjs || true
       - name: 抓取 B站 直播切片 / 直播回放（两个粉丝 UP）
+        if: steps.gate.outputs.heavy == '1'
         run: BILI_CUT_SPACE_PAGES=2 node scripts/fetch-live-cuts.mjs || true
-      - name: 合并生成 archive.js（公演筛选 / B站挂源 / 消息瘦身）
-        run: node scripts/build-archive.mjs
       - name: 抓取微博「公演cut」（甜橙小铺）
         # 🔴 这条以前根本没有自动脚本，仓库里那份是手工导出的旧快照（34 条），
         #    应援会之后发的 cut 一条都上不了站。Cookie 从 Cloudflare KV 读（不进仓库）。
         # 失败绝不中断后续步骤：脚本自带三道闸门，拿不到 Cookie / 抓到 0 条 ⇒ 一个字节都不写，
         #    老数据完好；同时开一个 issue 邮件通知站长去更新 Cookie。
+        if: steps.gate.outputs.heavy == '1'
         continue-on-error: true
         run: node scripts/fetch-weibo-cuts.mjs
-      - name: 同步数据到 KV（替代提交 git → 部署）
-        # 手动触发且勾选 rebuild 时，全量重建 KV（修正历史脏数据）；定时/普通运行只做增量。
-        run: node scripts/sync-kv.mjs ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.rebuild == 'true') && '--rebuild' || '' }}
+      - name: 合并生成 archive.js（公演筛选 / B站挂源 / 消息瘦身）
+        if: steps.gate.outputs.heavy == '1'
+        run: node scripts/build-archive.mjs
+      - name: 同步数据到 KV（重活结果）
+        if: steps.gate.outputs.heavy == '1'
+        run: node scripts/sync-kv.mjs
