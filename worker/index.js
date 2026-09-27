@@ -3102,6 +3102,17 @@ async function pushProbe(env) {
       text: pocketMsgText(x)
     }));
     o.cursor = Number(await env.KV.get(PUSH_LAST + 'msg')) || 0;
+    // 自检：同一个时间戳连抢两次哨兵，必须「第一次 true、第二次 false」，否则去重没生效
+    try {
+      const probeT = 1799999999999;   // 远未来的值，绝不会和真实发言冲突
+      o.dedupe = {
+        first: await markMsgSent(env, probeT),
+        second: await markMsgSent(env, probeT)
+      };
+      if (env.DB && env.DB.prepare) {
+        env.DB.prepare('DELETE FROM push_sent WHERE t = ?').bind(probeT).run().catch(() => null);
+      }
+    } catch (e) { o.dedupeErr = String((e && e.message) || e).slice(0, 160); }
   } catch (e) {
     o.ok = false;
     o.error = String((e && e.message) || e).slice(0, 300);
