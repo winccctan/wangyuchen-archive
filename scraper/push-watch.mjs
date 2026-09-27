@@ -69,6 +69,23 @@ async function notify(t, text) {
 
 let lastSeen = 0;
 
+/**
+ * 启动时先问 Worker「上次推到哪了」，从那儿接着跑。
+ * 🔴 为什么要这个：值守是「一段段」跑的（CF 每 5 分钟拉起一次，GitHub schedule 又不靠谱），
+ *    每段都是全新进程。若每段都把游标设成「当前最新」，**段与段之间的空档期发的言就永远漏推**。
+ *    从 Worker 的游标接着走 ⇒ 换多少次进程都不漏、也不重（重了还有 D1 哨兵兜底）。
+ */
+async function fetchCursor() {
+  try {
+    const h = {};
+    if (SYNC_TOKEN) h['x-sync-token'] = SYNC_TOKEN;
+    if (GH_TOKEN) h['x-gh-token'] = GH_TOKEN;
+    const r = await fetch(WORKER + '/api/push/probe', { headers: h });
+    const j = await r.json();
+    return Number(j && j.cursor) || 0;
+  } catch (_) { return 0; }
+}
+
 async function tick(first) {
   const { messages } = await fetchMessagePage({
     serverId: MEMBER.serverId,
@@ -84,9 +101,11 @@ async function tick(first) {
   const newest = list.length ? list[list.length - 1].t : 0;
   if (!newest) { console.log('[tick] 没拿到发言'); return; }
   if (first) {
-    // 首轮：只把游标定在「当前最新」，绝不把历史发言推一遍
-    lastSeen = newest;
-    console.log('[首轮] 游标设为 ' + new Date(newest + 8 * 3600e3).toISOString().replace('T', ' ').slice(0, 19) + '（北京时间），之后只推新的');
+    // 首轮：只把游标定好，绝不把历史发言推一遍。
+    // 游标优先用 Worker 那份（跨进程接着跑，不漏也不重）；拿不到才退化为「当前最新」。
+    if (!lastSeen) lastSeen = newest;
+    console.log('[首轮] 游标设为 ' + new Date(lastSeen + 8 * 3600e3).toISOString().replace('T', ' ').slice(0, 19) +
+      '（北京时间）' + (lastSeen === newest ? '＝当前最新' : '＝沿用 Worker 游标') + '，之后只推新的');
     return;
   }
   const fresh = list.filter((x) => x.t > lastSeen);
@@ -105,6 +124,9 @@ async function tick(first) {
 async function main() {
   if (!POCKET48_TOKEN) { console.error('缺少 POCKET48_TOKEN'); process.exit(1); }
   console.log(`开始值守：约 ${Math.round(RUN_MS / 1000)} 秒，每 ${Math.round(INTERVAL_MS / 1000)} 秒问一次口袋`);
+  // 从 Worker 上次推到的位置接着跑（拿不到就是 0，首轮会退化成「当前最新」）
+  lastSeen = await fetchCursor();
+  if (lastSeen) console.log('[接续] Worker 游标：' + new Date(lastSeen + 8 * 3600e3).toISOString().replace('T', ' ').slice(0, 19));
   const t0 = Date.now();
   let first = true;
   let n = 0;

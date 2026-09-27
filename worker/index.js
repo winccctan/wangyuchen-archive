@@ -158,6 +158,8 @@ export default {
       return;
     }
     ctx.waitUntil(handleScrape(env));
+    // 🔴 拉起分钟级值守（GitHub 自己的高频 schedule 不触发，只能靠 CF 这个准点的来拉）
+    ctx.waitUntil(triggerPushWatch(env).catch(() => null));
     // 兜底：万一 /api/sync 那次推送没跑成（网络抖、VAPID 还没配），这里每 5 分钟还会再查一次
     ctx.waitUntil(runPushCheck(env, { reason: 'cron' }).catch(() => null));
   }
@@ -905,6 +907,51 @@ async function handleScrape(env) {
     return json({ ok: false, status: r.status, body: t.slice(0, 400) }, 502);
   } catch (e) {
     return json({ error: String((e && e.message) || e) }, 502);
+  }
+}
+
+/**
+ * 拉起「分钟级值守」任务（push-watch.yml）。
+ * 🔴 为什么不能只靠 GitHub 自己的 schedule：实测「每 5 分钟」（乃至「每 10 分钟」）的 cron 建好后
+ *   连等 20~30 分钟**一次都没被触发**（高频 schedule 会被 GitHub 延迟/跳过），值守就会断。
+ *   而 Cloudflare 的 Cron 一直很准，所以让 CF 每 5 分钟来拉一次（自带冷却，不会打爆 GH）。
+ *   值守脚本每次启动都从本 Worker 的游标接着跑（见 push-watch.mjs 的 fetchCursor），
+ *   ⇒ 换多少次进程都不漏推、也不重推。
+ */
+const WATCH_COOLDOWN_MIN = 13;
+async function triggerPushWatch(env) {
+  const repo = (env && env.REPO) || 'winccctan/wangyuchen-archive';
+  let token = env && env.GH_TOKEN;
+  if (!token && env && env.SECRETS && typeof env.SECRETS.get === 'function') {
+    token = await env.SECRETS.get('GH_TOKEN');
+  }
+  if (!token) return { ok: false, error: 'no-gh-token' };
+  const headers = {
+    'Authorization': `Bearer ${token}`,
+    'Accept': 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+    'User-Agent': 'wyc-archive-worker'
+  };
+  try {
+    const rr = await fetch(`https://api.github.com/repos/${repo}/actions/workflows/push-watch.yml/runs?per_page=1`, { headers });
+    if (rr.ok) {
+      const j = await rr.json();
+      const last = j.workflow_runs && j.workflow_runs[0];
+      if (last && last.created_at &&
+          (Date.now() - new Date(last.created_at).getTime()) / 60000 < WATCH_COOLDOWN_MIN) {
+        return { ok: true, skipped: 'recent' };
+      }
+    }
+  } catch (_) { /* 查冷却失败不阻断触发 */ }
+  try {
+    const r = await fetch(`https://api.github.com/repos/${repo}/actions/workflows/push-watch.yml/dispatches`, {
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ref: (env && env.SCRAPE_REF) || 'main' })
+    });
+    return { ok: r.status === 204, status: r.status };
+  } catch (e) {
+    return { ok: false, error: String((e && e.message) || e).slice(0, 160) };
   }
 }
 
