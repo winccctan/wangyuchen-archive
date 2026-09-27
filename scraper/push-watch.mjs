@@ -94,6 +94,7 @@ async function notifyLive(id, t, title) {
  */
 let liveNext = '0';
 let lastLiveId = '';
+let lastLiveAt = 0;
 
 async function checkLive() {
   try {
@@ -109,7 +110,11 @@ async function checkLive() {
     if (!top) return;
     if (Number(top.status) !== 2) return;                       // 2 = 直播中（3 = 已转录播）
     if (String(top.liveId) === String(lastLiveId)) return;      // 这场已经报过了
+    // 🔴 单调闸：只报「比已报过那场更新」的。她关了重开时列表顺序会变，
+    //    旧场次会重新冒出来 ⇒ 换进程后容易把一小时前那场又推一遍（站长明确不要旧内容）。
+    if (lastLiveAt && Number(top.ctime) <= lastLiveAt) return;
     lastLiveId = String(top.liveId);
+    if (Number(top.ctime) > lastLiveAt) lastLiveAt = Number(top.ctime);
     const title = String(top.title || top.announcement || '').replace(/\s+/g, ' ').trim().slice(0, 40);
     console.log('[开播] ' + new Date(Number(top.ctime) + 8 * 3600e3).toISOString().replace('T', ' ').slice(0, 19) + ' ' + (title || '（无标题）'));
     await notifyLive(top.liveId, Number(top.ctime), title || '点开看直播');
@@ -131,6 +136,8 @@ async function fetchCursor() {
     if (GH_TOKEN) h['x-gh-token'] = GH_TOKEN;
     const r = await fetch(WORKER + '/api/push/probe', { headers: h });
     const j = await r.json();
+    // 开播游标也一起接续（否则换进程后会把上一场在播的直播再报一遍）
+    lastLiveAt = Number(j && j.lastLiveAt) || 0;
     return Number(j && j.cursor) || 0;
   } catch (_) { return 0; }
 }
@@ -160,6 +167,8 @@ async function tick(first) {
   const fresh = list.filter((x) => x.t > lastSeen);
   if (!fresh.length) return;
   for (const f of fresh) {
+    // 🔴 时间戳合理性：未来值（曾出现 1799999999999 这种）一律丢弃，也不许拿来推游标
+    if (f.t > Date.now() + 2 * 60 * 1000) continue;
     lastSeen = Math.max(lastSeen, f.t);
     if (Date.now() - f.t > FRESH_MS) {
       console.log('[跳过] 太旧：' + new Date(f.t + 8 * 3600e3).toISOString().slice(0, 19));
