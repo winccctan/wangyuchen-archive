@@ -6,7 +6,7 @@
  * 字段：[日期, 标题, BV号, 封面URL]。日期为北京时间 YYYY-MM-DD（优先从标题 8 位日期解析，
  *       解析不到回退上传时间），与公演 stime 转北京时间一致，确保能挂到对应公演。
  * 注：本文件随站上线（静态资源，不进 KV）；改它并 bump index.html 的 ?v= 即生效。
- * 共 161 条，覆盖 2022-10-02 → 2026-09-26。
+ * 共 163 条，覆盖 2022-10-02 → 2026-09-26。
  */
 window.__BILI_CUTS__ = [
   ["2026-09-26","【王语晨】20260926 GNZ48 Team NIII 《拾忆：TEAM NIII》公演cut","BV1ZCh96hEMt",""],
@@ -47,9 +47,11 @@ window.__BILI_CUTS__ = [
   ["2026-04-26","GNZ48 Team NIII 《没有我的世界(uN_v3rse)》千秋乐公演 cut","BV16yoeBzEFu","https://i2.hdslb.com/bfs/archive/32b370c6c981a7a0882bdecbee2761f9eaee7c28.jpg"],
   ["2026-04-25","GNZ48 荣誉毕业生 刘力菲《3652》 年度MVP公演cut","BV1yQo9BiEc8","https://i1.hdslb.com/bfs/archive/106ee82e74e1e7597255cf3c05dde4d17f929899.jpg"],
   ["2026-04-25","Team NIII 《没有我的世界(uN_v3rse)》季度mvp公演cut","BV1TxoRBVEdm","https://i0.hdslb.com/bfs/archive/17e9a68a8069419953d2ca243720ef2422efdc57.jpg"],
+  ["2026-04-19","【王语晨】20260419 GNZ48 Team NIII 《没有我的世界(uN_v3rse)》公演cut","BV1f2oFBgEui",""],
   ["2026-04-18","GNZ48《Zephyr》黄楚茵主题生日公演cut","BV1UEdWBXEzi","https://i1.hdslb.com/bfs/archive/d46b4f8be0a04de014b244c44d96fe24fd3d04de.jpg"],
   ["2026-04-11","GNZ48 Team NIII 《没有我的世界(uN_v3rse)》上海巡演cut","BV1TjDCBFE2g","https://i1.hdslb.com/bfs/archive/416a8c5f1604d3ceb59be5f766516c3900be3001.jpg"],
   ["2026-04-06","GNZ48 Team NIII 《没有我的世界(uN_v3rse)》公演cut","BV1MvSfBMEpu","https://i1.hdslb.com/bfs/archive/d306d2c480aba0aa5a11653c3384f87ffc67fef6.jpg"],
+  ["2026-04-05","【王语晨】20260405 GNZ48 《POP“拾”陆》公演cut","BV1SdSDBDEzu",""],
   ["2026-04-03","GNZ48 Team NIII《没有我的世界(uN__v3rse)》公演cut","BV14sDPBJESy","https://i0.hdslb.com/bfs/archive/92f8aa67a8f8b5163c73d75a411af8e30a99b86a.jpg"],
   ["2026-03-29","GNZ48 Team NIII 《没有我的世界(uN_v3rse)》公演cut","BV1q5XeBxEtK","https://i0.hdslb.com/bfs/archive/866cefcd217e4053f2c3d0c657d5a969e9b7cd35.jpg"],
   ["2026-03-28","GNZ48 Team NIII 《没有我的世界(uN_v3rse)》公演cut","BV1zZXLBVEo4","https://i2.hdslb.com/bfs/archive/ea7cefdd4faeef94fbf686efd3b3cc3c273b87d2.jpg"],
