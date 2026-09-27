@@ -154,7 +154,12 @@ export default {
     // 用 event.cron 区分来源；认不出来就按 5 分钟那套跑（最保守）。
     const cron = String((event && event.cron) || '').trim();
     if (cron === '* * * * *') {
+      // 快车道（Worker 自己问口袋）目前被 POCKET_FROM_CF_BLOCKED 关着 ——
+      // 实测从 Cloudflare 出去请求口袋一律 403；等哪天通了，去掉那个常量就自动启用。
       ctx.waitUntil(pushFastTick(env, { reason: 'cron-fast' }).catch(() => null));
+      // 它现在真正干的活：**值守心跳** —— 每分钟看一眼 GitHub 上那个值守任务还在不在跑，
+      // 断了就立刻补拉起来（以前只能等 5 分钟那轮才发现，中间有空档）。
+      ctx.waitUntil(triggerPushWatch(env).catch(() => null));
       return;
     }
     ctx.waitUntil(handleScrape(env));
@@ -918,7 +923,8 @@ async function handleScrape(env) {
  *   值守脚本每次启动都从本 Worker 的游标接着跑（见 push-watch.mjs 的 fetchCursor），
  *   ⇒ 换多少次进程都不漏推、也不重推。
  */
-const WATCH_COOLDOWN_MIN = 13;
+// 最小重启间隔（防止 GitHub 抖动导致狂拉）；主要判据是「上一轮还在不在跑」
+const WATCH_COOLDOWN_MIN = 2;
 async function triggerPushWatch(env) {
   const repo = (env && env.REPO) || 'winccctan/wangyuchen-archive';
   let token = env && env.GH_TOKEN;
@@ -937,12 +943,18 @@ async function triggerPushWatch(env) {
     if (rr.ok) {
       const j = await rr.json();
       const last = j.workflow_runs && j.workflow_runs[0];
-      if (last && last.created_at &&
-          (Date.now() - new Date(last.created_at).getTime()) / 60000 < WATCH_COOLDOWN_MIN) {
-        return { ok: true, skipped: 'recent' };
+      if (last) {
+        // ① 上一轮还在跑 ⇒ 别去打断它（打断就要重新装依赖，白丢 40 秒的盯梢时间）
+        const running = last.status === 'in_progress' || last.status === 'queued' || last.status === 'pending';
+        if (running) return { ok: true, skipped: 'already-running' };
+        // ② 刚结束不到 2 分钟 ⇒ 稍等，避免 GitHub 抖动时反复拉
+        if (last.created_at &&
+            (Date.now() - new Date(last.created_at).getTime()) / 60000 < WATCH_COOLDOWN_MIN) {
+          return { ok: true, skipped: 'cooldown' };
+        }
       }
     }
-  } catch (_) { /* 查冷却失败不阻断触发 */ }
+  } catch (_) { /* 查状态失败不阻断触发 */ }
   try {
     const r = await fetch(`https://api.github.com/repos/${repo}/actions/workflows/push-watch.yml/dispatches`, {
       method: 'POST',
