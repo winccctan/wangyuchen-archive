@@ -38,13 +38,13 @@ concurrency:
 jobs:
   watch:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     env:
       POCKET48_TOKEN: ${{ secrets.POCKET48_TOKEN }}
       SCRAPE_PROXY: ${{ secrets.SCRAPE_PROXY }}
       SYNC_TOKEN: ${{ secrets.SYNC_TOKEN }}
       WORKER_URL: ${{ secrets.WORKER_URL || 'https://idol.wyc0518.cc' }}
-      WATCH_SECONDS: "660"     # 值守时长（略大于 10 分钟间隔，保证无缝）
+      WATCH_SECONDS: "900"     # 值守时长（配合 CF 每 5 分钟拉起 + 13 分钟冷却 ⇒ 基本不断线）
       WATCH_INTERVAL: "60"     # 每 60 秒问一次口袋
       WATCH_FRESH_MIN: "10"    # 超过 10 分钟的发言不推（站长定：只推新的）
     steps:
