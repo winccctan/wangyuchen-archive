@@ -45,5 +45,11 @@
   //    Workers → 本 Worker → Settings → Triggers → Cron Triggers 里手动加上这两条。
   "triggers": {
     "crons": ["* * * * *", "*/5 * * * *"]
-  }
+  },
+  // 🔴 口袋48 签名用的 pa.wasm：必须由 wrangler 预编译成 WebAssembly.Module 再 import。
+  //    Cloudflare 禁止运行时编译 wasm（实测报 "Wasm code generation disallowed by embedder"），
+  //    少了这条规则，import 进来的就只是原始字节，一调用 pa 签名就炸。
+  "rules": [
+    { "type": "CompiledWasm", "globs": ["**/*.wasm"] }
+  ]
 }
