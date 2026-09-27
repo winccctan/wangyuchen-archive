@@ -215,6 +215,16 @@ async function injectRum(res) {
 
 function applyFreshPolicy(res, url) {
   if (!res || !res.headers) return res;
+  // 🔒 HSTS（2026-09-27 加）：让浏览器**自己**记住「本站只走 https」。
+  //    配合上面 fetch 开头的 308，双保险：以后站长在 Safari 里敲 idol.wyc0518.cc（不带 https），
+  //    浏览器也会直接走加密连接 —— 那样「添加到主屏幕」存下来的地址就是 https，
+  //    不会再生成一个 http 的旧图标（这次事故的根因）。
+  //    只在 https 响应里生效（http 响应带这个头会被浏览器忽略），所以放在这里没有副作用。
+  {
+    const h = new Headers(res.headers);
+    if (!h.has('strict-transport-security')) h.set('strict-transport-security', 'max-age=31536000');
+    res = new Response(res.body, { status: res.status, statusText: res.statusText, headers: h });
+  }
   const p = url.pathname;
   // 后台页（会重定向到无扩展名的 /admin-7f2a，绕开下面 HTML 的判定）：
   // 改完必须立刻能用，且 CDN 上也不该留一份拷贝 —— 直接 no-store。
