@@ -242,9 +242,8 @@ mark.dm-mark {
 .dm-hm-legend { margin-top: 12px; font-size: 11.5px; color: var(--muted, #8a8a92); display: flex; align-items: center; gap: 4px; }
 .dm-hm-legend .dm-hm { cursor: default; width: 12px; height: 12px; flex: 0 0 12px; }
 
-/* ---------- 开播提醒按钮态 ---------- */
+/* ---------- 工具栏按钮亮灯态（🔔 通知订阅开启时用） ---------- */
 .dm-tool.on { background: linear-gradient(135deg, #ff7aa2, #ff9a62); color: #fff; border-color: transparent; }
-body.dm-notify-on .dm-tool#dmNotify { background: linear-gradient(135deg, #ff7aa2, #ff9a62); color: #fff; border-color: transparent; }
 
 /* ---------- 头部更新时间：统一显示短格式「00:47 更新」 ----------
    原站是宽屏「更新于 YYYY-MM-DD HH:MM」/ 窄屏「HH:MM 更新」两档，这里全部走短档。 */
@@ -1351,9 +1350,9 @@ button, select, input, textarea, a, .tkc-cell, .tkc-nav, .tkc-btn, .tkc-sel { to
 }
 
 /* ==========================================================================
-   ⑲ 下拉刷新 + 顶部 🔔 按钮（a37，2026-09-27）
-   下拉刷新只在 standalone（从主屏幕图标打开）时才有必要 —— 那种模式没有
-   地址栏也没有刷新按钮，Safari 也不给原生下拉刷新。
+   ⑲ 下拉刷新（a37，2026-09-27）
+   只在 standalone（从主屏幕图标打开）时才有必要 —— 那种模式没有地址栏、
+   也没有刷新按钮，Safari 也不给原生下拉刷新。
    ========================================================================== */
 .ptr {
   position: fixed; left: 0; right: 0; top: 0; z-index: 60;
@@ -1366,9 +1365,3 @@ button, select, input, textarea, a, .tkc-cell, .tkc-nav, .tkc-btn, .tkc-sel { to
 .ptr span { display: block; padding-bottom: 10px; }
 .ptr.dragging { transition: none; }
 .ptr.on { height: 56px; transition: height .22s ease; }
-
-/* 🔔 通知按钮：订阅开着时点亮（跟 .refresh-btn 同一套尺寸） */
-.refresh-btn.on {
-  background: linear-gradient(135deg, #35cdf0, #2bc4e0);
-  color: #fff; border-color: transparent;
-}
