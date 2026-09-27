@@ -2569,9 +2569,29 @@ const PUSH_CATCHUP_MAX = 3;
 // 🔴 新鲜度闸（2026-09-27 站长定「不许推旧的，可以推新的」）：比这更「老」的发言**一律不推**。
 //    正常抓取时延迟只有 2~5 分钟，永远碰不到这条线；它只在「抓取停摆又恢复」时拦住积压的旧内容。
 const PUSH_FRESH_MS = 10 * 60 * 1000;
-// 开播通知的新鲜度窗口：比发言宽一点（开播不像发言那么密，晚 20 分钟才知道也有意义），
-// 但太旧（比如值守重启时发现几小时前那场）就别打扰了。
-const PUSH_LIVE_FRESH_MS = 20 * 60 * 1000;
+// 🔴 时间戳合理性闸（2026-09-28）：待推内容的时刻必须是「过去」。
+//    事故：线上出现过 t=1799999999999（2027 年）这种未来值 ⇒ `now - t` 是**负数**
+//    ⇒ 新鲜度闸形同虚设，脏数据照样被推出去。留 2 分钟余量吸收时钟差，超了就判非法、直接丢弃。
+const PUSH_SKEW_MS = 2 * 60 * 1000;
+function tsPlausible(t, now) {
+  const n = Number(t) || 0;
+  if (n <= 0) return false;
+  return n <= (Number(now) || Date.now()) + PUSH_SKEW_MS;
+}
+/** 游标只前进不回退（多条推送路径并发时，谁跑得慢都可能把游标写回老值） */
+async function advanceMsgCursor(env, val) {
+  const kv = env && env.KV;
+  if (!kv) return false;
+  const cur = Number(await kv.get(PUSH_LAST + 'msg')) || 0;
+  if (Number(val) <= cur) return false;
+  await kv.put(PUSH_LAST + 'msg', String(Number(val)));
+  return true;
+}
+// 开播通知的新鲜度窗口：比发言宽一点（开播不像发言那么密），
+// 但太旧（比如值守重启时才发现几小时前那场）就别打扰了。
+// 2026-09-28 从 20 分钟收到 12 分钟：值守每 60 秒一问，12 分钟只可能是「值守断了很久」的情况，
+// 那种情况宁可不推 —— 站长明确要的是「不推旧的」。
+const PUSH_LIVE_FRESH_MS = 12 * 60 * 1000;
 // 总闸：true = 一条都不推（订阅/开关照常可用）。默认开着 —— 站长要的是「挡旧的」，不是「全停」。
 //    🔴 只有站长明确说「先别推了」才改成 true；改完要重新部署才生效（CF 从 main 构建）。
 const PUSH_OFF = false;
@@ -2866,8 +2886,11 @@ async function runPushCheck(env, opts) {
         // 🔴 只推「新鲜」的（2026-09-27 站长定：不要推送老的信息，只推新的）：
         //    抓取停摆几小时后恢复时，积压的那批旧发言**一律不补推**（直接跳过），
         //    但游标照常前进到最新 —— 下次只从这里往后推，绝不会把旧内容灌到手机上。
-        let newest = lastMsg, stale = 0;
+        let newest = lastMsg, stale = 0, bad = 0;
         for (const f of fresh) {
+          // 🔴 非法时间戳（未来值 / 0）直接丢弃：既不能推，也**不能拿来推游标**
+          //    （游标一旦被顶到未来，之后所有真实发言都会被判成「还没到点」而永远不推）。
+          if (!tsPlausible(f.msgTime, now)) { bad += 1; continue; }
           if (Number(f.msgTime) > newest) newest = Number(f.msgTime);
           if (now - Number(f.msgTime) > PUSH_FRESH_MS) { stale += 1; continue; }
           // 🔴 去重哨兵：值守探针已经推过的，这里就别再推一遍
@@ -2882,6 +2905,7 @@ async function runPushCheck(env, opts) {
           }, 'msg');
           o.msg = r;
         }
+        if (bad) o.skipped.badTs = bad;
         if (stale) {
           o.skipped.staleMsgs = stale;
           // 🔴 追赶模式：这批全是旧的 ⇒ 游标直接跳到「当前最新」，别一条条往前挪
@@ -2890,7 +2914,9 @@ async function runPushCheck(env, opts) {
           if (cur.length && Number(cur[0].msgTime) > newest) newest = Number(cur[0].msgTime);
         }
         lastMsg = newest;
-        await kv.put(PUSH_LAST + 'msg', String(newest));
+        // 🔴 写游标前再读一次：本函数跑得久（要查 D1），期间值守探针可能已经把游标推得更远，
+        //    直接覆盖会把游标**写回去**（表现为「隔一会儿又把旧内容推一遍」）。只前进、不回退。
+        await advanceMsgCursor(env, newest);
       }
     }
 
@@ -2899,8 +2925,13 @@ async function runPushCheck(env, opts) {
        ⇒ 她开播那一刻永远推不出来。现在读 'live-now'（值守探针发现的「正在进行的直播」），
        兜底用 —— 正常情况值守自己就推了，这里只在值守没来得及推时补一刀。 */
     const lastLive = (await kv.get(PUSH_LAST + 'live')) || '';
+    // 🔴 单调闸：只认「比已报过的那场更新」的直播。
+    //    以前只比对 liveId ⇒ 一旦列表里又冒出更早那场（她关了重开时顺序会变），就会被当成新开播再推一遍旧的。
+    const lastLiveAt = Number(await kv.get(PUSH_LAST + 'live:at')) || 0;
     const nowLive = await kv.get('live-now', { type: 'json' });
     if (nowLive && nowLive.liveId && String(nowLive.liveId) !== String(lastLive)
+        && (!lastLiveAt || Number(nowLive.ctime) > lastLiveAt)
+        && tsPlausible(nowLive.ctime, now)
         && now - (Number(nowLive.ctime) || 0) < PUSH_LIVE_FRESH_MS) {
       if (await markLiveSent(env, String(nowLive.liveId))) {
         const ann = String(nowLive.title || '').trim();
@@ -2911,6 +2942,9 @@ async function runPushCheck(env, opts) {
         }, 'live');
       }
       await kv.put(PUSH_LAST + 'live', String(nowLive.liveId));
+      if (Number(nowLive.ctime) > lastLiveAt) {
+        await kv.put(PUSH_LAST + 'live:at', String(Number(nowLive.ctime)));
+      }
     }
 
     /* ③ 公演开播 */
@@ -3184,8 +3218,10 @@ async function pushFastTick(env, opts) {
       .filter((x) => x.msgTime > last)
       .sort((a, b) => a.msgTime - b.msgTime);
     if (!fresh.length) { o.skipped.noNew = true; return o; }
-    let cursor = last, stale = 0;
+    let cursor = last, stale = 0, bad = 0;
     for (const f of fresh) {
+      // 🔴 非法时间戳（未来值 / 0）：丢弃，且**不许推游标**（顶到未来就永远不推了）
+      if (!tsPlausible(f.msgTime, now)) { bad += 1; continue; }
       if (f.msgTime > cursor) cursor = f.msgTime;
       // 🔴 新鲜度闸（站长定：只推新的）：超过 10 分钟的一律跳过，游标照常前进
       if (now - f.msgTime > PUSH_FRESH_MS) { stale += 1; continue; }
@@ -3193,8 +3229,10 @@ async function pushFastTick(env, opts) {
         title: '王语晨', body: pocketMsgText(f.raw), tag: 'wyc-msg', url: './', topic: 'msg'
       }, 'msg');
     }
+    if (bad) o.skipped.badTs = bad;
     if (stale) o.skipped.staleMsgs = stale;
-    if (cursor > last) await kv.put(PUSH_LAST + 'msg', String(cursor));
+    // 🔴 游标只能前进、且必须是合法时刻
+    if (cursor > last && tsPlausible(cursor, now)) await kv.put(PUSH_LAST + 'msg', String(cursor));
   } catch (e) {
     o.ok = false;
     o.error = String((e && e.message) || e).slice(0, 200);
@@ -3226,6 +3264,7 @@ async function pushProbe(env) {
       text: pocketMsgText(x)
     }));
     o.cursor = Number(await env.KV.get(PUSH_LAST + 'msg')) || 0;
+    o.lastLiveAt = Number(await env.KV.get(PUSH_LAST + 'live:at')) || 0;
     // 自检：同一个时间戳连抢两次哨兵，必须「第一次 true、第二次 false」，否则去重没生效
     try {
       const probeT = 1799999999999;   // 远未来的值，绝不会和真实发言冲突
@@ -3267,14 +3306,22 @@ async function handlePushNotify(request, env) {
     o.type = 'live'; o.id = id;
     try {
       if (!(await loadVapid(env))) { o.skipped = 'noVapid'; return json(o); }
+      const now = Date.now();
       const last = String((await kv.get(PUSH_LAST + 'live')) || '');
+      // 🔴 单调闸：只认「比已报过那场更新」的直播。她关了重开时列表顺序会变，
+      //    旧场次会重新冒出来 —— 以前只比对 liveId ⇒ 会被当成新开播，把旧的那场又推一遍。
+      const lastAt = Number(await kv.get(PUSH_LAST + 'live:at')) || 0;
+      if (lastAt && t && t <= lastAt) { o.skipped = 'olderLive'; o.lastAt = lastAt; return json(o); }
       if (last === id) { o.skipped = 'already'; return json(o); }
       await kv.put(PUSH_LAST + 'live', id);
+      // 🔴 非法时间戳（未来值）：丢弃，且不许写进单调闸
+      if (t && !tsPlausible(t, now)) { o.skipped = 'badTs'; return json(o); }
+      if (t && t > lastAt) await kv.put(PUSH_LAST + 'live:at', String(t));
       // 去重哨兵（liveId 是 19 位数字，超出 JS 安全整数 ⇒ 不能走 D1 那个数字主键，这里用 KV）
       if (!(await markLiveSent(env, id))) { o.skipped = 'dup'; return json(o); }
       // 留一份「当前在播」给 5 分钟那轮兜底用（它读不到实时接口，只能读这个）
       await kv.put('live-now', JSON.stringify({ liveId: id, ctime: t, title: text }));
-      if (!t || Date.now() - t > PUSH_LIVE_FRESH_MS) { o.skipped = 'stale'; return json(o); }
+      if (!t || now - t > PUSH_LIVE_FRESH_MS) { o.skipped = 'stale'; return json(o); }
       o.msg = await pushBroadcast(env, {
         title: '🔴 王语晨开播啦！', body: text || '点开看直播',
         tag: 'wyc-live-' + id, url: './', topic: 'live'
@@ -3286,12 +3333,16 @@ async function handlePushNotify(request, env) {
   if (!t) return json({ error: 'missing t' }, 400);
   try {
     if (!(await loadVapid(env))) { o.skipped = 'noVapid'; return json(o); }
+    const now = Date.now();
+    // 🔴 时间戳合理性闸：未来值 / 0 一律丢弃（事故：t=1799999999999 ⇒ now-t 为负 ⇒ 新鲜度闸失效，
+    //    且游标被顶到未来 ⇒ 之后真实发言全被判「还没到点」）。这里**不推也不动游标**。
+    if (!tsPlausible(t, now)) { o.skipped = 'badTs'; return json(o); }
     const last = Number(await kv.get(PUSH_LAST + 'msg')) || 0;
     if (t <= last) { o.skipped = 'already'; o.last = last; return json(o); }
     // 游标先往前走：无论这一条推不推，都不会再回头
     await kv.put(PUSH_LAST + 'msg', String(t));
     o.last = t;
-    if (Date.now() - t > PUSH_FRESH_MS) { o.skipped = 'stale'; return json(o); }
+    if (now - t > PUSH_FRESH_MS) { o.skipped = 'stale'; return json(o); }
     // 🔴 去重哨兵：老检测（读库那条路）已经推过的，这里不再推
     if (!(await markMsgSent(env, t))) { o.skipped = 'dup'; return json(o); }
     o.msg = await pushBroadcast(env, {
@@ -3410,7 +3461,7 @@ async function handlePushCount(env) {
     if (s.t.perf !== false) t.perf += 1;
   }
   // freshMs / off 顺便当部署指纹：改了推送参数后 curl 一眼就能确认线上是不是新代码
-  return json({ ok: true, subs: subs.length, topics: t, freshMs: PUSH_FRESH_MS, off: PUSH_OFF, ver: 'a46c',
+  return json({ ok: true, subs: subs.length, topics: t, freshMs: PUSH_FRESH_MS, off: PUSH_OFF, ver: 'a50',
     keys: subs.slice(0, 10).map((s) => s.key) });
 }
 
