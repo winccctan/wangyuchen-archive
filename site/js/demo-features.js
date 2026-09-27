@@ -3327,6 +3327,12 @@
   const pushCount = () => PUSH_TOPICS.filter((x) => P.topics[x.k]).length;
 
   const pushUA = () => ({
+    // 🔴 sec = 安全上下文（https / localhost）。**用 http 打开时浏览器不给 serviceWorker 和
+    //    PushManager**，所以在 http 页面上 u.sw / u.pm 一定都是 false —— 那不是浏览器不支持，
+    //    是这条通道本身不允许（站长 2026-09-27 就是栽在这里：主屏幕图标指向 http）。
+    sec: (typeof window.isSecureContext === 'boolean')
+           ? window.isSecureContext
+           : (location.protocol === 'https:'),
     sw: 'serviceWorker' in navigator,
     pm: 'PushManager' in window,
     nt: 'Notification' in window,
@@ -3382,6 +3388,12 @@
     const u = pushUA();
     // 先说清楚「该怎么做」，再说「不支持」——iPhone 普通标签页属前者，别吓人
     if (u.wx) { toast('微信里收不到通知：点右上角「…」→ 用浏览器打开'); return false; }
+    // 🔴 排在最前面：http 页面（不安全上下文）里 serviceWorker / PushManager 一定没有，
+    //    必须先把「协议不对」和「浏览器不支持」区分开，否则会误报成后者。
+    if (!u.sec) {
+      toast('这个图标打开的是 http，推送用不了：长按删掉它，用 Safari 打开 https://idol.wyc0518.cc 重新添加到主屏幕');
+      return false;
+    }
     if (u.ios && u.other) { toast('iPhone 上只有 Safari 能收推送：用 Safari 打开 → 分享 → 添加到主屏幕'); return false; }
     if (u.ios && !u.standalone) { toast('iPhone 要先「添加到主屏幕」，再从桌面图标打开'); return false; }
     if (!pushSupported()) {
@@ -3484,6 +3496,8 @@
     else if (/Android/i.test(navigator.userAgent || '')) p.push('Android');
     else p.push('电脑浏览器');
     if (u.wx) p.push('微信内');
+    // 🔴 协议一定要显示：http 页面下 SW / 推送必然是 ❌，不看协议就会误判成「浏览器不支持」
+    p.push(u.sec ? 'https✅' : 'http❌(不安全)');
     p.push(u.standalone ? '主屏幕✅' : '主屏幕❌');
     p.push('SW' + (u.sw ? '✅' : '❌'));
     p.push('推送' + (u.pm ? '✅' : '❌'));
@@ -3495,6 +3509,9 @@
     const u = pushUA();
     const perm = ('Notification' in window) ? Notification.permission : 'unsupported';
     if (u.wx) return { c: 'warn', t: '微信里收不到通知' };
+    // 🔴 必须排在 iOS 各条判断之前：http 页面下 serviceWorker / PushManager 一定是 false，
+    //    不先拦掉就会被后面的「桌面图标是旧的 / 浏览器不支持」错误归因。
+    if (!u.sec) return { c: 'warn', t: '这个图标是 http 打开的：删掉它，用 https 重新添加一次' };
     if (u.ios) {
       const v = iosVer();
       if (v !== null && v < 16.4) return { c: 'warn', t: '系统 iOS ' + v + ' 太旧：推送要 16.4 以上' };
@@ -3504,7 +3521,7 @@
     // 🔴 从桌面图标进来却拿不到 PushManager ⇒ 图标是「站点还没有 manifest 那会儿」加的（见 pushTurnOn）
     if (u.ios && u.standalone && (!u.pm || !u.nt)) return { c: 'warn', t: '桌面图标是旧的：删掉它，重新添加一次' };
     if (!u.sw || !u.pm || !u.nt) return { c: 'warn', t: '这个浏览器不支持消息推送' };
-    if (perm === 'denied') return { c: 'warn', t: '通知被系统关掉了：设置 → 通知里打开' };
+    if (perm === 'denied') return { c: 'warn', t: '通知被系统关掉了：设置 → 通知 → 一只鱼鱼 → 允许' };
     // 开关看着是开的、但服务器没收到订阅 ⇒ 一定会「收不到」，必须让站长一眼看见
     if (P.on && P.srv === false) return { c: 'warn', t: '已开启 · ' + pushCount() + ' 类提醒 · 服务器没收到，重开一次' };
     if (P.on) return { c: 'ok', t: '已开启 · ' + pushCount() + ' 类提醒' };
@@ -3560,7 +3577,8 @@
         if (a === 'howto') {
           const u = pushUA();
           toast(u.wx ? '点右上角「…」→ 用浏览器打开（微信里收不到通知）'
-                     : 'Safari 底部分享 → 添加到主屏幕 → 从桌面图标打开（iOS 需 16.4 以上）');
+                     : (!u.sec ? '长按删掉桌面图标 → Safari 打开 https://idol.wyc0518.cc → 分享 → 添加到主屏幕'
+                               : 'Safari 底部分享 → 添加到主屏幕 → 从桌面图标打开（iOS 需 16.4 以上）'));
           return;
         }
         if (a === 'close') { closeModal(); return; }
