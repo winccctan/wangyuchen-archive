@@ -2540,9 +2540,18 @@ async function encryptPush(sub, payloadStr) {
 
 /** 给一个订阅发一条；返回 { ok, gone }（gone = 订阅已失效，调用方要删掉） */
 async function sendPush(env, sub, payloadObj) {
-  if (!sub || !sub.endpoint || !sub.keys || !sub.keys.p256dh || !sub.keys.auth) return { ok: false, gone: true };
+  // 🔴 参数不全 ≠ 订阅失效：早先这里返回 gone:true，结果「字段名对不上」也被当成失效订阅删掉
+  //   （2026-09-27 事故：广播传的是存储格式 {p,a}、这里要的是 p256dh/auth ⇒ 全部误删）。
+  //   只有推送服务明确回 404/410 才算 gone，见函数末尾。
+  // 库里存 {p,a}、浏览器给 {p256dh,auth} —— 两种都认，免得再因字段名对不上而「一条都发不出去」
+  const keys = sub && sub.keys
+    ? { p256dh: sub.keys.p256dh || sub.keys.p, auth: sub.keys.auth || sub.keys.a }
+    : null;
+  if (!sub || !sub.endpoint || !keys || !keys.p256dh || !keys.auth) {
+    return { ok: false, gone: false, badArgs: true };
+  }
   const auth = await vapidHeader(env, sub.endpoint);
-  const body = await encryptPush(sub, JSON.stringify(payloadObj));
+  const body = await encryptPush({ endpoint: sub.endpoint, keys: keys }, JSON.stringify(payloadObj));
   const res = await fetch(sub.endpoint, {
     method: 'POST',
     headers: {
@@ -2593,7 +2602,9 @@ async function pushBroadcast(env, payload, topic) {
   const jobs = [];
   for (const s of subs) {
     if (topic && s.t && s.t[topic] === false) { skipped += 1; continue; }
-    jobs.push(sendPush(env, { endpoint: s.e, keys: s.k }, payload).then(async (r) => {
+    // 🔴 库里存的是 {p,a}（省空间），sendPush 要的是 {p256dh,auth} —— 必须在这里转一次。
+    //    少了这一转，广播会「一条都发不出去」（2026-09-27 事故）。
+    jobs.push(sendPush(env, { endpoint: s.e, keys: { p256dh: s.k.p, auth: s.k.a } }, payload).then(async (r) => {
       if (r.ok) sent += 1;
       else if (r.gone) { gone += 1; await env.KV.delete(s.key).catch(() => {}); }
       else fail += 1;
