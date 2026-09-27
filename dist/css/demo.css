@@ -1294,3 +1294,81 @@ button, select, input, textarea, a, .tkc-cell, .tkc-nav, .tkc-btn, .tkc-sel { to
 .tkc-warn.is-photo {
   background: #eef4f8; border-color: #cfe0ea; color: #2b556b;
 }
+
+/* ==========================================================================
+   ⑱ 推送通知设置（a37，2026-09-27）
+   🔔 一个总开关管「关掉页面也收得到」；
+      三项内容各自一个开关（站长要求：推送什么内容可以自己选）。
+   配色沿用 demo 的浅色系：主色 #2bc4e0，圆角 12px，主开关 46×27。
+   ========================================================================== */
+.pb { padding: 2px 0 2px; }
+.pb-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px; margin-bottom: 8px;
+  background: #f6f9fb; border-radius: 12px;
+}
+.pb-row-main { background: linear-gradient(135deg, #ecf9fd 0%, #f6f9fb 100%); }
+.pb-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.pb-txt b { font-size: 14.5px; font-weight: 600; color: #1f2d3a; }
+.pb-txt span { font-size: 12px; color: #8a97a4; }
+.pb-state.is-ok { color: #22a06b; }
+.pb-state.is-tip { color: #2b7fc0; }
+.pb-state.is-warn { color: #e0603f; }
+.pb-sep { height: 1px; background: #edf1f4; margin: 10px 2px 12px; }
+.pb-list { padding-left: 12px; }
+.pb-list .pb-row { background: #fff; border: 1px solid #edf1f4; }
+.pb-list .pb-row.is-off { opacity: .48; }
+
+/* 开关：纯 CSS，无依赖 */
+.pb-sw {
+  position: relative; flex: none; width: 46px; height: 27px; padding: 0;
+  border: none; border-radius: 999px; background: #d5dde4;
+  cursor: pointer; transition: background .18s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.pb-sw i {
+  position: absolute; top: 3px; left: 3px; width: 21px; height: 21px;
+  border-radius: 50%; background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .2);
+  transition: left .18s ease;
+}
+.pb-sw.on { background: #2bc4e0; }
+.pb-sw.on i { left: 22px; }
+.pb-sw:disabled { opacity: .45; cursor: not-allowed; }
+
+.pb-act { margin-top: 14px; text-align: center; }
+.pb-btn {
+  border: none; border-radius: 10px; padding: 10px 22px;
+  background: #2bc4e0; color: #fff; font-size: 14px; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.pb-btn.ghost { background: #fff; color: #67757f; border: 1px solid #dde3e9; }
+.pb-btn:active { transform: translateY(1px); }
+@media (max-width: 480px) {
+  .pb-txt b { font-size: 14px; }
+  .pb-txt span { font-size: 11.5px; }
+  .pb-list { padding-left: 0; }
+}
+
+/* ==========================================================================
+   ⑲ 下拉刷新 + 顶部 🔔 按钮（a37，2026-09-27）
+   下拉刷新只在 standalone（从主屏幕图标打开）时才有必要 —— 那种模式没有
+   地址栏也没有刷新按钮，Safari 也不给原生下拉刷新。
+   ========================================================================== */
+.ptr {
+  position: fixed; left: 0; right: 0; top: 0; z-index: 60;
+  height: 0; overflow: hidden; pointer-events: none;
+  display: flex; align-items: flex-end; justify-content: center;
+  background: linear-gradient(180deg, #e4f6fc 0%, #f4fafd 100%);
+  color: #2b7fc0; font-size: 13px;
+  transition: height .18s ease;
+}
+.ptr span { display: block; padding-bottom: 10px; }
+.ptr.dragging { transition: none; }
+.ptr.on { height: 56px; transition: height .22s ease; }
+
+/* 🔔 通知按钮：订阅开着时点亮（跟 .refresh-btn 同一套尺寸） */
+.refresh-btn.on {
+  background: linear-gradient(135deg, #35cdf0, #2bc4e0);
+  color: #fff; border-color: transparent;
+}

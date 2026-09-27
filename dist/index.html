@@ -19,7 +19,14 @@
   <link rel="stylesheet" href="./css/style.css?v=20260926a28" />
   <link rel="stylesheet" href="./css/demo.css?v=20260926a34" />
   <link rel="icon" type="image/png" href="./assets/avatar-round.png" />
-  <link rel="apple-touch-icon" href="./assets/avatar-round.png" />
+  <!-- 添加到主屏幕（PWA）：图标 🐟、名称「一只鱼鱼」（站长 2026-09-27 定）。
+       iOS 认 apple-touch-icon + apple-mobile-web-app-title，安卓认 manifest。
+       🔴 iOS 只有在 Safari「添加到主屏幕」之后才允许网页推送。 -->
+  <link rel="apple-touch-icon" sizes="180x180" href="./assets/icon-fish-180.png" />
+  <meta name="apple-mobile-web-app-title" content="一只鱼鱼" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <link rel="manifest" href="./manifest.webmanifest" />
 </head>
 <body>
   <header class="site-header">
@@ -73,6 +80,7 @@
         <option value="th">ภาษาไทย</option>
       </select>
       <button id="refreshBtn" class="refresh-btn" type="button" title="刷新最新补档（会触发一次后台抓取，每小时也会自动更新）">🔄 刷新</button>
+      <button id="pushBtn" class="refresh-btn" type="button" title="推送通知设置：她发新发言 / 开直播 / 公演开播时提醒">🔔 通知</button>
     </div>
   </div>
 
@@ -120,6 +128,6 @@
   <script src="./js/bili-cuts.js?v=1790470434497"></script>
   <script src="./vendor/hls.min.js?v=20260926a28"></script>
   <script src="./js/app.js?v=20260926a28"></script>
-  <script src="./js/demo-features.js?v=20260926a34"></script>
+  <script src="./js/demo-features.js?v=20260927a37"></script>
 </body>
 </html>
