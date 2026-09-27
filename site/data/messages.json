@@ -1,6 +1,147 @@
 {
   "messages": [
     {
+      "msgIdServer": "7413486262",
+      "msgTime": 1790516283389,
+      "msgType": "TEXT",
+      "text": "这个月过得这么苦能让我尝尝甜头嘛🥺",
+      "reply": null,
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "self": true,
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟"
+      },
+      "raw": {
+        "bodys": "这个月过得这么苦能让我尝尝甜头嘛🥺",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "TEXT"
+      }
+    },
+    {
+      "msgIdServer": "7413485968",
+      "msgTime": 1790516255015,
+      "msgType": "TEXT",
+      "text": "然后这个月🍗也还差一点点👉🏻👈🏻",
+      "reply": null,
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "self": true,
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟"
+      },
+      "raw": {
+        "bodys": "然后这个月🍗也还差一点点👉🏻👈🏻",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "TEXT"
+      }
+    },
+    {
+      "msgIdServer": "7413486260",
+      "msgTime": 1790516235594,
+      "msgType": "TEXT",
+      "text": "我今天一次性凑完",
+      "reply": null,
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "self": true,
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟"
+      },
+      "raw": {
+        "bodys": "我今天一次性凑完",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "TEXT"
+      }
+    },
+    {
+      "msgIdServer": "7413666030",
+      "msgTime": 1790516229211,
+      "msgType": "TEXT",
+      "text": "我还差两天kpi",
+      "reply": null,
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "self": true,
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟"
+      },
+      "raw": {
+        "bodys": "我还差两天kpi",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "TEXT"
+      }
+    },
+    {
+      "msgIdServer": "7413486259",
+      "msgTime": 1790516223328,
+      "msgType": "TEXT",
+      "text": "我晚一点来直播呀",
+      "reply": null,
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "self": true,
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟"
+      },
+      "raw": {
+        "bodys": "我晚一点来直播呀",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "TEXT"
+      }
+    },
+    {
+      "msgIdServer": "7413486252",
+      "msgTime": 1790516171492,
+      "msgType": "REPLY",
+      "text": "禁止伞塑自己",
+      "reply": {
+        "name": "卡密伞麻",
+        "text": "我没打人"
+      },
+      "images": [],
+      "audio": "",
+      "video": "",
+      "link": "",
+      "card": null,
+      "duration": 0,
+      "sender": {
+        "self": true,
+        "userId": 89653517,
+        "nickname": "一只鱼鱼˚°🐟"
+      },
+      "raw": {
+        "bodys": "{\"replyInfo\":{\"replyText\":\"我没打人\",\"replyName\":\"卡密伞麻\",\"replyMessageId\":\"2fe034d9-fdc1-4c5e-95a8-7875ef352e61\",\"text\":\"禁止伞塑自己\"},\"messageType\":\"REPLY\"}",
+        "extInfo": "{\"module\":\"QCHAT\",\"channelRole\":\"2\",\"user\":{\"userId\":89653517,\"nickName\":\"一只鱼鱼˚°🐟\"},\"bubbleId\":\"283923487550767107\"}",
+        "msgType": "REPLY"
+      }
+    },
+    {
       "msgIdServer": "7413321849",
       "msgTime": 1790503763009,
       "msgType": "REPLY",

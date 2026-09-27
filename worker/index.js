@@ -1181,6 +1181,22 @@ async function handleApi(url, request, env, ctx) {
     }
     return handlePushRaw(url, env);
   }
+  // 运维用：手工修正推送游标（只允许 push:last:msg / live / perf 三个键）。
+  // 什么时候用：游标被脏数据顶到未来（例如旧代码把「开播时间」当成发言时间戳写进发言游标），
+  // 会导致之后一段时间的真实发言被「时间还没到」跳过。
+  if (p === '/api/push/cursor' && request.method === 'POST') {
+    if (!(await isSyncAuthorized(request, env) || await isGhAuthorized(request, env))) {
+      return json({ error: 'forbidden: sync token required' }, 403);
+    }
+    let b = {};
+    try { b = await request.json(); } catch (_) { return json({ error: 'bad-json' }, 400); }
+    const key = String((b && b.key) || '');
+    if (!/^push:last:(msg|live|perf)$/.test(key)) return json({ error: 'bad key' }, 400);
+    const val = String((b && b.value) || '');
+    if (!val || val.length > 32) return json({ error: 'bad value' }, 400);
+    await env.KV.put(key, val);
+    return json({ ok: true, key: key, value: val });
+  }
   if (p === '/api/push/check' && request.method === 'POST') {
     if (!(await isSyncAuthorized(request, env) || await isGhAuthorized(request, env))) {
       return json({ error: 'forbidden: sync token required' }, 403);
