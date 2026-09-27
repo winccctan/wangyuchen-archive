@@ -11,6 +11,18 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
+    // 🔴 强制 HTTPS（2026-09-27 加）——这一条是「iPhone 收不到推送」的真凶。
+    //    本站域名之前 **http:// 也能 200 直接打开**（实测），而浏览器只在**安全上下文**里
+    //    才提供 `navigator.serviceWorker` 与 `PushManager`：用 http 打开的页面里这两个对象
+    //    直接不存在（站长那边面板显示 `SW❌ · 推送❌`），并且 iOS 在不安全上下文里调
+    //    `Notification.requestPermission()` **不弹框、直接返回 denied**（面板显示 `通知✅(denied)`）。
+    //    ⇒ 在主站最前面 308 到 https（308 而非 301：**保留 POST 方法与请求体**，
+    //       万一有人用 http 调 /api/sync，301 会把它变成 GET 而删掉 body）。
+    if (url.protocol === 'http:') {
+      url.protocol = 'https:';
+      return Response.redirect(url.toString(), 308);
+    }
+
     if (url.pathname === '/ping') {
       return new Response('pong', {
         headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' }
