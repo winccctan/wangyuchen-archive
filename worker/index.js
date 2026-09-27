@@ -2578,6 +2578,22 @@ function tsPlausible(t, now) {
   if (n <= 0) return false;
   return n <= (Number(now) || Date.now()) + PUSH_SKEW_MS;
 }
+/**
+ * 🔴🔴 终极「不许推旧的」保险：已经推过的最新内容时刻。
+ * 只要待推内容**不比它新**，任何路径都不许推 —— 哪怕游标被写回去、哪怕去重哨兵失效，
+ * 也不可能出现「手机上冒出一条比刚才那条更旧的内容」。
+ * （只统计合法时刻：那条 t=1799999999999 的脏数据不能把闸门卡死。）
+ */
+async function pushNewestSent(env, now) {
+  const db = env && env.DB;
+  if (!db) return 0;
+  try {
+    const r = await db.prepare('SELECT MAX(t) AS m FROM push_sent WHERE t <= ?')
+      .bind(Number(now) || Date.now()).all();
+    const v = r && r.results && r.results[0] && r.results[0].m;
+    return Number(v) || 0;
+  } catch (_) { return 0; }
+}
 /** 游标只前进不回退（多条推送路径并发时，谁跑得慢都可能把游标写回老值） */
 async function advanceMsgCursor(env, val) {
   const kv = env && env.KV;
@@ -2592,6 +2608,10 @@ async function advanceMsgCursor(env, val) {
 // 2026-09-28 从 20 分钟收到 12 分钟：值守每 60 秒一问，12 分钟只可能是「值守断了很久」的情况，
 // 那种情况宁可不推 —— 站长明确要的是「不推旧的」。
 const PUSH_LIVE_FRESH_MS = 12 * 60 * 1000;
+// 🔴 只推「她的发言」：true = 开播 / 公演这两类通知一律不推（2026-09-28 站长：「不要推别的消息了」）。
+//    发言照常推。想恢复开播/公演通知，把这里改回 false 重新部署即可
+//    （订阅里的 topics 开关是每人各自的选择，这个是全站的总闸）。
+const PUSH_MSG_ONLY = false;
 // 总闸：true = 一条都不推（订阅/开关照常可用）。默认开着 —— 站长要的是「挡旧的」，不是「全停」。
 //    🔴 只有站长明确说「先别推了」才改成 true；改完要重新部署才生效（CF 从 main 构建）。
 const PUSH_OFF = false;
@@ -2886,11 +2906,14 @@ async function runPushCheck(env, opts) {
         // 🔴 只推「新鲜」的（2026-09-27 站长定：不要推送老的信息，只推新的）：
         //    抓取停摆几小时后恢复时，积压的那批旧发言**一律不补推**（直接跳过），
         //    但游标照常前进到最新 —— 下次只从这里往后推，绝不会把旧内容灌到手机上。
-        let newest = lastMsg, stale = 0, bad = 0;
+        let newest = lastMsg, stale = 0, bad = 0, older = 0;
+        const sentMax = await pushNewestSent(env, now);
         for (const f of fresh) {
           // 🔴 非法时间戳（未来值 / 0）直接丢弃：既不能推，也**不能拿来推游标**
           //    （游标一旦被顶到未来，之后所有真实发言都会被判成「还没到点」而永远不推）。
           if (!tsPlausible(f.msgTime, now)) { bad += 1; continue; }
+          // 🔴 终极保险：比「已推过的最新那条」还旧 ⇒ 绝不推
+          if (sentMax && Number(f.msgTime) <= sentMax) { older += 1; continue; }
           if (Number(f.msgTime) > newest) newest = Number(f.msgTime);
           if (now - Number(f.msgTime) > PUSH_FRESH_MS) { stale += 1; continue; }
           // 🔴 去重哨兵：值守探针已经推过的，这里就别再推一遍
@@ -2906,6 +2929,7 @@ async function runPushCheck(env, opts) {
           o.msg = r;
         }
         if (bad) o.skipped.badTs = bad;
+        if (older) o.skipped.olderThanLast = older;
         if (stale) {
           o.skipped.staleMsgs = stale;
           // 🔴 追赶模式：这批全是旧的 ⇒ 游标直接跳到「当前最新」，别一条条往前挪
@@ -2924,6 +2948,7 @@ async function runPushCheck(env, opts) {
        🔴 数据源 2026-09-27 改了：原来是读 KV 'live'（**录播归档**，要等直播结束才出现）
        ⇒ 她开播那一刻永远推不出来。现在读 'live-now'（值守探针发现的「正在进行的直播」），
        兜底用 —— 正常情况值守自己就推了，这里只在值守没来得及推时补一刀。 */
+    if (!PUSH_MSG_ONLY) {
     const lastLive = (await kv.get(PUSH_LAST + 'live')) || '';
     // 🔴 单调闸：只认「比已报过的那场更新」的直播。
     //    以前只比对 liveId ⇒ 一旦列表里又冒出更早那场（她关了重开时顺序会变），就会被当成新开播再推一遍旧的。
@@ -2954,8 +2979,10 @@ async function runPushCheck(env, opts) {
     for (const p of (Array.isArray(perfs) ? perfs : [])) {
       const st = Number(p.stime || p.ctime) || 0;
       if (!st) continue;
-      // 「刚开演」= 已经过点、但不超过 2 小时（抓取每 5 分钟一轮，2 小时足够兜住延迟）
-      if (st <= now + 2 * 60 * 1000 && st > now - 120 * 60 * 1000) { cand = p; break; }
+      // 「刚开演」= 已经过点、但不超过 30 分钟。
+      // 🔴 2026-09-28 从 2 小时收到 30 分钟：站点长明确「只推新的」，
+      //    开演 1 小时后才想起来推一条「公演开演」属于旧内容（抓取 5 分钟一轮，30 分钟足够兜住延迟）。
+      if (st <= now + 2 * 60 * 1000 && st > now - 30 * 60 * 1000) { cand = p; break; }
     }
     if (cand && cand.liveId && String(cand.liveId) !== String(lastPerf)) {
       const d = new Date(Number(cand.stime) + 8 * 3600 * 1000);
@@ -2967,6 +2994,7 @@ async function runPushCheck(env, opts) {
         tag: 'wyc-perf', url: './', topic: 'perf'
       }, 'perf');
       await kv.put(PUSH_LAST + 'perf', String(cand.liveId));
+    }
     }
   } catch (e) {
     o.ok = false;
@@ -3339,6 +3367,9 @@ async function handlePushNotify(request, env) {
     if (!tsPlausible(t, now)) { o.skipped = 'badTs'; return json(o); }
     const last = Number(await kv.get(PUSH_LAST + 'msg')) || 0;
     if (t <= last) { o.skipped = 'already'; o.last = last; return json(o); }
+    // 🔴 终极保险：比「已推过的最新那条」还旧 ⇒ 绝不推（游标被写回去、去重失效都不怕）
+    const sentMax = await pushNewestSent(env, now);
+    if (sentMax && t <= sentMax) { o.skipped = 'olderThanLast'; o.sentMax = sentMax; return json(o); }
     // 游标先往前走：无论这一条推不推，都不会再回头
     await kv.put(PUSH_LAST + 'msg', String(t));
     o.last = t;
