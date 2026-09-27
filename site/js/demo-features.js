@@ -3328,6 +3328,9 @@
     wx: /MicroMessenger/i.test(navigator.userAgent || ''),
     ios: /iPad|iPhone|iPod/.test(navigator.userAgent || '') ||
          (navigator.platform === 'MacIntel' && (navigator.maxTouchPoints || 0) > 1),
+    // iPhone 上的第三方浏览器（Chrome/Edge/Firefox）：苹果只给 Safari 开推送，
+    // 用它们「添加到主屏幕」出来的是个假图标，照样收不到 ⇒ 必须区分出来单独提示。
+    other: /CriOS|FxiOS|EdgiOS|OPiOS/i.test(navigator.userAgent || ''),
     standalone: (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
                 window.navigator.standalone === true
   });
@@ -3346,7 +3349,7 @@
     if (!('serviceWorker' in navigator)) return null;
     try {
       let r = await navigator.serviceWorker.getRegistration();
-      if (!r) r = await navigator.serviceWorker.register('./sw.js?v=20260927a38');
+      if (!r) r = await navigator.serviceWorker.register('./sw.js?v=20260927a39');
       return r || null;
     } catch (_) { return null; }
   }
@@ -3362,12 +3365,18 @@
     const u = pushUA();
     // 先说清楚「该怎么做」，再说「不支持」——iPhone 普通标签页属前者，别吓人
     if (u.wx) { toast('微信里收不到通知：点右上角「…」→ 用浏览器打开'); return false; }
+    if (u.ios && u.other) { toast('iPhone 上只有 Safari 能收推送：用 Safari 打开 → 分享 → 添加到主屏幕'); return false; }
     if (u.ios && !u.standalone) { toast('iPhone 要先「添加到主屏幕」，再从桌面图标打开'); return false; }
     if (!pushSupported()) { toast('这个浏览器不支持消息推送'); return false; }
+    // 🔴🔴 iOS 死规矩：权限弹窗必须**在用户点下去的同一刻同步发起**。
+    //   原来写成 `await pushReg()` 之后才 requestPermission ⇒ 已经脱离用户手势，
+    //   iOS 会直接按「拒绝」处理且**连弹框都不给你看**（桌面 Chrome 宽容，所以本地测不出来）。
+    //   所以：先在手势里把权限请求发出去，再去拿 registration。
+    const permP = pushAskPerm();
     const reg = await pushReg();
-    if (!reg) { toast('推送服务启动失败'); return false; }
-    const perm = await pushAskPerm();
+    const perm = await permP;
     if (perm !== 'granted') { pushRender(); toast('通知权限没开：去浏览器 / 系统设置里允许通知'); return false; }
+    if (!reg) { toast('推送服务启动失败'); return false; }
     try {
       let sub = await reg.pushManager.getSubscription();
       if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: vapidBytes(PUSH_VAPID) });
@@ -3418,39 +3427,43 @@
     }
   }
 
-  /** 本地弹一条通知：不用服务器，纯粹让用户先看清楚「收到时长什么样」 */
-  async function pushTest() {
-    const reg = await pushReg();
-    if (!reg) { toast('这个浏览器不支持消息推送'); return; }
-    if (!('Notification' in window) || Notification.permission !== 'granted') { toast('先打开上面的开关'); return; }
-    const t = PUSH_TOPICS.filter((x) => P.topics[x.k])[0] || PUSH_TOPICS[0];
-    try {
-      await reg.showNotification('王语晨 · 补档站', {
-        body: t.ex,
-        icon: './assets/avatar-round.png',
-        badge: './assets/avatar-round.png',
-        tag: 'wyc-test-' + t.k,
-        renotify: true,
-        lang: 'zh-CN',
-        data: { url: './', topic: t.k }
-      });
-      trk('push:test');
-      toast('已发一条测试通知');
-    } catch (_) {
-      toast('没弹出来：通知权限可能没开');
-    }
-  }
-
   /** 面板最下面那行状态：只讲「现在是什么状况 / 下一步怎么做」，多余的说明不写
    *  🔴 判断顺序很关键（站长 2026-09-27 实测踩到）：
    *     iPhone 在**普通 Safari 标签页**里压根没有 Notification / PushManager 这两个对象
    *     （苹果只允许「添加到主屏幕后的 web app」用推送），所以必须先判「还没添加到主屏幕」，
    *     否则会被能力检测截住，误报成「这个浏览器不支持」——其实只是没从主屏幕打开。 */
+  /** iOS 版本号（UA 里的 `OS 17_0` → 17.0）；拿不到返回 null */
+  function iosVer() {
+    const m = (navigator.userAgent || '').match(/OS (\d+)[_.](\d+)/);
+    return m ? parseFloat(m[1] + '.' + m[2]) : null;
+  }
+
+  /** 一行环境自检：只在排查「为什么收不到」时用，站长截图一眼就能定位 */
+  function pushEnv() {
+    const u = pushUA();
+    const v = iosVer();
+    const p = [];
+    if (u.ios) p.push('iPhone' + (v !== null ? ' iOS ' + v : '') + (u.other ? '·第三方浏览器' : '·Safari'));
+    else if (/Android/i.test(navigator.userAgent || '')) p.push('Android');
+    else p.push('电脑浏览器');
+    if (u.wx) p.push('微信内');
+    p.push(u.standalone ? '主屏幕✅' : '主屏幕❌');
+    p.push('SW' + (u.sw ? '✅' : '❌'));
+    p.push('推送' + (u.pm ? '✅' : '❌'));
+    p.push('通知' + (u.nt ? '✅' : '❌') + (('Notification' in window) ? '(' + Notification.permission + ')' : ''));
+    return p.join(' · ');
+  }
+
   function pushNote() {
     const u = pushUA();
     const perm = ('Notification' in window) ? Notification.permission : 'unsupported';
     if (u.wx) return { c: 'warn', t: '微信里收不到通知' };
-    if (u.ios && !u.standalone) return { c: 'tip', t: 'iPhone 要先「添加到主屏幕」再从桌面打开' };
+    if (u.ios) {
+      const v = iosVer();
+      if (v !== null && v < 16.4) return { c: 'warn', t: '系统 iOS ' + v + ' 太旧：推送要 16.4 以上' };
+      if (u.other) return { c: 'warn', t: 'iPhone 上要用 Safari 添加到主屏幕' };
+      if (!u.standalone) return { c: 'tip', t: '要从主屏幕图标打开（现在不是）' };
+    }
     if (!u.sw || !u.pm || !u.nt) return { c: 'warn', t: '这个浏览器不支持消息推送' };
     if (perm === 'denied') return { c: 'warn', t: '通知被系统关掉了：设置 → 通知里打开' };
     if (P.on) return { c: 'ok', t: '已开启 · ' + pushCount() + ' 类提醒' };
@@ -3475,9 +3488,7 @@
           ${sw(P.on, false, 'push', '')}
         </div>
         <div class="pb-list">${rows}</div>
-        <div class="pb-act">
-          <button type="button" class="pb-btn" data-push="test">发一条测试通知</button>
-        </div>
+        ${(n.c === 'warn' || n.c === 'tip') ? `<div class="pb-env">${esc(pushEnv())}</div>` : ''}
       </div>`;
   }
 
@@ -3504,7 +3515,6 @@
       if (el) {
         const a = el.dataset.push;
         if (a === 'push') { pushToggle(); return; }
-        if (a === 'test') { pushTest(); return; }
         // 手机上收不到时的「下一步怎么做」——点那行状态就告诉用户
         if (a === 'howto') {
           const u = pushUA();

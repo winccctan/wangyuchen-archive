@@ -1335,7 +1335,12 @@ button, select, input, textarea, a, .tkc-cell, .tkc-nav, .tkc-btn, .tkc-sel { to
 .pb-sw.on i { left: 22px; }
 .pb-sw:disabled { opacity: .45; cursor: not-allowed; }
 
-.pb-act { margin-top: 14px; text-align: center; }
+/* 一行环境自检（只在「不支持 / 要添加到主屏幕」这类异常态显示，方便截图定位） */
+.pb-env {
+  margin-top: 12px; padding-top: 10px; border-top: 1px dashed #e7ecf1;
+  font-size: 11.5px; line-height: 1.5; color: #9aa5ae; text-align: center;
+  word-break: break-all;
+}
 .pb-btn {
   border: none; border-radius: 10px; padding: 10px 22px;
   background: #2bc4e0; color: #fff; font-size: 14px; cursor: pointer;
