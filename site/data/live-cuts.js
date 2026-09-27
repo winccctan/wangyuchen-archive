@@ -1,9 +1,9 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-09-24T15:08:15.816Z",
-  "count": 627,
+  "updatedAt": "2026-09-27T10:49:52.527Z",
+  "count": 634,
   "matched": 455,
-  "replays": 251,
-  "clips": 376,
+  "replays": 252,
+  "clips": 382,
   "targets": [
     {
       "mid": "1805448354",
@@ -28,6 +28,97 @@ window.LIVE_CUTS = {
     "358477444:space": 3
   },
   "cuts": [
+    {
+      "bvid": "BV1AYat6TE9m",
+      "title": "【王语晨】今天有个小后辈突然叫我语晨姐，还蛮震惊的",
+      "created": 1790489453,
+      "date": "2026-09-27",
+      "titleDate": "",
+      "kind": "cut",
+      "cover": "http://i2.hdslb.com/bfs/archive/11fb8d1b601baf7adcb83c7e685ba2ad438f4075.jpg",
+      "url": "https://www.bilibili.com/video/BV1AYat6TE9m",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨直播cut"
+    },
+    {
+      "bvid": "BV18Fab6mE8Z",
+      "title": "【王语晨】20260926 直播回放",
+      "created": 1790487974,
+      "date": "2026-09-27",
+      "titleDate": "2026-09-26",
+      "kind": "replay",
+      "cover": "http://i2.hdslb.com/bfs/archive/bcf0937c7b0a7fc93650c6a682385f600832c972.jpg",
+      "url": "https://www.bilibili.com/video/BV18Fab6mE8Z",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨直播回放"
+    },
+    {
+      "bvid": "BV1Sshd6HEZn",
+      "title": "【王语晨】(队综剧透）觉得自己在里面是忍者神龟起到一个王祖蓝作用",
+      "created": 1790439958,
+      "date": "2026-09-27",
+      "titleDate": "",
+      "kind": "cut",
+      "cover": "http://i2.hdslb.com/bfs/archive/76453348e160b60a79e4ffd9069590a48cff029c.jpg",
+      "url": "https://www.bilibili.com/video/BV1Sshd6HEZn",
+      "up": "忘记自己是猪",
+      "mid": "1805448354",
+      "collection": ""
+    },
+    {
+      "bvid": "BV1ZCh96hEMt",
+      "title": "【王语晨】20260926 GNZ48 Team NIII 《拾忆：TEAM NIII》公演cut",
+      "created": 1790424948,
+      "date": "2026-09-26",
+      "titleDate": "2026-09-26",
+      "kind": "cut",
+      "cover": "http://i1.hdslb.com/bfs/archive/1bfc6878b117fd52c41ac86013f0f5c28fa477c0.jpg",
+      "url": "https://www.bilibili.com/video/BV1ZCh96hEMt",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨公演cut"
+    },
+    {
+      "bvid": "BV1fRhD6xEvc",
+      "title": "【王语晨】20221021 GNZ48 梦想奋进计划《偶像研究计划》云公演cut",
+      "created": 1790386542,
+      "date": "2026-09-26",
+      "titleDate": "2022-10-21",
+      "kind": "cut",
+      "cover": "http://i0.hdslb.com/bfs/archive/37dd0b49214d1d8d042cbfe0bc6d3f801df7c31b.jpg",
+      "url": "https://www.bilibili.com/video/BV1fRhD6xEvc",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨公演cut"
+    },
+    {
+      "bvid": "BV1Lghy6AEqb",
+      "title": "【王语晨】20221019 GNZ48 梦想奋进计划B组《与星空手牵手》公演cut",
+      "created": 1790327224,
+      "date": "2026-09-25",
+      "titleDate": "2022-10-19",
+      "kind": "cut",
+      "cover": "http://i1.hdslb.com/bfs/archive/599e2d8ab10be8f0318f4996a7e90fe8d7d0a76e.jpg",
+      "url": "https://www.bilibili.com/video/BV1Lghy6AEqb",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨公演cut"
+    },
+    {
+      "bvid": "BV1cZhC6GERu",
+      "title": "【王语晨】20221013 GNZ48 梦想奋进计划B组《与星空手牵手》公演cut",
+      "created": 1790325058,
+      "date": "2026-09-25",
+      "titleDate": "2022-10-13",
+      "kind": "cut",
+      "cover": "http://i0.hdslb.com/bfs/archive/68d73ef3c7272b05ab8054da279b0b6dbd26c26e.jpg",
+      "url": "https://www.bilibili.com/video/BV1cZhC6GERu",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨公演cut"
+    },
     {
       "bvid": "BV13oaN6HECj",
       "collection": "",
