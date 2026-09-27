@@ -1,8 +1,12 @@
 /**
- * 把口袋48 的 pa 签名模块（pa.wasm + wasm-bindgen 胶水）内联进 worker/index.js。
+ * 把口袋48 的 pa 签名模块的 **wasm-bindgen 胶水** 内联进 worker/index.js。
  *
- * 为什么不用 import：CF 是「Git 构建」，不能赌它的 esbuild 一定会处理 .wasm / 相对 import。
- * 内联成一个大字符串常量后，worker/index.js 仍是**单文件**，任何构建方式都能跑。
+ * wasm 本体不内联：🔴 Cloudflare Workers **禁止运行时编译 wasm**
+ *   （实测报错 `Wasm code generation disallowed by embedder`），
+ *   必须用 wrangler.jsonc 的 `rules: [{ type: "CompiledWasm" }]` 把 .wasm 预编译成
+ *   WebAssembly.Module 再 import（见 worker/index.js 顶部的 `import PA_MODULE`）。
+ * 胶水（纯 JS、只用 TextDecoder/WebAssembly）没有这个限制，内联即可，
+ * 这样 worker/index.js 不需要依赖 esbuild 去解析相对 import。
  *
  * 用法：node scripts/gen-pa-inline.mjs
  * 它会替换 worker/index.js 里 /* ==== PA_INLINE_BEGIN ==== *\/ … /* ==== PA_INLINE_END ==== *\/ 之间的内容。
@@ -14,12 +18,8 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..');
 
-const wasmPath = resolve(root, 'scraper/lib/pa.wasm');
 const gluePath = resolve(root, 'scraper/lib/rust-wasm.js');
 const workerPath = resolve(root, 'worker/index.js');
-
-const wasmBuf = await readFile(wasmPath);
-const b64 = wasmBuf.toString('base64');
 
 let glue = await readFile(gluePath, 'utf8');
 // 去掉 ESM 导出语法：内联进单文件后不需要 export
@@ -36,26 +36,14 @@ const block = [
   BEGIN,
   '/* ------------------------------------------------------------------------',
   ' * 【自动生成，请勿手改】由 scripts/gen-pa-inline.mjs 生成。',
-  ' * 口袋48 的反爬签名 pa：由 Rust 编译的 wasm 生成，wasm-bindgen 胶水在下面。',
-  ' *   - PA_B64：pa.wasm 的 base64（52KB）；运行时 atob 解出字节后实例化。',
-  ' *   - paSign()：返回签名字符串（懒加载，第一次用到才实例化 wasm）。',
-  ' * 为什么内联：CF 是 Git 构建，不能依赖 esbuild 处理 .wasm import；单文件最稳。',
+  ' * 口袋48 的反爬签名 pa：wasm 本体由 wrangler 预编译成 PA_MODULE（见文件顶部 import），',
+  ' * 这里只是 wasm-bindgen 的胶水（把 wasm 返回的 [ptr,len] 解成 JS 字符串）。',
+  ' * 对外只暴露 paSign()：懒加载，第一次用到才实例化。',
   ' * ---------------------------------------------------------------------- */',
-  `const PA_B64 = '${b64}';`,
-  '',
-  'let PA_BYTES = null;',
-  'function paBytes() {',
-  '  if (PA_BYTES) return PA_BYTES;',
-  '  const bin = atob(PA_B64);',
-  '  const out = new Uint8Array(bin.length);',
-  '  for (let i = 0; i < bin.length; i += 1) out[i] = bin.charCodeAt(i);',
-  '  PA_BYTES = out;',
-  '  return out;',
-  '}',
-  '',
   'let PA_READY = null;',
   'async function paInitOnce() {',
-  '  if (!PA_READY) PA_READY = __wbg_init(paBytes()).then(() => true);',
+  '  // PA_MODULE 是 wrangler 预编译好的 WebAssembly.Module（rules: CompiledWasm）',
+  '  if (!PA_READY) PA_READY = __wbg_init(PA_MODULE).then(() => true);',
   '  return PA_READY;',
   '}',
   '',
@@ -80,4 +68,4 @@ if (i < 0 || j < 0) {
   src = src.slice(0, i) + block + src.slice(j + END.length);
 }
 await writeFile(workerPath, src);
-console.log('已内联 pa 签名模块：base64 ' + b64.length + ' 字符，worker/index.js 现 ' + src.length + ' 字节');
+console.log('已内联 pa 胶水：worker/index.js 现 ' + src.length + ' 字节（wasm 本体走 CompiledWasm 规则预编译导入）');
