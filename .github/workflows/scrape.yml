@@ -9,7 +9,7 @@
 #    （那次线上发言整整停了 4 小时）。
 #    现在拆成两段：
 #      【快通道】每轮都跑：抓发言/直播/公演 → 立即同步 KV（约 1~2 分钟，绝不碰 B 站）
-#      【重活】排在同步之后：微博 cut / 她的公演记录 4 小时一次，**B 站 12 小时一次**（2026-09-27 站长定）
+#      【重活】排在同步之后：微博 cut / 她的公演记录 / **B 站** 全部 4 小时一次（2026-09-27 站长定）
 #    这样即使重活卡死或超时被杀，发言早已经进 KV 了，不会被拖累。
 name: 抓取并同步到 KV
 
@@ -27,7 +27,7 @@ on:
         type: boolean
         default: false
       bili:
-        description: '强制本轮跑 B站抓取（含 B站重活，默认 12 小时一次，见站长 2026-09-27 要求）'
+        description: '强制本轮跑 B站抓取（含 B站重活，默认 4 小时一次，见站长 2026-09-27 要求）'
         type: boolean
         default: false
 
@@ -77,9 +77,10 @@ jobs:
       # 不用 GitHub 原生 schedule：它经常延迟几十分钟甚至整天丢跑；交给每 5 分钟一次的
       # Cloudflare Cron 驱动更可靠，5 分钟窗口内必有至少一轮落进去。
       #   heavy = 4 小时一次（UTC 01/05/09/13/17/21 → 北京 09/13/17/21/01/05）：微博cut / 公演记录 / 名单 …
-      #   bili  = 12 小时一次（UTC 01/13 → 北京 09/21）：B站视频库 / B站切片
-      #     🔴 B 站为什么只 12 小时一次（站长 2026-09-27 定）：①它不需要近实时，新投稿晚半天进库无所谓；
-      #        ②它是唯一会被 -412 风控拖住几分钟的东西，跑得越少、快通道被阻塞的机会越少。
+      #   bili  = B站视频库 / B站切片，**同样 4 小时一次**（2026-09-27 站长定稿：先说 12 小时，随后改回）
+      #     🔴 B 站为什么要少跑：①它不需要近实时，新投稿晚几小时进库无所谓；②它是唯一会被 -412 风控
+      #        拖住几分钟的东西，跑得越少、快通道被阻塞的机会越少。
+      #     🔴 但它仍在【重活】段、排在同步之后 ⇒ 就算撞风控卡住，发言早已进 KV，不会再出 09-27 那次事故。
       - name: 判断是否跑重活
         id: gate
         run: |
@@ -88,8 +89,7 @@ jobs:
           [ "${{ github.event.inputs.heavy }}" = "true" ] && heavy=1
           if [ "${{ github.event.inputs.bili }}" = "true" ]; then bili=1; heavy=1; fi
           if [ $((10#$M)) -lt 5 ]; then
-            [ $((10#$H % 4)) -eq 1 ] && heavy=1
-            if [ $((10#$H % 12)) -eq 1 ]; then bili=1; heavy=1; fi
+            [ $((10#$H % 4)) -eq 1 ] && heavy=1 && bili=1
           fi
           echo "heavy=$heavy" >> "$GITHUB_OUTPUT"
           echo "bili=$bili" >> "$GITHUB_OUTPUT"
@@ -117,10 +117,10 @@ jobs:
       - name: 抓取她的公演记录
         if: steps.gate.outputs.heavy == '1'
         run: MAX_DETAILS=40 node scripts/scrape-hers-performances.mjs || true
-      - name: 抓取 B站 公演录像备用源（12 小时一次）
+      - name: 抓取 B站 公演录像备用源（4 小时一次）
         if: steps.gate.outputs.bili == '1'
         run: BILI_PAGE_BUDGET=6 PAGE_SLEEP=1500 BILI_SPACE_BAN_TRIES=4 node scripts/fetch-bili-videos.mjs || true
-      - name: 抓取 B站 直播切片 / 直播回放（两个粉丝 UP，12 小时一次）
+      - name: 抓取 B站 直播切片 / 直播回放（两个粉丝 UP，4 小时一次）
         if: steps.gate.outputs.bili == '1'
         run: BILI_CUT_SPACE_PAGES=2 node scripts/fetch-live-cuts.mjs || true
       - name: 抓取微博「公演cut」（甜橙小铺）
