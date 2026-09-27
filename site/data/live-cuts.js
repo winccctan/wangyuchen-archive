@@ -1,9 +1,9 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-09-27T10:49:52.527Z",
-  "count": 634,
-  "matched": 455,
+  "updatedAt": "2026-09-27T11:12:56.472Z",
+  "count": 635,
+  "matched": 456,
   "replays": 252,
-  "clips": 382,
+  "clips": 383,
   "targets": [
     {
       "mid": "1805448354",
@@ -28,6 +28,21 @@ window.LIVE_CUTS = {
     "358477444:space": 3
   },
   "cuts": [
+    {
+      "bvid": "BV12ha86LEbh",
+      "title": "【王语晨】20260927 GNZ48《4 Future》《Classic 8》肆班&捌班中秋联合公演cut",
+      "created": 1790502686,
+      "date": "2026-09-27",
+      "titleDate": "2026-09-27",
+      "kind": "cut",
+      "cover": "http://i0.hdslb.com/bfs/archive/c787bd64cf3aca77b720c21124ffe4d510769b9d.jpg",
+      "url": "https://www.bilibili.com/video/BV12ha86LEbh",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "",
+      "liveId": "1178488280285253632",
+      "liveDate": "2025-09-27"
+    },
     {
       "bvid": "BV1AYat6TE9m",
       "title": "【王语晨】今天有个小后辈突然叫我语晨姐，还蛮震惊的",

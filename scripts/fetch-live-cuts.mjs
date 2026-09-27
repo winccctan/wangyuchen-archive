@@ -126,30 +126,41 @@ async function directGet(urlStr, referer) {
   return { status: r.status, text: await r.text() };
 }
 
+// 代理熔断：一旦代理返回 407/401/403（要认证 / 被拒），后面所有请求都不再试代理。
+// 否则 CI 上每个请求都要白等一次代理超时（实测单轮能多花好几分钟），而结果必然还是失败。
+let PROXY_DEAD = false;
+
 // 取 JSON：先直连；被风控（-799/-412/-352 或返回 HTML）时改走代理再试
+// ⚠️ 抛错时必须把每条路的原因都带上：以前只留最后一条，CI 上明明是「代理 407」，
+//    日志却只显示代理超时，真正的直连错误（-412 还是 -352）被吞掉，排查非常费劲。
 async function getJson(urlStr, referer, tries = 2) {
-  let lastMsg = '';
-  const routes = PROXY_URL ? ['direct', 'proxy'] : ['direct'];
+  const msgs = [];
+  const routes = (PROXY_URL && !PROXY_DEAD) ? ['direct', 'proxy'] : ['direct'];
   for (const route of routes) {
     for (let n = 0; n < tries; n++) {
       let res;
       try {
         res = route === 'proxy' ? await proxyGet(urlStr, referer) : await directGet(urlStr, referer);
       } catch (e) {
-        lastMsg = `${route}:${e.message}`;
+        // 代理 407/401/403 = 代理本身挂了（要认证 / 额度用完），重试一万次也没用 ⇒ 熔断
+        if (route === 'proxy' && /CONNECT (407|401|403)/.test(e.message)) {
+          PROXY_DEAD = true;
+          console.warn(`   [代理不可用] ${e.message} —— 本轮后续请求只走直连`);
+        }
+        msgs.push(`${route}:${e.message}`);
         await sleep(1200 * (n + 1));
         continue;
       }
       let d = null;
       try { d = JSON.parse(res.text); } catch { /* HTML = 被风控 */ }
       if (d && d.code === 0) return d;
-      lastMsg = d ? `${route}:code=${d.code} ${d.message || ''}` : `${route}:非JSON(HTTP ${res.status})`;
+      msgs.push(d ? `${route}:code=${d.code} ${d.message || ''}` : `${route}:非JSON(HTTP ${res.status})`);
       const hard = d && /-799|-412|-352/.test(String(d.code));
       if (!hard && d) return d; // 业务错误（如空合集）不重试
       await sleep(hard ? 3000 * (n + 1) : 1200 * (n + 1));
     }
   }
-  throw new Error(lastMsg);
+  throw new Error(msgs.join(' ｜ ') || '未知失败');
 }
 
 /* ---------------- wbi 签名（空间投稿接口必需） ---------------- */
@@ -562,19 +573,32 @@ async function crawlDynamics(up) {
   let got = 0;
   try { await ensureWbiKey(); } catch (e) { console.warn(`   [动态] wbi 签名不可用：${e.message}`); return 0; }
   let offset = '';
+  let emptyRetry = 0;
   for (let page = 1; page <= FRESH_DYN_PAGES; page++) {
     if (!budgetLeft()) return got;
     pagesUsed++;
-    const params = offset ? { host_mid: mid, offset, platform: 'web', web_location: 333.33 }
-                          : { host_mid: mid, page, platform: 'web', web_location: 333.33 };
+    // ⚠️ 只传 host_mid + page/offset：实测多带 platform / web_location 会让接口返回
+    //    code=0 但 items 为空（「忘记自己是猪」12 条 → 0 条），纯属 B 站这边的怪癖。
+    const params = offset ? { host_mid: mid, offset } : { host_mid: mid, page };
     const q = signQuery(params);
     let d;
     try {
       d = await getJson('https://api.bilibili.com/x/polymer/web-dynamic/v1/feed/space?' + q, `https://space.bilibili.com/${mid}/dynamic`);
     } catch (e) { console.warn(`   [动态] 第 ${page} 页失败：${e.message}`); return got; }
     const items = d.data?.items || [];
-    // ⚠️ 别静默 break：之前合集通道就是靠「空页直接退出、连日志都没有」骗过了所有人
-    if (!items.length) { console.log(`   [动态] 第 ${page} 页 0 条（code=${d.code} ${d.message || ''}）`); break; }
+    if (!items.length) {
+      // 软风控：B 站被请求多了会返回 code=0 但 items 为空（单独探针就正常 12 条）。
+      // 第 1 页空 = 本轮白干，等一下重试一次；仍空就放弃（不静默退出）。
+      if (page === 1 && emptyRetry < 1) {
+        emptyRetry++;
+        console.log(`   [动态] 第 1 页 0 条（软风控？）等 3 秒重试一次`);
+        await sleep(3000);
+        page--;
+        continue;
+      }
+      console.log(`   [动态] 第 ${page} 页 0 条（code=${d.code} ${d.message || ''}）`);
+      break;
+    }
     const before = added;
     for (const it of items) {
       const a = it.modules?.module_dynamic?.major?.archive;
@@ -601,11 +625,13 @@ let ok = 0;
 for (const up of UP_TARGETS) {
   console.log(`\n===== ${up.label} (mid=${up.mid}) =====`);
   let n = 0;
-  try { n += await crawlSeasons(up); } catch (e) { console.warn(`   [合集通道] 异常：${e.message}`); }
-  // 空间列表：无合集的号只能靠它；有合集的号也跑一遍兜底（预算内）
-  try { n += await crawlSpaceList(up); } catch (e) { console.warn(`   [空间通道] 异常：${e.message}`); }
-  // 动态：风控最轻，且在空间接口被封（-412）时仍能拿到最新投稿 ⇒ 无合集 UP 的主要来源
+  // ① 动态：风控最轻、也是「无合集」UP 的唯一活路 ⇒ 排最前面。
+  //    实测它被请求多了会软风控（code=0 但 items 空），所以先跑它。
   try { n += await crawlDynamics(up); } catch (e) { console.warn(`   [动态通道] 异常：${e.message}`); }
+  // ② 合集/系列：完全不吃风控，是本脚本的主力来源
+  try { n += await crawlSeasons(up); } catch (e) { console.warn(`   [合集通道] 异常：${e.message}`); }
+  // ③ 空间列表：最容易吃 -412（返回 HTML 拦截页），排最后当兜底
+  try { n += await crawlSpaceList(up); } catch (e) { console.warn(`   [空间通道] 异常：${e.message}`); }
   if (n > 0) ok++;
   save();
 }
