@@ -2775,7 +2775,7 @@ async function handlePushSubscribe(request, env) {
     t: { msg: topics.msg !== false, live: topics.live !== false, perf: topics.perf !== false },
     at: Date.now()
   }));
-  await pushDiag(env, request, { ok: true, why: 'saved', host: host });
+  await pushDiag(env, request, { ok: true, why: 'saved', host: host, key: await pushSubKeyOf(sub.endpoint) });
 
   // 订阅一存下就立刻发一条「开好了」的确认 —— 目的有两个：
   //   ① 用户点完开关马上能看见成效，不用猜；
@@ -2827,7 +2827,9 @@ async function handlePushUnsubscribe(request, env) {
   try { b = await request.json(); } catch (_) { /* 允许空 body：按下面的 endpoint 兜底 */ }
   const ep = (b && b.sub && b.sub.endpoint) || b.endpoint;
   if (!ep) return pushBadSub();
-  await kv.delete(await pushSubKeyOf(ep)).catch(() => {});
+  const key = await pushSubKeyOf(ep);
+  await kv.delete(key).catch(() => {});
+  await pushDiag(env, request, { ok: true, why: 'unsubscribed', key: key });
   return json({ ok: true });
 }
 
