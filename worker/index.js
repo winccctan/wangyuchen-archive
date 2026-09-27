@@ -2553,6 +2553,9 @@ const PUSH_CATCHUP_MAX = 3;
 // 🔴 新鲜度闸（2026-09-27 站长定「不许推旧的，可以推新的」）：比这更「老」的发言**一律不推**。
 //    正常抓取时延迟只有 2~5 分钟，永远碰不到这条线；它只在「抓取停摆又恢复」时拦住积压的旧内容。
 const PUSH_FRESH_MS = 10 * 60 * 1000;
+// 开播通知的新鲜度窗口：比发言宽一点（开播不像发言那么密，晚 20 分钟才知道也有意义），
+// 但太旧（比如值守重启时发现几小时前那场）就别打扰了。
+const PUSH_LIVE_FRESH_MS = 20 * 60 * 1000;
 // 总闸：true = 一条都不推（订阅/开关照常可用）。默认开着 —— 站长要的是「挡旧的」，不是「全停」。
 //    🔴 只有站长明确说「先别推了」才改成 true；改完要重新部署才生效（CF 从 main 构建）。
 const PUSH_OFF = false;
@@ -2729,20 +2732,23 @@ async function pushSubKeyOf(endpoint) {
 async function pushBroadcast(env, payload, topic) {
   const subs = await pushAllSubs(env);
   let sent = 0, gone = 0, fail = 0, skipped = 0;
+  const details = [];   // 逐条诊断（只看得见的接口能拿到）：哪台设备、返回什么状态码
   const jobs = [];
   for (const s of subs) {
     if (topic && s.t && s.t[topic] === false) { skipped += 1; continue; }
     // 🔴 库里存的是 {p,a}（省空间），sendPush 要的是 {p256dh,auth} —— 必须在这里转一次。
     //    少了这一转，广播会「一条都发不出去」（2026-09-27 事故）。
+    let host = '';
+    try { host = new URL(s.e).hostname; } catch (_) { host = '?'; }
     jobs.push(sendPush(env, { endpoint: s.e, keys: { p256dh: s.k.p, auth: s.k.a } }, payload).then(async (r) => {
-      if (r.ok) sent += 1;
-      else if (r.gone) { gone += 1; await env.KV.delete(s.key).catch(() => {}); }
-      else fail += 1;
-    }).catch(() => { fail += 1; }));
+      if (r.ok) { sent += 1; details.push({ host: host, ok: true }); }
+      else if (r.gone) { gone += 1; details.push({ host: host, gone: true }); await env.KV.delete(s.key).catch(() => {}); }
+      else { fail += 1; details.push({ host: host, st: r.status, bad: !!r.badArgs }); }
+    }).catch((e) => { fail += 1; details.push({ host: host, err: String((e && e.message) || e).slice(0, 80) }); }));
   }
   // 订阅数很少（几十个），并发无所谓；真到几百个时分批跑，免得一次开太多连接
   for (let i = 0; i < jobs.length; i += 20) await Promise.all(jobs.slice(i, i + 20));
-  return { total: subs.length, sent: sent, gone: gone, fail: fail, skipped: skipped };
+  return { total: subs.length, sent: sent, gone: gone, fail: fail, skipped: skipped, details: details };
 }
 
 /* ------------------------- 检测：有什么该推的 ------------------------- */
@@ -2872,19 +2878,23 @@ async function runPushCheck(env, opts) {
       }
     }
 
-    /* ② 她开直播 */
+    /* ② 她开直播
+       🔴 数据源 2026-09-27 改了：原来是读 KV 'live'（**录播归档**，要等直播结束才出现）
+       ⇒ 她开播那一刻永远推不出来。现在读 'live-now'（值守探针发现的「正在进行的直播」），
+       兜底用 —— 正常情况值守自己就推了，这里只在值守没来得及推时补一刀。 */
     const lastLive = (await kv.get(PUSH_LAST + 'live')) || '';
-    const live = await kv.get('live', { type: 'json' }) || [];
-    const top = Array.isArray(live) ? live[0] : null;
-    if (top && top.liveId && String(top.liveId) !== String(lastLive)
-        && now - (Number(top.ctime) || 0) < 90 * 60 * 1000) {
-      const ann = String(top.announcement || '').trim();
-      o.live = await pushBroadcast(env, {
-        title: '🔴 王语晨开播啦！',
-        body: ann ? (ann.length > 40 ? ann.slice(0, 40) + '…' : ann) : '点开看直播',
-        tag: 'wyc-live', url: './', topic: 'live'
-      }, 'live');
-      await kv.put(PUSH_LAST + 'live', String(top.liveId));
+    const nowLive = await kv.get('live-now', { type: 'json' });
+    if (nowLive && nowLive.liveId && String(nowLive.liveId) !== String(lastLive)
+        && now - (Number(nowLive.ctime) || 0) < PUSH_LIVE_FRESH_MS) {
+      if (await markLiveSent(env, String(nowLive.liveId))) {
+        const ann = String(nowLive.title || '').trim();
+        o.live = await pushBroadcast(env, {
+          title: '🔴 王语晨开播啦！',
+          body: ann ? (ann.length > 40 ? ann.slice(0, 40) + '…' : ann) : '点开看直播',
+          tag: 'wyc-live-' + String(nowLive.liveId), url: './', topic: 'live'
+        }, 'live');
+      }
+      await kv.put(PUSH_LAST + 'live', String(nowLive.liveId));
     }
 
     /* ③ 公演开播 */
@@ -3090,6 +3100,22 @@ async function pushRecentSent(env, limit) {
   } catch (_) { return null; }
 }
 
+/**
+ * 开播通知的去重哨兵（走 KV，不用 D1 那张表）：
+ * liveId 是 19 位数字，**超出 JS 安全整数范围**，塞进 INTEGER 主键会被截断 ⇒ 只能单独存。
+ * 开播一天也就几次，KV 的并发窗口可以忽略。
+ */
+async function markLiveSent(env, id) {
+  const kv = env && env.KV;
+  const key = 'push:sent:live:' + String(id || '');
+  if (!kv || !id) return true;
+  try {
+    if (await kv.get(key)) return false;
+    await kv.put(key, '1', { expirationTtl: 86400 * 3 });
+    return true;
+  } catch (_) { return true; }
+}
+
 /** 顺手清掉 7 天前的哨兵行（约每 20 次才真跑一次，D1 写入可忽略） */
 let PRUNE_N = 0;
 function maybePrunePushSent(db) {
@@ -3212,10 +3238,36 @@ async function handlePushNotify(request, env) {
   let b = null;
   try { b = await request.json(); } catch (_) { return json({ error: 'bad-json' }, 400); }
   const t = Number(b && b.t) || 0;
-  if (!t) return json({ error: 'missing t' }, 400);
   const text = String((b && b.text) || '').slice(0, 120);
   const o = { ok: true, t: t };
   if (PUSH_OFF) { o.paused = true; return json(o); }
+
+  /* 🔴 开播通知（2026-09-27 加）：以前「开播推送」读的是 KV 里的**录播归档**，
+     而归档要等直播结束才出现 ⇒ 她开播时永远推不出来（站长 22:48 亲眼看着她开播，站内却什么都没有）。
+     现在由值守探针查「正在进行的直播」（status=2）后从这里推，1 分钟内到手机。 */
+  if (b && b.type === 'live') {
+    const id = String(b.id || '');
+    if (!id) return json({ error: 'missing id' }, 400);
+    o.type = 'live'; o.id = id;
+    try {
+      if (!(await loadVapid(env))) { o.skipped = 'noVapid'; return json(o); }
+      const last = String((await kv.get(PUSH_LAST + 'live')) || '');
+      if (last === id) { o.skipped = 'already'; return json(o); }
+      await kv.put(PUSH_LAST + 'live', id);
+      // 去重哨兵（liveId 是 19 位数字，超出 JS 安全整数 ⇒ 不能走 D1 那个数字主键，这里用 KV）
+      if (!(await markLiveSent(env, id))) { o.skipped = 'dup'; return json(o); }
+      // 留一份「当前在播」给 5 分钟那轮兜底用（它读不到实时接口，只能读这个）
+      await kv.put('live-now', JSON.stringify({ liveId: id, ctime: t, title: text }));
+      if (!t || Date.now() - t > PUSH_LIVE_FRESH_MS) { o.skipped = 'stale'; return json(o); }
+      o.msg = await pushBroadcast(env, {
+        title: '🔴 王语晨开播啦！', body: text || '点开看直播',
+        tag: 'wyc-live-' + id, url: './', topic: 'live'
+      }, 'live');
+    } catch (e) { o.ok = false; o.error = String((e && e.message) || e).slice(0, 200); }
+    return json(o);
+  }
+
+  if (!t) return json({ error: 'missing t' }, 400);
   try {
     if (!(await loadVapid(env))) { o.skipped = 'noVapid'; return json(o); }
     const last = Number(await kv.get(PUSH_LAST + 'msg')) || 0;
