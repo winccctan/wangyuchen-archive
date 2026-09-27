@@ -14,7 +14,7 @@
  *
  * 首轮只记游标不推送（避免刚启动就把历史发言推一遍）。
  */
-import { fetchMessagePage } from './lib/api.mjs';
+import { fetchMessagePage, fetchLiveListPage, fetchNewestLiveId } from './lib/api.mjs';
 import { MEMBER, POCKET48_TOKEN } from './lib/config.mjs';
 import { parseMessage } from './lib/message.mjs';
 
@@ -68,6 +68,55 @@ async function notify(t, text) {
 }
 
 let lastSeen = 0;
+
+/** 通知 Worker：开播（type=live，走单独的开播游标/去重） */
+async function notifyLive(id, t, title) {
+  if (!SYNC_TOKEN && !GH_TOKEN) { console.log('[跳过] 没有凭据，无法调用推送接口'); return; }
+  const headers = { 'Content-Type': 'application/json' };
+  if (SYNC_TOKEN) headers['x-sync-token'] = SYNC_TOKEN;
+  if (GH_TOKEN) headers['x-gh-token'] = GH_TOKEN;
+  try {
+    const r = await fetch(WORKER + '/api/push/notify', {
+      method: 'POST', headers,
+      body: JSON.stringify({ type: 'live', id: String(id), t: Number(t) || 0, text: title })
+    });
+    console.log('[notify-live] http=' + r.status + ' ' + (await r.text()).slice(0, 160));
+  } catch (e) {
+    console.warn('[notify-live] 失败：' + String((e && e.message) || e).slice(0, 120));
+  }
+}
+
+/* ---------------- 开播盯梢 ----------------
+ * 🔴 为什么必须单独查「正在进行的直播」：
+ *   站内档案里的直播列表是 **record=true 的录播归档**，要等她下播才出现。
+ *   以前「开播推送」读的就是那份 ⇒ 她开播时永远推不出来（2026-09-27 站长亲历：她 22:48 开播，站内毫无动静）。
+ *   record=false 才是「直播中/刚结束」的列表（status=2），这里每轮顺带看一眼。
+ */
+let liveNext = '0';
+let lastLiveId = '';
+
+async function checkLive() {
+  try {
+    if (liveNext === '0') liveNext = (await fetchNewestLiveId({ groupId: MEMBER.groupId, record: true })) || '0';
+    const { list } = await fetchLiveListPage({ userId: MEMBER.userId, next: liveNext, record: false });
+    if (!list.length) return;
+    // 取「最新的那场」（列表顺序不保证按时间，自己比一遍）
+    let top = null;
+    for (const x of list) {
+      if (!x || !x.liveId) continue;
+      if (!top || Number(x.ctime) > Number(top.ctime || 0)) top = x;
+    }
+    if (!top) return;
+    if (Number(top.status) !== 2) return;                       // 2 = 直播中（3 = 已转录播）
+    if (String(top.liveId) === String(lastLiveId)) return;      // 这场已经报过了
+    lastLiveId = String(top.liveId);
+    const title = String(top.title || top.announcement || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+    console.log('[开播] ' + new Date(Number(top.ctime) + 8 * 3600e3).toISOString().replace('T', ' ').slice(0, 19) + ' ' + (title || '（无标题）'));
+    await notifyLive(top.liveId, Number(top.ctime), title || '点开看直播');
+  } catch (e) {
+    console.warn('[开播] 检查失败：' + String((e && e.message) || e).slice(0, 120));
+  }
+}
 
 /**
  * 启动时先问 Worker「上次推到哪了」，从那儿接着跑。
@@ -136,6 +185,8 @@ async function main() {
     } catch (e) {
       console.warn('[tick] 失败：' + String((e && e.message) || e).slice(0, 140));
     }
+    // 顺带看一眼她是不是在直播（开播 1 分钟内推送）
+    try { await checkLive(); } catch (e) { console.warn('[开播] 异常：' + String((e && e.message) || e).slice(0, 100)); }
     first = false;
     n += 1;
     await sleep(INTERVAL_MS);
