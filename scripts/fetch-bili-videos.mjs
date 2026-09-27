@@ -17,8 +17,13 @@
  *         改用阈值更宽松的 recArchivesByKeywords；仍可能 -412，故**可断点续传**慢慢补。
  *
  * 用法：node scripts/fetch-bili-videos.mjs
- *   RESET=1        忽略进度从头抓
- *   PAGE_SLEEP=... 每页间隔（默认 2000ms）
+ *   RESET=1          忽略进度从头抓
+ *   PAGE_SLEEP=...   每页间隔（默认 2000ms）
+ *   BILI_BACKFILL=1  额外跑「② 历史续跑」翻全量投稿历史（默认不跑：易触发 -412 风控，新视频靠 ① 增量已覆盖）
+ *
+ * ⚠️ 风控策略：默认只跑 ① 新投稿快扫（每个 UP 空间第 1 页=最新 30 条，走代理，几乎不触发风控）。
+ *    ② 历史续跑会把每位 UP 的投稿列表从头翻到尾，数据中心 IP 直连必 -412、重试等 60~120s，既慢又自伤风控，
+ *    故默认关闭、仅 BILI_BACKFILL=1 时手动跑（建议低频，如每月一次补旧数据）。
  */
 import { writeFileSync, readFileSync, existsSync, renameSync } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -319,8 +324,9 @@ async function crawlSpace(mid, keep, maxPages) {
 }
 
 /* ---------------- 主流程 ----------------
- * 分两遍：①「新投稿快扫」→ ② 历史续跑。
- * 🔴 为什么必须先跑①：预算会被历史续跑吃光，导致新投稿永远进不了库。
+ * ①「新投稿快扫」（默认每轮都跑，增量、走代理、几乎不触发风控）。
+ * ②「历史续跑」默认关闭，仅 BILI_BACKFILL=1 时跑（翻全量投稿历史，易 -412 风控）。
+ * 🔴 为什么 ① 必须先跑：历史续跑会吃光页数预算，导致新投稿永远进不了库（见下）。
  *    实测 2026-09-27：BILI_PAGE_BUDGET=6 全被「企理鹅大帝」两个历史合集的翻页用掉
  *    （日志里两次「本轮页数已用完」），排在后面的 Chzhnh 空间通道**一次都没执行过**
  *    ⇒ B 站库卡在 1152 条不增长 ⇒ Chzhnh 当天新传的公演 cut 既进不了 bili-cuts（✂️B站cut），
@@ -335,15 +341,23 @@ for (const t of UP_TARGETS) {
   }
 }
 
-console.log('\n—— ② 历史续跑（用剩余页数预算）——');
-for (const t of UP_TARGETS) {
-  console.log(`\n===== ${t.label}（mid=${t.mid}）=====`);
-  if (t.seasons || t.series) {
-    try { await crawlSeasons(t.mid); } catch (e) { console.warn('  合集/系列通道失败：' + e.message); }
+// 🔴 默认只跑 ① 增量快扫；② 历史续跑（翻全量投稿历史、易触发 -412 风控）改为手动按需：
+//    BILI_BACKFILL=1 node scripts/fetch-bili-videos.mjs
+// 原因：历史续跑每轮把每位 UP 的投稿列表从头翻到尾，数据中心 IP 直连必 -412，
+//       重试等待 60~120s 既慢又自伤风控；而新视频都在空间第 1 页（① 已抓），无需翻历史。
+if (process.env.BILI_BACKFILL === '1') {
+  console.log('\n—— ② 历史续跑（用剩余页数预算，BILI_BACKFILL=1 手动触发）——');
+  for (const t of UP_TARGETS) {
+    console.log(`\n===== ${t.label}（mid=${t.mid}）=====`);
+    if (t.seasons || t.series) {
+      try { await crawlSeasons(t.mid); } catch (e) { console.warn('  合集/系列通道失败：' + e.message); }
+    }
+    if (t.space) {
+      await crawlSpace(t.mid, t.space.keep, t.space.maxPages);
+    }
   }
-  if (t.space) {
-    await crawlSpace(t.mid, t.space.keep, t.space.maxPages);
-  }
+} else {
+  console.log('\n—— ② 历史续跑已跳过（默认增量模式，避免自伤风控；需补旧数据请设 BILI_BACKFILL=1）——');
 }
 
 save();

@@ -13,6 +13,12 @@ import { URL } from 'node:url';
 const PROXY_URL =
   process.env.SCRAPE_PROXY || process.env.HTTPS_PROXY || process.env.https_proxy || '';
 
+// 代理熔断标志：代理一旦证实不可用（407 要认证 / 401 / 403 / 连不上），
+// 本轮后续请求直接走直连，不再每个请求都白等一次代理超时。
+// 🔴 为什么必须有这个兜底（2026-09-27 事故）：以前代理挂了就一路失败到底，
+//    而口袋接口**直连其实是通的** —— 结果整整 3 个半小时发言没更新，还是站长先发现的。
+let PROXY_DEAD = false;
+
 if (PROXY_URL) {
   console.log('[代理] 已启用，请求经代理出口发出：' + PROXY_URL.replace(/\/\/[^@/]*@/, '//***@'));
 }
@@ -144,15 +150,27 @@ async function postJsonOnce(path, body, { token } = {}) {
   const headers = await buildHeaders(token);
   const payload = JSON.stringify(body);
 
-  // 有代理：走 CONNECT 隧道；无代理：直连（原生 fetch）
-  if (PROXY_URL) {
-    const res = await requestViaProxy(url, { method: 'POST', headers, body: payload });
-    if (res.status < 200 || res.status >= 300) {
-      throw new Error(`请求失败 ${res.status} ${path}: ${res.text.slice(0, 200)}`);
+  // 有代理且代理还活着：走 CONNECT 隧道
+  if (PROXY_URL && !PROXY_DEAD) {
+    try {
+      const res = await requestViaProxy(url, { method: 'POST', headers, body: payload });
+      if (res.status < 200 || res.status >= 300) {
+        throw new Error(`请求失败 ${res.status} ${path}: ${res.text.slice(0, 200)}`);
+      }
+      return JSON.parse(res.text);
+    } catch (e) {
+      const msg = String((e && e.message) || e);
+      // 只有「代理本身坏了」才熔断；接口层的错误照常抛出，交给上层重试
+      if (/CONNECT 失败：HTTP (407|401|403)|ECONNREFUSED|ENOTFOUND|EAI_AGAIN|ETIMEDOUT/.test(msg)) {
+        PROXY_DEAD = true;
+        console.warn(`[代理失效] ${msg.slice(0, 90)} ⇒ 后续请求改走直连`);
+      } else {
+        throw e;
+      }
     }
-    return JSON.parse(res.text);
   }
 
+  // 无代理 / 代理已熔断：直连（原生 fetch）
   const res = await fetch(url, { method: 'POST', headers, body: payload });
   if (!res.ok) {
     const text = await res.text().catch(() => '');
@@ -291,7 +309,7 @@ export async function loginMobileCode(mobile, code) {
   const payload = JSON.stringify({ mobile, code });
 
   let res;
-  if (PROXY_URL) {
+  if (PROXY_URL && !PROXY_DEAD) {
     res = await requestViaProxy(url, { method: 'POST', headers, body: payload });
   } else {
     const r = await fetch(url, { method: 'POST', headers, body: payload });
