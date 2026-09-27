@@ -3350,6 +3350,321 @@
     }
   });
 
+  /* =====================================================================
+     功能 ⑱ 推送通知设置（a37，2026-09-27）
+     —— 🔔 只有一条路：Web Push 订阅（总开关）→ 服务器推到手机通知栏。
+        **页面开着、关着都收得到**，所以不需要「页面打开时才生效」的第二套开关。
+     —— 「要推哪些内容」由用户自己勾：新口袋发言 / 开直播 / 公演开播。
+     🔴 与 demo 版的三处差别（搬过来时改的）：
+        ① 订阅对象 POST 给 Worker 存起来（`/api/push/subscribe`）—— 否则服务器不知道推给谁；
+        ② 取消订阅也要 POST（`/api/push/unsubscribe`），不然关了开关服务器照推；
+        ③ 埋点 `push:on` / `push:off` / `push:test`（demo 站不发埋点）。
+     🔴 Service Worker（sw.js）**不做任何 fetch 拦截、不缓存任何东西**：
+        「添加到主屏幕」不会让数据变旧，页面每次打开都是现拉的最新数据。
+     ===================================================================== */
+  const PUSH_KEY = 'wyc-push-v1';
+  // 🔴 VAPID **公钥**本来就是公开的：只有配对的私钥（在服务器上）能发消息，
+  //    公钥只用来让浏览器把这次订阅绑定到我们这边。私钥在 private-data/vapid.json，**不进仓库**。
+  const PUSH_VAPID = 'BPl1s9-qq0mCVkUQR93ThSwdIkWrEmZ2IG0AjVHNICAgAHS0JUKkem0FDlewyIrkCOO4sXoaX9-GyNKuoI6SXOU';
+  const PUSH_TOPICS = [
+    { k: 'msg',  n: '她发了新的口袋发言', s: '新的口袋发言，一条一条提醒', ex: '王语晨：今天公演好开心呀' },
+    { k: 'live', n: '她开直播了',         s: '她一开播就提醒',            ex: '🔴 王语晨开播啦！' },
+    { k: 'perf', n: '公演开播了',         s: '开演时提醒',                ex: '今晚 19:00 公演开演' }
+  ];
+  const P = { on: false, topics: { msg: true, live: true, perf: true }, sub: null };
+  (function initPush() {
+    const v = LS.get(PUSH_KEY, null);
+    if (v && typeof v === 'object') {
+      P.on = !!v.on;
+      P.topics = Object.assign({ msg: true, live: true, perf: true }, v.topics || {});
+      P.sub = v.sub || null;
+    }
+  })();
+  const pushSave = () => LS.set(PUSH_KEY, { on: P.on, topics: P.topics, sub: P.sub });
+  const pushCount = () => PUSH_TOPICS.filter((x) => P.topics[x.k]).length;
+
+  const pushUA = () => ({
+    sw: 'serviceWorker' in navigator,
+    pm: 'PushManager' in window,
+    nt: 'Notification' in window,
+    wx: /MicroMessenger/i.test(navigator.userAgent || ''),
+    ios: /iPad|iPhone|iPod/.test(navigator.userAgent || '') ||
+         (navigator.platform === 'MacIntel' && (navigator.maxTouchPoints || 0) > 1),
+    standalone: (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+                window.navigator.standalone === true
+  });
+  const pushSupported = () => { const u = pushUA(); return u.sw && u.pm && u.nt && !u.wx; };
+
+  /** base64url(VAPID 公钥) → Uint8Array（pushManager.subscribe 要这个格式） */
+  function vapidBytes(b64) {
+    const s = b64.replace(/-/g, '+').replace(/_/g, '/');
+    const bin = atob(s + '='.repeat((4 - (s.length % 4)) % 4));
+    const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+
+  async function pushReg() {
+    if (!('serviceWorker' in navigator)) return null;
+    try {
+      let r = await navigator.serviceWorker.getRegistration();
+      if (!r) r = await navigator.serviceWorker.register('./sw.js?v=20260927a37');
+      return r || null;
+    } catch (_) { return null; }
+  }
+
+  async function pushAskPerm() {
+    if (!('Notification' in window)) return 'unsupported';
+    if (Notification.permission === 'granted') return 'granted';
+    if (Notification.permission === 'denied') return 'denied';
+    try { return await Notification.requestPermission(); } catch (_) { return 'denied'; }
+  }
+
+  async function pushTurnOn() {
+    const u = pushUA();
+    // 先说清楚「该怎么做」，再说「不支持」——iPhone 普通标签页属前者，别吓人
+    if (u.wx) { toast('微信里收不到通知：点右上角「…」→ 用浏览器打开'); return false; }
+    if (u.ios && !u.standalone) { toast('iPhone 要先「添加到主屏幕」，再从桌面图标打开'); return false; }
+    if (!pushSupported()) { toast('这个浏览器不支持消息推送'); return false; }
+    const reg = await pushReg();
+    if (!reg) { toast('推送服务启动失败'); return false; }
+    const perm = await pushAskPerm();
+    if (perm !== 'granted') { pushRender(); toast('通知权限没开：去浏览器 / 系统设置里允许通知'); return false; }
+    try {
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: vapidBytes(PUSH_VAPID) });
+      P.sub = JSON.parse(JSON.stringify(sub));   // 存下来的订阅对象 = 服务器推给你的「地址」
+      return true;
+    } catch (_) {
+      toast('订阅失败，换个浏览器试试');
+      return false;
+    }
+  }
+
+  async function pushTurnOff() {
+    // 关开关也要真的 unsubscribe：否则浏览器还保留订阅、服务器还在推，用户却以为关了
+    try {
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (reg) { const s = await reg.pushManager.getSubscription(); if (s) await s.unsubscribe(); }
+    } catch (_) {}
+    P.sub = null;
+  }
+
+  /** 把「推给谁 + 推哪些内容」告诉服务器；失败不影响本机开关（下次开面板会再试一次） */
+  async function pushSyncServer(on) {
+    if (!P.sub) return;
+    try {
+      const base = (typeof API_BASE === 'string') ? API_BASE : '';
+      await fetch(base + (on ? '/api/push/subscribe' : '/api/push/unsubscribe'), {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ sub: P.sub, topics: P.topics })
+      });
+    } catch (_) {}
+  }
+
+  async function pushToggle() {
+    if (P.on) {
+      await pushTurnOff();
+      P.on = false; pushSave(); pushRender(); trk('push:off');
+      pushSyncServer(false);
+      toast('已关闭手机通知');
+      return;
+    }
+    const ok = await pushTurnOn();
+    P.on = ok; pushSave(); pushRender();
+    if (ok) {
+      trk('push:on');
+      await pushSyncServer(true);   // 订阅要等服务器存下来才算真的开好了
+      toast('手机通知已开启');
+    }
+  }
+
+  /** 本地弹一条通知：不用服务器，纯粹让用户先看清楚「收到时长什么样」 */
+  async function pushTest() {
+    const reg = await pushReg();
+    if (!reg) { toast('这个浏览器不支持消息推送'); return; }
+    if (!('Notification' in window) || Notification.permission !== 'granted') { toast('先打开上面的开关'); return; }
+    const t = PUSH_TOPICS.filter((x) => P.topics[x.k])[0] || PUSH_TOPICS[0];
+    try {
+      await reg.showNotification('王语晨 · 补档站', {
+        body: t.ex,
+        icon: './assets/avatar-round.png',
+        badge: './assets/avatar-round.png',
+        tag: 'wyc-test-' + t.k,
+        renotify: true,
+        lang: 'zh-CN',
+        data: { url: './', topic: t.k }
+      });
+      trk('push:test');
+      toast('已发一条测试通知');
+    } catch (_) {
+      toast('没弹出来：通知权限可能没开');
+    }
+  }
+
+  /** 面板最下面那行状态：只讲「现在是什么状况 / 下一步怎么做」，多余的说明不写
+   *  🔴 判断顺序很关键（站长 2026-09-27 实测踩到）：
+   *     iPhone 在**普通 Safari 标签页**里压根没有 Notification / PushManager 这两个对象
+   *     （苹果只允许「添加到主屏幕后的 web app」用推送），所以必须先判「还没添加到主屏幕」，
+   *     否则会被能力检测截住，误报成「这个浏览器不支持」——其实只是没从主屏幕打开。 */
+  function pushNote() {
+    const u = pushUA();
+    const perm = ('Notification' in window) ? Notification.permission : 'unsupported';
+    if (u.wx) return { c: 'warn', t: '微信里收不到通知' };
+    if (u.ios && !u.standalone) return { c: 'tip', t: 'iPhone 要先「添加到主屏幕」再从桌面打开' };
+    if (!u.sw || !u.pm || !u.nt) return { c: 'warn', t: '这个浏览器不支持消息推送' };
+    if (perm === 'denied') return { c: 'warn', t: '通知被系统关掉了：设置 → 通知里打开' };
+    if (P.on) return { c: 'ok', t: '已开启 · ' + pushCount() + ' 类提醒' };
+    return { c: '', t: '未开启' };
+  }
+
+  function pushHtml() {
+    const n = pushNote();
+    const sw = (on, dis, act, topic) =>
+      `<button type="button" class="pb-sw${on ? ' on' : ''}" role="switch" aria-checked="${on ? 'true' : 'false'}"` +
+      `${dis ? ' disabled' : ''}${act ? ` data-push="${act}"` : ''}${topic ? ` data-push-topic="${topic}"` : ''}` +
+      `><i></i></button>`;
+    const rows = PUSH_TOPICS.map((t) => `
+      <div class="pb-row${P.on ? '' : ' is-off'}">
+        <div class="pb-txt"><b>${esc(t.n)}</b><span>${esc(t.s)}</span></div>
+        ${sw(!!P.topics[t.k], !P.on, '', t.k)}
+      </div>`).join('');
+    return `
+      <div class="pb">
+        <div class="pb-row pb-row-main">
+          <div class="pb-txt"><b>接收手机通知</b><span class="pb-state${n.c ? ' is-' + n.c : ''}"${(n.c === 'tip' || n.c === 'warn') ? ' data-push="howto"' : ''}>${esc(n.t)}</span></div>
+          ${sw(P.on, false, 'push', '')}
+        </div>
+        <div class="pb-list">${rows}</div>
+        <div class="pb-act">
+          <button type="button" class="pb-btn" data-push="test">发一条测试通知</button>
+        </div>
+      </div>`;
+  }
+
+  function openPush() {
+    modal('推送通知', pushHtml(), { footer: '<button type="button" class="pb-btn ghost" data-push="close">关闭</button>' });
+  }
+  /** 🔔 顶部按钮跟着订阅状态亮起来 */
+  function pushBadge() {
+    const b = $('#pushBtn');
+    if (b) b.classList.toggle('on', P.on);
+  }
+  /** 只换弹窗 body，保持弹窗不闪、不重开 */
+  function pushRender() {
+    const b = $('#dmModal .dm-modal-b');
+    if (b) b.innerHTML = pushHtml();
+    pushBadge();
+  }
+
+  /** 面板里的点击（委托挂 document，内容会整块重渲） */
+  function bindPushEvents() {
+    const btn = $('#pushBtn');
+    if (btn) btn.addEventListener('click', openPush);
+    document.addEventListener('click', (e) => {
+      const el = e.target.closest('[data-push]');
+      if (el) {
+        const a = el.dataset.push;
+        if (a === 'push') { pushToggle(); return; }
+        if (a === 'test') { pushTest(); return; }
+        // 手机上收不到时的「下一步怎么做」——点那行状态就告诉用户
+        if (a === 'howto') {
+          const u = pushUA();
+          toast(u.wx ? '点右上角「…」→ 用浏览器打开（微信里收不到通知）'
+                     : 'Safari 底部分享 → 添加到主屏幕 → 从桌面图标打开（iOS 需 16.4 以上）');
+          return;
+        }
+        if (a === 'close') { closeModal(); return; }
+      }
+      const tp = e.target.closest('[data-push-topic]');
+      if (tp && !tp.disabled && P.on) {
+        const k = tp.dataset.pushTopic;
+        P.topics[k] = !P.topics[k];
+        pushSave();
+        pushRender();
+        pushSyncServer(true);   // 改了「要推哪些」也要告诉服务器
+      }
+    });
+    pushBadge();   // 刷新/重进页面时，按钮的亮灯状态要跟 localStorage 里的订阅一致
+  }
+
+  /* =====================================================================
+     功能 ⑲ 下拉刷新（a37，2026-09-27）
+     🔴 为什么要有：从主屏幕图标打开的 standalone 模式**没有地址栏也没有刷新按钮**，
+        Safari 还不给它原生的下拉刷新 ⇒ 用户看着旧画面不知道该怎么刷新。
+        自己实现一套：页面在顶部时向下拖 → 顶部出现「下拉刷新 / 松手刷新」→ 松手重载。
+     🔴 两条边界（别越界）：
+        ① 只有「页面已经在顶部」且「手指是向下拖」才接管，页面内部滚动完全不受影响；
+        ② 只在**触发抓取之外**做事 —— 下拉只重载页面拿最新数据，**不会**去触发
+           GitHub 抓取（那是顶部「🔄 刷新」按钮的职责，有冷却，被下拉狂刷会浪费配额）。
+     ===================================================================== */
+  function injectPullRefresh() {
+    if ($('#ptrBar')) return;
+    const bar = document.createElement('div');
+    bar.id = 'ptrBar';
+    bar.className = 'ptr';
+    bar.innerHTML = '<span></span>';
+    document.body.appendChild(bar);
+    const txt = bar.querySelector('span');
+
+    const TH = 62;    // 松手触发阈值（指示器高度 px）
+    const MAX = 92;   // 指示器最高到多少
+    let startY = 0, dy = 0, arm = false, busy = false;
+
+    const atTop = () => (window.scrollY || document.documentElement.scrollTop || 0) <= 0;
+    /** 手指落在「能自己滚动的容器」里（弹窗正文、曲目列表…）时不接管，否则会打断容器内滚动 */
+    function inScrollable(t) {
+      let el = t;
+      while (el && el !== document.body && el.nodeType === 1) {
+        if (el.scrollHeight > el.clientHeight + 4) {
+          const ov = getComputedStyle(el).overflowY;
+          if (ov === 'auto' || ov === 'scroll') return true;
+        }
+        el = el.parentElement;
+      }
+      return false;
+    }
+    function reset() {
+      bar.classList.remove('dragging', 'on');
+      bar.style.height = '0px';
+      arm = false; dy = 0;
+    }
+
+    document.addEventListener('touchstart', (e) => {
+      if (busy || e.touches.length !== 1) return;
+      startY = e.touches[0].clientY;
+      dy = 0;
+      arm = atTop() && !inScrollable(e.target);
+    }, { passive: true });
+
+    document.addEventListener('touchmove', (e) => {
+      if (busy || !arm || e.touches.length !== 1) return;
+      dy = e.touches[0].clientY - startY;
+      if (dy <= 0) { if (bar.classList.contains('dragging')) reset(); arm = atTop(); return; }
+      // 手指往下拉：拦掉 iOS 的橡皮筋回弹，换成我们自己的下拉条
+      if (e.cancelable) e.preventDefault();
+      const h = Math.min(dy * 0.55, MAX);
+      bar.classList.add('dragging');
+      bar.style.height = h + 'px';
+      txt.textContent = h >= TH ? '松手刷新' : '下拉刷新';
+    }, { passive: false });
+
+    document.addEventListener('touchend', () => {
+      if (busy || !arm) return;
+      if (Math.min(dy * 0.55, MAX) >= TH) {
+        busy = true;
+        bar.classList.remove('dragging');
+        bar.classList.add('on');
+        txt.textContent = '刷新中…';
+        trk('ptr:refresh');
+        setTimeout(() => { try { location.reload(); } catch (_) {} }, 280);
+      } else {
+        reset();
+      }
+    }, { passive: true });
+  }
+
   function boot() {
     injectToolbar();
     injectCalendar();
@@ -3357,6 +3672,8 @@
     buildHisDropdown();
     injectBlindBox();
     syncChipsTab();
+    bindPushEvents();   // ⑱ 推送通知设置（顶部 🔔 按钮 + 面板里的开关）
+    injectPullRefresh(); // ⑲ 下拉刷新（standalone 模式没有刷新按钮）
 
     // DOM 变化 → 轻度重装饰（带防抖；已处理过的元素会跳过）
     let t = null;

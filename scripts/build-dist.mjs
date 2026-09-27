@@ -77,7 +77,15 @@ const files = [
   'js/demo-features.js',      // 候选功能：收藏码 / 搜索筛选 / 分享卡 / 随机考古 / 热力图 / 开播提醒
   'js/songs.js',              // 🎵 曲目：按公演场次(liveId)组织的真曲目清单（window.__SONGS__）
   'assets/member-gs3.jpg',    // 2026 官网公式照（补齐，原先漏了）
-  'og.png'                    // 分享卡片（og:image / twitter:image，1200×630，走根目录短链接）
+  'og.png',                   // 分享卡片（og:image / twitter:image，1200×630，走根目录短链接）
+  // —— 2026-09-27 新增：Web Push 推送（🔔 通知设置）+ 添加到主屏幕（🐟 一只鱼鱼）——
+  // 🔴 这三个漏了就是「页面有按钮、推送却永远注册不上」，因为 sw.js / manifest 会 404。
+  'sw.js',                    // 推送 Service Worker（只收推送 + 点通知跳转，**不缓存任何东西**）
+  'manifest.webmanifest',     // 安卓「添加到主屏幕」读它（图标 🐟 / 名称「一只鱼鱼」）
+  'assets/icon-fish-180.png', // iOS 主屏幕图标（apple-touch-icon，🐟）
+  'assets/icon-fish-192.png', // 安卓主屏幕图标
+  'assets/icon-fish-512.png',
+  'assets/icon-fish-maskable-512.png'
 ];
 
 // 整目录复制：口袋表情图（105 张 gif，共 ~300KB），逐个列白名单不现实
