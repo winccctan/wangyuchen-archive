@@ -1,8 +1,56 @@
 window.PERF_CUTS = {
  "uid": 7794095795,
  "account": "GNZ48王语晨的甜橙小铺",
- "updatedAt": "2026-09-26T23:42:49.820Z",
+ "updatedAt": "2026-09-27T14:45:43.861Z",
  "cuts": [
+  {
+   "date": "2026-09-27",
+   "perf": "四八班中秋联合公演",
+   "song": "看春春欲晚",
+   "mblogid": "Rk5hgiQgI",
+   "uid": 7794095795,
+   "url": "https://weibo.com/7794095795/Rk5hgiQgI",
+   "h5": "https://video.weibo.com/show?fid=1034:5347866525499505",
+   "cover": "https://wx2.sinaimg.cn/orj1080/008vtemvly1ihij83wp4tj31hc0u0788.jpg",
+   "text": "#王语晨[超话]# \n【GNZ48王语晨 | 公演cut】20260927\n  四八班中秋联合公演 \n\n《 看春春欲晚 》\n\n王语晨cut http://t.cn/AXWqZWXc ​​​",
+   "liveId": ""
+  },
+  {
+   "date": "2026-09-26",
+   "perf": "TEAM NIII·第二十六场《 拾忆：TEAM NIII 》",
+   "song": "续集",
+   "mblogid": "Rk5gu7Ucv",
+   "uid": 7794095795,
+   "url": "https://weibo.com/7794095795/Rk5gu7Ucv",
+   "h5": "https://video.weibo.com/show?fid=1034:5347866282229859",
+   "cover": "https://wx4.sinaimg.cn/orj1080/008vtemvly1ihij7lbesgj31hc0u0mz0.jpg",
+   "text": "#王语晨[超话]# \n【GNZ48王语晨 | 公演cut】20260926\nTEAM NIII·第二十六场《 拾忆：TEAM NIII 》\n\n《 续集 》\n\n王语晨cut http://t.cn/AXWqzjnh ​​​",
+   "liveId": ""
+  },
+  {
+   "date": "2026-09-26",
+   "perf": "TEAM NIII·第二十六场《 拾忆：TEAM NIII 》",
+   "song": "High Light",
+   "mblogid": "Rk5fZ7qUT",
+   "uid": 7794095795,
+   "url": "https://weibo.com/7794095795/Rk5fZ7qUT",
+   "h5": "https://video.weibo.com/show?fid=1034:5347866093224030",
+   "cover": "https://wx1.sinaimg.cn/orj1080/008vtemvly1ihij68jm27j31hc0u0ac2.jpg",
+   "text": "#王语晨[超话]# \n【GNZ48王语晨 | 公演cut】20260926\nTEAM NIII·第二十六场《 拾忆：TEAM NIII 》\n\n《 High Light 》\n\n王语晨cut http://t.cn/AXWqzhS7 ​​​",
+   "liveId": ""
+  },
+  {
+   "date": "2026-09-26",
+   "perf": "TEAM NIII·第二十六场《 拾忆：TEAM NIII 》",
+   "song": "MC1",
+   "mblogid": "Rk5dMhuxr",
+   "uid": 7794095795,
+   "url": "https://weibo.com/7794095795/Rk5dMhuxr",
+   "h5": "https://video.weibo.com/show?fid=1034:5347864818417676",
+   "cover": "https://wx4.sinaimg.cn/orj1080/008vtemvly1ihij27sokuj31hc0u0jt3.jpg",
+   "text": "#王语晨[超话]# \n【GNZ48王语晨 | 公演cut】20260926\nTEAM NIII·第二十六场《 拾忆：TEAM NIII 》\n\nmc1“一句话祝福项宇婧”\n\n王语晨cut http://t.cn/AXWqPLnc ​​​",
+   "liveId": ""
+  },
   {
    "date": "2026-09-13",
    "perf": "TEAM NIII·第二十六场《 拾忆：TEAM NIII 》",
