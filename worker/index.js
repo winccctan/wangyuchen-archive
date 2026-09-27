@@ -2621,12 +2621,22 @@ async function sendPush(env, sub, payloadObj) {
       'content-encoding': 'aes128gcm',
       'content-type': 'application/octet-stream',
       ttl: '86400',
-      urgency: 'high'                                            // iOS / Chrome 都会立刻弹，而不是攒着
+      urgency: 'high',                                           // iOS / Chrome 都会立刻弹，而不是攒着
+      // 🔴 折叠键（RFC 8030 Topic）：payload 是加密的，推送服务读不到里面的 tag，
+      //    同一条发言被两条路各发一次时它没法替我们折叠 —— 靠这个头让它在服务端就合并成一条。
+      //    只认 [A-Za-z0-9_-] 且 ≤32 字符，超了/不合法就不带（不能因为一个头把整条推送搞失败）。
+      ...(pushTopicOf(payloadObj && payloadObj.tag) ? { topic: pushTopicOf(payloadObj && payloadObj.tag) } : {})
     },
     body: body
   });
   if (res.status === 404 || res.status === 410) return { ok: false, gone: true };
   return { ok: res.status >= 200 && res.status < 300, gone: false, status: res.status };
+}
+
+/** 把 payload 的 tag 转成合法的折叠键（RFC 8030 Topic）；不合法就返回空串（不带这个头） */
+function pushTopicOf(tag) {
+  const s = String(tag || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 32);
+  return s.length >= 3 ? s : '';
 }
 
 /** 列出全部订阅（KV list 读，不占写入配额） */
@@ -3008,6 +3018,19 @@ async function markMsgSent(env, t) {
   }
 }
 
+/**
+ * 推送留痕：把「最近推过哪些发言」从 D1 哨兵表里读出来（同一条只会出现一行 ⇒ 一眼看出有没有重复推）。
+ * 排查「手机上同一条收到好几遍」时先看这个：行数 > 发言数 就说明还有第二条路在推。
+ */
+async function pushRecentSent(env, limit) {
+  const db = env && env.DB;
+  if (!db || typeof db.prepare !== 'function') return null;
+  try {
+    const r = await db.prepare('SELECT t, at FROM push_sent ORDER BY at DESC LIMIT ?').bind(Number(limit) || 20).all();
+    return (r && r.results) || [];
+  } catch (_) { return null; }
+}
+
 /** 顺手清掉 7 天前的哨兵行（约每 20 次才真跑一次，D1 写入可忽略） */
 let PRUNE_N = 0;
 function maybePrunePushSent(db) {
@@ -3331,7 +3354,9 @@ async function handlePushReplay(request, env) {
 async function handlePushDiagView(env) {
   const subs = await pushAllSubs(env);
   const diag = (await env.KV.get('push:diag', { type: 'json' })) || [];
-  return json({ ok: true, subs: subs.length, diag: diag });
+  // 「最近推过哪些发言」：同一条发言只应出现一行；出现两行就说明还有第二条路在重复推
+  const sent = await pushRecentSent(env, 20);
+  return json({ ok: true, subs: subs.length, recentSent: sent, diag: diag });
 }
 
 /** 读写 VAPID 私钥（需 sync token）—— 私钥只落在 KV，不进仓库，所以只能这样灌进去 */
