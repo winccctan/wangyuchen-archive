@@ -37,6 +37,7 @@ const PAGE_SLEEP = Number(process.env.PAGE_SLEEP || 2500);
 const PAGE_BUDGET = Number(process.env.BILI_CUT_PAGE_BUDGET || 0);
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const rndHex = (n) => Array.from({ length: n }, () => '0123456789ABCDEF'[Math.floor(Math.random() * 16)]).join('');
 let pagesUsed = 0;
 const budgetLeft = () => PAGE_BUDGET <= 0 || pagesUsed < PAGE_BUDGET;
 
@@ -165,8 +166,15 @@ async function ensureWbiKey() {
   try {
     const r = await fetch('https://www.bilibili.com/', { headers: { 'User-Agent': UA, Accept: 'text/html' } });
     const ck = typeof r.headers.getSetCookie === 'function' ? r.headers.getSetCookie() : [];
-    const buvid = ck.map((c) => c.split(';')[0]).filter((c) => /^(buvid3|b_nut|buvid4)=/.test(c)).join('; ');
+    const buvid = ck.map((c) => c.split(';')[0])
+      .filter((c) => /^(buvid3|buvid4|b_nut|_uuid|fingerprint|buvid_fp|b_lsid)=/.test(c)).join('; ');
     if (buvid) EXTRA_COOKIE = buvid;
+    // ★ b_lsid 是 B 站前端现算的会话 id，接口并不下发；缺它时空间/动态接口会直接返回
+    //   -352「风控校验失败」（实测：只带 buvid3 必 -352，补上 b_lsid 后 code=0）。
+    //   格式是 16 位大写十六进制，自己按格式伪造一个即可。
+    if (!/b_lsid=/.test(EXTRA_COOKIE)) {
+      EXTRA_COOKIE += (EXTRA_COOKIE ? '; ' : '') + 'b_lsid=' + rndHex(16);
+    }
     await r.text().catch(() => {});
   } catch (_) { /* 拿不到也继续试 */ }
   const nav = await getJson('https://api.bilibili.com/x/web-interface/nav', 'https://www.bilibili.com/');
@@ -371,24 +379,52 @@ async function crawlSeasonArchives(up, sid, name, totalHint) {
   const key = `${up.mid}:season:${sid}`;
   const referer = `https://space.bilibili.com/${up.mid}/channel/collectiondetail?sid=${sid}`;
   let total = totalHint || 0, got = 0;
-  for (let pn = Math.max(1, Number(progress[key]) || 1); pn <= 300; pn++) {
-    if (!budgetLeft()) { console.log('   [预算] 本轮页数用完，保存进度下次续跑'); return got; }
+
+  const scan = async (pn) => {
+    if (!budgetLeft()) return null;
     pagesUsed++;
     let d;
     try {
       d = await getJson(`https://api.bilibili.com/x/polymer/web-space/seasons_archives_list?mid=${up.mid}&season_id=${sid}&page_num=${pn}&page_size=30&sort_reverse=false`, referer);
-    } catch (e) { console.warn(`   [合集 ${name}] 第 ${pn} 页失败：${e.message}`); progress[key] = pn; return got; }
-    total = d.data?.page?.total || total;
+    } catch (e) {
+      console.warn(`   [合集 ${name}] 第 ${pn} 页失败：${e.message}`);
+      return null;
+    }
+    if (d.data?.page?.total) total = d.data.page.total;
     const ar = d.data?.archives || [];
-    if (!ar.length) break;
+    if (!ar.length) {
+      console.log(`   [合集 ${name}] 第 ${pn} 页 0 条（已到末尾）`);
+      return false;
+    }
     const before = added;
     ar.forEach((v) => put(v, up, name));
     got += added - before;
-    progress[key] = pn + 1;
     console.log(`   [合集 ${name}] 第 ${pn} 页 ${ar.length} 条（新增 ${added - before}）`);
-    if (pn * 30 >= total) break;
     await sleep(PAGE_SLEEP);
+    return true;
+  };
+
+  // ① 先扫第 1 页：拿到真实 total（合集列表给的 total 可能滞后），也覆盖排序变成倒序的情况
+  const r1 = await scan(1);
+  if (r1 === null) return got; // 预算用尽
+  const lastPage = Math.max(1, Math.ceil(total / 30));
+  // ② fresh 段：本接口按「加入合集的顺序」正序返回 ⇒ 新投稿永远落在【最后一页】。
+  const done = new Set([1]);
+  for (let i = 0; i < FRESH_SEASON_PAGES; i++) {
+    const pn = lastPage - i;
+    if (pn <= 1 || done.has(pn)) continue;
+    done.add(pn);
+    await scan(pn);
   }
+  // ③ 深翻段：按断点补历史（上面扫过的页跳过）
+  for (let pn = Math.max(1, Number(progress[key]) || 1); pn <= lastPage; pn++) {
+    if (done.has(pn)) continue;
+    if (!budgetLeft()) { console.log('   [预算] 本轮页数用完，保存进度下次续跑'); progress[key] = pn; return got; }
+    const r = await scan(pn);
+    if (r !== true) break;
+    progress[key] = pn + 1;
+  }
+  progress[key] = lastPage + 1; // 本轮已确认扫到末尾，下次从新增长的页继续
   return got;
 }
 
@@ -397,26 +433,67 @@ async function crawlSeriesArchives(up, sid, name, totalHint) {
   const key = `${up.mid}:series:${sid}`;
   const referer = `https://space.bilibili.com/${up.mid}/channel/seriesdetail?sid=${sid}`;
   let total = totalHint || 0, got = 0;
-  for (let pn = Math.max(1, Number(progress[key]) || 1); pn <= 300; pn++) {
-    if (!budgetLeft()) return got;
+
+  const scan = async (pn) => {
+    if (!budgetLeft()) return null;
     pagesUsed++;
     let d;
     try {
       d = await getJson(`https://api.bilibili.com/x/series/archives?mid=${up.mid}&series_id=${sid}&only_normal=true&sort=desc&pn=${pn}&ps=30`, referer);
-    } catch (e) { console.warn(`   [系列 ${name}] 第 ${pn} 页失败：${e.message}`); progress[key] = pn; return got; }
-    total = d.data?.page?.total || total;
+    } catch (e) {
+      console.warn(`   [系列 ${name}] 第 ${pn} 页失败：${e.message}`);
+      return null;
+    }
+    if (d.data?.page?.total) total = d.data.page.total;
     const ar = d.data?.archives || [];
-    if (!ar.length) break;
+    if (!ar.length) {
+      console.log(`   [系列 ${name}] 第 ${pn} 页 0 条（已到末尾）`);
+      return false;
+    }
     const before = added;
     ar.forEach((v) => put(v, up, name));
     got += added - before;
-    progress[key] = pn + 1;
     console.log(`   [系列 ${name}] 第 ${pn} 页 ${ar.length} 条（新增 ${added - before}）`);
-    if (pn * 30 >= total) break;
     await sleep(PAGE_SLEEP);
+    return true;
+  };
+
+  // 本接口 sort=desc ⇒ 新投稿在第 1 页；但为防排序口径变化，末尾页也一并扫
+  const done = new Set();
+  const r1 = await scan(1);
+  if (r1 === null) return got;
+  done.add(1);
+  const lastPage = Math.max(1, Math.ceil(total / 30));
+  for (let i = 0; i < FRESH_SEASON_PAGES; i++) {
+    const pn = lastPage - i;
+    if (pn <= 1 || done.has(pn)) continue;
+    done.add(pn);
+    await scan(pn);
   }
+  for (let pn = Math.max(1, Number(progress[key]) || 1); pn <= lastPage; pn++) {
+    if (done.has(pn)) continue;
+    if (!budgetLeft()) { console.log('   [预算] 本轮页数用完，保存进度下次续跑'); progress[key] = pn; return got; }
+    const r = await scan(pn);
+    if (r !== true) break;
+    progress[key] = pn + 1;
+  }
+  progress[key] = lastPage + 1;
   return got;
 }
+
+/* ★★ 2026-09-27 修复：断点只前进不回头 ⇒ 新投稿永远上不了站 ★★
+ * 症状：抓取每轮都在跑、从不报错，但库里最新一条停在 2026-09-24 —— 站长发现两个 UP 都更新了却抓不到。
+ * 根因：progress 里存的是「下一页页码」，翻到深处就不再回头；而页码一旦超过总页数，
+ *       旧代码是 `if (!ar.length) break` **静默退出（连日志都没有）**，看上去像"抓过了"。
+ *       但两个通道的新投稿位置恰好都在断点之外：
+ *         · 合集/系列 seasons_archives_list 按【加入顺序正序】返回 ⇒ 新投稿在【最后一页】
+ *         · 空间 arc/search 按 order=pubdate 【倒序】返回 ⇒ 新投稿在【第 1 页】
+ * 修法：每个通道拆两段 —— ① fresh 段每轮必扫「新投稿所在的那几页」（不看 progress）
+ *       ② 深翻段再按 progress 往深处回填历史（受页数预算限制）。
+ */
+const FRESH_SEASON_PAGES = Number(process.env.BILI_CUT_FRESH_SEASON || 2); // 合集/系列：末尾扫几页
+const FRESH_SPACE_PAGES = Number(process.env.BILI_CUT_FRESH_SPACE || 1);   // 空间列表：从第 1 页扫几页
+const FRESH_DYN_PAGES = Number(process.env.BILI_CUT_FRESH_DYN || 2);       // 动态：扫几页（每页约 12 条）
 
 /* ---------------- 通道 2：空间投稿列表（wbi 签名，易被风控） ---------------- */
 // 单轮最多翻几页：空间接口最容易被限流，靠「每轮翻一点 + 断点续传」慢慢补全，
@@ -429,25 +506,87 @@ async function crawlSpaceList(up) {
   let pages = 0;
   try { await ensureWbiKey(); } catch (e) { console.warn(`   [空间列表] wbi 签名不可用：${e.message}`); return 0; }
   let count = 0;
-  for (let pn = Math.max(1, Number(progress[key]) || 1); pn <= 200; pn++) {
-    if (!budgetLeft()) { console.log('   [预算] 本轮页数用完，保存进度下次续跑'); return got; }
-    if (pages >= SPACE_PAGES_PER_RUN) { console.log(`   [空间列表] 本轮已达 ${SPACE_PAGES_PER_RUN} 页上限，下次续跑`); return got; }
+
+  const scan = async (pn) => {
+    if (!budgetLeft()) return null;
     pagesUsed++;
     pages++;
     const q = signQuery({ mid, ps: 50, pn, order: 'pubdate', platform: 'web', web_location: 1550101 });
     let d;
     try {
       d = await getJson('https://api.bilibili.com/x/space/wbi/arc/search?' + q, `https://space.bilibili.com/${mid}/video`);
-    } catch (e) { console.warn(`   [空间列表] 第 ${pn} 页失败：${e.message}`); progress[key] = pn; return got; }
+    } catch (e) {
+      // ⚠️ 被风控（大多是 -412/-352）时**不要**改 progress：那会覆盖掉已经翻到的深度
+      console.warn(`   [空间列表] 第 ${pn} 页失败：${e.message}`);
+      return null;
+    }
     count = d.data?.page?.count || count;
     const vl = d.data?.list?.vlist || [];
-    if (!vl.length) break;
+    if (!vl.length) return false;
     const before = added;
     vl.forEach((v) => put(v, up, ''));
     got += added - before;
-    progress[key] = pn + 1;
     console.log(`   [空间列表] 第 ${pn} 页 ${vl.length} 条（新增 ${added - before}，库 ${merged.size}/${count}）`);
+    await sleep(PAGE_SLEEP);
+    return true;
+  };
+
+  // ① fresh 段：order=pubdate 倒序 ⇒ 新投稿永远在第 1 页，每轮必扫
+  for (let pn = 1; pn <= FRESH_SPACE_PAGES; pn++) {
+    const r = await scan(pn);
+    if (r === null) return got;          // 风控：后面深翻也多半一样，本轮到此为止
+    if (r === false) break;
+    progress[key] = Math.max(Number(progress[key]) || 1, pn + 1);
+  }
+  // ② 深翻段：按断点补历史
+  for (let pn = Math.max(FRESH_SPACE_PAGES + 1, Number(progress[key]) || 1); pn <= 200; pn++) {
+    if (!budgetLeft()) { console.log('   [预算] 本轮页数用完，保存进度下次续跑'); return got; }
+    if (pages >= SPACE_PAGES_PER_RUN) { console.log(`   [空间列表] 本轮已达 ${SPACE_PAGES_PER_RUN} 页上限，下次续跑`); return got; }
+    const r = await scan(pn);
+    if (r === null) return got;
+    if (r === false) break;
+    progress[key] = pn + 1;
     if (pn * 50 >= count) break;
+  }
+  return got;
+}
+
+/* ---------------- 通道 3：动态（风控最轻，无合集 UP 的救命通道） ---------------- */
+// 「忘记自己是猪」没有合集，只能走空间投稿列表，而那个接口最容易吃 -412（直接返回 HTML 拦截页）。
+// 动态接口 /x/polymer/web-dynamic/v1/feed/space 同样要 wbi 签名，但实测风控轻得多：
+// 带齐 buvid3 + b_nut + b_lsid 就能拿到 code=0（空间接口同条件下仍然 -412）。
+// 代价：archive 里没有 pubdate，改用动态的 pub_ts —— 投稿视频的动态就是投稿那一刻发的，
+//       对「对上直播场次」的匹配（按发布时间找最近一场）来说足够用。
+async function crawlDynamics(up) {
+  const { mid } = up;
+  let got = 0;
+  try { await ensureWbiKey(); } catch (e) { console.warn(`   [动态] wbi 签名不可用：${e.message}`); return 0; }
+  let offset = '';
+  for (let page = 1; page <= FRESH_DYN_PAGES; page++) {
+    if (!budgetLeft()) return got;
+    pagesUsed++;
+    const params = offset ? { host_mid: mid, offset, platform: 'web', web_location: 333.33 }
+                          : { host_mid: mid, page, platform: 'web', web_location: 333.33 };
+    const q = signQuery(params);
+    let d;
+    try {
+      d = await getJson('https://api.bilibili.com/x/polymer/web-dynamic/v1/feed/space?' + q, `https://space.bilibili.com/${mid}/dynamic`);
+    } catch (e) { console.warn(`   [动态] 第 ${page} 页失败：${e.message}`); return got; }
+    const items = d.data?.items || [];
+    // ⚠️ 别静默 break：之前合集通道就是靠「空页直接退出、连日志都没有」骗过了所有人
+    if (!items.length) { console.log(`   [动态] 第 ${page} 页 0 条（code=${d.code} ${d.message || ''}）`); break; }
+    const before = added;
+    for (const it of items) {
+      const a = it.modules?.module_dynamic?.major?.archive;
+      if (!a || !a.bvid) continue;
+      const ts = Number(it.modules?.module_author?.pub_ts) || 0;
+      // 动态里的字段名跟投稿接口不一样（cover 而非 pic、没有 pubdate）⇒ 先归一成 put() 认识的形状
+      put({ bvid: a.bvid, title: a.title, pic: a.cover, pubdate: ts }, up, '');
+    }
+    got += added - before;
+    console.log(`   [动态] 第 ${page} 页 ${items.length} 条（新增 ${added - before}）`);
+    if (!d.data?.has_more || !d.data?.offset) break;
+    offset = d.data.offset;
     await sleep(PAGE_SLEEP);
   }
   return got;
@@ -465,6 +604,8 @@ for (const up of UP_TARGETS) {
   try { n += await crawlSeasons(up); } catch (e) { console.warn(`   [合集通道] 异常：${e.message}`); }
   // 空间列表：无合集的号只能靠它；有合集的号也跑一遍兜底（预算内）
   try { n += await crawlSpaceList(up); } catch (e) { console.warn(`   [空间通道] 异常：${e.message}`); }
+  // 动态：风控最轻，且在空间接口被封（-412）时仍能拿到最新投稿 ⇒ 无合集 UP 的主要来源
+  try { n += await crawlDynamics(up); } catch (e) { console.warn(`   [动态通道] 异常：${e.message}`); }
   if (n > 0) ok++;
   save();
 }
