@@ -2608,6 +2608,34 @@ async function advanceMsgCursor(env, val) {
 // 2026-09-28 从 20 分钟收到 12 分钟：值守每 60 秒一问，12 分钟只可能是「值守断了很久」的情况，
 // 那种情况宁可不推 —— 站长明确要的是「不推旧的」。
 const PUSH_LIVE_FRESH_MS = 12 * 60 * 1000;
+/**
+ * 🔴🔴 开播「合并闸」（2026-09-28）：她一场直播会**中途关掉再开**（换标题 / 拉人），
+ * 一晚能在口袋里留下几十个 liveId，每个都标 status=2「直播中」。
+ * 以前每发现一个新 liveId 就推一次「开播啦」⇒ 手机被轰炸几十条（站长：「她今天就一场直播，你为啥推以前的」）。
+ * 现在：**同一段连续在播只推第一次** —— 新场距上一次「已推过的那场」不足 MERGE 毫秒，
+ * 一律视为同一段（静默，游标照常前进、不再打扰）。她真下播够久再开，才会有新的开播通知。
+ * （实测今晚各场间隔最大 41 分钟 ⇒ 取 45 分钟：宁可少推，也不轰炸。）
+ */
+const PUSH_LIVE_MERGE_MS = 45 * 60 * 1000;
+/** 只推「刚开始」的那场：发现时已经开播超过这么多就不推了（值守 60 秒一轮，正常 1~2 分钟内必到）。 */
+const PUSH_LIVE_START_MS = 5 * 60 * 1000;
+/** 开播合并闸判断：true = 这场和上一场算同一段，别推。 */
+async function liveMerged(env, t) {
+  const kv = env && env.KV;
+  if (!kv) return false;
+  const last = Number(await kv.get(PUSH_LAST + 'live:push:at')) || 0;
+  const n = Number(t) || 0;
+  if (!last || !n) return false;
+  return (n - last) < PUSH_LIVE_MERGE_MS;
+}
+/** 记下「这次真的推出去了」的时刻（下一场拿它算是不是同一段） */
+async function markLivePushed(env, t) {
+  const kv = env && env.KV;
+  if (!kv) return;
+  const n = Number(t) || 0;
+  if (!n) return;
+  try { await kv.put(PUSH_LAST + 'live:push:at', String(n)); } catch (_) { /* 忽略 */ }
+}
 // 🔴 只推「她的发言」：true = 开播 / 公演这两类通知一律不推（2026-09-28 站长：「不要推别的消息了」）。
 //    发言照常推。想恢复开播/公演通知，把这里改回 false 重新部署即可
 //    （订阅里的 topics 开关是每人各自的选择，这个是全站的总闸）。
@@ -2958,13 +2986,20 @@ async function runPushCheck(env, opts) {
         && (!lastLiveAt || Number(nowLive.ctime) > lastLiveAt)
         && tsPlausible(nowLive.ctime, now)
         && now - (Number(nowLive.ctime) || 0) < PUSH_LIVE_FRESH_MS) {
-      if (await markLiveSent(env, String(nowLive.liveId))) {
+      const lts = Number(nowLive.ctime) || 0;
+      // 🔴 同一段连续在播只推一次（与 handlePushNotify 共用一套闸）：5 分钟这轮也不能绕过
+      let liveSkip = '';
+      if (await liveMerged(env, lts)) liveSkip = 'merged';
+      else if (lts && now - lts > PUSH_LIVE_START_MS) liveSkip = 'notJustStarted';
+      if (liveSkip) { o.skipped.liveSkip = liveSkip; }
+      else if (await markLiveSent(env, String(nowLive.liveId))) {
         const ann = String(nowLive.title || '').trim();
         o.live = await pushBroadcast(env, {
           title: '🔴 王语晨开播啦！',
           body: ann ? (ann.length > 40 ? ann.slice(0, 40) + '…' : ann) : '点开看直播',
           tag: 'wyc-live-' + String(nowLive.liveId), url: './', topic: 'live'
         }, 'live');
+        await markLivePushed(env, lts);
       }
       await kv.put(PUSH_LAST + 'live', String(nowLive.liveId));
       if (Number(nowLive.ctime) > lastLiveAt) {
@@ -3296,12 +3331,17 @@ async function pushProbe(env) {
     // 自检：同一个时间戳连抢两次哨兵，必须「第一次 true、第二次 false」，否则去重没生效
     try {
       const probeT = 1799999999999;   // 远未来的值，绝不会和真实发言冲突
+      // 🔴 必须先删干净再测：残留行会让 first 恒为 false，自检误报「去重失效」
+      //    （以前 DELETE 是 .run().catch() 没 await ⇒ 残留在库里，还会在 recentSent 里露出来吓人）
+      if (env.DB && env.DB.prepare) {
+        await env.DB.prepare('DELETE FROM push_sent WHERE t = ?').bind(probeT).run();
+      }
       o.dedupe = {
         first: await markMsgSent(env, probeT),
         second: await markMsgSent(env, probeT)
       };
       if (env.DB && env.DB.prepare) {
-        env.DB.prepare('DELETE FROM push_sent WHERE t = ?').bind(probeT).run().catch(() => null);
+        await env.DB.prepare('DELETE FROM push_sent WHERE t = ?').bind(probeT).run();
       }
     } catch (e) { o.dedupeErr = String((e && e.message) || e).slice(0, 160); }
   } catch (e) {
@@ -3349,15 +3389,24 @@ async function handlePushNotify(request, env) {
       if (!(await markLiveSent(env, id))) { o.skipped = 'dup'; return json(o); }
       // 留一份「当前在播」给 5 分钟那轮兜底用（它读不到实时接口，只能读这个）
       await kv.put('live-now', JSON.stringify({ liveId: id, ctime: t, title: text }));
+      // 🔴 合并闸：和上一场算同一段连续在播 ⇒ 静默（她一晚连开几十场，每场都推＝轰炸）
+      if (await liveMerged(env, t)) { o.skipped = 'merged'; o.merged = true; return json(o); }
       if (!t || now - t > PUSH_LIVE_FRESH_MS) { o.skipped = 'stale'; return json(o); }
+      // 只推「刚开始」的那场：发现得晚（值守断了一阵）就别补推了
+      if (t && now - t > PUSH_LIVE_START_MS) { o.skipped = 'notJustStarted'; o.ageMs = now - t; return json(o); }
       o.msg = await pushBroadcast(env, {
         title: '🔴 王语晨开播啦！', body: text || '点开看直播',
         tag: 'wyc-live-' + id, url: './', topic: 'live'
       }, 'live');
+      await markLivePushed(env, t);
     } catch (e) { o.ok = false; o.error = String((e && e.message) || e).slice(0, 200); }
     return json(o);
   }
 
+  // 🔴 口袋每开一场直播会自动发一条 LIVEPUSH（「XXX 开播了」）系统提示，
+  //    它跟开播通知是同一件事 ⇒ 再推一遍纯属重复（她一晚连开几十场 ⇒ 几十条）。
+  const mt = String((b && b.mt) || '').toUpperCase();
+  if (mt === 'LIVEPUSH') { o.skipped = 'livepush'; return json(o); }
   if (!t) return json({ error: 'missing t' }, 400);
   try {
     if (!(await loadVapid(env))) { o.skipped = 'noVapid'; return json(o); }
@@ -3492,7 +3541,7 @@ async function handlePushCount(env) {
     if (s.t.perf !== false) t.perf += 1;
   }
   // freshMs / off 顺便当部署指纹：改了推送参数后 curl 一眼就能确认线上是不是新代码
-  return json({ ok: true, subs: subs.length, topics: t, freshMs: PUSH_FRESH_MS, off: PUSH_OFF, ver: 'a50',
+  return json({ ok: true, subs: subs.length, topics: t, freshMs: PUSH_FRESH_MS, off: PUSH_OFF, ver: 'a51',
     keys: subs.slice(0, 10).map((s) => s.key) });
 }
 

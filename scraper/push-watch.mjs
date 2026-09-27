@@ -49,7 +49,7 @@ function msgText(raw) {
 // 鉴权：Actions 里有 SYNC_TOKEN；本机试跑时没有它，就用 GH_TOKEN 走另一条校验（x-gh-token）
 const GH_TOKEN = process.env.GH_TOKEN || '';
 
-async function notify(t, text) {
+async function notify(t, text, mt) {
   if (!SYNC_TOKEN && !GH_TOKEN) { console.log('[跳过] 没有 SYNC_TOKEN / GH_TOKEN，无法调用推送接口'); return; }
   const headers = { 'Content-Type': 'application/json' };
   if (SYNC_TOKEN) headers['x-sync-token'] = SYNC_TOKEN;
@@ -58,7 +58,7 @@ async function notify(t, text) {
     const r = await fetch(WORKER + '/api/push/notify', {
       method: 'POST',
       headers,
-      body: JSON.stringify({ t, text })
+      body: JSON.stringify({ t, text, mt: String(mt || '') })
     });
     const body = await r.text();
     console.log(`[notify] t=${t} http=${r.status} ${body.slice(0, 160)}`);
@@ -170,12 +170,16 @@ async function tick(first) {
     // 🔴 时间戳合理性：未来值（曾出现 1799999999999 这种）一律丢弃，也不许拿来推游标
     if (f.t > Date.now() + 2 * 60 * 1000) continue;
     lastSeen = Math.max(lastSeen, f.t);
+    const mt = String((f.raw && f.raw.msgType) || '').toUpperCase();
+    // 🔴 口袋每开一场直播会自动发一条 LIVEPUSH 系统提示，跟开播通知是同一件事
+    //    ⇒ 再推一遍就是重复打扰（她一晚连开几十场 ⇒ 几十条）。开播走 type=live 那条路。
+    if (mt === 'LIVEPUSH') { console.log('[跳过] 开播提示（开播通知已覆盖）'); continue; }
     if (Date.now() - f.t > FRESH_MS) {
       console.log('[跳过] 太旧：' + new Date(f.t + 8 * 3600e3).toISOString().slice(0, 19));
       continue;
     }
     console.log('[新发言] ' + new Date(f.t + 8 * 3600e3).toISOString().replace('T', ' ').slice(0, 19) + ' ' + msgText(f.raw));
-    await notify(f.t, msgText(f.raw));
+    await notify(f.t, msgText(f.raw), mt);
   }
 }
 
