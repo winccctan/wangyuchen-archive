@@ -92,19 +92,29 @@ async function notifyLive(id, t, title) {
  *   以前「开播推送」读的就是那份 ⇒ 她开播时永远推不出来（2026-09-27 站长亲历：她 22:48 开播，站内毫无动静）。
  *   record=false 才是「直播中/刚结束」的列表（status=2），这里每轮顺带看一眼。
  */
-let liveNext = '0';
 let lastLiveId = '';
 let lastLiveAt = 0;
+let herNext = '';   // 全团最新 liveId，作 record=false 翻页的 next 起点（next 必须「够新」才不漏新开播）
 
 async function checkLive() {
   try {
-    if (liveNext === '0') liveNext = (await fetchNewestLiveId({ groupId: MEMBER.groupId, record: true })) || '0';
-    const { list } = await fetchLiveListPage({ userId: MEMBER.userId, next: liveNext, record: false });
+    // 🔴 next 起点用「全团最新」liveId（够新，保证不把「正在直播的新场次」漏掉），
+    //    但**绝不能信任翻出来的列表**：next 指向别人时，列表可能混入全团其它成员。
+    //    2026-09-28 事故：原来取「全团最新」= SNH48-黄子欣的直播后，直接当 top 推给了站长。
+    //    修复 = 翻出来后用 userInfo.userId 二次校验，只留王语晨(89653517)本人的场次。
+    if (!herNext) {
+      herNext = (await fetchNewestLiveId({ groupId: MEMBER.groupId, record: true })) || '0';
+    }
+    const { list } = await fetchLiveListPage({ userId: MEMBER.userId, next: herNext, record: false });
     if (!list.length) return;
     // 取「最新的那场」（列表顺序不保证按时间，自己比一遍）
     let top = null;
     for (const x of list) {
       if (!x || !x.liveId) continue;
+      // 🔴 二次校验：只认「她本人」的场次（record=false 列表元素带 userInfo.userId）。
+      //    凡 userInfo.userId !== 89653517 一律丢弃 —— 这是把别人直播挡在门外的唯一闸。
+      const owner = x.userInfo || x.user || {};
+      if (String(owner.userId) !== String(MEMBER.userId)) continue;
       if (!top || Number(x.ctime) > Number(top.ctime || 0)) top = x;
     }
     if (!top) return;
