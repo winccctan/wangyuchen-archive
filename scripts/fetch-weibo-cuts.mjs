@@ -135,8 +135,9 @@ function parsePost(b) {
 }
 
 /* ---------------- 3. 日期 → 场次 liveId ---------------- */
-function loadPerfIndex() {
+async function loadPerfIndex() {
   const byDay = new Map();
+  // 1) 本地快照（最快，离线也能跑）
   try {
     const s = readFileSync(ARCHIVE, 'utf8');
     const j = JSON.parse(s.slice(s.indexOf('{'), s.lastIndexOf('}') + 1));
@@ -147,7 +148,31 @@ function loadPerfIndex() {
       byDay.get(day).push(p);
     }
   } catch (e) {
-    warn('读 archive.js 失败（liveId 将留空）：' + (e && e.message));
+    warn('读 archive.js 失败（改用线上兜底）：' + (e && e.message));
+  }
+  // 2) 线上 API 兜底：本地快照常漏掉最近场次（如联合专场），导致 liveId 解析成空、
+  //    cut 挂不上公演回放页。线上 /api/performances 是权威且最新的，补进来。
+  try {
+    const r = await fetch(WORKER_URL + '/api/performances', { headers: { 'User-Agent': UA } });
+    if (r.ok) {
+      const j = await r.json();
+      const arr = Array.isArray(j) ? j : (j.performances || j.data || []);
+      let added = 0;
+      for (const p of arr) {
+        const day = bjDate(p.stime || p.ctime || 0);
+        if (!day) continue;
+        if (!byDay.has(day)) byDay.set(day, []);
+        if (!byDay.get(day).some((x) => String(x.liveId) === String(p.liveId))) {
+          byDay.get(day).push(p);
+          added++;
+        }
+      }
+      if (added) log(`线上 /api/performances 补 ${added} 条场次到 liveId 索引`);
+    } else {
+      warn('线上 performances 兜底返回 HTTP ' + r.status + '（不影响主流程）');
+    }
+  } catch (e) {
+    warn('线上 performances 兜底失败（不影响主流程）：' + (e && e.message));
   }
   return byDay;
 }
@@ -276,7 +301,7 @@ async function main() {
 
   const byId = new Map();
   for (const c of baseCuts) if (c && c.mblogid) byId.set(String(c.mblogid), c);   // 老条目原样保留
-  const byDay = loadPerfIndex();
+  const byDay = await loadPerfIndex();
   let added = 0, updated = 0;
   for (const e of parsed) {
     const old = byId.get(e.mblogid);
