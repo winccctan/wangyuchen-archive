@@ -1,7 +1,7 @@
 window.PERF_CUTS = {
  "uid": 7794095795,
  "account": "GNZ48王语晨的甜橙小铺",
- "updatedAt": "2026-09-27T23:52:03.390Z",
+ "updatedAt": "2026-09-28T02:04:42.358Z",
  "cuts": [
   {
    "date": "2026-09-27",
@@ -13,7 +13,7 @@ window.PERF_CUTS = {
    "h5": "https://video.weibo.com/show?fid=1034:5347866525499505",
    "cover": "https://wx2.sinaimg.cn/orj1080/008vtemvly1ihij83wp4tj31hc0u0788.jpg",
    "text": "#王语晨[超话]# \n【GNZ48王语晨 | 公演cut】20260927\n  四八班中秋联合公演 \n\n《 看春春欲晚 》\n\n王语晨cut http://t.cn/AXWqZWXc ​​​",
-   "liveId": ""
+   "liveId": "1309193057867730944"
   },
   {
    "date": "2026-09-26",
@@ -25,7 +25,7 @@ window.PERF_CUTS = {
    "h5": "https://video.weibo.com/show?fid=1034:5347866282229859",
    "cover": "https://wx4.sinaimg.cn/orj1080/008vtemvly1ihij7lbesgj31hc0u0mz0.jpg",
    "text": "#王语晨[超话]# \n【GNZ48王语晨 | 公演cut】20260926\nTEAM NIII·第二十六场《 拾忆：TEAM NIII 》\n\n《 续集 》\n\n王语晨cut http://t.cn/AXWqzjnh ​​​",
-   "liveId": ""
+   "liveId": "1309192735636131840"
   },
   {
    "date": "2026-09-26",
@@ -37,7 +37,7 @@ window.PERF_CUTS = {
    "h5": "https://video.weibo.com/show?fid=1034:5347866093224030",
    "cover": "https://wx1.sinaimg.cn/orj1080/008vtemvly1ihij68jm27j31hc0u0ac2.jpg",
    "text": "#王语晨[超话]# \n【GNZ48王语晨 | 公演cut】20260926\nTEAM NIII·第二十六场《 拾忆：TEAM NIII 》\n\n《 High Light 》\n\n王语晨cut http://t.cn/AXWqzhS7 ​​​",
-   "liveId": ""
+   "liveId": "1309192735636131840"
   },
   {
    "date": "2026-09-26",
@@ -49,7 +49,7 @@ window.PERF_CUTS = {
    "h5": "https://video.weibo.com/show?fid=1034:5347864818417676",
    "cover": "https://wx4.sinaimg.cn/orj1080/008vtemvly1ihij27sokuj31hc0u0jt3.jpg",
    "text": "#王语晨[超话]# \n【GNZ48王语晨 | 公演cut】20260926\nTEAM NIII·第二十六场《 拾忆：TEAM NIII 》\n\nmc1“一句话祝福项宇婧”\n\n王语晨cut http://t.cn/AXWqPLnc ​​​",
-   "liveId": ""
+   "liveId": "1309192736131840"
   },
   {
    "date": "2026-09-13",
