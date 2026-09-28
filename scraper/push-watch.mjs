@@ -166,6 +166,15 @@ async function tick(first) {
     .sort((a, b) => a.t - b.t);
   const newest = list.length ? list[list.length - 1].t : 0;
   if (!newest) { console.log('[tick] 没拿到发言'); return; }
+  // 🔴 游标自愈（2026-09-28）：从 Worker 拉到的游标若比「口袋实时最新发言」还新，
+  //    说明游标脏了/被顶到未来（历史事故：未来时间戳顶游标 ⇒ 之后所有真实发言被判 already 永久跳过）。
+  //    正常游标应 ≤ 实时最新，故一旦 lastSeen > newest 就回退到实时最新，防真实新发言被漏推。
+  //    回退后首轮只把游标定好不推，后续轮从实时最新继续往前，不漏也不重。
+  if (lastSeen && newest && lastSeen > newest) {
+    console.log('[游标自愈] Worker 游标 ' + new Date(lastSeen + 8 * 3600e3).toISOString().replace('T', ' ').slice(0, 19) +
+      ' 比实时最新 ' + new Date(newest + 8 * 3600e3).toISOString().replace('T', ' ').slice(0, 19) + ' 还新，回退到实时最新（防漏推）');
+    lastSeen = newest;
+  }
   if (first) {
     // 首轮：只把游标定好，绝不把历史发言推一遍。
     // 游标优先用 Worker 那份（跨进程接着跑，不漏也不重）；拿不到才退化为「当前最新」。
