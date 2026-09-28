@@ -3414,7 +3414,10 @@ async function handlePushNotify(request, env) {
     // 🔴 时间戳合理性闸：未来值 / 0 一律丢弃（事故：t=1799999999999 ⇒ now-t 为负 ⇒ 新鲜度闸失效，
     //    且游标被顶到未来 ⇒ 之后真实发言全被判「还没到点」）。这里**不推也不动游标**。
     if (!tsPlausible(t, now)) { o.skipped = 'badTs'; return json(o); }
-    const last = Number(await kv.get(PUSH_LAST + 'msg')) || 0;
+    const rawLast = Number(await kv.get(PUSH_LAST + 'msg')) || 0;
+    // 🔴 游标自愈（2026-09-28）：若历史残留把游标顶到了未来（异常），回退到 0。
+    //    下方 sentMax 终极闸会挡掉「已推过的」，所以回退到 0 也只会放真实新发言、不会重推旧消息。
+    const last = (rawLast > now + 5 * 60 * 1000) ? 0 : rawLast;
     if (t <= last) { o.skipped = 'already'; o.last = last; return json(o); }
     // 🔴 终极保险：比「已推过的最新那条」还旧 ⇒ 绝不推（游标被写回去、去重失效都不怕）
     const sentMax = await pushNewestSent(env, now);
