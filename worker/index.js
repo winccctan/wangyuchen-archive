@@ -3544,7 +3544,7 @@ async function handlePushCount(env) {
     if (s.t.perf !== false) t.perf += 1;
   }
   // freshMs / off 顺便当部署指纹：改了推送参数后 curl 一眼就能确认线上是不是新代码
-  return json({ ok: true, subs: subs.length, topics: t, freshMs: PUSH_FRESH_MS, off: PUSH_OFF, ver: 'a51',
+  return json({ ok: true, subs: subs.length, topics: t, freshMs: PUSH_FRESH_MS, off: PUSH_OFF, ver: 'a52',
     keys: subs.slice(0, 10).map((s) => s.key) });
 }
 
