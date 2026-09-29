@@ -2922,13 +2922,12 @@ async function runPushCheck(env, opts) {
 
     /* ① 新口袋发言 */
     let lastMsg = Number(await kv.get(PUSH_LAST + 'msg')) || 0;
-    if (!lastMsg) {
-      // 第一次跑（或游标丢了）：把「现在最新」记下来就收工，绝不把历史发言一次性推给所有人
-      const cur = await pushLatestMsgs(env, 0, 1);
-      const t = cur.length ? cur[0].msgTime : now;
-      await kv.put(PUSH_LAST + 'msg', String(t));
-      o.skipped.firstRun = true;
-    } else {
+    // 🔴 2026-09-29 修：游标所有权归 GitHub 值守（push-watch.mjs 的 notify）。
+    //   runPushCheck 只做「备份广播」，绝不再写 push:last:msg ——
+    //   否则它会把游标推到最新档案时间、却对超过新鲜窗口的发言只前进游标不广播，把值守架空
+    //   （站长实测：00:32 那批发言游标被推到 00:32:58 却从没发到手机）。
+    if (!lastMsg) { o.skipped.noCursor = true; return o; } // 游标由值守初始化/推进，快车道不碰
+    else {
       const fresh = await pushLatestMsgs(env, lastMsg, PUSH_CATCHUP_MAX);
       if (fresh.length) {
         // 🔴 只推「新鲜」的（2026-09-27 站长定：不要推送老的信息，只推新的）：
@@ -2958,17 +2957,9 @@ async function runPushCheck(env, opts) {
         }
         if (bad) o.skipped.badTs = bad;
         if (older) o.skipped.olderThanLast = older;
-        if (stale) {
-          o.skipped.staleMsgs = stale;
-          // 🔴 追赶模式：这批全是旧的 ⇒ 游标直接跳到「当前最新」，别一条条往前挪
-          //    （否则下一轮又取到同一批旧发言，表现为「隔几分钟又推一次旧内容」）。
-          const cur = await pushLatestMsgs(env, 0, 1);
-          if (cur.length && Number(cur[0].msgTime) > newest) newest = Number(cur[0].msgTime);
-        }
-        lastMsg = newest;
-        // 🔴 写游标前再读一次：本函数跑得久（要查 D1），期间值守探针可能已经把游标推得更远，
-        //    直接覆盖会把游标**写回去**（表现为「隔一会儿又把旧内容推一遍」）。只前进、不回退。
-        await advanceMsgCursor(env, newest);
+        if (stale) o.skipped.staleMsgs = stale;
+        // 🔴 游标不再由快车道写（所有权归 GitHub 值守）。旧的发言不推、也不许把游标往前挪，
+        //    否则会把值守要推的「新鲜发言」一起跳过（此前 00:32 那批被吞的根因）。
       }
     }
 
