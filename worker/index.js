@@ -1337,6 +1337,13 @@ async function handleApi(url, request, env, ctx) {
     if (!(await isSyncAuthorized(request, env) || await isGhAuthorized(request, env))) return json({ error: 'forbidden: sync token required' }, 403);
     return handleApiSync(request, env, ctx);
   }
+  // —— 口袋48 开播提醒（监控机器人 pocket48_monitor.mjs 回推）——
+  if (p === '/api/pocket/event' && request.method === 'POST') {
+    return handlePocketEvent(request, env);
+  }
+  if (p === '/api/pocket/events' && request.method === 'GET') {
+    return withEdgeCache('/api/pocket/events', 15, () => handlePocketEventsGet(env));
+  }
   return json({ error: 'unknown api: ' + p }, 404);
 }
 
@@ -3273,15 +3280,34 @@ async function pushFastTick(env, opts) {
       .sort((a, b) => a.msgTime - b.msgTime);
     if (!fresh.length) { o.skipped.noNew = true; return o; }
     let cursor = last, stale = 0, bad = 0;
+    // 🔴🔴 同一批新消息**合并成一条**推送，且 tag 必须带最新一条的 msgTime。
+    //   原因（2026-10-01 事故）：这里原来逐条推、tag 写死 'wyc-msg' ⇒
+    //   ① HTTP `topic: wyc-msg` 让 Apple 在**服务端**把同 topic 折叠成一条；
+    //   ② SW 里 tag 相同 ⇒ iOS 端**静默替换**，`renotify:true` 在 Safari 被忽略 ⇒ 不响铃不弹横幅。
+    //   表现就是"服务端 sent:3 全成功，用户一条都没感知到"。
+    //   合并推送既保证每批都能弹出来（tag 唯一），又不会连发 7 条刷屏（站长原本担心的事）。
+    const batch = [];
     for (const f of fresh) {
       // 🔴 非法时间戳（未来值 / 0）：丢弃，且**不许推游标**（顶到未来就永远不推了）
       if (!tsPlausible(f.msgTime, now)) { bad += 1; continue; }
       if (f.msgTime > cursor) cursor = f.msgTime;
       // 🔴 新鲜度闸（站长定：只推新的）：超过 10 分钟的一律跳过，游标照常前进
       if (now - f.msgTime > PUSH_FRESH_MS) { stale += 1; continue; }
+      batch.push(f);
+    }
+    if (batch.length) {
+      const top = batch[batch.length - 1];                 // fresh 已按时间升序 ⇒ 最后一条最新
+      const one = pocketMsgText(top.raw) || '';
+      const body = batch.length > 1
+        ? one + '　⋯等 ' + batch.length + ' 条'
+        : one;
       o.msg = await pushBroadcast(env, {
-        title: '王语晨', body: pocketMsgText(f.raw), tag: 'wyc-msg', url: './', topic: 'msg'
+        title: '王语晨',
+        body: body.slice(0, 100),
+        tag: 'wyc-msg-' + Number(top.msgTime),              // 🔴 每批唯一 ⇒ iOS 才会真的弹出来
+        url: './', topic: 'msg'
       }, 'msg');
+      o.batch = batch.length;
     }
     if (bad) o.skipped.badTs = bad;
     if (stale) o.skipped.staleMsgs = stale;
@@ -3575,7 +3601,12 @@ async function handlePushReplay(request, env) {
   if (what === 'msg') {
     const one = await pushOneMsg(env, Number(b.before) || 0);
     if (!one) return json({ ok: false, error: 'no-message' });
-    const payload = { title: '王语晨', body: pushMsgText(one.m), tag: 'wyc-msg', url: './', topic: 'msg' };
+    // 🔴 tag 必须唯一（同 pushFastTick）：写死 'wyc-msg' 会被 iOS 静默替换，看起来像"没推"
+    const payload = {
+      title: '王语晨', body: pushMsgText(one.m),
+      tag: 'wyc-msg-' + (Number(one.msgTime) || Date.now()),
+      url: './', topic: 'msg'
+    };
     const r = await pushBroadcast(env, payload, 'msg');
     return json({
       ok: true, replay: 'msg',
@@ -3627,6 +3658,78 @@ async function handleVapidSecret(request, env) {
   }
   const v = await loadVapid(env);
   return json({ has: !!v, pub: v ? v.pub : '' });
+}
+
+/* ------------------------- 口袋48 开播提醒（监控机器人回推） -------------------------
+ * 监控机器人 pocket48_monitor.mjs（REST 轮询 getLiveList 判开播/下播）POST /api/pocket/event
+ *   { type:'live:start'|'live:end', memberId, ts, liveId?, title? }
+ * 鉴权：x-notify-token == env.NOTIFY_TOKEN
+ * 写入 KV：pocket:live:<memberId>（当前直播态）+ pocket:events:<memberId>（环形缓冲 50 条）
+ * 读取：GET /api/pocket/events（前端卡片 + Wechaty 适配器共用）
+ * ⚠️ 仅开播/下播；房间粉丝消息默认不发（站长要求"不要粉丝的消息"）。
+ */
+const PE_MAX_EVENTS = 50;
+const PE_LIVE_KEY = (id) => 'pocket:live:' + id;
+const PE_EVENTS_KEY = (id) => 'pocket:events:' + id;
+const PE_ONLINE_KEY = (id) => 'pocket:online:' + id;
+
+async function handlePocketEvent(request, env) {
+  const want = env.NOTIFY_TOKEN || '';
+  const got = request.headers.get('x-notify-token') || '';
+  if (!want || got !== want) return json({ error: 'forbidden: notify token required' }, 403);
+  let b;
+  try { b = await request.json(); } catch (_) { return json({ error: 'bad json' }, 400); }
+  const memberId = String((b && b.memberId) || '').trim();
+  if (!/^\d{4,12}$/.test(memberId)) return json({ error: 'bad memberId' }, 400);
+  const type = String(b.type || '');
+  const ts = Number(b.ts) || Date.now();
+  try {
+    if (type === 'live:start') {
+      const cur = await env.KV.get(PE_LIVE_KEY(memberId), { type: 'json' }) || {};
+      const live = { liveId: String(b.liveId || ''), title: String(b.title || ''), startedAt: ts, endedAt: 0, prevStart: cur.startedAt || 0 };
+      await env.KV.put(PE_LIVE_KEY(memberId), JSON.stringify(live));
+      await peAppend(env, memberId, { type, liveId: live.liveId, title: live.title, ts });
+    } else if (type === 'live:end') {
+      const cur = await env.KV.get(PE_LIVE_KEY(memberId), { type: 'json' });
+      if (cur) { cur.endedAt = ts; await env.KV.put(PE_LIVE_KEY(memberId), JSON.stringify(cur)); }
+      await peAppend(env, memberId, { type, ts });
+    } else if (['online:active', 'online:idle', 'online:seen'].includes(type)) {
+      // 静默在线（lastTime 代理）：存在线态 + 记入事件环
+      const online = (type === 'online:active');
+      const lastTime = Number(b.lastTime || 0);
+      const rec = { online, lastTime, seenAt: lastTime || ts, updatedAt: ts, src: 'lastTime' };
+      await env.KV.put(PE_ONLINE_KEY(memberId), JSON.stringify(rec));
+      await peAppend(env, memberId, { type, lastTime, ts });
+    } else {
+      return json({ error: 'unknown type' }, 400);
+    }
+  } catch (e) {
+    return json({ error: 'kv-write-failed: ' + String((e && e.message) || e) }, 500);
+  }
+  return json({ ok: true });
+}
+async function peAppend(env, memberId, ev) {
+  let arr = [];
+  try { arr = await env.KV.get(PE_EVENTS_KEY(memberId), { type: 'json' }) || []; } catch (_) {}
+  if (!Array.isArray(arr)) arr = [];
+  arr.unshift(ev);
+  if (arr.length > PE_MAX_EVENTS) arr = arr.slice(0, PE_MAX_EVENTS);
+  await env.KV.put(PE_EVENTS_KEY(memberId), JSON.stringify(arr));
+}
+async function handlePocketEventsGet(env) {
+  const memberId = '89653517';
+  let live = null, events = [], online = null;
+  try {
+    live = await env.KV.get(PE_LIVE_KEY(memberId), { type: 'json' });
+    events = await env.KV.get(PE_EVENTS_KEY(memberId), { type: 'json' }) || [];
+    online = await env.KV.get(PE_ONLINE_KEY(memberId), { type: 'json' });
+  } catch (_) {}
+  if (!Array.isArray(events)) events = [];
+  return json({
+    live: live || { liveId: '', title: '', startedAt: 0, endedAt: 0 },
+    online: online || { online: false, lastTime: 0, seenAt: 0 },
+    events, serverTime: Date.now()
+  });
 }
 
 /* ==== PA_INLINE_BEGIN ==== */
