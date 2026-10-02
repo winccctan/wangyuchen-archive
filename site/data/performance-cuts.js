@@ -1,7 +1,7 @@
 window.PERF_CUTS = {
  "uid": 7794095795,
  "account": "GNZ48王语晨的甜橙小铺",
- "updatedAt": "2026-10-01T16:32:40.901Z",
+ "updatedAt": "2026-10-02T00:58:09.339Z",
  "cuts": [
   {
    "date": "2026-09-27",
