@@ -2782,14 +2782,32 @@ async function sendPush(env, sub, payloadObj) {
     },
     body: body
   });
-  if (res.status === 404 || res.status === 410) return { ok: false, gone: true };
-  return { ok: res.status >= 200 && res.status < 300, gone: false, status: res.status };
+  if (res.status === 404 || res.status === 410) return { ok: false, gone: true, status: res.status };
+  if (res.status >= 200 && res.status < 300) return { ok: true, gone: false, status: res.status };
+  // 🔴 非 2xx 时把 Apple 的响应体带回去（如 {"reason":"BadWebPushTopic"}）——
+  //    否则只看到一个裸 400，没法知道到底是 Topic 头、还是加密/鉴权出的问题（2026-10-02 排查教训）。
+  let reason = '';
+  try { reason = String(await res.text()).slice(0, 160); } catch (_) { /* 忽略 */ }
+  return { ok: false, gone: false, status: res.status, reason: reason };
 }
 
-/** 把 payload 的 tag 转成合法的折叠键（RFC 8030 Topic）；不合法就返回空串（不带这个头） */
+/** 把 payload 的 tag 压成合法的折叠键（RFC 8030 Topic）。
+ *  🔴🔴 2026-10-02 实测事故：Apple 的推送服务对 `Topic` 头比对 RFC 上限（32 字符）**严格得多** ——
+ *     8 字符的 'wyc-live' / 'wyc-perf' / 'wyc-test' 全部正常送达（sent:3），
+ *     而 21 字符的 'wyc-msg-<13位msgTime>'、'wyc-live-<12字符>' 一律被 Apple 回
+ *     **HTTP 400**（reason = BadWebPushTopic），推送根本发不出去（三台设备全 400）。
+ *     对照实验：同一接口 / 同一批订阅 / 同一时刻，唯一变量就是这个头的长度。
+ *     ⇒ 表现就是「她的每一条新发言都收不到」，而短 tag 的测试推送能收到。
+ *  ⇒ 这里统一压到 8 字符以内：短的原样保留；长的用 32 位 FNV-1a 哈希压成 't'+base36。
+ *     哈希是确定性的 ⇒ 同一个 tag 仍映射到同一个 topic，Apple 服务端的折叠语义不变。
+ */
 function pushTopicOf(tag) {
-  const s = String(tag || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 32);
-  return s.length >= 3 ? s : '';
+  const s = String(tag || '').replace(/[^A-Za-z0-9_-]/g, '');
+  if (s.length < 3) return '';
+  if (s.length <= 8) return s;              // 已实测安全（wyc-live / wyc-perf / wyc-test）
+  let h = 2166136261;                       // FNV-1a 32bit
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return 't' + (h >>> 0).toString(36);      // 't' + ≤7 字符 ⇒ 全长 ≤ 8，且不含数字结尾的歧义
 }
 
 /** 列出全部订阅（KV list 读，不占写入配额） */
@@ -2834,7 +2852,7 @@ async function pushBroadcast(env, payload, topic) {
     jobs.push(sendPush(env, { endpoint: s.e, keys: { p256dh: s.k.p, auth: s.k.a } }, payload).then(async (r) => {
       if (r.ok) { sent += 1; details.push({ host: host, ok: true }); }
       else if (r.gone) { gone += 1; details.push({ host: host, gone: true }); await env.KV.delete(s.key).catch(() => {}); }
-      else { fail += 1; details.push({ host: host, st: r.status, bad: !!r.badArgs }); }
+      else { fail += 1; details.push({ host: host, st: r.status, bad: !!r.badArgs, reason: r.reason || undefined }); }
     }).catch((e) => { fail += 1; details.push({ host: host, err: String((e && e.message) || e).slice(0, 80) }); }));
   }
   // 订阅数很少（几十个），并发无所谓；真到几百个时分批跑，免得一次开太多连接
@@ -3561,7 +3579,7 @@ async function handlePushCount(env) {
     if (s.t.perf !== false) t.perf += 1;
   }
   // freshMs / off 顺便当部署指纹：改了推送参数后 curl 一眼就能确认线上是不是新代码
-  return json({ ok: true, subs: subs.length, topics: t, freshMs: PUSH_FRESH_MS, off: PUSH_OFF, ver: 'a52',
+  return json({ ok: true, subs: subs.length, topics: t, freshMs: PUSH_FRESH_MS, off: PUSH_OFF, ver: 'a53',
     keys: subs.slice(0, 10).map((s) => s.key) });
 }
 
