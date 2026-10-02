@@ -1,0 +1,4059 @@
+// 口袋48 反爬签名 pa 用的 wasm（Rust 编译）。
+// 🔴 Cloudflare **禁止运行时编译 wasm**（会报 "Wasm code generation disallowed by embedder"），
+//    必须由 wrangler 在部署时预编译成 WebAssembly.Module 再 import —— 见 wrangler.jsonc 的
+//    rules: [{ type: "CompiledWasm", globs: ["**/*.wasm"] }]。别改成读文件/读 base64。
+import PA_MODULE from '../scraper/lib/pa.wasm';
+
+// 王语晨补档站 · Cloudflare Worker
+// 职责：
+//   1) 静态站点：dist/ 里的文件通过 env.ASSETS 提供（HTML/CSS/JS/数据）；
+//   2) 同域翻译代理：GET /translate?tl=<目标语言>&q=<原文>  → { text: "译文" }
+//      优先用 **Workers AI**（env.AI.run，Cloudflare 边缘自推理，不经过外部 IP，稳定、无需密钥）；
+//      失败再兜底 Google 公开接口。
+//      浏览器只与本站同源通信 → 规避跨域，也让**大陆直连用户**能用。
+//   3) 健康检查：GET /ping → "pong"。
+// 其它任何请求都透传给静态资源。
+export default {
+  async fetch(request, env, ctx) {
+    const url = new URL(request.url);
+
+    // 🔴 强制 HTTPS（2026-09-27 加）——这一条是「iPhone 收不到推送」的真凶。
+    //    本站域名之前 **http:// 也能 200 直接打开**（实测），而浏览器只在**安全上下文**里
+    //    才提供 `navigator.serviceWorker` 与 `PushManager`：用 http 打开的页面里这两个对象
+    //    直接不存在（站长那边面板显示 `SW❌ · 推送❌`），并且 iOS 在不安全上下文里调
+    //    `Notification.requestPermission()` **不弹框、直接返回 denied**（面板显示 `通知✅(denied)`）。
+    //    ⇒ 在主站最前面 308 到 https（308 而非 301：**保留 POST 方法与请求体**，
+    //       万一有人用 http 调 /api/sync，301 会把它变成 GET 而删掉 body）。
+    if (url.protocol === 'http:') {
+      url.protocol = 'https:';
+      return Response.redirect(url.toString(), 308);
+    }
+
+    if (url.pathname === '/ping') {
+      return new Response('pong', {
+        headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' }
+      });
+    }
+
+    // 翻译使用统计：仅带 key 才返回（给 GitHub Pages 的统计页面用），否则 404
+    if (url.pathname === '/stats' || url.pathname === '/stats/') {
+      return handleStats(url, env);
+    }
+
+    // 统计页面只放 GitHub Pages 备份站；主域名上直接当作不存在（备份站不经 Worker，不受影响）
+    if (url.pathname === '/stats.html') {
+      return new Response('Not Found', { status: 404 });
+    }
+
+    // 站点动作统计（前端 track() 用 1x1 图片上报）：只记动作次数，不含任何内容
+    if (url.pathname === '/track') {
+      if (!isSameSite(request)) return new Response('forbidden', { status: 403 });
+      return handleTrack(url, request, env, ctx);
+    }
+
+    if (url.pathname === '/translate') {
+      if (!isSameSite(request)) return forbiddenNotSameSite();
+      return handleTranslate(request, url, env, ctx);
+    }
+
+    // 手动触发抓取：POST /scrape → 经 GitHub API 触发仓库的 scrape.yml 工作流。
+    // 这样前端的「刷新」按钮和「页面加载」都能真正去抓一次，而不是只重载旧静态数据。
+    if (url.pathname === '/scrape' && request.method === 'POST') {
+      if (!isSameSite(request)) return forbiddenNotSameSite();
+      return handleScrape(env);
+    }
+
+    // 图片代理：社媒美图墙的微博图床图片（sinaimg.cn / weibocdn.com）。
+    // 新浪 Tengine 对「浏览器 UA + 非微博来源」请求返回 403，故 Worker 以非浏览器 UA 取图并边缘缓存。
+    if (url.pathname === '/img' || url.pathname === '/img/') {
+      return handleImageProxy(url, ctx);
+    }
+
+    // ============ 数据 API（数据存 KV 命名空间 env.KV，前端经此读取 → 站点零部署更新）============
+    // 读接口公开（前端同源 fetch 即可）；写接口 /api/sync 需 SYNC_TOKEN（见 isSyncAuthorized）。
+    // 发言按月份分键：msg/YYYY-MM（单月远小于 KV 单值 25MB 上限 → 数据可无限增长、不被容量卡死）；
+    // 浏览器首屏拉 /api/index（含 recent 最新若干条 + 月份列表 + meta），下滑「加载更早」惰性拉历史月。
+    // ============ TEMP-D1：迁移引导接口（数据迁移完成后删除本段）============
+    // 建表：POST /api/_d1_init
+    if (url.pathname === '/api/_d1_init' && request.method === 'POST') {
+      if (!(await isSyncAuthorized(request, env))) return json({ error: 'forbidden: sync token required' }, 403);
+      if (!env.DB) return json({ error: 'd1-not-bound' }, 500);
+      await env.DB.exec(
+        'CREATE TABLE IF NOT EXISTS messages (' +
+        '  mid TEXT PRIMARY KEY,' +
+        '  month TEXT NOT NULL,' +
+        '  msgTime INTEGER NOT NULL,' +
+        '  data TEXT NOT NULL' +
+        ');' +
+        'CREATE INDEX IF NOT EXISTS idx_messages_month ON messages(month);' +
+        'CREATE INDEX IF NOT EXISTS idx_messages_time ON messages(msgTime DESC);'
+      );
+      const t = await env.DB.prepare("SELECT name FROM sqlite_master WHERE type='table'").all();
+      return json({ ok: true, tables: (t.results || []).map((r) => r.name) });
+    }
+    // 迁移某个月（从 KV 读 → 写 D1）：POST /api/_d1_migrate?m=YYYY-MM
+    if (url.pathname === '/api/_d1_migrate' && request.method === 'POST') {
+      if (!(await isSyncAuthorized(request, env))) return json({ error: 'forbidden: sync token required' }, 403);
+      if (!env.DB) return json({ error: 'd1-not-bound' }, 500);
+      const m = url.searchParams.get('m');
+      if (!/^\d{4}-\d{2}$/.test(m || '')) return json({ error: 'bad month' }, 400);
+      const arr = (await env.KV.get('msg/' + m, { type: 'json' })) || [];
+      const CH = 100;                       // D1 batch 每批 ≤100 条
+      let sent = 0;
+      for (let i = 0; i < arr.length; i += CH) {
+        const stmts = arr.slice(i, i + CH).map((x) => env.DB.prepare(
+          'INSERT OR REPLACE INTO messages (mid, month, msgTime, data) VALUES (?, ?, ?, ?)'
+        ).bind(msgKeyOf(x), m, Number(x.msgTime) || 0, JSON.stringify(x)));
+        if (stmts.length) await env.DB.batch(stmts);
+        sent += stmts.length;
+      }
+      const c = await env.DB.prepare('SELECT COUNT(*) AS n FROM messages WHERE month = ?').bind(m).first();
+      return json({ ok: true, month: m, kvCount: arr.length, sent, dbCount: (c && c.n) || 0 });
+    }
+
+    // 跨域预检：/api/mine 会从别的域名（演示站 / Pages）被 fetch
+    if (request.method === 'OPTIONS' && url.pathname.startsWith('/api/')) {
+      return new Response(null, {
+        status: 204,
+        headers: {
+          'access-control-allow-origin': '*',
+          'access-control-allow-methods': 'GET, POST, OPTIONS',
+          // 后台接口带 x-admin-token 头：同源 fetch 也会先发 OPTIONS 预检，不放行就一律登录失败
+          'access-control-allow-headers': 'content-type, x-admin-token',
+          'access-control-max-age': '86400',
+        }
+      });
+    }
+
+    if (url.pathname.startsWith('/api/')) {
+      return handleApi(url, request, env, ctx);
+    }
+
+    if (env && env.ASSETS) {
+      // HTML 单独用 identity 取回（避免拿到压缩流 → 无法注入 beacon）；
+      // 其余资源（css/js/十几 MB 的数据文件）保持原请求，仍走压缩。
+      let assetReq = request;
+      if (isHtmlPath(url)) {
+        const h = new Headers(request.headers);
+        h.set('accept-encoding', 'identity');
+        assetReq = new Request(request, { headers: h });
+      }
+      const res = await env.ASSETS.fetch(assetReq);
+      return applyFreshPolicy(await injectRum(res), url);
+    }
+    return new Response('Not Found', { status: 404 });
+  },
+
+  // Cron 定时触发（见 wrangler.jsonc 的 triggers.crons = ["*/5 * * * *"]）：
+  // Cloudflare 边缘每 5 分钟自动派发一次抓取，替代经常延迟/丢跑的 GitHub 原生 cron。
+  // 走的是和「🔄 刷新」按钮完全相同的 handleScrape（含 1 分钟冷却，5 分钟间隔不会误挡）。
+  async scheduled(event, env, ctx) {
+    // 两条 Cron（见 wrangler.jsonc 的 triggers.crons）：
+    //   "* * * * *"  每分钟 —— 只跑「快车道」：Worker 直查口袋，有新发言立刻推（1 分钟内到达）
+    //   "*/5 * * * *" 每 5 分钟 —— 触发 GitHub Actions 全量抓取（档案数据）+ 老检测兜底
+    // 用 event.cron 区分来源；认不出来就按 5 分钟那套跑（最保守）。
+    const cron = String((event && event.cron) || '').trim();
+    if (cron === '* * * * *') {
+      // 快车道（Worker 自己问口袋）目前被 POCKET_FROM_CF_BLOCKED 关着 ——
+      // 实测从 Cloudflare 出去请求口袋一律 403；等哪天通了，去掉那个常量就自动启用。
+      ctx.waitUntil(pushFastTick(env, { reason: 'cron-fast' }).catch(() => null));
+      // 它现在真正干的活：**值守心跳** —— 每分钟看一眼 GitHub 上那个值守任务还在不在跑，
+      // 断了就立刻补拉起来（以前只能等 5 分钟那轮才发现，中间有空档）。
+      ctx.waitUntil(triggerPushWatch(env).catch(() => null));
+      return;
+    }
+    ctx.waitUntil(handleScrape(env));
+    // 🔴 拉起分钟级值守（GitHub 自己的高频 schedule 不触发，只能靠 CF 这个准点的来拉）
+    ctx.waitUntil(triggerPushWatch(env).catch(() => null));
+    // 兜底：万一 /api/sync 那次推送没跑成（网络抖、VAPID 还没配），这里每 5 分钟还会再查一次
+    ctx.waitUntil(runPushCheck(env, { reason: 'cron' }).catch(() => null));
+  }
+};
+
+/* ------------------------- 同站校验（防脚本滥用功能接口） -------------------------
+ * /translate（消耗 Workers AI 额度）与 /scrape（触发 GitHub Actions，消耗 CI 分钟数）
+ * 只应被「本站页面」调用。外部脚本（curl / 扫描器）直接拒绝。
+ * 判定（满足任一即放行）：
+ *   ① Origin 或 Referer 的 host 是本站域名（idol.wyc0518.cc，含 localhost 便于本地预览）；
+ *   ② Sec-Fetch-Site 为 same-origin / same-site（现代浏览器 fetch 必带，脚本不会伪造）。
+ * 正常粉丝在站点里点「翻译」「刷新」一定满足 ①（同源 fetch 必带 Referer）或 ②，不会被误伤；
+ * 脚本 / 无头浏览器 / 第三方代抓一律拒绝 —— 它们不是同源，拿不到 same-origin，也不会带本站 Referer。
+ * （初版曾放行 Sec-Fetch-Mode: navigate 方便调试，结果无头浏览器代抓也能绕过，已移除。）
+ */
+const SITE_HOSTS = new Set(['idol.wyc0518.cc', 'localhost', '127.0.0.1']);
+function isSameSite(request) {
+  const host = (h) => (h || '').toLowerCase();
+  const origin = request.headers.get('Origin');
+  const referer = request.headers.get('Referer');
+  for (const raw of [origin, referer]) {
+    if (!raw) continue;
+    try {
+      if (SITE_HOSTS.has(host(new URL(raw).hostname))) return true;
+    } catch (_) { /* 非法的 Origin/Referer，忽略 */ }
+  }
+  const site = (request.headers.get('Sec-Fetch-Site') || '').toLowerCase();
+  return site === 'same-origin' || site === 'same-site';
+}
+function forbiddenNotSameSite() {
+  return json({ error: 'forbidden: same-site only' }, 403);
+}
+
+// 静态资源缓存策略：
+//   HTML 与 /data/ 下的数据文件 → 强制「每次都向服务器校验」（no-cache + must-revalidate），
+//   避免手机浏览器、CDN 长期缓存旧页面/旧数据（否则刷新后仍看到几小时前的内容）。
+//   其余资源（css/js/图片）由构建注入 ?v=<时间戳> 做版本控制，可放心长缓存。
+// 是否 HTML 页面请求（首页 / 目录 / .html）——决定缓存策略与是否注入 RUM beacon
+function isHtmlPath(url) {
+  const p = url.pathname;
+  return p === '/' || p.endsWith('/') || p.endsWith('.html');
+}
+
+/* ---------------- Cloudflare Web Analytics（RUM）beacon 注入 ----------------
+ * 站点跑在 Workers 上（静态资源经 env.ASSETS 提供），Cloudflare 的 RUM 自动注入
+ * 不会作用于 Worker 产生的响应 ⇒ Web Analytics 收不到访客数据，只能手动注入。
+ * 用 HTMLRewriter 流式改写 <head>（比整页 res.text() 省内存、不破坏响应流）；
+ * 若拿到的是压缩响应则跳过——宁可不注入，也不返回一个坏页面。
+ */
+const RUM_TOKEN = 'c1ca5ef5789c483fb225ee3015fc3828';
+const RUM_SNIPPET = '<script defer src="https://static.cloudflareinsights.com/beacon.min.js"'
+  + ` data-cf-beacon='{"token":"${RUM_TOKEN}"}'></script>`;
+class RumHeadHandler {
+  element(el) { el.append(RUM_SNIPPET, { html: true }); }
+}
+async function injectRum(res) {
+  if (!res || !res.ok) return res;
+  const ct = (res.headers.get('content-type') || '').toLowerCase();
+  if (!ct.includes('text/html')) return res;
+  if (res.headers.get('content-encoding')) return res;
+  try {
+    const headers = new Headers(res.headers);
+    headers.delete('content-length');   // 内容被改写，原长度失效
+    const src = new Response(res.body, { status: res.status, statusText: res.statusText, headers });
+    return new HTMLRewriter().on('head', new RumHeadHandler()).transform(src);
+  } catch (e) {
+    return res;   // 注入失败就原样返回：宁可没统计，也不能让页面打不开
+  }
+}
+
+function applyFreshPolicy(res, url) {
+  if (!res || !res.headers) return res;
+  // 🔒 HSTS（2026-09-27 加）：让浏览器**自己**记住「本站只走 https」。
+  //    配合上面 fetch 开头的 308，双保险：以后站长在 Safari 里敲 idol.wyc0518.cc（不带 https），
+  //    浏览器也会直接走加密连接 —— 那样「添加到主屏幕」存下来的地址就是 https，
+  //    不会再生成一个 http 的旧图标（这次事故的根因）。
+  //    只在 https 响应里生效（http 响应带这个头会被浏览器忽略），所以放在这里没有副作用。
+  {
+    const h = new Headers(res.headers);
+    if (!h.has('strict-transport-security')) h.set('strict-transport-security', 'max-age=31536000');
+    res = new Response(res.body, { status: res.status, statusText: res.statusText, headers: h });
+  }
+  const p = url.pathname;
+  // 后台页（会重定向到无扩展名的 /admin-7f2a，绕开下面 HTML 的判定）：
+  // 改完必须立刻能用，且 CDN 上也不该留一份拷贝 —— 直接 no-store。
+  if (p.indexOf('/admin') === 0) {
+    const ah = new Headers(res.headers);
+    ah.set('Cache-Control', 'no-store');
+    return new Response(res.body, { status: res.status, statusText: res.statusText, headers: ah });
+  }
+  const isHtml = isHtmlPath(url);
+  const isData = p.startsWith('/data/');
+  // 带内容版本号的数据文件（如 /data/archive.js?v=<lastUpdated>）内容不可变：
+  //   允许浏览器与 CDN 长期缓存（数据一变版本号就变 → URL 变 → 自动失效），
+  //   这样重复访问不再重下十几 MB，只剩一次 500 字节的 meta.json 校验。
+  const ver = url.searchParams.get('v');
+  if (isData && ver) {
+    const h = new Headers(res.headers);
+    h.set('Cache-Control', 'public, max-age=31536000, immutable');
+    return new Response(res.body, { status: res.status, statusText: res.statusText, headers: h });
+  }
+  if (!isHtml && !isData) return res;
+  const headers = new Headers(res.headers);
+  headers.set('Cache-Control', 'no-cache, must-revalidate');
+  return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
+}
+
+// m2m100 需明确源语言；本站发言以中文为主
+const SRC_LANG = 'zh';
+const AI_MODEL = '@cf/meta/m2m100-1.2b';
+
+/* ------------------------- 翻译使用统计（存 KV，供 /stats 查看） -------------------------
+ * 复用已绑定的 KV 命名空间 env.SECRETS（本来只存 GH_TOKEN），键统一加 `stat:tr:` 前缀：
+ *   stat:tr:total              累计调用次数
+ *   stat:tr:lang:<tl>          按目标语言累计
+ *   stat:tr:day:<YYYY-MM-DD>   按北京时间每日次数
+ *   stat:tr:u:<day>:<ipHash>   当日出现的独立访客（只存 IP 的短哈希，不落明文 IP）
+ * 统计失败一律静默（绝不能影响翻译本身）。
+ */
+// 站点动作统计的事件清单（前端 app.js 的 track() 上报）
+const EVENTS = [
+  ['tab:messages', '口袋发言 tab'],
+  ['tab:live', '直播·录播 tab'],
+  ['tab:performances', '公演 tab'],
+  ['tab:schedule', '行程 tab'],
+  ['tab:guide', '新粉指南 tab'],
+  ['tab:mine', '我的·档案卡 tab'],
+  // 档案卡漏斗：查 → 有没有把卡片存下来。只记动作，绝不带上 uid。
+  // （2026-09-24 站长裁掉「查了一次 / 没查到」两条：她看不懂、也没用。）
+  ['mine:hit', '档案 查到了'],
+  ['mine:save', '档案 保存/分享卡片'],
+  // 行程转发图：真的把图生成出来了 / 复制了文案
+  ['sch:poster', '行程 生成转发图'],
+  ['sch:copy', '行程 复制文案'],
+  // 盲盒（2026-09-24 上正式站）：抽到照片 / 生成分享卡 / 复制文案 —— 看这个玩法有没有人玩
+  ['box:open', '盲盒 抽到一张'],
+  ['box:card', '盲盒 生成分享图'],
+  ['box:copy', '盲盒 复制文案'],
+  // 口袋发言页那 7 个工具按钮（2026-09-24 补埋点）：以前只有盲盒有埋点，
+  // 收藏/考古/去年今日/热力图/开播提醒/多选分享/从头补档 都是「黑盒」，不知道有没有人用。
+  ['fav:open', '收藏 打开列表'],
+  ['fav:add', '收藏 加一条'],
+  ['fav:del', '收藏 取消'],
+  ['fav:code', '收藏 收藏码（导出/导入）'],
+  ['dig:rand', '🎲 随机考古'],
+  ['dig:last', '📜 去年今日'],
+  ['heat:open', '🔥 发言热力图'],
+  ['heat:day', '热力图 点某天跳转'],
+  ['notify:on', '🔔 开播提醒 开启'],
+  ['notify:off', '开播提醒 关闭'],
+  ['notify:hit', '开播提醒 真的弹了'],
+  ['multi:on', '多选模式 进入'],
+  ['multi:off', '多选模式 退出'],
+  ['multi:card', '多选 生成分享图'],
+  ['multi:text', '多选 复制文字'],
+  ['catchup:open', '📖 从头补档'],
+  ['share:card', '单条 生成分享图'],
+  ['share:text', '单条 复制文字'],
+  ['filter:type', '类型筛选 chips'],
+  // 生写小卡图鉴（2026-09-24 上线，a54）：进入 / 点开大图 / 保存分享 —— 看新功能有没有人用
+  ['cards:open', '🪪 生写小卡 进入'],
+  ['cards:zoom', '生写小卡 点开大图'],
+  ['cards:save', '生写小卡 保存/分享图片'],
+  ['sticker:open', '😀 饭制表情包 进入'],
+  ['sticker:save', '饭制表情包 保存/分享图片'],
+  // 去年今日 · 陪伴票根（2026-09-25 上线，a08 补埋点）：站长只要「多少人在用」，
+  // 不记具体哪天被翻（保护隐私也省写入）⇒ 只有「打开」和「出图」两条。
+  ['tkt:open', '🎫 去年今日票根 打开'],
+  ['tkt:save', '去年今日票根 保存/分享图片'],
+  // 🎵 曲目（2026-09-26 上线，a22）：进入曲目子标签 / 点开单曲看唱过哪几场 —— 看新功能有没有人用。
+  // 🔴 子标签点击在 app.js 的容器委托里被 stopPropagation，必须用**捕获阶段**（true）才收得到。
+  ['song:open', '🎵 曲目 进入'],
+  ['song:view', '曲目 点开一首'],
+  // 2026-09-24 站长裁定「没用的别统计了」→ 下面这些已从白名单移除（统计页不再显示），
+  // 同时在 STOP_EVENTS 里直接拒收（连一次 KV 写都不发生）：
+  //   子标签 sub:* ×5、行程 进入选图 sch:pick、档案 查了一次 mine:query、档案 没查到 mine:miss、
+  //   切换语言 lang:*、手动刷新 refresh、时间筛选 filter:date。
+  // 它们合计只占全天动作的 ~12%，真正的节流手段是把 STAT_WRITE_CAP 从 3000 压到 800。
+  ['play', '视频播放'],
+  ['social:open', '美图点开大图'],
+  ['bili', 'B 站跳转'],
+  ['search', '搜索'],
+];
+// 允许写进 KV 的事件名集合（= EVENTS 的键）。2026-09-25 起 handleTrack 用它做准入校验，
+// 白名单外的事件一律不写（防随手灌数据 + 省 KV 写入额度）。
+const ALLOWED_EVS = new Set(EVENTS.map((e) => e[0]));
+// 已明确不再记录的事件（`lang:` 前缀另算，见 isStoppedEv）
+const STOP_EVENTS = new Set([
+  'sub:replay', 'sub:cuts', 'sub:social', 'sub:gallery', 'sub:exp',
+  'sch:pick', 'mine:query', 'mine:miss', 'refresh', 'filter:date',
+]);
+// lang:* 前缀一律不记（切换界面语言）
+const isStoppedEv = (ev) => STOP_EVENTS.has(ev) || ev.startsWith('lang:');
+// 单个玩法的「每日上限」（2026-09-24 站长选的方案）：盲盒一天能点 280+ 次，占全天动作的四成，
+// 总闸压到 800 之后它会把 tab / 行程 / 档案这些更要看的指标一起挤掉。
+// 给它单独设一条自适应子闸：超过之后**只停记盲盒**，其余事件照常记录。
+// 2026-09-24 晚：确认「停记」只是不再计数、抽卡功能照常 ⇒ 站长放宽到 500/天（原 300）。
+const EV_DAY_CAP = { 'box:open': 500 };
+const LANGS = ['en', 'es', 'fr', 'nl', 'pt', 'ro', 'ja', 'vi', 'ko', 'th'];
+// 统计数据的读取密钥：只有带这个 key 才拿得到，避免统计接口挂在主域名上被随手访问。
+// 可用 KV 里的 STATS_KEY 覆盖（无需改代码）。
+const STATS_KEY = 'wyc-stats-2026';
+const LANG_NAME = { en: '英语', es: '西班牙语', fr: '法语', nl: '荷兰语', pt: '葡萄牙语', ro: '罗马尼亚语', ja: '日语', vi: '越南语', ko: '韩语', th: '泰语' };
+// 访客国家（request.cf.country，ISO 3166-1 alpha-2）→ 中文名。没收录的就原样显示代码。
+// 香港/澳门/台湾按规范写「中国香港 / 中国澳门 / 中国台湾」。
+const CC_NAME = {
+  CN: '中国', HK: '中国香港', MO: '中国澳门', TW: '中国台湾',
+  JP: '日本', KR: '韩国', SG: '新加坡', MY: '马来西亚', TH: '泰国', VN: '越南',
+  ID: '印度尼西亚', PH: '菲律宾', IN: '印度', PK: '巴基斯坦', BD: '孟加拉国',
+  LK: '斯里兰卡', NP: '尼泊尔', KH: '柬埔寨', MM: '缅甸', LA: '老挝', BN: '文莱',
+  MN: '蒙古', KZ: '哈萨克斯坦', UZ: '乌兹别克斯坦',
+  US: '美国', CA: '加拿大', MX: '墨西哥', BR: '巴西', AR: '阿根廷', CL: '智利', CO: '哥伦比亚',
+  GB: '英国', IE: '爱尔兰', FR: '法国', DE: '德国', NL: '荷兰', BE: '比利时', LU: '卢森堡',
+  CH: '瑞士', AT: '奥地利', IT: '意大利', ES: '西班牙', PT: '葡萄牙', GR: '希腊',
+  SE: '瑞典', NO: '挪威', DK: '丹麦', FI: '芬兰', IS: '冰岛', PL: '波兰', CZ: '捷克',
+  HU: '匈牙利', RO: '罗马尼亚', UA: '乌克兰', RU: '俄罗斯', TR: '土耳其', IL: '以色列',
+  AE: '阿联酋', SA: '沙特阿拉伯', QA: '卡塔尔', KW: '科威特', EG: '埃及', ZA: '南非', NG: '尼日利亚',
+  AU: '澳大利亚', NZ: '新西兰',
+  T1: 'Tor 匿名网络', XX: '未知'
+};
+function p2(n) { return String(n).padStart(2, '0'); }
+function bjDay(ts) { // 北京时间日期
+  const d = new Date((ts == null ? Date.now() : ts) + 8 * 3600 * 1000);
+  return `${d.getUTCFullYear()}-${p2(d.getUTCMonth() + 1)}-${p2(d.getUTCDate())}`;
+}
+// 统计每天最多允许多少次 KV 写入（闸门逻辑见 handleTrack 内的注释）。
+// 2026-09-24 精简后的开销：一次动作 = **1 次必写**（当天计数 stat:evd:<day>:<ev>），
+// 另外只有「某人当天第一次做某件事 / 某人当天第一次进站」才写。实测一天约 500~900 次写入。
+const STAT_WRITE_CAP = 1000;
+async function shortHash(s) {
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(s)));
+  return Array.from(new Uint8Array(d)).slice(0, 8).map((x) => x.toString(16).padStart(2, '0')).join('');
+}
+/* ──「一个人」的判定键（2026-09-25 修）─────────────────────────────────────────
+ * 以前直接拿完整 IP 当「人」。但手机/宽带的 IPv6 **隐私地址一天要换好几次**
+ * （同一条线路、同一个人，后半段会变），运营商 IPv4 共用池也会轮换，
+ * 于是同一个人会被算成好几个访客 —— 这正是「日本人数虚高」的来源。
+ * 改法：IPv6 只取前四段（64 位前缀，运营商分配给一条线路的那一半，换地址也不变），把同一个网络
+ * 里的多个地址归成一个人。IPv4 维持整段（再收紧会把同一运营商 NAT 池里的其他粉丝也吃掉）。
+ * ⚠️ 副作用（知道就好）：同一屋檐下好几个人共用一个 /64 时只算 1 人 —— 这跟 IPv4 出口 IP
+ * 的性质是一样的，统计页的说明里写清楚了。
+ */
+function visitorIp(ip) {
+  const s = String(ip || '?').trim().toLowerCase();
+  if (s.indexOf(':') < 0) return s;                       // IPv4：原样
+  if (s.indexOf('.') >= 0) return s.split(':').pop();     // IPv4-mapped（::ffff:1.2.3.4）按 IPv4 算
+  const body = s.indexOf('%') >= 0 ? s.slice(0, s.indexOf('%')) : s;   // 去掉 IPv6 zone id
+  const halves = body.split('::');
+  const head = halves[0] ? halves[0].split(':') : [];
+  const tail = (halves.length > 1 && halves[1]) ? halves[1].split(':') : [];
+  const miss = 8 - head.length - tail.length;             // 把 :: 省略的 0 补回去再取前 4 段
+  const full = head.concat(new Array(Math.max(0, miss)).fill('0'), tail);
+  return full.slice(0, 4).join(':') + '::/64';
+}
+async function incKV(kv, k) {
+  const n = Number((await kv.get(k)) || 0) + 1;
+  await kv.put(k, String(n));
+}
+// 「独立访客」：把去重后的 IP 短哈希存成一个小 JSON 数组（单个动作最多几百个 → 几 KB）。
+// 为什么不用「一个访客一个 KV 键」：那样读统计要 kv.list 分页、写也要多一次 put；
+// 数组方案读统计只要 1 次 get/动作，且**同一访客重复点同一功能时直接 return，不再写盘**
+// （KV 免费额度只有 1000 写/天，必须省着用）。
+const UNIQ_CAP = 20000; // 兜底：极端情况下不让单个值无限长大（远超本站真实访客量级）
+async function addUniq(kv, key, hash) {
+  let arr = [];
+  try {
+    const raw = await kv.get(key);
+    if (raw) { const p = JSON.parse(raw); if (Array.isArray(p)) arr = p; }
+  } catch (_) { arr = []; }
+  if (arr.includes(hash)) return; // 已记过 → 不写盘
+  arr.push(hash);
+  if (arr.length > UNIQ_CAP) arr = arr.slice(-UNIQ_CAP);
+  await kv.put(key, JSON.stringify(arr));
+}
+async function readUniqCount(kv, key) {
+  try {
+    const raw = await kv.get(key);
+    if (!raw) return 0;
+    const p = JSON.parse(raw);
+    return Array.isArray(p) ? p.length : 0;
+  } catch (_) { return 0; }
+}
+// 事件「累计次数」汇总：自 2026-09-24 起写侧不再维护 stat:ev:<ev>（那要每次动作多写一次 KV），
+// 改在这里把所有 stat:evd:<day>:<ev> 加起来。取值和列取都不占写入配额。
+// 返回 Map<事件名, 累计次数>；读不到就返回空 Map（统计页那一列会显示 0，不影响别的数）。
+async function evTotalsByListing(kv) {
+  const out = new Map();
+  if (!kv || typeof kv.list !== 'function') return out;
+  const keys = [];
+  try {
+    let cursor = null;
+    for (let guard = 0; guard < 20; guard++) {
+      const page = await kv.list(cursor ? { prefix: 'stat:evd:', limit: 1000, cursor } : { prefix: 'stat:evd:', limit: 1000 });
+      if (!page || !Array.isArray(page.keys)) break;
+      page.keys.forEach((k) => { if (k && k.name) keys.push(k.name); });
+      if (page.list_complete || !page.cursor) break;
+      cursor = page.cursor;
+    }
+  } catch (_) { return out; }
+  // 键形如 stat:evd:2026-09-24:tab:mine → 去掉前缀(9)和日期(11)就是事件名
+  const group = new Map();
+  keys.forEach((k) => {
+    const ev = k.slice(20);
+    if (!ev) return;
+    if (!group.has(ev)) group.set(ev, []);
+    group.get(ev).push(k);
+  });
+  const rows = Array.from(group.entries());
+  for (let i = 0; i < rows.length; i += 100) {
+    const chunk = rows.slice(i, i + 100);
+    try {
+      const vals = await Promise.all(chunk.map(([, ks]) => Promise.all(ks.map((k) => kv.get(k).catch(() => null)))));
+      vals.forEach((vs, ci) => {
+        out.set(rows[i + ci][0], vs.reduce((s, v) => s + Number(v || 0), 0));
+      });
+    } catch (_) { /* 读失败就跳过这部分 */ }
+  }
+  return out;
+}
+async function bumpStat(env, tl, request) {
+  try {
+    const kv = env && env.SECRETS;
+    if (!kv || typeof kv.get !== 'function') return;
+    const day = bjDay();
+    const ip = (request.headers.get('cf-connecting-ip') || request.headers.get('x-forwarded-for') || '?').split(',')[0].trim();
+    await incKV(kv, 'stat:tr:total');
+    await incKV(kv, 'stat:tr:lang:' + tl);
+    await incKV(kv, 'stat:tr:day:' + day);
+    await kv.put(`stat:tr:u:${day}:${await shortHash(visitorIp(ip))}`, '1');
+  } catch (_) { /* 统计失败不影响翻译 */ }
+}
+
+async function handleTranslate(request, url, env, ctx) {
+  const q = url.searchParams.get('q');
+  const tl = url.searchParams.get('tl') || 'en';
+  if (!q) return json({ error: 'missing q' }, 400);
+
+  // 记一次使用（waitUntil 不阻塞响应）。注意：**缓存命中也要计数**，
+  // 否则同一段文字被多人反复翻译只会记 1 次，统计严重偏低。
+  const count = () => {
+    if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(bumpStat(env, tl, request));
+    else bumpStat(env, tl, request).catch(() => {});
+  };
+  const ok = (obj) => { count(); return respondCached(obj, cache, cacheKey, ctx); };
+
+  // 边缘缓存：同一段文本 24h 内不再重复推理/回源（省 AI 额度、降延迟）
+  const cache = caches.default;
+  const cacheKey = new Request(url.toString(), { method: 'GET' });
+  const hit = await cache.match(cacheKey);
+  if (hit) { count(); return hit; }
+
+  // 1) Workers AI（Cloudflare 边缘自推理）
+  if (env && env.AI) {
+    try {
+      const out = await env.AI.run(AI_MODEL, { text: q, source_lang: SRC_LANG, target_lang: tl });
+      const text = out && (out.translated_text || out.response || out.result);
+      if (text && String(text).trim()) {
+        return ok({ text: String(text).trim(), via: 'workers-ai' });
+      }
+    } catch (e) {
+      // 落 Google 兜底
+    }
+  }
+
+  // 2) 兜底：Google 公开接口（海外可用；数据中心 IP 可能被反滥用页拦）
+  try {
+    const api = new URL('https://translate.googleapis.com/translate_a/single');
+    api.searchParams.set('client', 'gtx');
+    api.searchParams.set('sl', 'auto');
+    api.searchParams.set('dt', 't');
+    api.searchParams.set('tl', tl);
+    api.searchParams.set('q', q);
+    const r = await fetch(api.toString(), {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Referer': 'https://translate.google.com/'
+      }
+    });
+    const body = await r.text();
+    if (!/<html/i.test(body)) {
+      const d = JSON.parse(body);
+      const text = ((d && d[0]) || []).map((s) => s[0]).join('');
+      if (text) return ok({ text, via: 'google' });
+    }
+  } catch (e) {
+    // 忽略
+  }
+
+  return json({ error: 'translate-failed' }, 502);
+}
+
+// 1x1 透明 GIF：track 请求的响应（浏览器把它当图片加载，不报错、不阻塞）
+const GIF = Uint8Array.from(atob('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'), (c) => c.charCodeAt(0));
+function gif() {
+  return new Response(GIF, {
+    headers: { 'content-type': 'image/gif', 'cache-control': 'no-store', 'access-control-allow-origin': '*' }
+  });
+}
+
+// 站点动作统计：?e=<事件名>
+async function handleTrack(url, request, env, ctx) {
+  const raw = String(url.searchParams.get('e') || '').toLowerCase();
+  // 只接受 [a-z0-9:_-]，避免任意键写进 KV
+  const ev = raw.replace(/[^a-z0-9:_-]/g, '').slice(0, 40);
+  if (ev) {
+    // 2026-09-24 站长裁定「没用的别统计了」：命中停用名单的事件一个字节都不写，
+    // 直接返回图片（0 次 KV 写）。放在记账之前 ⇒ 连每日配额都不占。
+    if (isStoppedEv(ev)) return gif();
+    // 2026-09-25 再加一道：**必须是 EVENTS 白名单里登记过的事件名**才写。
+    // 以前只过滤非法字符，等于任何人打开控制台 `fetch('/track?e=随便写')` 都能往统计里灌数据、
+    // 还白占 KV 写入额度（门槛只有同站请求，而浏览器里随便一行代码就满足了）。
+    // ⚠️ 记账的铁律不变：新事件必须同时登记到 EVENTS，否则一条都记不到（连统计页也不会显示）。
+    if (!ALLOWED_EVS.has(ev)) return gif();
+    const job = (async () => {
+      try {
+        const kv = env && env.SECRETS;
+        if (!kv || typeof kv.get !== 'function') return;
+        const day = bjDay();
+        // ── 单个玩法的「每日子闸」（放在总闸之前）────────────────────────
+        // 盲盒天天 280+ 次，占全天动作的四成，会把 tab / 行程 / 档案挤到没额度。
+        // 超过子闸就**只停记这一个事件**，其余事件完全不受影响。
+        // 检查用的 kv.get 不计写入配额 ⇒ 这一层判断本身不花钱、也不占总闸额度。
+        const evCap = EV_DAY_CAP[ev];
+        if (evCap) {
+          const cur = Number((await kv.get('stat:evd:' + day + ':' + ev)) || 0);
+          if (cur >= evCap) return;
+        }
+        // ── 每日写入总闸 ──
+        // 统计是「锦上添花」，绝不能把 KV 写入额度抢光、连累数据同步（2026-09-22 事故）。
+        // 超过上限就不再记录，页面照常用；第二天零点自动恢复。
+        // 300 → 600（2026-09-23，补了档案卡埋点）→ 3000（2026-09-24，补齐口袋 7 个小功能后翻倍）
+        // → 800（2026-09-24 站长要求收紧）→ **1000（同日晚上站长改回）**：确认超限只影响计数、
+        // 页面功能不受损之后放宽。常态一天约 700~800 次动作，留了约 200 的余量。若哪天下午起数字不再增长 = 打满，改这个常量即可。
+        const gateKey = 'stat:gate:' + day;
+        const gateMax = STAT_WRITE_CAP;
+        let used = 0;
+        try { used = Number((await kv.get(gateKey)) || 0); } catch (_) { used = 0; }
+        if (used >= gateMax) return;
+        // 计数器本身也占写入 → 用 1/5 抽样自增（近似值，用于封顶足够）
+        if (Math.random() < 0.2) { try { await kv.put(gateKey, String(used + 5)); } catch (_) {} }
+        const ip = (request.headers.get('cf-connecting-ip') || request.headers.get('x-forwarded-for') || '?').split(',')[0].trim();
+        const hash = await shortHash(visitorIp(ip));
+        // ── 精简（2026-09-24）──────────────────────────────────────────────
+        // 以前这一步还要额外写「累计次数」stat:ev:<ev>，那是一条**每次动作都必写**的记录，
+        // 光它一项就占了全部 KV 写入的一半。而「累计」完全可以在看统计的时候把各天的数加起来
+        // （见 handleStatsBody 的 evTotalsByListing，只有读和列取、不算写入配额），页面看到的数字一样。
+        // 所以这里只写当天计数。
+        await incKV(kv, 'stat:evd:' + day + ':' + ev);
+        // 该动作的独立访客（累计 / 当日）：按 IP 短哈希去重，重复访客不重复写盘
+        await addUniq(kv, 'stat:evu:' + ev, hash);
+        await addUniq(kv, `stat:evud:${day}:${ev}`, hash);
+        // 站点级「当日独立访客」：原来每次上报都写一遍，改成只在当天首次出现时写（省 KV 写额度）
+        const uKey = `stat:u:${day}:${hash}`;
+        if (!(await kv.get(uKey))) {
+          await kv.put(uKey, '1');
+          // 访客国家：Cloudflare 每个请求都带（request.cf.country），不用前端传、也不碰 IP 明文。
+          // 同样只在当天首次出现时记一次，所以一天最多写「人数」条，几乎不占额度。
+          // ── 2026-09-25 改：原来这里用 incKV（get→+1→put）累加一个**共享计数器**，
+          // 多个人的「当天首次」撞在同一瞬间时会互相覆盖 ⇒ 丢计数（实测 9/24+9/25 共 144 个到访，
+          // 国家表只记到 123，约 15% 凭空消失）。改成**一人一个键**、统计时按前缀数列 ⇒ 不再有写冲突。
+          // 写入次数和原来一样都是 1 次 put（原方案还要多一次 get），不增加 KV 开销。
+          const cc = String((request.cf && request.cf.country) || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+          if (cc) await kv.put(`stat:ctry:${day}:${cc}:${hash}`, '1');
+        }
+      } catch (_) { /* 统计失败不影响页面 */ }
+    })();
+    if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(job);
+  }
+  return gif();
+}
+
+// 站长查看翻译使用情况：返回一张简单表格（累计次数 / 各语言 / 最近 7 天次数与独立访客）
+async function handleStats(url, env) {
+  // 站长看统计走 GitHub Pages（docs/stats.html），本域名上**不暴露任何统计页面**：
+  // 未带正确 key 一律 404（看起来就像没有这个地址），带 key 才返回数据。
+  const wantJson = url.searchParams.get('format') === 'json';
+  const kv = env && env.SECRETS;
+  let key = STATS_KEY;
+  if (kv && typeof kv.get === 'function') {
+    try { key = (await kv.get('STATS_KEY')) || STATS_KEY; } catch (_) { /* 用默认值 */ }
+  }
+  if (url.searchParams.get('k') !== key) {
+    return new Response('Not Found', { status: 404 });
+  }
+  // 统计读起来很重（上百个 KV 键），缓存 60 秒：站长反复刷新页面不会每次都把 KV 打一遍
+  const cacheKey = 'https://wyc-stats.local/stats?k=' + key + (wantJson ? '&format=json' : '&format=html');
+  try {
+    const hit = await caches.default.match(cacheKey);
+    if (hit) return hit;
+  } catch (_) { /* 没命中就自己算 */ }
+  let res;
+  try {
+    res = await Promise.race([
+      handleStatsBody(url, env, kv, wantJson),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('stats timeout')), 15000)),
+    ]);
+  } catch (_) {
+    // 超时也要给响应，不能让浏览器一直挂着（否则前端等到自己的超时才报「读取失败」）
+    return wantJson
+      ? new Response(JSON.stringify({ error: 'stats-timeout' }), {
+        status: 503,
+        headers: { 'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': '*' }
+      })
+      : new Response('<meta charset="utf-8"><p>统计读取超时，请稍后重试</p>', {
+        status: 503, headers: { 'content-type': 'text/html; charset=utf-8' }
+      });
+  }
+  try { await caches.default.put(cacheKey, res.clone()); } catch (_) { /* 写不进就算了 */ }
+  return res;
+}
+
+async function handleStatsBody(url, env, kv, wantJson) {
+  // 注意：这里必须是可缓存的头（no-store 的话 caches.default.put 存不进去）
+  const html = (s) => new Response(s, {
+    headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, max-age=60' }
+  });
+  if (!kv || typeof kv.get !== 'function') {
+    return html('<meta charset="utf-8"><p>统计未启用：Worker 未绑定 KV 命名空间。</p>');
+  }
+  // 🔴 别再一个一个 await：34 个事件 × 4 + 7 天 × 3 + 10 种语言 … 共 169 次串行 KV 读，
+  // 累计 30s+ 直接把 GitHub Pages 上那个 8 秒超时的统计页拖成「读取失败」。这里全部并发。
+  const days7 = [];
+  for (let i = 0; i < 7; i++) days7.push(bjDay(Date.now() - i * 86400000));
+  // lang:*（切换界面语言）2026-09-24 起不再统计，所以不拼进展列表；LANGS 仍用于「翻译用量」那张表。
+  const evDefs = EVENTS;
+  const evToday = days7[0];
+  const g = (k) => kv.get(k).catch(() => null);
+  const ls = (p, lim) => kv.list(lim ? { prefix: p, limit: lim } : { prefix: p }).catch(() => null);
+
+  const ctryOldLists = await Promise.all(days7.map((d) => ls(`stat:ctryu:${d}:`, 200)));   // 旧计数器（兼容历史两天）
+  const [totalRaw, langVals, dayVals, trUvLists, siteUvLists, ctryNewLists, evTotals, evDayVals, evUniqT, evUniqD] = await Promise.all([
+    g('stat:tr:total'),
+    Promise.all(LANGS.map((l) => g('stat:tr:lang:' + l))),
+    Promise.all(days7.map((d) => g('stat:tr:day:' + d))),
+    Promise.all(days7.map((d) => ls(`stat:tr:u:${d}:`))),
+    Promise.all(days7.map((d) => ls(`stat:u:${d}:`, 1000))),
+    Promise.all(days7.map((d) => ls(`stat:ctry:${d}:`, 1000))),  // 该国当天有哪些访客（一人一键）
+    null, // 事件的「累计次数」不再单独存键（省一半写入），改用下面的 evTotalsByListing 汇总
+    Promise.all(evDefs.map((e) => g(`stat:evd:${evToday}:${e[0]}`))),
+    Promise.all(evDefs.map((e) => readUniqCount(kv, 'stat:evu:' + e[0]))),
+    Promise.all(evDefs.map((e) => readUniqCount(kv, `stat:evud:${evToday}:${e[0]}`))),
+  ]);
+
+  const total = Number(totalRaw || 0);
+
+  // 累计次数 = 各天相加（详情见 evTotalsByListing）；顺手把当天的「已处理动作数」读出来，
+  // 让站长能直接看见今天记了多少 / 上限多少（这个数是 1/5 抽样得来的粗估，不是精确的写入次数）。
+  const [evTotalsMap, gateUsedRaw] = await Promise.all([
+    evTotalsByListing(kv),
+    g('stat:gate:' + days7[0]).catch(() => null),
+  ]);
+  const gateUsed = Number(gateUsedRaw || 0);
+
+  const langRows = [];
+  LANGS.forEach((l, i) => {
+    const n = Number(langVals[i] || 0);
+    if (n > 0) langRows.push([l, n]);
+  });
+  langRows.sort((a, b) => b[1] - a[1]);
+
+  // 「今日独立访客」原先取的是**翻译功能**的 UV，结果翻译没人用就显示 0，
+  // 全站到底来了多少人一直看不到。改成站点级 UV（stat:u:<day>:<hash>，
+  // 每个访客当天首次出现时写一条），7 天各算一次。
+  const days = days7.map((d, i) => [
+    d,
+    Number(dayVals[i] || 0),
+    (trUvLists[i] && trUvLists[i].keys) ? trUvLists[i].keys.length : 0,
+    (siteUvLists[i] && siteUvLists[i].keys) ? siteUvLists[i].keys.length : 0,
+  ]);
+  const siteUvToday = days[0][3];
+
+  // 访客国家：2026-09-25 起改成「一人一个键」（stat:ctry:<day>:<cc>:<访客键>），列前缀数个数即可，
+  // 不再有共享计数器那种并发覆盖丢数。9/24、9/25 上午那两天用的是旧方案 stat:ctryu:<day>:<cc>，两者相加。
+  const ccSet = new Set();
+  (ctryNewLists || []).forEach((l) => ((l && l.keys) || []).forEach((k) => {
+    const cc = String((k && k.name) || '').split(':')[3];
+    if (cc) ccSet.add(cc);
+  }));
+  (ctryOldLists || []).forEach((l) => ((l && l.keys) || []).forEach((k) => {
+    const cc = String((k && k.name) || '').split(':').pop();
+    if (cc) ccSet.add(cc);
+  }));
+  const ccs = Array.from(ccSet);
+  const ctryOldVals = await Promise.all(days7.map((d) => Promise.all(ccs.map((c) => g(`stat:ctryu:${d}:${c}`)))));
+  const countries = ccs.map((c, ci) => {
+    const per = days7.map((d, di) => {
+      const nNew = ((ctryNewLists[di] && ctryNewLists[di].keys) || [])
+        .filter((k) => String((k && k.name) || '').split(':')[3] === c).length;
+      return nNew + Number(ctryOldVals[di][ci] || 0);
+    });
+    return {
+      cc: c,
+      name: CC_NAME[c] || c,
+      today: per[0],
+      d7: per.reduce((a, b) => a + b, 0),
+    };
+  });
+  countries.sort((a, b) => (b.d7 - a.d7) || (b.today - a.today));
+
+  const langHtml = langRows.length
+    ? langRows.map(([l, n]) => `<tr><td>${LANG_NAME[l] || l}</td><td class="n">${n}</td></tr>`).join('')
+    : '<tr><td colspan="2" class="dim">暂无记录</td></tr>';
+  const dayHtml = days.map(([d, n, u, su]) => `<tr><td>${d}</td><td class="n">${su}</td><td class="n">${n}</td><td class="n">${u}</td></tr>`).join('');
+
+  // 站点动作（tab 切换 / 视频播放 / 刷新 / 搜索 …）
+  // 除「次数」外还算「独立访客」：累计 = 该功能一共有多少人来用过，今日 = 今天有多少人用过。
+  const evList = [];
+  evDefs.forEach(([key, name], i) => {
+    const t = Number(evTotalsMap.get(key) || 0);
+    const d = Number(evDayVals[i] || 0);
+    if (t <= 0 && d <= 0) return;
+    evList.push({ key: key, name: name, total: t, today: d, uniqTotal: evUniqT[i] || 0, uniqToday: evUniqD[i] || 0 });
+  });
+  evList.sort((a, b) => b.total - a.total);
+  const evHtml = evList.length
+    ? evList.map((e) => `<tr><td>${e.name}</td><td class="n">${e.total}</td><td class="n">${e.today}</td>`
+      + `<td class="n">${e.uniqTotal}</td><td class="n">${e.uniqToday}</td></tr>`).join('')
+    : '<tr><td colspan="5" class="dim">暂无记录</td></tr>';
+  const ctryHtml = countries.length
+    ? countries.map((c) => `<tr><td>${c.name}</td><td class="n">${c.today}</td><td class="n">${c.d7}</td></tr>`).join('')
+    : '<tr><td colspan="3" class="dim">暂无记录（从启用当天开始累计）</td></tr>';
+
+  // 手机通知订阅人数（Web Push）：订阅现在只有个位数～几十条，list 一下几乎不花钱。
+  // 记三个分类：有人只想收「她开播」，不想收每条发言 ⇒ 光看总人数不知道该推给谁。
+  let push = { subs: 0, msg: 0, live: 0, perf: 0 };
+  try {
+    const subs = await pushAllSubs(env);
+    for (const s of subs) {
+      if (s.t.msg !== false) push.msg += 1;
+      if (s.t.live !== false) push.live += 1;
+      if (s.t.perf !== false) push.perf += 1;
+    }
+    push.subs = subs.length;
+  } catch (_) { /* 推送没配好时只是没这个数，不影响其它统计 */ }
+
+  // JSON 模式：给 GitHub Pages 上的统计页面跨域读取（docs/stats.html）
+  if (wantJson) {
+    return new Response(JSON.stringify({
+      total,
+      today: { day: days[0][0], count: days[0][1], visitors: siteUvToday },
+      siteUvToday,
+      push,
+      langs: langRows.map(([l, n]) => ({ lang: l, name: LANG_NAME[l] || l, count: n })),
+      days: days.map(([d, n, u, su]) => ({ day: d, count: n, visitors: u, siteUv: su })),
+      countries: countries,
+      // stat:gate:<day> 是「当天处理了多少次动作」的**粗估**（1/5 抽样、每次加 5，所以和实际值可能差几百），
+      // 不是写入次数：写入次数 ≥ 这个数（每个动作至少写 1 次）。够用来判断有没有撞上限就够了。
+      actionsToday: gateUsed,
+      actionCap: STAT_WRITE_CAP,
+      events: evList
+    }), {
+      headers: {
+        'content-type': 'application/json; charset=utf-8',
+        'cache-control': 'public, max-age=60',
+        'access-control-allow-origin': '*'
+      }
+    });
+  }
+
+  return html(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>翻译使用统计</title>
+<style>
+ body{font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:#12131a;color:#e8eaf2;margin:0;padding:24px}
+ h1{font-size:19px;margin:0 0 4px} .dim{color:#8b90a0;font-size:13px;margin:0 0 18px}
+ .cards{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px}
+ .card{background:#1c1f2b;border-radius:12px;padding:14px 18px;min-width:120px}
+ .card .k{font-size:12px;color:#8b90a0} .card .v{font-size:24px;font-weight:700;margin-top:4px}
+ h2{font-size:15px;margin:18px 0 8px}
+ table{border-collapse:collapse;width:100%;max-width:640px;background:#1c1f2b;border-radius:10px;overflow:hidden}
+ td{padding:8px 12px;border-bottom:1px solid #2a2e3d;font-size:14px}
+ tr:last-child td{border-bottom:none} td.n{text-align:right;font-variant-numeric:tabular-nums}
+</style>
+<h1>翻译功能使用统计</h1>
+<p class="dim">累计统计自启用之时；「独立访客」按 IP 去重估算（不保存明文 IP）：<b>同一 WiFi 下多人只算 1 人（偏少），同一个人的 IP 一天轮换几次又会算成几个（偏多）</b> —— 只能当「量级」看，不是精确人数。KV 有约 1 分钟同步延迟。</p>
+<div class="cards"><div class="card"><div class="k">累计翻译次数</div><div class="v">${total}</div></div>
+<div class="card"><div class="k">今日次数</div><div class="v">${days[0][1]}</div></div>
+<div class="card"><div class="k">今日独立访客</div><div class="v">${siteUvToday}</div></div>
+<div class="card"><div class="k">今日记录动作 / 上限</div><div class="v" style="font-size:18px">${gateUsed} / ${STAT_WRITE_CAP}</div></div>
+<div class="card"><div class="k">通知订阅人数</div><div class="v">${push.subs}</div>
+<div class="k" style="margin-top:6px">发言 ${push.msg} · 开播 ${push.live} · 公演 ${push.perf}</div></div></div>
+<h2>各语言使用次数</h2><table>${langHtml}</table>
+<h2>访客来自哪里（今日 / 近 7 天）</h2><table><tr><td>国家·地区</td><td class="n">今日</td><td class="n">近 7 天</td></tr>${ctryHtml}</table>
+<p class="dim">按 Cloudflare 给出的国家（ISO 代码）统计。<b>这是「IP 数」，不是「人数」</b>，两个方向都会偏：<br>
+① 同一个人会被算成好几个 —— 手机的 IPv6 地址一天换好几次、WiFi↔流量切换、加速器换节点，每换一次就是一个；<br>
+② 反过来，同一个 WiFi / 同一个运营商 NAT 池下的好几个粉丝只算 1 个。<br>
+2026-09-25 起 IPv6 已按运营商前缀（64 位）合并，同一条线路上换出来的多个地址算 1 个；<b>更早的数据还是按完整地址算的，所以历史那几天偏高</b>。<br>
+口径提醒：同一个人多天都来，每天的独立访客里各算一次；国家分布从 2026-09-24 才启用，之前有访客但没有国家数据。</p>
+<h2>功能使用（次数 / 独立访客）</h2><table><tr><td>动作</td><td class="n">累计</td><td class="n">今日</td><td class="n">独立累计</td><td class="n">独立今日</td></tr>${evHtml}</table>
+<h2>最近 7 天（每天来了多少人 / 翻译次数）</h2><table><tr><td>日期</td><td class="n">到访人数</td><td class="n">翻译次数</td><td class="n">翻译访客</td></tr>${dayHtml}</table>`);
+}
+
+// 手动触发抓取：调用 GitHub REST API 触发 scrape.yml 的 workflow_dispatch。
+// 需要 env.GH_TOKEN（具备 actions:write 的 PAT，由 wrangler secret put 配置）
+// 与 env.REPO（owner/repo，默认值见 wrangler.jsonc 的 vars）。
+// 自带很短的服务端冷却（1 分钟，只用于防止同一秒被重复点击打爆 GitHub Actions）：
+// 粉丝点「刷新」应当**立即**真的触发抓取，不再像以前那样被 15 分钟冷却挡住。
+const SCRAPE_COOLDOWN_MIN = 1;
+async function handleScrape(env) {
+  const repo = (env && env.REPO) || 'winccctan/wangyuchen-archive';
+  // token 来源：优先 KV（运行时读取，Git 构建也能用），否则退回 dashboard Secret(env.GH_TOKEN)
+  let token = env && env.GH_TOKEN;
+  if (!token && env && env.SECRETS && typeof env.SECRETS.get === 'function') {
+    token = await env.SECRETS.get('GH_TOKEN');
+  }
+  const ref = (env && env.SCRAPE_REF) || 'main';
+  if (!token) {
+    return json({ error: 'worker-missing-gh-token', hint: '请在 Cloudflare KV 命名空间 SECRETS 中存入键 GH_TOKEN' }, 500);
+  }
+  const headers = {
+    'Authorization': `Bearer ${token}`,
+    'Accept': 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+    'User-Agent': 'wyc-archive-worker'
+  };
+  // 1) 冷却检查：查最近一次运行，15 分钟内则跳过
+  try {
+    const runsApi = `https://api.github.com/repos/${repo}/actions/workflows/scrape.yml/runs?per_page=1`;
+    const runsRes = await fetch(runsApi, { headers });
+    if (runsRes.ok) {
+      const runs = await runsRes.json();
+      const last = runs.workflow_runs && runs.workflow_runs[0];
+      if (last && last.created_at) {
+        const elapsedMin = (Date.now() - new Date(last.created_at).getTime()) / 60000;
+        if (elapsedMin < SCRAPE_COOLDOWN_MIN) {
+          return json({ ok: true, skipped: true, message: '近期已抓取，稍候刷新即可' });
+        }
+      }
+    }
+  } catch (_) { /* 查冷却失败不阻断触发 */ }
+  // 2) 真正触发
+  const api = `https://api.github.com/repos/${repo}/actions/workflows/scrape.yml/dispatches`;
+  try {
+    const r = await fetch(api, {
+      method: 'POST',
+      headers: {
+        ...headers,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ ref })
+    });
+    if (r.status === 204) {
+      return json({ ok: true, message: '已触发抓取，约 1~3 分钟后刷新即可看到最新' });
+    }
+    const t = await r.text();
+    return json({ ok: false, status: r.status, body: t.slice(0, 400) }, 502);
+  } catch (e) {
+    return json({ error: String((e && e.message) || e) }, 502);
+  }
+}
+
+/**
+ * 拉起「分钟级值守」任务（push-watch.yml）。
+ * 🔴 为什么不能只靠 GitHub 自己的 schedule：实测「每 5 分钟」（乃至「每 10 分钟」）的 cron 建好后
+ *   连等 20~30 分钟**一次都没被触发**（高频 schedule 会被 GitHub 延迟/跳过），值守就会断。
+ *   而 Cloudflare 的 Cron 一直很准，所以让 CF 每 5 分钟来拉一次（自带冷却，不会打爆 GH）。
+ *   值守脚本每次启动都从本 Worker 的游标接着跑（见 push-watch.mjs 的 fetchCursor），
+ *   ⇒ 换多少次进程都不漏推、也不重推。
+ */
+// 最小重启间隔（防止 GitHub 抖动导致狂拉）；主要判据是「上一轮还在不在跑」
+const WATCH_COOLDOWN_MIN = 2;
+async function triggerPushWatch(env) {
+  const repo = (env && env.REPO) || 'winccctan/wangyuchen-archive';
+  let token = env && env.GH_TOKEN;
+  if (!token && env && env.SECRETS && typeof env.SECRETS.get === 'function') {
+    token = await env.SECRETS.get('GH_TOKEN');
+  }
+  if (!token) return { ok: false, error: 'no-gh-token' };
+  const headers = {
+    'Authorization': `Bearer ${token}`,
+    'Accept': 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+    'User-Agent': 'wyc-archive-worker'
+  };
+  try {
+    const rr = await fetch(`https://api.github.com/repos/${repo}/actions/workflows/push-watch.yml/runs?per_page=1`, { headers });
+    if (rr.ok) {
+      const j = await rr.json();
+      const last = j.workflow_runs && j.workflow_runs[0];
+      if (last) {
+        // ① 上一轮还在跑 ⇒ 别去打断它（打断就要重新装依赖，白丢 40 秒的盯梢时间）
+        const running = last.status === 'in_progress' || last.status === 'queued' || last.status === 'pending';
+        if (running) return { ok: true, skipped: 'already-running' };
+        // ② 刚结束不到 2 分钟 ⇒ 稍等，避免 GitHub 抖动时反复拉
+        if (last.created_at &&
+            (Date.now() - new Date(last.created_at).getTime()) / 60000 < WATCH_COOLDOWN_MIN) {
+          return { ok: true, skipped: 'cooldown' };
+        }
+      }
+    }
+  } catch (_) { /* 查状态失败不阻断触发 */ }
+  try {
+    const r = await fetch(`https://api.github.com/repos/${repo}/actions/workflows/push-watch.yml/dispatches`, {
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ref: (env && env.SCRAPE_REF) || 'main' })
+    });
+    return { ok: r.status === 204, status: r.status };
+  } catch (e) {
+    return { ok: false, error: String((e && e.message) || e).slice(0, 160) };
+  }
+}
+
+// 图片代理：把微博图床（sinaimg.cn / weibocdn.com）+ 口袋房间图床（云信 nosdn）图片转发给浏览器。
+// 关键：用非浏览器 UA（如 curl）取图，绕过新浪 Tengine 对浏览器 UA 的 403；
+// 仅放行这几个图床域名，避免变成开放代理；边缘缓存 1 年（图片 URL 含尺寸后缀，内容不可变）。
+// 云信那两个（kd48-nosdn.yunxinsvr.com / nim-nosdn.netease.im）是 2026-09-24 盲盒上正式站时加的：
+// 口袋图直链没有 CORS 头，盲盒要把照片画进 canvas 出分享卡，必须借自家代理拿到跨域安全的响应。
+async function handleImageProxy(url, ctx) {
+  const target = url.searchParams.get('u');
+  if (!target) return new Response('missing u', { status: 400 });
+  let t;
+  try { t = new URL(target); } catch (e) { return new Response('bad url', { status: 400 }); }
+  if (!/^https?:$/i.test(t.protocol)) return new Response('bad protocol', { status: 400 });
+  if (!/(^|\.)sinaimg\.cn$|(^|\.)weibocdn\.com$|(^|\.)kd48-nosdn\.yunxinsvr\.com$|(^|\.)nim-nosdn\.netease\.im$|(^|\.)nosdn\.netease\.im$/.test(t.hostname)) {
+    return new Response('forbidden host', { status: 403 });
+  }
+
+  const cache = caches.default;
+  const cacheKey = new Request(url.toString(), { method: 'GET' });
+  const hit = await cache.match(cacheKey);
+  if (hit) return hit;
+
+  const upstream = await fetch(t.toString(), {
+    headers: {
+      // 非浏览器 UA：新浪 Tengine 据此放行（浏览器 UA 一律 403）
+      'User-Agent': 'curl/8.7.1',
+      'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8'
+    }
+  });
+  if (!upstream.ok) {
+    return new Response('upstream ' + upstream.status, { status: 502 });
+  }
+  const headers = new Headers(upstream.headers);
+  const ct = headers.get('content-type') || 'image/jpeg';
+  headers.set('content-type', ct);
+  headers.set('cache-control', 'public, max-age=31536000, immutable');
+  headers.set('access-control-allow-origin', '*');
+  const res = new Response(upstream.body, { status: upstream.status, statusText: upstream.statusText, headers });
+  if (ctx && ctx.waitUntil) ctx.waitUntil(cache.put(cacheKey, res.clone()));
+  return res;
+}
+
+// 成功结果：加长缓存并写入边缘缓存
+function respondCached(obj, cache, cacheKey, ctx) {
+  const res = json(obj, 200);
+  res.headers.set('cache-control', 'public, max-age=86400');
+  if (ctx && ctx.waitUntil) ctx.waitUntil(cache.put(cacheKey, res.clone()));
+  return res;
+}
+
+function json(obj, status = 200) {
+  return new Response(JSON.stringify(obj), {
+    status,
+    headers: { 'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': '*' }
+  });
+}
+/* ------------------------- 数据 API（数据存 KV 命名空间 env.KV） -------------------------
+ * 设计要点：
+ *   - 口袋发言按「月」分键：msg/YYYY-MM。单月体积远小于 KV 单值 25MB 上限，
+ *     故数据可无限增长、永远不会被容量卡死；浏览器首屏拉 /api/index（含 recent 最新若干条 + 月份列表），
+ *     下滑「加载更早」再惰性拉历史月。
+ *   - 读取接口公开（前端同源 fetch 即可）；写入 /api/sync 需 SYNC_TOKEN（存在 SECRETS KV，键名 SYNC_TOKEN）。
+ *   - 抓取仍由 GitHub Actions（Node）完成：scripts/sync-kv.mjs 读 site/data/archive.js（已加工成品：
+ *     公演按「她的公演记录」筛选 + 挂 B 站备用源 + 失效流域名修正 + 消息瘦身），
+ *     只推「可能再变的近期数据」，Worker 在边缘**并集合并**写入 KV。
+ *   - ★ 合并语义 = 只增不删：Actions 每次从仓库快照出发，本地并不含 KV 里最新的全部历史，
+ *     若用「整月覆盖」会把 KV 里较新的发言/直播整段抹掉。故一律按唯一键并集：
+ *     发言按 msgIdServer（缺则文本哈希）、直播/公演按 liveId、其余小数据（社媒美图/公演 cut）整体替换。
+ *   - ★ 只在内容真变化时落盘：Worker 先读旧值做规范化比较（stableStringify），相同就跳过写。
+ *     否则每 3 分钟一轮会把 KV 免费额度（1000 写/天）瞬间打爆。
+ */
+
+/* ------------------------- 边缘缓存（Cache API） -------------------------
+ * 为什么必须自己缓存：Worker 的响应**不会**自动进 Cloudflare CDN 缓存，
+ * 而前端一次加载要读 44 个月 ≈ 5.5 万条发言。D1 免费版只有 500 万行读/天，
+ * 约 90 次全量访问就打满（打满后虽能回退 KV，但等于白架了 D1）。
+ * 这里在 Worker 内部用 Cache API 兜住：历史月 12h、当月 60s、其余 5min。
+ */
+async function withEdgeCache(key, ttl, make) {
+  let cache = null;
+  try { cache = caches.default; } catch (_) { cache = null; }
+  const ck = 'https://wyc-edge-cache.local' + key;
+  if (cache) {
+    try {
+      const hit = await cache.match(ck);
+      if (hit) {
+        const r = new Response(hit.body, hit);
+        r.headers.set('x-wyc-cache', 'hit');
+        return r;
+      }
+    } catch (_) { /* 命中失败就当没命中 */ }
+  }
+  const res = await make();
+  try {
+    if (cache && res && res.status === 200) {
+      const c = res.clone();
+      c.headers.set('cache-control', 'public, max-age=' + ttl);
+      res.headers.set('x-wyc-cache', 'miss');
+      await cache.put(ck, c);
+      return res;
+    }
+    if (res) res.headers.set('x-wyc-cache', 'bypass');
+  } catch (_) { /* 写缓存失败不影响正常响应 */ }
+  return res;
+}
+
+function apiJson(obj, cacheControl) {
+  return new Response(JSON.stringify(obj), {
+    status: 200,
+    headers: {
+      'content-type': 'application/json; charset=utf-8',
+      'cache-control': cacheControl || 'no-store',
+      'access-control-allow-origin': '*'
+    }
+  });
+}
+
+// 与前端 app.js 的 msgKey 同源的去重键（不要求算法一致，只要各自稳定即可）
+function strHash(s) {
+  let h = 5381;
+  s = String(s || '');
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+}
+function msgKeyOf(m) {
+  return m.msgIdServer || ('k' + strHash((m.text || '') + ((m.reply && m.reply.text) || '') + (m.msgTime || '')));
+}
+function byTimeDesc(a, b) {
+  return (Number(b.msgTime) || 0) - (Number(a.msgTime) || 0);
+}
+
+// 规范化序列化（对象键排序、递归）：让「读回来的旧值」和「新拼好的值」可以直接字符串比较，
+// 不会因为字段顺序不同而误判为「有变化」→ 避免每轮都白写一遍。
+function stableStringify(v) {
+  if (v === null || typeof v !== 'object') return JSON.stringify(v);
+  if (Array.isArray(v)) return '[' + v.map(stableStringify).join(',') + ']';
+  const keys = Object.keys(v).sort();
+  const parts = [];
+  for (const k of keys) {
+    if (v[k] === undefined) continue;
+    parts.push(JSON.stringify(k) + ':' + stableStringify(v[k]));
+  }
+  return '{' + parts.join(',') + '}';
+}
+
+// 「每次抓取都会变、但不代表内容真的变了」的顶层字段。
+// ⚠️ live-cuts.js / performance-cuts.js 顶层都带 updatedAt（抓取时间），live-cuts 还带 progress（断点续传）。
+// 旧实现是拿整个 JSON 串比对，于是这两个键**每轮同步都被判定为「变了」→ 每轮都写**，
+// 还会把 dataChanged 置真、连 index 一起写 —— 一轮 3~4 写 × 288 轮/天，直接吃满
+// Cloudflare KV 免费版 1000 次写/天的额度（2026-09-22 事故根因）。
+// 比较「是否值得写盘」时剔除这些字段，只在真正的数据变化时才写。
+const VOLATILE_KEYS = ['updatedAt', 'lastUpdated', 'fetchedAt', 'generatedAt', 'progress'];
+function contentSig(v) {
+  if (v && typeof v === 'object' && !Array.isArray(v)) {
+    const o = {};
+    for (const k of Object.keys(v)) if (VOLATILE_KEYS.indexOf(k) < 0) o[k] = v[k];
+    return stableStringify(o);
+  }
+  return stableStringify(v);
+}
+
+function safeParseArr(s) {
+  try {
+    const v = JSON.parse(s);
+    return Array.isArray(v) ? v : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+// /api/sync 写权限：比对请求头 x-sync-token 与 SECRETS KV 里的 SYNC_TOKEN
+async function isSyncAuthorized(request, env) {
+  const tok = request.headers.get('x-sync-token') || '';
+  if (!tok) return false;
+  let expect = env && env.SYNC_TOKEN;
+  if (!expect && env && env.SECRETS && typeof env.SECRETS.get === 'function') {
+    try { expect = await env.SECRETS.get('SYNC_TOKEN'); } catch (_) { /* 忽略 */ }
+  }
+  return !!expect && tok === expect;
+}
+
+/** 临时授权：证明「持有本仓库的有效 PAT」（回填结束后删除）
+ *  本机没有 SYNC_TOKEN 副本，而 SECRETS KV 里的 GH_TOKEN 与本地不是同一个；
+ *  所以改用「拿 token 去 GitHub 验一次身份，login 必须是仓库 owner」来放行。 */
+async function isGhAuthorized(request, env) {
+  const gh = request.headers.get('x-gh-token') || '';
+  if (!gh) return false;
+  try {
+    const r = await fetch('https://api.github.com/user', {
+      headers: { 'user-agent': 'wyc-archive', authorization: 'Bearer ' + gh }
+    });
+    if (!r.ok) return false;
+    const u = await r.json();
+    return !!u && String(u.login) === 'winccctan';
+  } catch (_) { return false; }
+}
+
+async function handleApi(url, request, env, ctx) {
+  const p = url.pathname;
+  // ---- 手机通知（Web Push）----
+  // 订阅/退订只能从本站页面发起（isSameSite 挡掉脚本）；检测/测试/密钥要 sync token。
+  if (p === '/api/push/subscribe' && request.method === 'POST') {
+    if (!isSameSite(request)) return forbiddenNotSameSite();
+    return handlePushSubscribe(request, env);
+  }
+  if (p === '/api/push/unsubscribe' && request.method === 'POST') {
+    if (!isSameSite(request)) return forbiddenNotSameSite();
+    return handlePushUnsubscribe(request, env);
+  }
+  if (p === '/api/push/count') return handlePushCount(env);
+  if (p === '/api/push/raw') {
+    if (!(await isSyncAuthorized(request, env) || await isGhAuthorized(request, env))) {
+      return json({ error: 'forbidden: sync token required' }, 403);
+    }
+    return handlePushRaw(url, env);
+  }
+  // 运维用：手工修正推送游标（只允许 push:last:msg / live / perf 三个键）。
+  // 什么时候用：游标被脏数据顶到未来（例如旧代码把「开播时间」当成发言时间戳写进发言游标），
+  // 会导致之后一段时间的真实发言被「时间还没到」跳过。
+  if (p === '/api/push/cursor' && request.method === 'POST') {
+    if (!(await isSyncAuthorized(request, env) || await isGhAuthorized(request, env))) {
+      return json({ error: 'forbidden: sync token required' }, 403);
+    }
+    let b = {};
+    try { b = await request.json(); } catch (_) { return json({ error: 'bad-json' }, 400); }
+    const key = String((b && b.key) || '');
+    if (!/^push:last:(msg|live|perf)$/.test(key)) return json({ error: 'bad key' }, 400);
+    const val = String((b && b.value) || '');
+    if (!val || val.length > 32) return json({ error: 'bad value' }, 400);
+    await env.KV.put(key, val);
+    return json({ ok: true, key: key, value: val });
+  }
+  if (p === '/api/push/check' && request.method === 'POST') {
+    if (!(await isSyncAuthorized(request, env) || await isGhAuthorized(request, env))) {
+      return json({ error: 'forbidden: sync token required' }, 403);
+    }
+    return json(await runPushCheck(env, { reason: 'manual' }));
+  }
+  if (p === '/api/push/replay' && request.method === 'POST') {
+    if (!(await isSyncAuthorized(request, env) || await isGhAuthorized(request, env))) {
+      return json({ error: 'forbidden: sync token required' }, 403);
+    }
+    return handlePushReplay(request, env);
+  }
+  if (p === '/api/push/diag') {
+    if (!(await isSyncAuthorized(request, env) || await isGhAuthorized(request, env))) {
+      return json({ error: 'forbidden: sync token required' }, 403);
+    }
+    return handlePushDiagView(env);
+  }
+  if (p === '/api/push/probe') {
+    if (!(await isSyncAuthorized(request, env) || await isGhAuthorized(request, env))) {
+      return json({ error: 'forbidden: sync token required' }, 403);
+    }
+    return json(await pushProbe(env));
+  }
+  if (p === '/api/push/fast' && request.method === 'POST') {
+    if (!(await isSyncAuthorized(request, env) || await isGhAuthorized(request, env))) {
+      return json({ error: 'forbidden: sync token required' }, 403);
+    }
+    return json(await pushFastTick(env, { reason: 'manual' }));
+  }
+  if (p === '/api/push/notify' && request.method === 'POST') {
+    if (!(await isSyncAuthorized(request, env) || await isGhAuthorized(request, env))) {
+      return json({ error: 'forbidden: sync token required' }, 403);
+    }
+    return handlePushNotify(request, env);
+  }
+  if (p === '/api/push/test' && request.method === 'POST') {
+    if (!(await isSyncAuthorized(request, env) || await isGhAuthorized(request, env))) {
+      return json({ error: 'forbidden: sync token required' }, 403);
+    }
+    return handlePushTest(request, env);
+  }
+  if (p === '/api/_secret/vapid') return handleVapidSecret(request, env);
+  // index 带 meta.lastUpdated，刷新按钮靠它比对 → 只缓存 15s，不影响「刷新」的即时性
+  if (p === '/api/index') return withEdgeCache('/api/index', 15, () => handleApiIndex(env));
+  if (p === '/api/month') return handleApiMonth(url, env);
+  if (p === '/api/live') return withEdgeCache('/api/live', 300, () => handleApiKey('live', env));
+  if (p === '/api/performances') return withEdgeCache('/api/performances', 300, () => handleApiKey('performances', env));
+  if (p === '/api/social') return withEdgeCache('/api/social', 300, () => handleApiKey('social', env));
+  if (p === '/api/perf-cuts') return withEdgeCache('/api/perf-cuts', 300, () => handleApiKey('perf-cuts', env));
+  if (p === '/api/live-cuts') return withEdgeCache('/api/live-cuts', 300, () => handleApiKey('live-cuts', env));
+  // ---- 粉丝个人档案：凭 uid 只取回「你自己」的那一份 ----
+  // 隐私红线（站长 2026-09-22 定）：粉丝名单不得以任何静态文件形式上公网；
+  // 浏览器download不到全量 ⇒ 无从遍历。真实 uid 是 9~10 位随机数，本身即不可猜测的凭证。
+  if (p === '/api/mine' && request.method === 'POST') return handleApiMine(request, env);
+  // ---- 陪伴票根：凭 uid + 日期只取回「你自己那天」的发言与鸡腿 ----
+  // 数据来自 KV tk/<uid末两位> 桶（scripts/build-ticket.mjs 构建、经 _fans_upsert kind:tk 灌入）。
+  // 隐私口径与 /api/mine 完全一致：uid 即凭证，只回本人那一份，无任何列出接口。
+  if (p === '/api/mineDay' && request.method === 'POST') return handleApiMineDay(request, env);
+  // 写接口（需 SYNC_TOKEN，由 CI / 本地脚本调用）
+  if (p === '/api/_fans_init' && request.method === 'POST') return handleFansInit(request, env);
+  if (p === '/api/_fans_upsert' && request.method === 'POST') return handleFansUpsert(request, env);
+  if (p === '/api/_fans_ready' && (request.method === 'GET' || request.method === 'POST')) return handleFansReady(request, env);
+  // ---- 第三方礼物榜覆盖表：带 uid，只存 D1，读写都要鉴权（绝不进 GitHub 仓库）----
+  if (p === '/api/_gift_override') {
+    if (!(await authorizedForWrite(request, env))) return json({ error: 'forbidden: sync token required' }, 403);
+    return handleGiftOverride(request, env, url);
+  }
+  if (p === '/api/_gift_override_bootstrap' && request.method === 'POST') {
+    if (!(await authorizedForWrite(request, env))) return json({ error: 'forbidden: sync token required' }, 403);
+    return handleGiftOverrideBootstrap(request, env);
+  }
+  // ---- 底层回填：把含 uid 的原始发言整月覆盖写回（历史存量补 uid 用） ----
+  if (p === '/api/_d1_refill' && request.method === 'POST') {
+    if (!(await authorizedForWrite(request, env))) {
+      return json({ error: 'forbidden: sync token required' }, 403);
+    }
+    return handleD1Refill(request, env);
+  }
+
+  /* ---- 微博 Cookie（抓取「甜橙小铺」公演 cut 用）----
+   * 🔴 为什么放 KV 而不是仓库：Cookie 是应援会账号的登录态，进仓库等于把账号公开；
+   *    而且它会过期，放 KV 站长可以在 Cloudflare 面板直接改，不用动仓库、不用重新部署。
+   *    Cloudflare 面板：Workers & Pages → KV → 命名空间 SECRETS → 加键 WEIBO_COOKIE。
+   * GET  /api/_secret/weibo-cookie   取（需 sync token，CI 抓取脚本用）
+   * POST /api/_secret/weibo-cookie   写（body 可为 JSON {"cookie":"..."} 或纯文本）
+   */
+  if (p === '/api/_secret/weibo-cookie') {
+    if (!(await isSyncAuthorized(request, env) || await isGhAuthorized(request, env))) {
+      return json({ error: 'forbidden: sync token required' }, 403);
+    }
+    if (request.method === 'POST') {
+      const ctype = request.headers.get('content-type') || '';
+      let cookie = '';
+      if (ctype.includes('application/json')) {
+        const b = await request.json().catch(() => ({}));
+        cookie = String((b && b.cookie) || '').trim();
+      } else {
+        cookie = (await request.text()).trim();
+      }
+      if (!cookie) return json({ error: 'empty cookie' }, 400);
+      try {
+        await env.SECRETS.put('WEIBO_COOKIE', cookie);
+      } catch (e) {
+        return json({ error: 'kv-write-failed: ' + String(e && e.message || e) }, 500);
+      }
+      // 只回长度，不回显明文（日志/浏览器历史里都不留）
+      return json({ ok: true, len: cookie.length, savedAt: new Date().toISOString() });
+    }
+    const v = (env && env.SECRETS) ? await env.SECRETS.get('WEIBO_COOKIE') : null;
+    return json({ has: !!v, len: (v || '').length, cookie: v || '' });
+  }
+
+  /* ---- 行程存档 / 手机后台（站长专用）----
+   * GET  /api/schedule        公开读，边缘缓存 60s（行程页读它，读不到就回退本地 js 文件）
+   * POST /api/admin/login     密码换 token
+   * GET  /api/admin/schedule  取当前行程 + 最近提交日志（需 token）
+   * POST /api/admin/schedule  发布行程：默认**去重合并（只增不删）**，可传 replace/remove 纠错（需 token）
+   * POST /api/admin/parse     把粘贴的微博正文解析成条目（需 token）
+   * POST /api/admin/pass      改后台密码（需 token）
+   */
+  if (p === '/api/schedule') return withEdgeCache('/api/schedule', 60, () => handleScheduleGet(env));
+  if (p === '/api/admin/login' && request.method === 'POST') return handleAdminLogin(request, env);
+  if (p === '/api/admin/schedule') {
+    if (!(await adminOk(request, env))) return json({ error: 'forbidden: admin token required' }, 403);
+    return (request.method === 'POST') ? handleAdminSchedulePost(request, env) : handleAdminScheduleGet(env);
+  }
+  if (p === '/api/admin/parse' && request.method === 'POST') {
+    if (!(await adminOk(request, env))) return json({ error: 'forbidden: admin token required' }, 403);
+    return handleAdminParse(request, env);
+  }
+  if (p === '/api/admin/pass' && request.method === 'POST') {
+    if (!(await adminOk(request, env))) return json({ error: 'forbidden: admin token required' }, 403);
+    return handleAdminPass(request, env);
+  }
+  if (p === '/api/sync' && request.method === 'POST') {
+    // 与 authorizedForWrite 一致：既认 x-sync-token（CI），也认本机 GH PAT 兜底（x-gh-token，验仓库 owner）
+    if (!(await isSyncAuthorized(request, env) || await isGhAuthorized(request, env))) return json({ error: 'forbidden: sync token required' }, 403);
+    return handleApiSync(request, env, ctx);
+  }
+  // —— 口袋48 开播提醒（监控机器人 pocket48_monitor.mjs 回推）——
+  if (p === '/api/pocket/event' && request.method === 'POST') {
+    return handlePocketEvent(request, env);
+  }
+  if (p === '/api/pocket/events' && request.method === 'GET') {
+    return withEdgeCache('/api/pocket/events', 15, () => handlePocketEventsGet(env));
+  }
+  return json({ error: 'unknown api: ' + p }, 404);
+}
+
+/* ------------------------- 粉丝档案（fans 表） -------------------------
+ * 为什么必须走服务端查询：只要把「280 人 × 金额」的名单文件放上 CDN，
+ * 别人 curl 一下就全拿走了（哪怕删掉 uid）。所以名单只存 D1，
+ * 前端只能凭 uid 单条回取，且一轮 batches 也只能拿到自己那份。
+ *
+ * D1 表：fans(uid TEXT PRIMARY KEY, nick TEXT, total INTEGER, data TEXT, updatedAt INTEGER)
+ *   data 里是该粉丝自己的完整画像（直播/房间/发言/排名），永远不含他人信息。
+ */
+const MINE_RATE = new Map();   // ip -> { n, reset }（进程内滑动窗口，够挡住批量遍历）
+function mineRateOk(ip, limit = 40, winMs = 10 * 60 * 1000) {
+  const now = Date.now();
+  const r = MINE_RATE.get(ip);
+  if (!r || now > r.reset) { MINE_RATE.set(ip, { n: 1, reset: now + winMs }); return true; }
+  if (r.n >= limit) return false;
+  r.n += 1;
+  return true;
+}
+
+async function handleApiMine(request, env) {
+  const ip = String(request.headers.get('cf-connecting-ip') || 'unknown');
+  if (!mineRateOk(ip)) return json({ error: '稍慢一点再试' }, 429);
+
+  let body = {};
+  try { body = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
+  const uid = String(body.uid || '').trim();
+  if (!/^\d{4,12}$/.test(uid)) return json({ error: 'uid 是纯数字' }, 400);
+  if (!env || !env.DB) return json({ error: 'd1-not-bound' }, 500);
+
+  const kv = (env && env.KV && typeof env.KV.get === 'function') ? env.KV : null;
+
+  // 覆盖区间 + 就绪标记：先查 KV 副本，没有再查 D1。
+  // （D1 免费版行读配额容易打满，KV 读 10 万/天宽裕得多，所以 KV 是查询主路径。）
+  let cov = null;
+  if (kv) {
+    try { const r = await kv.get('fan/__ready__'); if (r) cov = JSON.parse(r); } catch (_) { cov = null; }
+  }
+  if (!cov && env && env.DB) {
+    let ready = null;
+    try {
+      ready = await env.DB.prepare("SELECT data AS d FROM fans WHERE uid = '__ready__'").first();
+    } catch {
+      return json({ error: '档案还在准备中，过一会儿再来看看～' }, 503);
+    }
+    if (ready) { try { cov = JSON.parse(ready.d || '{}'); } catch { cov = {}; } }
+  }
+  // 首次全量灌库要跑很久，期间没有数据 —— 必须和「查不到这个人」区分开，
+  // 否则所有人都会看到「你没在房间里留过记录」。
+  if (!cov) return json({ error: '档案正在生成（首次需要跑一段时间），过一会儿再来看看～' }, 503);
+
+  let data = null, nick = '';
+  if (kv) {
+    try {
+      const b = await kv.get('fan/' + uid.slice(-2));       // 按 uid 末两位分桶
+      if (b) { const map = JSON.parse(b) || {}; if (map[uid]) { data = map[uid]; } }
+    } catch (_) { data = null; }
+  }
+  if (!data && env && env.DB) {
+    try {
+      const row = await env.DB.prepare('SELECT nick, data FROM fans WHERE uid = ?').bind(uid).first();
+      if (row) { try { data = JSON.parse(row.data || '{}'); } catch { data = {}; } nick = row.nick || ''; }
+    } catch (_) { data = null; }
+  }
+  if (!data) {
+    // 档案只覆盖部分时段时，查不到 ≠ 没记录。带上覆盖起点让前端说实话。
+    const FLOOR = Date.parse('2022-11-01T00:00:00+08:00');
+    if (cov.since && cov.since > FLOOR + 86400e3) return json({ found: false, partial: true, since: cov.since });
+    return json({ found: false });
+  }
+  return json(Object.assign({ found: true }, data, {
+    nick: nick || data.nick || '',
+    since: cov.since || 0,                       // 档案覆盖起点（0 = 已全量）
+  }));
+}
+
+/** 陪伴票根「去年今日」：POST { uid, date } → 当天 { n 发言数, dk 鸡腿, ms [[时间戳, 正文], ...] }。
+ *  与 /api/mine 同一套限流与隐私口径；KV 读不占写配额，翻一天就是一次 get。 */
+async function handleApiMineDay(request, env) {
+  const ip = String(request.headers.get('cf-connecting-ip') || 'unknown');
+  if (!mineRateOk(ip)) return json({ error: '稍慢一点再试' }, 429);
+
+  let body = {};
+  try { body = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
+  const uid = String(body.uid || '').trim();
+  const date = String(body.date || '').trim();
+  if (!/^\d{4,12}$/.test(uid)) return json({ error: 'uid 是纯数字' }, 400);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return json({ error: 'date 需要 YYYY-MM-DD' }, 400);
+
+  const kv = (env && env.KV && typeof env.KV.get === 'function') ? env.KV : null;
+  if (!kv) return json({ error: 'kv-not-bound' }, 500);
+  let bucket = null;
+  try { bucket = await kv.get('tk/' + uid.slice(-2)); } catch (_) { bucket = null; }
+  if (!bucket) return json({ found: false, date });
+  let map = {};
+  try { map = JSON.parse(bucket) || {}; } catch { map = {}; }
+  const row = map[uid] && map[uid][date];
+  if (!row) return json({ found: false, date });
+  const n = Number(row[0]) || 0;
+  const dk = Number(row[1]) || 0;
+  const ms = Array.isArray(row[2]) ? row[2] : [];
+  return json({ found: true, date, n, dk, ms });
+}
+
+/** 写接口统一授权：正常走 x-sync-token；临时允许「PAT 验明仓库 owner」（回填/灌库结束后整段删除） */
+async function authorizedForWrite(request, env) {
+  return (await isSyncAuthorized(request, env)) || (await isGhAuthorized(request, env));
+}
+
+async function handleFansInit(request, env) {
+  if (!(await authorizedForWrite(request, env))) return json({ error: 'forbidden: sync token required' }, 403);
+  if (!env || !env.DB) return json({ error: 'd1-not-bound' }, 500);
+  await env.DB.exec(
+    'CREATE TABLE IF NOT EXISTS fans (' +
+    '  uid TEXT PRIMARY KEY,' +
+    '  nick TEXT,' +
+    '  total INTEGER DEFAULT 0,' +
+    '  data TEXT NOT NULL,' +
+    '  updatedAt INTEGER DEFAULT 0' +
+    ');' +
+    'CREATE INDEX IF NOT EXISTS idx_fans_total ON fans(total DESC);'
+  );
+  // 重新灌库 → 先清掉就绪标记，期间 /api/mine 会明确告知「正在生成」
+  await env.DB.prepare("DELETE FROM fans WHERE uid = '__ready__'").run();
+  const c = await env.DB.prepare('SELECT COUNT(*) AS n FROM fans').first();
+  return json({ ok: true, rows: (c && c.n) || 0 });
+}
+
+/** 只读：线上档案的就绪标记（人数 / 覆盖起点 / 直播是否已跑）。
+ *  用途是灌库前的「人数骤降保护」—— 整桶覆盖没有部分更新，必须先在本地判断
+ *  这一份是不是比线上还少（少就说明抓取缓存不完整，别灌）。需要写权限，避免
+ *  对外开放人数这种内部指标。 */
+async function handleFansReady(request, env) {
+  if (!(await authorizedForWrite(request, env))) return json({ error: 'forbidden: sync token required' }, 403);
+  let cov = null;
+  const kv = (env && env.KV && typeof env.KV.get === 'function') ? env.KV : null;
+  if (kv) {
+    try { const r = await kv.get('fan/__ready__'); if (r) cov = JSON.parse(r); } catch (_) { cov = null; }
+  }
+  if (!cov && env && env.DB) {
+    try {
+      const row = await env.DB.prepare("SELECT data AS d FROM fans WHERE uid = '__ready__'").first();
+      if (row) cov = JSON.parse(row.d || '{}');
+    } catch (_) { /* 读不到就当没有 */ }
+  }
+  return json({
+    ready: !!cov,
+    people: (cov && Number(cov.people)) || 0,
+    since: (cov && Number(cov.since)) || 0,
+    liveDone: !!(cov && cov.liveDone),
+  });
+}
+
+async function handleFansUpsert(request, env) {
+  if (!(await authorizedForWrite(request, env))) return json({ error: 'forbidden: sync token required' }, 403);
+  if (!env || !env.DB) return json({ error: 'd1-not-bound' }, 500);
+  let body = {};
+  try { body = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
+  const rows = Array.isArray(body.rows) ? body.rows : [];
+  const kv = (env && env.KV && typeof env.KV.put === 'function') ? env.KV : null;
+
+  // ready:true → 灌库收尾，打上就绪标记（此后 /api/mine 才对外发档案）
+  if (body.ready === true) {
+    // coverage：本批档案实际覆盖到哪天（首次全量要跑很久，中途会先灌一批开放测试）。
+    // /api/mine 查不到人时用它区分「你真的没记录」和「历史还没补到」。
+    const cov = (body.coverage && typeof body.coverage === 'object') ? body.coverage : {};
+    const covJson = JSON.stringify({ since: Number(cov.since) || 0, liveDone: !!cov.liveDone, people: Number(cov.people) || 0 });
+    if (kv) await kv.put('fan/__ready__', covJson);
+    try {
+      await env.DB.prepare(
+        "INSERT OR REPLACE INTO fans (uid, nick, total, data, updatedAt) VALUES ('__ready__', '', 0, ?, ?)"
+      ).bind(covJson, Date.now()).run();
+    } catch (_) { /* D1 写不动没关系，KV 已经是权威副本 */ }
+    if (!rows.length) return json({ ok: true, written: 0, ready: true });
+  }
+
+  // kind:'tk' → 陪伴票根桶（tk/<uid末两位>）：整桶覆盖写 KV，不进 D1。
+  // body.data 形如 { [uid]: { [YYYY-MM-DD]: [n, dk, ms] } }，由 scripts/build-ticket.mjs 产出。
+  if (body.kind === 'tk') {
+    const b = String(body.bucket || '').replace(/\D/g, '').slice(-2);
+    if (!b) return json({ error: 'bad bucket' }, 400);
+    if (kv) await kv.put('tk/' + b, JSON.stringify(body.data || {}));
+    return json({ ok: true, tk: b, uids: Object.keys(body.data || {}).length });
+  }
+
+  // bucket + replace：整桶覆盖写 KV（查询主路径）。D1 只做尽力同步。
+  if (body.bucket) {
+    const b = String(body.bucket).replace(/\D/g, '').slice(0, 4);
+    const map = {};
+    for (const r of rows) { const u = String(r.uid || ''); if (/^\d{1,12}$/.test(u)) map[u] = r; }
+    if (kv) await kv.put('fan/' + b, JSON.stringify(map));
+    let d1 = 0;
+    try {
+      for (let i = 0; i < rows.length; i += 100) {
+        const stmts = rows.slice(i, i + 100).map((r) => env.DB.prepare(
+          'INSERT OR REPLACE INTO fans (uid, nick, total, data, updatedAt) VALUES (?, ?, ?, ?, ?)'
+        ).bind(String(r.uid), String(r.nick || '').slice(0, 64), Number(r.total) || 0, JSON.stringify(r), Date.now()));
+        if (stmts.length) { await env.DB.batch(stmts); d1 += stmts.length; }
+      }
+    } catch (_) { /* 忽略：KV 已写入 */ }
+    return json({ ok: true, bucket: b, written: Object.keys(map).length, d1 });
+  }
+  if (!rows.length) return json({ ok: true, written: 0 });
+  if (rows.length > 2000) return json({ error: '单批最多 2000 条' }, 400);
+  const now = Date.now();
+  let written = 0;
+  const CH = 100;                       // D1 batch 每批 ≤100 条
+  try {
+    for (let i = 0; i < rows.length; i += CH) {
+      const stmts = rows.slice(i, i + CH).map((r) => {
+        const uid = String(r.uid || '');
+        if (!/^\d{1,12}$/.test(uid)) return null;
+        return env.DB.prepare(
+          'INSERT OR REPLACE INTO fans (uid, nick, total, data, updatedAt) VALUES (?, ?, ?, ?, ?)'
+        ).bind(uid, String(r.nick || '').slice(0, 64), Number(r.total) || 0, JSON.stringify(r), now);
+      }).filter(Boolean);
+      if (stmts.length) { await env.DB.batch(stmts); written += stmts.length; }
+    }
+  } catch (e) {
+    // D1 抛错在线上只剩一个 1101 页面，根本没法定位 —— 把消息带回去
+    return json({ ok: false, written, d1Error: String((e && e.message) || e).slice(0, 300) }, 500);
+  }
+  let rowsN = 0;
+  try { const c = await env.DB.prepare('SELECT COUNT(*) AS n FROM fans').first(); rowsN = (c && c.n) || 0; } catch (_) {}
+  return json({ ok: true, written, rows: rowsN });
+}
+
+/* ------------------------- 第三方礼物榜覆盖表（gift_override） -------------------------
+ * 榜单内容是「uid → 鸡腿」，属于粉丝名单 —— 绝不能出现在 GitHub 仓库或任何静态文件里。
+ * 以前的做法是把 sha256 脱敏表 commit 进仓库给 CI 读；2026-09-23 起改为只存 D1：
+ * 仓库里一份榜单数据都没有，build-fans（本机用 GH_TOKEN、CI 用 SYNC_TOKEN）从 D1 读写。
+ *
+ * D1 表：gift_override(uid, period, v, rank, nick, updatedAt, PRIMARY KEY(uid, period))
+ *   period = '2026'（2026 年度）| '2024plus'（2024 年起累计）
+ */
+const GIFT_OVERRIDE_DDL =
+  'CREATE TABLE IF NOT EXISTS gift_override (' +
+  '  uid TEXT NOT NULL,' +
+  '  period TEXT NOT NULL,' +
+  '  v INTEGER NOT NULL DEFAULT 0,' +
+  '  rank INTEGER NOT NULL DEFAULT 0,' +
+  '  nick TEXT,' +
+  '  updatedAt INTEGER DEFAULT 0,' +
+  '  PRIMARY KEY (uid, period)' +
+  ');';
+
+async function handleGiftOverride(request, env, url) {
+  if (!env || !env.DB) return json({ error: 'd1-not-bound' }, 500);
+  await env.DB.exec(GIFT_OVERRIDE_DDL);
+
+  if (request.method === 'GET') {
+    const period = String(url.searchParams.get('period') || '');
+    if (!period) return json({ error: 'period required' }, 400);
+    const r = await env.DB.prepare('SELECT uid, nick, v, rank FROM gift_override WHERE period = ?').bind(period).all();
+    return json({
+      period,
+      rows: (r.results || []).map((x) => ({
+        uid: String(x.uid), nick: x.nick || '', v: Number(x.v) || 0, rank: Number(x.rank) || 0,
+      })),
+    });
+  }
+
+  let body = {};
+  try { body = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
+  const period = String(body.period || '');
+  const rows = Array.isArray(body.rows) ? body.rows : [];
+  if (!period) return json({ error: 'period required' }, 400);
+  if (!rows.length) return json({ error: 'rows required' }, 400);
+  try {
+    if (body.replace === true) await env.DB.prepare('DELETE FROM gift_override WHERE period = ?').bind(period).run();
+    let n = 0;
+    for (let i = 0; i < rows.length; i += 100) {
+      const stmts = rows.slice(i, i + 100)
+        .filter((r) => /^\d{1,12}$/.test(String(r.uid || '')) && Number(r.v) > 0)
+        .map((r) => env.DB.prepare(
+          'INSERT OR REPLACE INTO gift_override (uid, period, v, rank, nick, updatedAt) VALUES (?, ?, ?, ?, ?, ?)'
+        ).bind(String(r.uid), period, Number(r.v) || 0, Number(r.rank) || 0, String(r.nick || '').slice(0, 64), Date.now()));
+      if (stmts.length) { await env.DB.batch(stmts); n += stmts.length; }
+    }
+    return json({ ok: true, period, written: n });
+  } catch (e) {
+    return json({ ok: false, error: String((e && e.message) || e).slice(0, 200) }, 500);
+  }
+}
+
+/** 一次性回填：把 fans 表里已标 src*='list' 的人抄进 gift_override。
+ *  为什么需要：D1 里本来就有正确的榜单值（本机推过），一条 SQL 抄过来即可，
+ *  不必把带 uid 的榜单文件搬到任何地方 —— 也就永远不用进 GitHub 仓库。 */
+async function handleGiftOverrideBootstrap(request, env) {
+  if (!env || !env.DB) return json({ error: 'd1-not-bound' }, 500);
+  await env.DB.exec(GIFT_OVERRIDE_DDL);
+  const SPEC = {
+    '2026': { src: '$.src26', v: '$.total2026', rank: '$.rank26' },
+    '2024plus': { src: '$.srcSince2024', v: '$.totalSince2024', rank: '$.rankSince2024' },
+  };
+  const out = {};
+  for (const [period, s] of Object.entries(SPEC)) {
+    try {
+      const r = await env.DB.prepare(
+        'INSERT OR REPLACE INTO gift_override (uid, period, v, rank, nick, updatedAt) ' +
+        "SELECT uid, ?, CAST(json_extract(data, ?) AS INTEGER), CAST(COALESCE(json_extract(data, ?), 0) AS INTEGER), nick, ? " +
+        "FROM fans WHERE json_extract(data, ?) = 'list' AND CAST(COALESCE(json_extract(data, ?), 0) AS INTEGER) > 0"
+      ).bind(period, s.v, s.rank, Date.now(), s.src, s.v).run();
+      out[period] = (r && r.meta && (r.meta.rows_written ?? r.meta.changes)) ?? 'ok';
+    } catch (e) {
+      out[period] = 'error: ' + String((e && e.message) || e).slice(0, 120);
+    }
+  }
+  return json({ ok: true, written: out });
+}
+
+/* ------------------------- 索引（index 键） -------------------------
+ * {
+ *   months:   ["2026-09", ...]        降序
+ *   counts:   { "2026-09": 1234 }     每月条数（用于页头精确总数）
+ *   recent:   [ ...最多 60 条 ]       首屏秒更用
+ *   meta:     { member, lastUpdated, ... }
+ *   liveCount / perfCount             live / performances 的实际条数
+ *   updatedAt                         最近一次「数据真变化」的时间
+ * }
+ */
+function normIndex(raw) {
+  const o = (raw && typeof raw === 'object') ? raw : {};
+  return {
+    months: Array.isArray(o.months) ? o.months : [],
+    counts: (o.counts && typeof o.counts === 'object') ? o.counts : {},
+    recent: Array.isArray(o.recent) ? o.recent : [],
+    meta: (o.meta && typeof o.meta === 'object') ? o.meta : {},
+    updatedAt: Number(o.updatedAt) || 0,
+    liveCount: Number(o.liveCount) || 0,
+    perfCount: Number(o.perfCount) || 0
+  };
+}
+
+// 索引「实质内容」指纹：刻意不含 meta / updatedAt（它们每轮都变），
+// 免得抓取明明没新数据、却因为时间戳变化而每轮都写一次索引。
+function idxSignature(i) {
+  return JSON.stringify([i.months, i.counts, i.recent, i.liveCount, i.perfCount]);
+}
+
+// 逐月求和：只有当**每个月都记了条数**时结果才可信（刚上线、老月份还没回填计数时不能当总数用）
+function countAll(i) {
+  let total = 0, counted = 0;
+  for (const m of i.months) {
+    const n = Number(i.counts[m]);
+    if (Number.isFinite(n)) { total += n; counted++; }
+  }
+  return { total, counted, all: i.months.length > 0 && counted === i.months.length };
+}
+
+async function handleApiIndex(env) {
+  const kv = env && env.KV;
+  if (!kv || typeof kv.get !== 'function') return json({ error: 'kv-not-bound' }, 500);
+  const idx = normIndex(await kv.get('index', { type: 'json' }));
+  const meta = Object.assign({}, idx.meta);
+  // 页头统计以「KV 里实际存了多少」为准，而不是抓取端的本地文件条数
+  // （公演经过「她参加」筛选后条数远小于原始列表，用原始数会显示 383 而列表只有 277）。
+  // 注意：逐月求和只在**每个月都有计数**时才可信，否则整体回退到 meta.counts，
+  // 绝不能用「部分月份的求和」当总数——那会把 5 万条显示成几千条。
+  const cAll = countAll(idx);
+  meta.counts = {
+    messages: cAll.all ? cAll.total : (Number(meta.counts && meta.counts.messages) || cAll.total),
+    live: idx.liveCount || Number(meta.counts && meta.counts.live) || 0,
+    performances: idx.perfCount || Number(meta.counts && meta.counts.performances) || 0
+  };
+  // 首屏数据：no-store 保证刷新即拿最新
+  return apiJson({
+    months: idx.months,
+    counts: idx.counts,
+    recent: scrubList(idx.recent),
+    updatedAt: idx.updatedAt,
+    meta
+  }, 'no-store');
+}
+
+/* ---------------- 出口脱敏：第三方身份一律不得下发 ----------------
+ * 红线（站长 2026-09-22 定）：口袋48 侧任何第三方用户的 uid / 头像路径 / 等级 / 主页
+ * 不得出现在任何线上响应里。昵称属于房间里公开说过的话的一部分，保留。
+ * 本人 userId 是公开 starId，保留。
+ *
+ * ⚠️ 这里是「最后一道闸门」：D1 / KV 里可能还存着脱敏前写进去的旧数据，
+ * 所以读取侧必须清洗；写入侧（/api/sync）同样会清洗，保证存量逐步被替换干净。
+ */
+const SELF_ID = '89653517';
+
+/** 取图片路径里隐含的属主 uid：/avatar/2025/0119/63x… 或 /2026/0213/826829x… → "63"/"826829" */
+function pathOwnerId(v) {
+  if (typeof v !== 'string') return null;
+  const m = v.match(/^\/?(?:avatar\/)?\d{4}\/\d{2,4}\/(\d{1,12})(?=[a-z0-9])/);
+  return m ? m[1] : null;
+}
+
+const ID_KEYS = new Set(['userId', 'uid', 'userid', 'Uid', 'UserId', 'pfUrl', 'level', 'vip', 'vipLevel', 'roleId', 'roleid', 'teamLogo']);
+// 昵称类字段：正常保留（房间里公开说过的话），但值是纯数字时——那往往就是 uid 本身——必须打码
+const NICK_KEYS = new Set(['nickname', 'nickName', 'nick', 'name']);
+function maskNumericNick(v) {
+  if (typeof v !== 'string' || !/^\d{8,12}$/.test(v) || v === SELF_ID) return v;
+  return v.slice(0, 4) + '****' + v.slice(-2);
+}
+
+/** 递归清洗对象里的第三方身份（就地修改） */
+function scrubNode(node, depth) {
+  if (!node || typeof node !== 'object' || (depth || 0) > 8) return node;
+  if (Array.isArray(node)) {
+    for (const it of node) scrubNode(it, (depth || 0) + 1);
+    return node;
+  }
+  for (const key of Object.keys(node)) {
+    const val = node[key];
+    if (typeof val === 'string' && val.charAt(0) === '/') {
+      const owner = pathOwnerId(val);
+      if (owner && owner !== SELF_ID) { delete node[key]; continue; }
+    }
+    if (Array.isArray(val) && key !== 'extInfo') {
+      node[key] = val.filter((v) => {
+        const owner = pathOwnerId(v);
+        return !(typeof v === 'string' && owner && owner !== SELF_ID);
+      });
+    }
+    if (NICK_KEYS.has(key) && typeof val === 'string') { node[key] = maskNumericNick(val); continue; }
+    if (ID_KEYS.has(key) && String(val) !== SELF_ID) { delete node[key]; continue; }
+    if (val && typeof val === 'object') scrubNode(val, (depth || 0) + 1);
+  }
+  return node;
+}
+
+/** 字符串形式的 JSON（raw.bodys / raw.extInfo）：把隐含他人 uid 的路径值清空 */
+function scrubJsonText(s) {
+  if (typeof s !== 'string') return s;
+  return s.replace(/"([A-Za-z_]\w*)":"(\/[^"]*)"/g, (full, k, v) => {
+    const owner = pathOwnerId(v);
+    return owner && owner !== SELF_ID ? `"${k}":""` : full;
+  });
+}
+
+/** 单条房间消息脱敏 */
+function scrubMsg(m) {
+  if (!m || typeof m !== 'object') return m;
+  if (m.sender && typeof m.sender === 'object') {
+    if (String(m.sender.userId) === SELF_ID) {
+      m.sender = { self: true, userId: m.sender.userId, nickname: m.sender.nickname, avatar: m.sender.avatar };
+    } else {
+      m.sender = { nickname: m.sender.nickname };   // 第三方：只留昵称
+    }
+  }
+  if (m.reply && typeof m.reply === 'object') m.reply = { name: m.reply.name, text: m.reply.text };
+  if (m.raw && typeof m.raw === 'object') {
+    for (const k of Object.keys(m.raw)) {
+      if (typeof m.raw[k] === 'string') m.raw[k] = scrubJsonText(m.raw[k]);
+      else if (m.raw[k] && typeof m.raw[k] === 'object') scrubNode(m.raw[k], 0);
+    }
+    if (typeof m.raw.extInfo === 'string') {
+      try { m.raw.extInfo = JSON.stringify(scrubNode(JSON.parse(m.raw.extInfo), 0)); } catch (_) { m.raw.extInfo = ''; }
+    }
+  }
+  return scrubNode(m, 0);
+}
+
+/** 批量脱敏 */
+function scrubList(arr) {
+  if (!Array.isArray(arr)) return arr;
+  for (const m of arr) scrubMsg(m);
+  return arr;
+}
+
+/** 当前（UTC+8）月份，形如 2026-09 */
+function tzCurrentMonth() {
+  const now = new Date(Date.now() + 8 * 3600 * 1000);
+  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
+async function handleApiMonth(url, env) {
+  const m = url.searchParams.get('m');
+  if (!/^\d{4}-\d{2}$/.test(m || '')) return json({ error: 'bad month' }, 400);
+  // 历史月内容永不再变 → 边缘缓存 12h；当月仍在增长 → 只缓存 60s，保证看得到新发言。
+  const ttl = m >= tzCurrentMonth() ? 60 : 12 * 3600;
+  return withEdgeCache('/api/month?m=' + m, ttl, () => readMonthUncached(m, env));
+}
+
+async function readMonthUncached(m, env) {
+  // ── 读路径：D1 优先，未绑定或出错时回退 KV ──
+  // 发言已迁到 D1（免费 10 万写/天，是 KV 1000 的 100 倍）；KV 里的月份键仍保留作备份，
+  // 所以这里任何异常都能无损回退，绝不会「读不到数据」。
+  let arr = null;
+  let src = 'kv';                       // 数据来源：d1 / kv（便于线上核对是否真的走了 D1）
+  let d1err = '';
+  if (env && env.DB) {
+    try {
+      const rs = await env.DB.prepare(
+        'SELECT data FROM messages WHERE month = ? ORDER BY msgTime DESC'
+      ).bind(m).all();
+      arr = (rs.results || [])
+        .map((r) => { try { return JSON.parse(r.data); } catch (_) { return null; } })
+        .filter(Boolean);
+      src = 'd1';
+    } catch (e) { arr = null; d1err = String((e && e.message) || e).slice(0, 160); }
+  }
+  if (arr === null) {
+    const kv = env && env.KV;
+    if (!kv) return json({ error: 'kv-not-bound' }, 500);
+    arr = await kv.get('msg/' + m, { type: 'json' }) || [];
+    src = 'kv';
+  }
+  // 出库前统一脱敏：D1/KV 里可能仍有脱敏之前落库的旧数据
+  const cur = tzCurrentMonth();
+  const res = apiJson(scrubList(arr), m >= cur ? 'public, max-age=60' : 'public, max-age=86400');
+  res.headers.set('x-data-source', src);
+  if (d1err) res.headers.set('x-d1-error', d1err.replace(/[\r\n]+/g, ' '));
+  return res;
+}
+
+async function handleApiKey(key, env) {
+  const kv = env && env.KV;
+  if (!kv) return json({ error: 'kv-not-bound' }, 500);
+  const v = await kv.get(key, { type: 'json' });
+  if (v == null) return apiJson((key === 'perf-cuts' || key === 'live-cuts') ? { cuts: [] } : [], 'public, max-age=60');
+  return apiJson(v, 'public, max-age=60');
+}
+
+/* ------------------------- 写入：并集合并 ------------------------- */
+
+// 发言：按月并集（按 msgKey 去重，新值覆盖同键旧值 → 文本重解析也能生效），永不丢历史。
+async function mergeMonth(kv, m, msgs) {
+  const key = 'msg/' + m;
+  const prevJson = await kv.get(key);
+  const prev = prevJson ? safeParseArr(prevJson) : [];
+  const map = new Map();
+  for (const x of prev) map.set(msgKeyOf(x), x);
+  let added = 0;
+  for (const x of msgs) {
+    const k = msgKeyOf(x);
+    if (!map.has(k)) added++;
+    map.set(k, x);
+  }
+  const merged = [...map.values()].sort(byTimeDesc);
+  const mergedJson = stableStringify(merged);
+  let wrote = false;
+  if (mergedJson !== prevJson) {
+    await kv.put(key, mergedJson);
+    wrote = true;
+  }
+  return { total: merged.length, added, wrote, head: merged.slice(0, 120) };
+}
+
+// 发言写入 D1：只写「比库里最新一条还要新」的条目。
+// 发言一旦落库几乎不再变动，所以「只插新增」既保证正确、又把写入量压到每天几十条。
+// （若每轮把窗口内 3000 条全量 REPLACE，96 轮/天 = 28.8 万，会超过 D1 免费 10 万/天的写入额度。）
+// D1 故障绝不能影响 KV 主路径 —— 整个函数吞掉异常。
+async function writeMonthToD1(db, m, msgs) {
+  if (!db || !Array.isArray(msgs) || !msgs.length) return 0;
+  try {
+    const row = await db.prepare('SELECT MAX(msgTime) AS t FROM messages WHERE month = ?').bind(m).first();
+    const last = Number(row && row.t) || 0;
+    const news = msgs.filter((x) => (Number(x.msgTime) || 0) > last);
+    let sent = 0;
+    for (let i = 0; i < news.length; i += 100) {
+      const stmts = news.slice(i, i + 100).map((x) => db.prepare(
+        'INSERT OR REPLACE INTO messages (mid, month, msgTime, data) VALUES (?, ?, ?, ?)'
+      ).bind(msgKeyOf(x), m, Number(x.msgTime) || 0, JSON.stringify(x)));
+      if (stmts.length) await db.batch(stmts);
+      sent += stmts.length;
+    }
+    return sent;
+  } catch (_) { return 0; }
+}
+
+/* 全量 upsert（回填专用）：不看 msgTime，整月覆盖写回，用于给历史存量补回 uid */
+async function upsertMonthToD1(db, m, msgs, size) {
+  const N = Math.max(1, Number(size) || 25);
+  if (!db) return { sent: 0, error: 'db-not-bound' };
+  if (!Array.isArray(msgs) || !msgs.length) return { sent: 0, error: null };
+  try {
+    let sent = 0;
+    for (let i = 0; i < msgs.length; i += N) {
+      const stmts = msgs.slice(i, i + N).map((x) => db.prepare(
+        'INSERT OR REPLACE INTO messages (mid, month, msgTime, data) VALUES (?, ?, ?, ?)'
+      ).bind(msgKeyOf(x), m, Number(x.msgTime) || 0, JSON.stringify(x)));
+      if (stmts.length) { await db.batch(stmts); sent += stmts.length; }
+    }
+    return { sent, error: null };
+  } catch (e) { return { sent: -1, error: String(e && e.message || e).slice(0, 160) }; }
+}
+
+/* ---------------- 底层回填（含 uid 的原始发言） ----------------
+ * 红线修订（站长 2026-09-23）：脱敏只在「出口」做，底层 D1 / KV 必须保留 sender uid ——
+ * 否则以后任何身份相关分析（匹配、去重、统计）都无从下手。
+ * D1 / KV 只能被 Worker 读到，而 Worker 的 /api/index、/api/month 出口一律 scrub，
+ * 静态兜底 archive.js 也是脱敏版 ⇒ 浏览器侧仍然零 uid。
+ * 本端点仅供「历史存量补 uid」临时使用，需 x-sync-token。
+ */
+async function handleD1Refill(request, env) {
+  const kv = env && env.KV;
+  if (!kv || typeof kv.put !== 'function') return json({ error: 'kv-not-bound' }, 500);
+  let body;
+  try { body = await request.json(); } catch (_) { return json({ error: 'bad json' }, 400); }
+  const months = (body && body.months) || {};
+  const out = { months: {}, d1: {}, errors: [] };
+  for (const m of Object.keys(months)) {
+    if (!/^\d{4}-\d{2}$/.test(m)) continue;
+    const msgs = months[m];
+    if (!Array.isArray(msgs)) continue;
+    try {
+      await kv.put('msg/' + m, stableStringify(msgs));
+      out.months[m] = msgs.length;
+      out.d1[m] = await upsertMonthToD1(env.DB, m, msgs, body && body.batch);
+      // 诊断（仅授权调用可见）：该月是否存在第三方 uid，确认底层真的存下来了
+      const s = msgs.find((x) => x && x.sender && String(x.sender.userId) !== SELF_ID);
+      out.sample = out.sample || {};
+      out.sample[m] = s ? String(s.sender.userId) : null;
+    } catch (e) { out.errors.push(m + ': ' + (e && e.message)); }
+  }
+  out.ok = out.errors.length === 0;
+  return json(out);
+}
+
+// 直播 / 公演：按 liveId 并集；同键只覆盖「有值且真变化」的字段（空字符串不覆盖，避免抹掉已有的 playUrl）。
+async function mergeById(kv, key, incoming, sortFn) {
+  const prevJson = await kv.get(key);
+  const prev = prevJson ? safeParseArr(prevJson) : [];
+  const map = new Map();
+  for (const x of prev) map.set(String(x.liveId), x);
+  let added = 0, updated = 0;
+  for (const it of incoming) {
+    const k = String(it.liveId);
+    const old = map.get(k);
+    if (!old) { map.set(k, it); added++; continue; }
+    const merged = Object.assign({}, old);
+    let diff = false;
+    for (const f of Object.keys(it)) {
+      const v = it[f];
+      if (v === '' || v == null) continue;
+      // 必须用 stableStringify 比较（与下面的落盘判断同一口径）：
+      // 直接 JSON.stringify 对嵌套对象是「键顺序敏感」的，会把同一份数据误判成「有变化」，
+      // 导致日志里每轮都报「更新 N 条」而实际没写盘，排查时极易被误导。
+      if (stableStringify(old[f]) !== stableStringify(v)) { merged[f] = v; diff = true; }
+    }
+    if (diff) { map.set(k, merged); updated++; }
+  }
+  const out = [...map.values()].sort(sortFn);
+  const outJson = stableStringify(out);
+  let wrote = false;
+  if (outJson !== prevJson) {
+    await kv.put(key, outJson);
+    wrote = true;
+  }
+  return { total: out.length, added, updated, wrote };
+}
+
+// 小数据（社媒美图 / 公演 cut）：整体替换（来源本身就是全量快照）
+async function replaceKey(kv, key, value) {
+  const prevJson = await kv.get(key);
+  const outJson = stableStringify(value);
+  let wrote = false;
+  // 用 contentSig（剔除 updatedAt / progress 等易变字段）判断「内容是否真的变了」，
+  // 而不是比对整个 JSON 串 —— 否则每轮都会空写一次 KV。
+  let prev = null;
+  if (prevJson) { try { prev = JSON.parse(prevJson); } catch (_) { prev = null; } }
+  if (prev === null || contentSig(value) !== contentSig(prev)) {
+    await kv.put(key, outJson);
+    wrote = true;
+  }
+  const total = Array.isArray(value)
+    ? value.length
+    : (value && Array.isArray(value.cuts) ? value.cuts.length : 1);
+  return { total, wrote };
+}
+
+// 全量覆盖（仅用于「重建」：调用方声明这份列表就是权威全集，多出来的旧条目要删掉）。
+// 典型场景：公演从「按队伍抓的原始列表(383)」改为「她的公演记录(277)」后，
+// 并集合并永远删不掉那 106 条她没参加的场次，必须显式重建一次。
+async function replaceList(kv, key, incoming, sortFn) {
+  const prevJson = await kv.get(key);
+  const out = incoming.slice().sort(sortFn);
+  const outJson = stableStringify(out);
+  let wrote = false;
+  if (outJson !== prevJson) {
+    await kv.put(key, outJson);
+    wrote = true;
+  }
+  return { total: out.length, added: 0, updated: 0, wrote, replaced: true };
+}
+
+// body: {
+//   months: { "2026-09": [msg,...] },    // 只推「可能再变」的近期月份
+//   live, performances: [...],           // 只推近期条目
+//   social: [...], perfCuts: {...},      // 全量小数据
+//   meta: {...},                         // 站点元信息（member / lastUpdated 等）
+//   replace: ["live","performances"]     // 可选：这些键改为「整份覆盖」（重建时用）
+// }
+// 返回每部分「新增/更新/写入」情况，便于 Actions 日志核对。
+async function handleApiSync(request, env, ctx) {
+  const kv = env && env.KV;
+  if (!kv || typeof kv.put !== 'function') return json({ error: 'kv-not-bound' }, 500);
+  let body;
+  try { body = await request.json(); } catch (_) { return json({ error: 'bad json' }, 400); }
+  const { months, live, performances, social, perfCuts, liveCuts, meta } = body || {};
+  const replace = new Set(Array.isArray(body && body.replace) ? body.replace : []);
+
+  const idx = normIndex(await kv.get('index', { type: 'json' }));
+  const oldSig = idxSignature(idx);
+  const result = { months: {}, live: null, performances: null, social: null, perfCuts: null, liveCuts: null };
+  let dataChanged = false;
+  const latest = [];
+
+  // ---- 1) 发言：按月并集 ----
+  if (months && typeof months === 'object') {
+    const mset = new Set(idx.months);
+    for (const m of Object.keys(months)) {
+      if (!/^\d{4}-\d{2}$/.test(m)) continue;
+      const msgs = months[m];
+      if (!Array.isArray(msgs)) continue;
+      mset.add(m);
+      // ⚠️ 这里**不要**脱敏：底层（D1 / KV）必须保留 sender uid，以后做身份相关分析才有依据。
+      // 脱敏统一放在出口（/api/index、/api/month、静态 archive.js），浏览器永远拿不到 uid。
+      const r = await mergeMonth(kv, m, msgs);
+      // 同步写 D1（只插新增）；KV 继续保留该月数据作为备份/回退
+      const d1Sent = await writeMonthToD1(env.DB, m, msgs);
+      idx.counts[m] = r.total;
+      result.months[m] = { total: r.total, added: r.added, wrote: r.wrote, d1: d1Sent };
+      if (r.wrote) dataChanged = true;
+      for (const x of r.head) latest.push(x);
+    }
+    idx.months = [...mset].sort().reverse();
+  }
+
+  // ---- 2) 直播 / 录播 ----
+  if (Array.isArray(live)) {
+    const sortByCtime = (a, b) => (Number(b.ctime) || 0) - (Number(a.ctime) || 0);
+    const r = replace.has('live')
+      ? await replaceList(kv, 'live', live, sortByCtime)
+      : await mergeById(kv, 'live', live, sortByCtime);
+    idx.liveCount = r.total;
+    result.live = r;
+    if (r.wrote) dataChanged = true;
+  }
+
+  // ---- 3) 公演 ----
+  if (Array.isArray(performances)) {
+    const sortByStime = (a, b) => (Number(b.stime || b.ctime) || 0) - (Number(a.stime || a.ctime) || 0);
+    const r = replace.has('performances')
+      ? await replaceList(kv, 'performances', performances, sortByStime)
+      : await mergeById(kv, 'performances', performances, sortByStime);
+    idx.perfCount = r.total;
+    result.performances = r;
+    if (r.wrote) dataChanged = true;
+  }
+
+  // ---- 4) 小数据 ----
+  if (Array.isArray(social)) {
+    const r = await replaceKey(kv, 'social', social);
+    result.social = r;
+    if (r.wrote) dataChanged = true;
+  }
+  if (perfCuts && typeof perfCuts === 'object') {
+    const r = await replaceKey(kv, 'perf-cuts', perfCuts);
+    result.perfCuts = r;
+    if (r.wrote) dataChanged = true;
+  }
+  if (liveCuts && typeof liveCuts === 'object') {
+    const r = await replaceKey(kv, 'live-cuts', liveCuts);
+    result.liveCuts = r;
+    if (r.wrote) dataChanged = true;
+  }
+
+  // ---- 5) meta（仅随索引一起落盘，不单独触发写入）----
+  if (meta && typeof meta === 'object') idx.meta = Object.assign({}, meta);
+
+  // ---- 6) recent：取本轮各月最新的 60 条（没新发言时内容不变 → 不触发索引写入）----
+  if (latest.length) {
+    const rec = latest.sort(byTimeDesc).slice(0, 60);
+    if (stableStringify(rec) !== stableStringify(idx.recent)) {
+      idx.recent = rec;
+    }
+  }
+
+  // ---- 7) 索引：只有「实质内容」变化才落盘 ----
+  const newSig = idxSignature(idx);
+  let indexWritten = false;
+  if (dataChanged || newSig !== oldSig) {
+    idx.updatedAt = Date.now();
+    await kv.put('index', stableStringify(idx));
+    indexWritten = true;
+  }
+
+  const payload = {
+    ok: true,
+    dataChanged,
+    indexWritten,
+    updatedAt: idx.updatedAt,
+    counts: {
+      messages: countAll(idx).total,
+      live: idx.liveCount,
+      performances: idx.perfCount
+    },
+    wrote: result
+  };
+  // ---- 8) 数据刚落地 → 立刻查一遍「有没有该推的新东西」
+  //     这是推送的主路径：抓取（GitHub Actions）→ 同步到 KV → 这里马上判断并推。
+  //     🔴 用 waitUntil：推送再慢也不拖慢 /api/sync 的返回，推失败也绝不影响同步结果。
+  if (ctx && typeof ctx.waitUntil === 'function') {
+    ctx.waitUntil(runPushCheck(env, { reason: 'sync' }).catch(() => null));
+  }
+  return json(payload);
+}
+
+/* ===================== 行程存档 + 手机后台（2026-09-23 新增） =====================
+ * 站长诉求：① 行程要存档、以后能回顾 ② 过期的自动归到「已结束」 ③ 手机上就能更新，不用开电脑。
+ * 存储（数据 KV env.KV）：
+ *   schedule      = 当前全量行程（含已过期条目，按日期排序）——「存档」就是它，绝不整份覆盖
+ *   schedule:log  = 每次提交的记录（最近 60 条：新增/更新/删除了什么、来源链接），误操作可回溯
+ * 密码（密钥 KV env.SECRETS）：admin:pass = sha256(盐+密码)；没有就用内置初始口令的哈希。
+ * token：HMAC(sha256(密码哈希), 'sch'+过期时间) —— 密码哈希不上公网，外部伪造不了；改密码后旧 token 自动失效。
+ * 🔴 为什么不用「给微博链接自动抓」：实测 m.weibo.cn 的 statuses/show 与 detail 接口在未登录时
+ *    一律 302 跳登录页，服务端没有 cookie 抓不到正文。所以改成「粘贴正文 → 解析 → 可编辑 → 发布」，
+ *    链接只存在 source.url 里当出处，点得回原文。
+ */
+const SCHED_KEY = 'schedule';
+const SCHED_LOG = 'schedule:log';
+const ADMIN_SALT = 'wyc-sch-2026';
+// 初始口令 Wyc0518@Sch 的 sha256(盐+口令)（后台里可改，改完存 KV 优先）
+const ADMIN_PASS_SHA_DEFAULT = 'b7af23bbdef0bf10fff6fa375cbe2a43c6ae97a4c29aad9acead137115b6db81';
+
+function normTitle(s) {
+  return String(s || '')
+    .replace(/[\s\u3000]/g, '')
+    .replace(/[《》〈〉()（）\[\]【】""''「」『』,，。.、:：;；!！?？~—\-_/|｜]/g, '')
+    .toLowerCase();
+}
+function schedKey(it) { return String(it && it.date || '') + '|' + normTitle(it && it.title); }
+function pad2(n) { return String(n).padStart(2, '0'); }
+function weekdayOf(dateStr) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dateStr || ''));
+  if (!m) return '';
+  const dt = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12));
+  return '周' + '日一二三四五六'[dt.getUTCDay()];
+}
+async function sha256hex(s) {
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+  return Array.prototype.slice.call(new Uint8Array(d)).map((x) => x.toString(16).padStart(2, '0')).join('');
+}
+async function hmacHex(keyStr, msg) {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(keyStr),
+    { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(msg));
+  return Array.prototype.slice.call(new Uint8Array(sig)).map((x) => x.toString(16).padStart(2, '0')).join('');
+}
+async function adminPassHash(env) {
+  try {
+    const v = (env && env.SECRETS) ? await env.SECRETS.get('admin:pass') : null;
+    if (v && /^[0-9a-f]{64}$/.test(v)) return v;
+  } catch (_) { /* 读不到就用内置初始口令 */ }
+  return ADMIN_PASS_SHA_DEFAULT;
+}
+async function makeToken(env, days) {
+  const exp = Date.now() + (days || 7) * 86400000;
+  const sig = await hmacHex(await sha256hex(await adminPassHash(env)), 'sch' + exp);
+  return exp + '.' + sig;
+}
+async function verifyToken(env, token) {
+  const m = /^(\d{10,14})\.([0-9a-f]{64})$/.exec(String(token || ''));
+  if (!m) return false;
+  const exp = Number(m[1]);
+  if (!exp || Date.now() > exp) return false;
+  const want = await hmacHex(await sha256hex(await adminPassHash(env)), 'sch' + exp);
+  return want === m[2];
+}
+async function adminOk(request, env) {
+  const h = request.headers.get('x-admin-token')
+    || String(request.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
+  return await verifyToken(env, h);
+}
+// 口令暴力破解防护：同一 IP 10 分钟内最多 8 次登录尝试
+const ADMIN_RATE = new Map();
+function adminRateOk(ip) {
+  const now = Date.now();
+  const r = ADMIN_RATE.get(ip);
+  if (!r || now > r.reset) { ADMIN_RATE.set(ip, { n: 1, reset: now + 10 * 60 * 1000 }); return true; }
+  if (r.n >= 8) return false;
+  r.n += 1;
+  return true;
+}
+
+async function handleScheduleGet(env) {
+  const kv = env && env.KV;
+  let cur = null;
+  if (kv) { try { cur = await kv.get(SCHED_KEY, { type: 'json' }); } catch (_) { cur = null; } }
+  if (!cur || !Array.isArray(cur.items)) return json({ ok: true, empty: true, items: [] });
+  return json(Object.assign({ ok: true }, cur));
+}
+
+async function handleAdminLogin(request, env) {
+  const ip = String(request.headers.get('cf-connecting-ip') || 'unknown');
+  if (!adminRateOk(ip)) return json({ error: '试太多次了，10 分钟后再来' }, 429);
+  let body = {};
+  try { body = await request.json(); } catch (_) { return json({ error: 'bad json' }, 400); }
+  const pass = String(body.pass || '');
+  if (!pass) return json({ error: '请输入密码' }, 400);
+  const h = await sha256hex(ADMIN_SALT + pass);
+  if (h !== (await adminPassHash(env))) return json({ error: '密码不对' }, 401);
+  const exp = Date.now() + 7 * 86400000;
+  return json({ ok: true, token: await makeToken(env, 7), exp: exp });
+}
+
+async function handleAdminPass(request, env) {
+  let body = {};
+  try { body = await request.json(); } catch (_) { return json({ error: 'bad json' }, 400); }
+  const np = String(body.next || '');
+  if (np.length < 8) return json({ error: '新密码至少 8 位' }, 400);
+  if ((await sha256hex(ADMIN_SALT + String(body.old || ''))) !== (await adminPassHash(env))) {
+    return json({ error: '原密码不对' }, 401);
+  }
+  await env.SECRETS.put('admin:pass', await sha256hex(ADMIN_SALT + np));
+  return json({ ok: true, token: await makeToken(env, 7) });   // 换密码后旧 token 失效，发新的
+}
+
+async function handleAdminScheduleGet(env) {
+  const kv = env && env.KV;
+  let cur = null, log = [];
+  if (kv) {
+    try { cur = await kv.get(SCHED_KEY, { type: 'json' }); } catch (_) { cur = null; }
+    try { log = (await kv.get(SCHED_LOG, { type: 'json' })) || []; } catch (_) { log = []; }
+  }
+  return json({ ok: true, schedule: cur || { items: [] }, log: log });
+}
+
+async function handleAdminSchedulePost(request, env) {
+  let body = {};
+  try { body = await request.json(); } catch (_) { return json({ error: 'bad json' }, 400); }
+  const kv = env && env.KV;
+  if (!kv) return json({ error: 'kv-not-bound' }, 500);
+  let cur = null;
+  try { cur = await kv.get(SCHED_KEY, { type: 'json' }); } catch (_) { cur = null; }
+  const base = (cur && Array.isArray(cur.items)) ? cur : { items: [] };
+
+  const map = new Map();
+  base.items.forEach((it) => map.set(schedKey(it), Object.assign({}, it)));
+  const added = [], updated = [], removed = [];
+
+  // 删除（后台手工纠错用，走 log，可追溯）
+  if (Array.isArray(body.remove)) {
+    body.remove.forEach((r) => {
+      const k = String(r.date || '') + '|' + normTitle(r.title);
+      if (map.has(k)) { removed.push(map.get(k).title); map.delete(k); }
+    });
+  }
+  const incoming = Array.isArray(body.items) ? body.items : [];
+  incoming.forEach((it) => {
+    const date = String((it && it.date) || '').slice(0, 10);
+    const title = String((it && it.title) || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !title) return;
+    const row = {
+      date: date,
+      weekday: it.weekday || weekdayOf(date),
+      time: String(it.time || '').trim(),
+      title: title,
+      kind: (it.kind === '见面会') ? '见面会' : '公演',
+    };
+    const k = schedKey(row);
+    const old = map.get(k);
+    if (Array.isArray(it.flags) && it.flags.length) row.flags = it.flags;
+    else if (old && old.flags) row.flags = old.flags;
+    if (old) { updated.push(title); map.set(k, Object.assign({}, old, row)); }
+    else { added.push(title); map.set(k, row); }
+  });
+
+  let items = Array.from(map.values()).sort((a, b) => String(a.date).localeCompare(String(b.date))
+    || String(a.time || '').localeCompare(String(b.time || '')));
+  if (body.replace === true) {
+    // 整份替换（仅在后台明确点「覆盖」时用）：仍然保留一份进 log，方便回看
+    items = incoming.filter((it) => /^\d{4}-\d{2}-\d{2}$/.test(String(it.date || '')) && it.title)
+      .map((it) => ({
+        date: String(it.date).slice(0, 10),
+        weekday: it.weekday || weekdayOf(it.date),
+        time: String(it.time || '').trim(),
+        title: String(it.title).trim(),
+        kind: (it.kind === '见面会') ? '见面会' : '公演',
+      })).sort((a, b) => String(a.date).localeCompare(String(b.date)));
+    removed.length = 0;
+    removed.push('（整份替换，原 ' + base.items.length + ' 条被覆盖）');
+  }
+
+  const keep = (v, d) => (v === undefined ? d : v);
+  const next = {
+    updatedAt: Date.now(),
+    source: keep(body.source, base.source || null),
+    ticket: keep(body.ticket, base.ticket || ''),
+    callUrl: keep(body.callUrl, base.callUrl || ''),
+    note: keep(body.note, base.note || ''),
+    score: keep(body.score, base.score || null),
+    items: items,
+  };
+  await kv.put(SCHED_KEY, JSON.stringify(next));
+  let log = [];
+  try { log = (await kv.get(SCHED_LOG, { type: 'json' })) || []; } catch (_) { log = []; }
+  log.unshift({
+    at: next.updatedAt,
+    added: added, updated: updated, removed: removed,
+    n: items.length,
+    src: (body.source && body.source.url) || body.srcNote || '',
+  });
+  await kv.put(SCHED_LOG, JSON.stringify(log.slice(0, 60)));
+  // 顺手清掉 /api/schedule 的边缘缓存，否则站长手机上发完，访客最多要等 60 秒才看到新行程
+  try { await caches.default.delete('https://wyc-edge-cache.local/api/schedule'); } catch (_) { /* 清不掉就等缓存自己过期 */ }
+  return json({ ok: true, added: added, updated: updated, removed: removed, total: items.length });
+}
+
+/* ---------------- 微博正文 → 行程条目 ----------------
+ * 规则解析为主（毫秒级、稳）；规则一条都没解析出来、或后台点了「用 AI 再试」→ 调 Workers AI 兜底。
+ * 识别：日期（9月26日 / 2026-10-03 / 10/3）、时间（14:00、17:30-19:30）、星期、
+ *       类型（含「见面会/握手/签名/合影/答谢」= 见面会，其余 = 公演）、其余文字作标题。
+ */
+/* --- 时间/文本的通用片段：14:00、14：00、14点、14点30、下午5点半 --- */
+const TIME_HALF = '(?:上午|中午|下午|晚上|傍晚|凌晨|早上)?';
+const TIME_ONE = '\\d{1,2}\\s*(?:[:：]\\s*\\d{2}|\\s*点\\s*(?:\\d{1,2}\\s*分?|半)?)';
+const TIME_RE = new RegExp('(上午|中午|下午|晚上|傍晚|凌晨|早上)?\\s*(' + TIME_ONE + ')'
+  + '(?:\\s*[-–—~～至到]\\s*(上午|中午|下午|晚上|傍晚|凌晨|早上)?\\s*(' + TIME_ONE + '))?');
+const TIME_RE_G = new RegExp('(?:上午|中午|下午|晚上|傍晚|凌晨|早上)?\\s*' + TIME_ONE
+  + '(?:\\s*[-–—~～至到]\\s*(?:上午|中午|下午|晚上|傍晚|凌晨|早上)?\\s*' + TIME_ONE + ')?', 'g');
+
+/* 全角归一化：１４：００ → 14:00，全角空格 → 普通空格 */
+function normSchedText(s) {
+  return String(s || '')
+    .replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 65248))
+    .replace(/[：﹕]/g, ':')
+    .replace(/[－−ー]/g, '-')
+    .replace(/[\u3000\u00A0]/g, ' ')
+    .replace(/\r/g, '');
+}
+
+/* 单个时间点 → HH:MM（认不出返回空） */
+function toHHMM(t, half) {
+  if (!t) return '';
+  let h = 0, mi = 0, m = /(\d{1,2})\s*[:：]\s*(\d{2})/.exec(t);
+  if (m) { h = Number(m[1]); mi = Number(m[2]); }
+  else {
+    m = /(\d{1,2})\s*点\s*(?:(\d{1,2})\s*分?|半)?/.exec(t);
+    if (!m) return '';
+    h = Number(m[1]);
+    mi = m[2] ? Number(m[2]) : (/半/.test(t) ? 30 : 0);
+  }
+  if (half === '下午' || half === '晚上' || half === '傍晚' || half === '中午') { if (h < 12) h += 12; }
+  else if ((half === '上午' || half === '早上' || half === '凌晨') && h === 12) h = 0;
+  if (h === 24) h = 0;
+  if (h > 23 || mi > 59) return '';
+  return pad2(h) + ':' + pad2(mi);
+}
+
+/* 一行里的完整时间（支持区间） */
+function schedTimeOf(line) {
+  const m = TIME_RE.exec(normSchedText(line));
+  if (!m) return '';
+  const a = toHHMM(m[2], m[1]);
+  const b = toHHMM(m[4], m[3]);
+  if (!a) return '';
+  return a + (b && b !== a ? '-' + b : '');
+}
+
+/* 不转冒号版：保留《拾忆：TEAM NIII》这类原文标点，标题才不会被改样 */
+function normSchedKeep(s) {
+  return String(s || '')
+    .replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 65248))
+    .replace(/[\u3000\u00A0]/g, ' ')
+    .replace(/\r/g, '');
+}
+
+/* 去掉日期/星期/时间/emoji，剩下当标题 */
+function schedTitleOf(line) {
+  return normSchedKeep(line)
+    .replace(/(\d{1,2})\s*[:：]\s*(\d{2})/g, (x, a, b) => a + ':' + b)   // 只把「时间里的」全角冒号转半角
+    .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\uFE0F]/gu, ' ')
+    .replace(/\d{4}\s*[-年/.]\s*\d{1,2}\s*[-月/.]\s*\d{1,2}\s*日?/g, ' ')
+    .replace(/\d{1,2}\s*月\s*\d{1,2}\s*日?/g, ' ')
+    .replace(/(星期|周)\s*[一二三四五六日天]/g, ' ')
+    .replace(TIME_RE_G, ' ')
+    .replace(/[（(][^（）()]{0,8}[)）]/g, (x) => (/开演|开场|开始|入场|检票|签到|演出/.test(x) ? ' ' : x))
+    .replace(/[（(]\s*[)）]/g, ' ')
+    .replace(/[;；]/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/^[\s\-—·•|｜、,，:：]+/, '')
+    .replace(/[\s\-—·•|｜、,，;；:：（(]+$/, '')
+    .trim();
+}
+
+/* 整段不换行也能拆：在每个日期、每个时间前面补换行（时间区间作为一个整体，不会切断 17:30-19:30） */
+function splitSchedLines(text) {
+  let s = normSchedKeep(text);   // 不转冒号，保住《拾忆：TEAM NIII》这类原文
+  s = s.replace(/(\d{1,2}\s*月\s*\d{1,2}\s*日?)/g, '\n$1');
+  s = s.replace(new RegExp('((?:上午|中午|下午|晚上|傍晚|凌晨|早上)?\\s*' + TIME_ONE
+    + '(?:\\s*[-–—~～至到]\\s*(?:上午|中午|下午|晚上|傍晚|凌晨|早上)?\\s*' + TIME_ONE + ')?)', 'g'), '\n$1');
+  return s.split('\n').map((x) => x.trim()).filter(Boolean);
+}
+
+function ruleParseSchedule(text, yearHint) {
+  const now = new Date(Date.now() + 8 * 3600 * 1000);
+  const curYear = now.getUTCFullYear(), curMon = now.getUTCMonth() + 1;
+  const lines = splitSchedLines(text);
+  const out = [];
+  let curDate = '';
+  let pendTime = '';     // 时间先出现（或日期行里带时间），等下一行的标题
+  let lastEntry = null;  // 标题先出现，等下一行的时间回填
+  for (let i = 0; i < lines.length; i++) {
+    const line = normSchedKeep(lines[i]).trim();
+    if (!line) continue;
+    let y = '', mo = '', dd = '';
+    // 「2026年9-10月行程」是范围不是某一天 → 后面紧跟「月」就不当日期
+    let m = /(\d{4})\s*[-年/.]\s*(\d{1,2})\s*[-月/.]\s*(\d{1,2})\s*日?(?!\s*月)/.exec(line);
+    if (m) { y = m[1]; mo = m[2]; dd = m[3]; }
+    else {
+      m = /(\d{1,2})\s*月\s*(\d{1,2})\s*日?/.exec(line);
+      if (m) { mo = m[1]; dd = m[2]; }
+    }
+    if (mo && dd) {
+      let yy = y ? Number(y) : (yearHint ? Number(yearHint) : curYear);
+      if (!y && Number(mo) < curMon - 6) yy = curYear + 1;   // 「1月」出现在 9 月 → 指明年
+      curDate = yy + '-' + pad2(Number(mo)) + '-' + pad2(Number(dd));
+      pendTime = '';
+      lastEntry = null;
+    }
+    const tm = schedTimeOf(line);
+    if (tm) {
+      if (lastEntry && !lastEntry.time) { lastEntry.time = tm; lastEntry = null; pendTime = ''; continue; }
+      pendTime = tm;
+    }
+    const title = schedTitleOf(line);
+    if (!curDate || title.length < 2) continue;              // 纯日期行 / 纯时间行不算条目
+    if (!/[一-龥A-Za-z0-9《]/.test(title)) continue;          // 只剩符号
+    if (/^[#＃]/.test(title) || /#[^#]{1,20}#/.test(title)) continue;   // 微博话题标签行不是行程
+    if (/^(?:开演|开场|开始|入场|检票|签到|演出|待定|以上|暂无|上午|中午|下午|晚上|早上|凌晨|傍晚)$/.test(title)) continue;
+    // 「备注：…」「购票方式」这类说明行不是行程
+    if (/^(?:备注|说明|注意|购票|票价|地点|地址|时间|须知|温馨|提示|ps)\s*[:：]?/i.test(title)) continue;
+    const e = {
+      date: curDate,
+      weekday: weekdayOf(curDate),
+      time: tm || pendTime,
+      title: title,
+      kind: /见面会|握手|签名|合影|答谢|生日会|茶话会|见面/.test(line) ? '见面会' : '公演',
+    };
+    out.push(e);
+    pendTime = '';
+    lastEntry = e.time ? null : e;
+  }
+  return out;
+}
+
+async function aiParseSchedule(env, text, yearHint) {
+  if (!env || !env.AI) return null;
+  const sys = '你是行程整理助手。把用户给的中文行程文本解析成 JSON 数组，每项含：'
+    + 'date(YYYY-MM-DD)、weekday(如 周六)、time(如 14:00 或 17:30-19:30，没有就空字符串)、'
+    + 'title(活动名称)、kind(只能是 公演 或 见面会)。只输出 JSON 数组，不要任何解释文字。'
+    + '年份缺失时按 ' + (yearHint || '当前年份') + ' 推断。';
+  const models = ['@cf/meta/llama-3.1-8b-instruct', '@cf/qwen/qwen2.5-7b-instruct'];
+  for (let i = 0; i < models.length; i++) {
+    try {
+      const out = await env.AI.run(models[i], {
+        messages: [{ role: 'system', content: sys }, { role: 'user', content: String(text).slice(0, 4000) }],
+        max_tokens: 1200,
+      });
+      const s = String((out && (out.response || out.text)) || '');
+      const m = /\[[\s\S]*\]/.exec(s);
+      if (!m) continue;
+      const arr = JSON.parse(m[0]);
+      if (!Array.isArray(arr)) continue;
+      const items = arr.filter((x) => x && /\d{4}-\d{2}-\d{2}/.test(String(x.date || '')) && x.title)
+        .map((x) => ({
+          date: String(x.date).slice(0, 10),
+          weekday: x.weekday || weekdayOf(String(x.date).slice(0, 10)),
+          time: String(x.time || '').trim(),
+          title: String(x.title).trim(),
+          kind: (x.kind === '见面会') ? '见面会' : '公演',
+        }));
+      if (items.length) return items;
+    } catch (_) { /* 换下一个模型 */ }
+  }
+  return null;
+}
+
+async function handleAdminParse(request, env) {
+  let body = {};
+  try { body = await request.json(); } catch (_) { return json({ error: 'bad json' }, 400); }
+  const text = String(body.text || '').slice(0, 8000);
+  if (!text.trim()) return json({ error: '没有内容' }, 400);
+  let items = ruleParseSchedule(text, body.year);
+  let via = 'rule';
+  const ruleFilled = items.filter((x) => x.time).length;
+  // 一条都没出、或一半以上没认出时间、或后台点了「用 AI 再试」→ 走 AI 兜底
+  const needAi = !items.length || body.ai || (items.length > 0 && ruleFilled < items.length / 2);
+  if (needAi && env && env.AI) {
+    const ai = await aiParseSchedule(env, text, body.year);
+    if (ai && ai.length) {
+      const aiFilled = ai.filter((x) => x.time).length;
+      if (!items.length || aiFilled > ruleFilled) { items = ai; via = 'ai'; }
+    }
+  }
+  const noTime = items.filter((x) => !x.time).length;
+  return json({ ok: true, via: via, items: items, noTime: noTime });
+}
+
+/* ============================================================================
+ * 手机通知（Web Push）· 服务端（a40，2026-09-27）
+ * ----------------------------------------------------------------------------
+ * 前端「🔔 通知设置」只干一件事：向浏览器要一个**订阅对象**（endpoint + 两把密钥），
+ * 然后 POST 给这里存起来。「什么时候推、推什么」**全部在服务端决定**
+ * ⇒ 页面开着、关着、手机锁屏，甚至几天没打开过站点，照样能收到。
+ *
+ * 存储（数据 KV env.KV）：
+ *   push:sub:<sha256(endpoint) 前 24 位>  = { e: endpoint, k: {p:p256dh, a:auth}, t: {msg,live,perf}, at }
+ *   push:last:msg / :live / :perf        = 「已经推到哪了」的游标（防止重复推、也防首次上线把历史全推一遍）
+ * 🔴 订阅对象里只有「推送地址 + 公钥」，**不含任何粉丝身份信息**（不存 uid、不存 IP、不存 UA）。
+ *
+ * 密钥（密钥 KV env.SECRETS）：键 PUSH_VAPID = JSON { pub, privJwk }
+ * 🔴 私钥一旦进仓库 = 任何人都能冒名给站长发通知 ⇒ 只放 KV，运行时读，与 GH_TOKEN 一个待遇。
+ *
+ * 发送：VAPID（用私钥签的 ES256 JWT，证明「这条推送确实来自本站」）
+ *       + aes128gcm 加密正文（RFC 8188 / RFC 8291）——推送服务只认这两个标准，
+ *       所以整条链路上没有、也不需要任何第三方推送服务（免费）。
+ *
+ * 触发（三个入口，互为兜底）：
+ *   ① GitHub Actions 抓完数据 → POST /api/sync → 这里同步落库后**立刻**查一次（主路径，最快）
+ *   ② Cloudflare Cron 每 5 分钟 → scheduled() 里再查一次（防 ① 出问题没人推）
+ *   ③ POST /api/push/check（需 sync token）—— 手动/调试用
+ * ========================================================================== */
+const PUSH_SUB = 'push:sub:';
+const PUSH_LAST = 'push:last:';
+const PUSH_VAPID_KEY = 'PUSH_VAPID';
+// 允许的推送服务域名：只收浏览器真正给的那些，避免本站被当成免费中继给别人发垃圾
+const PUSH_HOST_OK = /(^|\.)(googleapis\.com|push\.services\.mozilla\.com|push\.apple\.com|mozaws\.net)$/;
+// 一次最多补推几条（正常情况每轮就 1 条；抓取停了几个小时的积压不至于把手机刷爆）
+const PUSH_CATCHUP_MAX = 3;
+// 🔴 新鲜度闸（2026-09-27 站长定「不许推旧的，可以推新的」）：比这更「老」的发言**一律不推**。
+//    正常抓取时延迟只有 2~5 分钟，永远碰不到这条线；它只在「抓取停摆又恢复」时拦住积压的旧内容。
+const PUSH_FRESH_MS = 10 * 60 * 1000;
+// 🔴 时间戳合理性闸（2026-09-28）：待推内容的时刻必须是「过去」。
+//    事故：线上出现过 t=1799999999999（2027 年）这种未来值 ⇒ `now - t` 是**负数**
+//    ⇒ 新鲜度闸形同虚设，脏数据照样被推出去。留 2 分钟余量吸收时钟差，超了就判非法、直接丢弃。
+const PUSH_SKEW_MS = 2 * 60 * 1000;
+function tsPlausible(t, now) {
+  const n = Number(t) || 0;
+  if (n <= 0) return false;
+  return n <= (Number(now) || Date.now()) + PUSH_SKEW_MS;
+}
+/**
+ * 🔴🔴 终极「不许推旧的」保险：已经推过的最新内容时刻。
+ * 只要待推内容**不比它新**，任何路径都不许推 —— 哪怕游标被写回去、哪怕去重哨兵失效，
+ * 也不可能出现「手机上冒出一条比刚才那条更旧的内容」。
+ * （只统计合法时刻：那条 t=1799999999999 的脏数据不能把闸门卡死。）
+ */
+async function pushNewestSent(env, now) {
+  const db = env && env.DB;
+  if (!db) return 0;
+  try {
+    const r = await db.prepare('SELECT MAX(t) AS m FROM push_sent WHERE t <= ?')
+      .bind(Number(now) || Date.now()).all();
+    const v = r && r.results && r.results[0] && r.results[0].m;
+    return Number(v) || 0;
+  } catch (_) { return 0; }
+}
+/** 游标只前进不回退（多条推送路径并发时，谁跑得慢都可能把游标写回老值） */
+async function advanceMsgCursor(env, val) {
+  const kv = env && env.KV;
+  if (!kv) return false;
+  const cur = Number(await kv.get(PUSH_LAST + 'msg')) || 0;
+  if (Number(val) <= cur) return false;
+  await kv.put(PUSH_LAST + 'msg', String(Number(val)));
+  return true;
+}
+// 开播通知的新鲜度窗口：比发言宽一点（开播不像发言那么密），
+// 但太旧（比如值守重启时才发现几小时前那场）就别打扰了。
+// 2026-09-28 从 20 分钟收到 12 分钟：值守每 60 秒一问，12 分钟只可能是「值守断了很久」的情况，
+// 那种情况宁可不推 —— 站长明确要的是「不推旧的」。
+const PUSH_LIVE_FRESH_MS = 12 * 60 * 1000;
+/**
+ * 🔴🔴 开播「合并闸」（2026-09-28）：她一场直播会**中途关掉再开**（换标题 / 拉人），
+ * 一晚能在口袋里留下几十个 liveId，每个都标 status=2「直播中」。
+ * 以前每发现一个新 liveId 就推一次「开播啦」⇒ 手机被轰炸几十条（站长：「她今天就一场直播，你为啥推以前的」）。
+ * 现在：**同一段连续在播只推第一次** —— 新场距上一次「已推过的那场」不足 MERGE 毫秒，
+ * 一律视为同一段（静默，游标照常前进、不再打扰）。她真下播够久再开，才会有新的开播通知。
+ * （实测今晚各场间隔最大 41 分钟 ⇒ 取 45 分钟：宁可少推，也不轰炸。）
+ */
+const PUSH_LIVE_MERGE_MS = 45 * 60 * 1000;
+/** 只推「刚开始」的那场：发现时已经开播超过这么多就不推了（值守 60 秒一轮，正常 1~2 分钟内必到）。 */
+const PUSH_LIVE_START_MS = 5 * 60 * 1000;
+/** 开播合并闸判断：true = 这场和上一场算同一段，别推。 */
+async function liveMerged(env, t) {
+  const kv = env && env.KV;
+  if (!kv) return false;
+  const last = Number(await kv.get(PUSH_LAST + 'live:push:at')) || 0;
+  const n = Number(t) || 0;
+  if (!last || !n) return false;
+  return (n - last) < PUSH_LIVE_MERGE_MS;
+}
+/** 记下「这次真的推出去了」的时刻（下一场拿它算是不是同一段） */
+async function markLivePushed(env, t) {
+  const kv = env && env.KV;
+  if (!kv) return;
+  const n = Number(t) || 0;
+  if (!n) return;
+  try { await kv.put(PUSH_LAST + 'live:push:at', String(n)); } catch (_) { /* 忽略 */ }
+}
+// 🔴 只推「她的发言」：true = 开播 / 公演这两类通知一律不推（2026-09-28 站长：「不要推别的消息了」）。
+//    发言照常推。想恢复开播/公演通知，把这里改回 false 重新部署即可
+//    （订阅里的 topics 开关是每人各自的选择，这个是全站的总闸）。
+const PUSH_MSG_ONLY = false;
+// 总闸：true = 一条都不推（订阅/开关照常可用）。默认开着 —— 站长要的是「挡旧的」，不是「全停」。
+//    🔴 只有站长明确说「先别推了」才改成 true；改完要重新部署才生效（CF 从 main 构建）。
+const PUSH_OFF = false;
+
+let VAPID = null;                 // { pub, privJwk }（读一次 KV 后在进程内缓存）
+const VAPID_JWT = new Map();      // aud -> { t: jwt, exp: 秒 }（JWT 有效期很长，别每次重签）
+
+function b64uToBytes(s) {
+  const t = String(s || '').replace(/-/g, '+').replace(/_/g, '/');
+  const bin = atob(t + '='.repeat((4 - (t.length % 4)) % 4));
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+function bytesToB64u(u8) {
+  let s = '';
+  for (let i = 0; i < u8.length; i++) s += String.fromCharCode(u8[i]);
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function concatBytes(...parts) {
+  let n = 0;
+  for (const p of parts) n += p.length;
+  const out = new Uint8Array(n);
+  let o = 0;
+  for (const p of parts) { out.set(p, o); o += p.length; }
+  return out;
+}
+
+async function loadVapid(env) {
+  if (VAPID) return VAPID;
+  const raw = (env && env.SECRETS) ? await env.SECRETS.get(PUSH_VAPID_KEY) : null;
+  if (!raw) return null;
+  try {
+    const o = JSON.parse(raw);
+    if (o && o.pub && o.privJwk && o.privJwk.d) { VAPID = { pub: o.pub, privJwk: o.privJwk }; return VAPID; }
+  } catch (_) { /* 坏数据当没有 */ }
+  return null;
+}
+
+/** VAPID：给这个 endpoint 签一个 12 小时有效的 JWT（同一 audience 复用，省一次签名） */
+async function vapidHeader(env, endpoint) {
+  const v = await loadVapid(env);
+  if (!v) throw new Error('vapid-missing');
+  let aud;
+  try { aud = new URL(endpoint).origin; } catch (_) { throw new Error('bad-endpoint'); }
+  const now = Math.floor(Date.now() / 1000);
+  const c = VAPID_JWT.get(aud);
+  if (c && c.exp > now + 60) return 'vapid t=' + c.t + ', k=' + v.pub;
+  const head = bytesToB64u(new TextEncoder().encode(JSON.stringify({ typ: 'JWT', alg: 'ES256' })));
+  const body = bytesToB64u(new TextEncoder().encode(JSON.stringify({
+    aud: aud, exp: now + 12 * 3600, sub: 'https://idol.wyc0518.cc'
+  })));
+  const unsigned = head + '.' + body;
+  const key = await crypto.subtle.importKey('jwk', v.privJwk, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, key, new TextEncoder().encode(unsigned));
+  const t = unsigned + '.' + bytesToB64u(new Uint8Array(sig));
+  VAPID_JWT.set(aud, { t: t, exp: now + 12 * 3600 });
+  return 'vapid t=' + t + ', k=' + v.pub;
+}
+
+/**
+ * aes128gcm 加密（RFC 8188 + RFC 8291）。
+ * 返回值直接就是 HTTP body：salt(16) | rs(4) | keyid长度(1) | keyid(65) | 密文
+ * 与 http_ece（web-push 用的库）逐字节一致：padding 就 1 个字节 0x02，放在正文之后。
+ */
+async function encryptPush(sub, payloadStr) {
+  const uaPub = b64uToBytes(sub.keys.p256dh);
+  const auth = b64uToBytes(sub.keys.auth);
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const kp = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']);
+  const serverPub = new Uint8Array(await crypto.subtle.exportKey('raw', kp.publicKey));
+  const uaKey = await crypto.subtle.importKey('raw', uaPub, { name: 'ECDH', namedCurve: 'P-256' }, false, []);
+  const shared = new Uint8Array(await crypto.subtle.deriveBits({ name: 'ECDH', public: uaKey }, kp.privateKey, 256));
+
+  // ① PRK = HKDF(salt=authSecret, ikm=共享密钥, info="WebPush: info\0"+双方公钥, 32字节)
+  const sharedKey = await crypto.subtle.importKey('raw', shared, 'HKDF', false, ['deriveBits']);
+  const prk = new Uint8Array(await crypto.subtle.deriveBits({
+    name: 'HKDF', hash: 'SHA-256', salt: auth,
+    info: concatBytes(
+      new TextEncoder().encode('WebPush: info\0'),
+      uaPub,
+      serverPub
+    )
+  }, sharedKey, 256));
+  // ② 内容密钥 / nonce = HKDF(salt=本次 salt, ikm=PRK, info=…)
+  const prkKey = await crypto.subtle.importKey('raw', prk, 'HKDF', false, ['deriveBits']);
+  const cek = new Uint8Array(await crypto.subtle.deriveBits({
+    name: 'HKDF', hash: 'SHA-256', salt: salt,
+    info: new TextEncoder().encode('Content-Encoding: aes128gcm\0')
+  }, prkKey, 128));
+  const nonce = new Uint8Array(await crypto.subtle.deriveBits({
+    name: 'HKDF', hash: 'SHA-256', salt: salt,
+    info: new TextEncoder().encode('Content-Encoding: nonce\0')
+  }, prkKey, 96));
+
+  const plain = concatBytes(new TextEncoder().encode(payloadStr), new Uint8Array([2]));
+  const aesKey = await crypto.subtle.importKey('raw', cek, { name: 'AES-GCM' }, false, ['encrypt']);
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv: nonce }, aesKey, plain));
+
+  const rs = new Uint8Array(4);
+  rs[0] = 0; rs[1] = 0; rs[2] = 0x10; rs[3] = 0x00;   // 4096
+  const head = concatBytes(salt, rs, new Uint8Array([serverPub.length]), serverPub);
+  return concatBytes(head, ct);
+}
+
+/** 给一个订阅发一条；返回 { ok, gone }（gone = 订阅已失效，调用方要删掉） */
+async function sendPush(env, sub, payloadObj) {
+  // 🔴 参数不全 ≠ 订阅失效：早先这里返回 gone:true，结果「字段名对不上」也被当成失效订阅删掉
+  //   （2026-09-27 事故：广播传的是存储格式 {p,a}、这里要的是 p256dh/auth ⇒ 全部误删）。
+  //   只有推送服务明确回 404/410 才算 gone，见函数末尾。
+  // 库里存 {p,a}、浏览器给 {p256dh,auth} —— 两种都认，免得再因字段名对不上而「一条都发不出去」
+  const keys = sub && sub.keys
+    ? { p256dh: sub.keys.p256dh || sub.keys.p, auth: sub.keys.auth || sub.keys.a }
+    : null;
+  if (!sub || !sub.endpoint || !keys || !keys.p256dh || !keys.auth) {
+    return { ok: false, gone: false, badArgs: true };
+  }
+  const auth = await vapidHeader(env, sub.endpoint);
+  const body = await encryptPush({ endpoint: sub.endpoint, keys: keys }, JSON.stringify(payloadObj));
+  const res = await fetch(sub.endpoint, {
+    method: 'POST',
+    headers: {
+      authorization: auth,
+      'crypto-key': 'p256ecdsa=' + (await loadVapid(env)).pub,   // 老版本推送服务还认这个头，留着无害
+      'content-encoding': 'aes128gcm',
+      'content-type': 'application/octet-stream',
+      ttl: '86400',
+      urgency: 'high',                                           // iOS / Chrome 都会立刻弹，而不是攒着
+      // 🔴 折叠键（RFC 8030 Topic）：payload 是加密的，推送服务读不到里面的 tag，
+      //    同一条发言被两条路各发一次时它没法替我们折叠 —— 靠这个头让它在服务端就合并成一条。
+      //    只认 [A-Za-z0-9_-] 且 ≤32 字符，超了/不合法就不带（不能因为一个头把整条推送搞失败）。
+      ...(pushTopicOf(payloadObj && payloadObj.tag) ? { topic: pushTopicOf(payloadObj && payloadObj.tag) } : {})
+    },
+    body: body
+  });
+  if (res.status === 404 || res.status === 410) return { ok: false, gone: true, status: res.status };
+  if (res.status >= 200 && res.status < 300) return { ok: true, gone: false, status: res.status };
+  // 🔴 非 2xx 时把 Apple 的响应体带回去（如 {"reason":"BadWebPushTopic"}）——
+  //    否则只看到一个裸 400，没法知道到底是 Topic 头、还是加密/鉴权出的问题（2026-10-02 排查教训）。
+  let reason = '';
+  try { reason = String(await res.text()).slice(0, 160); } catch (_) { /* 忽略 */ }
+  return { ok: false, gone: false, status: res.status, reason: reason };
+}
+
+/** 把 payload 的 tag 压成合法的折叠键（RFC 8030 Topic）。
+ *  🔴🔴 2026-10-02 实测事故：Apple 的推送服务对 `Topic` 头比对 RFC 上限（32 字符）**严格得多** ——
+ *     8 字符的 'wyc-live' / 'wyc-perf' / 'wyc-test' 全部正常送达（sent:3），
+ *     而 21 字符的 'wyc-msg-<13位msgTime>'、'wyc-live-<12字符>' 一律被 Apple 回
+ *     **HTTP 400**（reason = BadWebPushTopic），推送根本发不出去（三台设备全 400）。
+ *     对照实验：同一接口 / 同一批订阅 / 同一时刻，唯一变量就是这个头的长度。
+ *     ⇒ 表现就是「她的每一条新发言都收不到」，而短 tag 的测试推送能收到。
+ *  ⇒ 这里统一压到 8 字符以内：短的原样保留；长的用 32 位 FNV-1a 哈希压成 't'+base36。
+ *     哈希是确定性的 ⇒ 同一个 tag 仍映射到同一个 topic，Apple 服务端的折叠语义不变。
+ */
+function pushTopicOf(tag) {
+  const s = String(tag || '').replace(/[^A-Za-z0-9_-]/g, '');
+  if (s.length < 3) return '';
+  if (s.length <= 8) return s;              // 已实测安全（wyc-live / wyc-perf / wyc-test）
+  let h = 2166136261;                       // FNV-1a 32bit
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return 't' + (h >>> 0).toString(36);      // 't' + ≤7 字符 ⇒ 全长 ≤ 8，且不含数字结尾的歧义
+}
+
+/** 列出全部订阅（KV list 读，不占写入配额） */
+async function pushAllSubs(env) {
+  const kv = env && env.KV;
+  if (!kv) return [];
+  const out = [];
+  let cursor = undefined;
+  for (let i = 0; i < 20; i++) {
+    const page = await kv.list({ prefix: PUSH_SUB, cursor: cursor, limit: 1000 });
+    for (const k of page.keys || []) out.push(k);
+    if (!page.cursor) break;
+    cursor = page.cursor;
+    if (page.list_complete) break;
+  }
+  const subs = [];
+  for (const k of out) {
+    const v = await kv.get(k.name, { type: 'json' });
+    if (v && v.e && v.k) subs.push({ key: k.name, e: v.e, k: v.k, t: v.t || {}, at: v.at || 0 });
+  }
+  return subs;
+}
+
+async function pushSubKeyOf(endpoint) {
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(endpoint || '')));
+  return PUSH_SUB + Array.prototype.slice.call(new Uint8Array(d))
+    .map((x) => x.toString(16).padStart(2, '0')).join('').slice(0, 24);
+}
+
+/** 广播：只发给勾了这类提醒的人；顺手清掉失效订阅（省 KV 也省得白请求） */
+async function pushBroadcast(env, payload, topic) {
+  const subs = await pushAllSubs(env);
+  let sent = 0, gone = 0, fail = 0, skipped = 0;
+  const details = [];   // 逐条诊断（只看得见的接口能拿到）：哪台设备、返回什么状态码
+  const jobs = [];
+  for (const s of subs) {
+    if (topic && s.t && s.t[topic] === false) { skipped += 1; continue; }
+    // 🔴 库里存的是 {p,a}（省空间），sendPush 要的是 {p256dh,auth} —— 必须在这里转一次。
+    //    少了这一转，广播会「一条都发不出去」（2026-09-27 事故）。
+    let host = '';
+    try { host = new URL(s.e).hostname; } catch (_) { host = '?'; }
+    jobs.push(sendPush(env, { endpoint: s.e, keys: { p256dh: s.k.p, auth: s.k.a } }, payload).then(async (r) => {
+      if (r.ok) { sent += 1; details.push({ host: host, ok: true }); }
+      else if (r.gone) { gone += 1; details.push({ host: host, gone: true }); await env.KV.delete(s.key).catch(() => {}); }
+      else { fail += 1; details.push({ host: host, st: r.status, bad: !!r.badArgs, reason: r.reason || undefined }); }
+    }).catch((e) => { fail += 1; details.push({ host: host, err: String((e && e.message) || e).slice(0, 80) }); }));
+  }
+  // 订阅数很少（几十个），并发无所谓；真到几百个时分批跑，免得一次开太多连接
+  for (let i = 0; i < jobs.length; i += 20) await Promise.all(jobs.slice(i, i + 20));
+  return { total: subs.length, sent: sent, gone: gone, fail: fail, skipped: skipped, details: details };
+}
+
+/* ------------------------- 检测：有什么该推的 ------------------------- */
+/** 发言正文：只取她自己写的文字（🔴 绝不带上 reply 里被回复粉丝的昵称） */
+function pushMsgText(m) {
+  let t = String((m && m.text) || '').replace(/\s+/g, ' ').trim();
+  if (t) return t.length > 60 ? t.slice(0, 60) + '…' : t;
+  const n = (m && m.images && m.images.length) || 0;
+  if (n) return '［图 ' + n + ' 张］';
+  if (m && m.video) return '［视频］';
+  if (m && m.audio) return '［语音］';
+  if (m && m.card && m.card.title) return String(m.card.title).slice(0, 40);
+  return '［新消息］';
+}
+
+/**
+ * 取「游标之后的发言」，**返回按时间升序**（旧的在前，推的时候顺序才对）。
+ * 🔴 取的是「最新的 limit 条」，不是「最早的那几条」—— 2026-09-27 事故的根因就在这里：
+ *    原来是 `ORDER BY msgTime ASC LIMIT 3`，游标一旦落后（首次上线 / 抓取停摆过），
+ *    每轮拿到的都是游标后面**最旧**的三条 ⇒ 推的一直是几小时前的旧内容，而且永远追不上新的。
+ *    现在倒过来取最新的三条：积压再多，一轮就能把游标带到最新，之后推的都是真新内容。
+ */
+async function pushLatestMsgs(env, since, limit) {
+  const n = Number(limit) || 3;
+  // 优先 D1（发言的真身在 D1，且按时间有索引）；D1 不可用时退回 KV 索引里的 recent
+  if (env && env.DB) {
+    try {
+      const r = await env.DB.prepare(
+        'SELECT msgTime, data FROM messages WHERE msgTime > ? ORDER BY msgTime DESC LIMIT ?'
+      ).bind(Number(since) || 0, n).all();
+      const rows = (r && r.results) || [];
+      return rows.map((x) => {
+        let m = null;
+        try { m = JSON.parse(x.data); } catch (_) { m = null; }
+        return { msgTime: Number(x.msgTime) || 0, m: m };
+      }).filter((x) => x.msgTime > 0)
+        .sort((a, b) => a.msgTime - b.msgTime);   // 倒序取 → 还原成正序再推
+    } catch (_) { /* D1 挂了走 KV */ }
+  }
+  const idx = await env.KV.get('index', { type: 'json' }) || {};
+  return (idx.recent || [])
+    .filter((x) => (Number(x.msgTime) || 0) > (Number(since) || 0))
+    .sort((a, b) => (Number(b.msgTime) || 0) - (Number(a.msgTime) || 0))
+    .slice(0, n)
+    .map((x) => ({ msgTime: Number(x.msgTime) || 0, m: x }))
+    .sort((a, b) => a.msgTime - b.msgTime);
+}
+
+/** 取一条发言：不传 before = 最新一条（D1 优先，退回 KV 索引） */
+async function pushOneMsg(env, before) {
+  const lim = Number(before) || 0;
+  if (env && env.DB) {
+    try {
+      const r = lim
+        ? await env.DB.prepare('SELECT msgTime, data FROM messages WHERE msgTime <= ? ORDER BY msgTime DESC LIMIT 1').bind(lim).all()
+        : await env.DB.prepare('SELECT msgTime, data FROM messages ORDER BY msgTime DESC LIMIT 1').all();
+      const row = (r && r.results && r.results[0]) || null;
+      if (row) {
+        let m = null;
+        try { m = JSON.parse(row.data); } catch (_) { m = null; }
+        if (m) return { msgTime: Number(row.msgTime) || 0, m: m };
+      }
+    } catch (_) { /* 退回 KV */ }
+  }
+  const idx = (await env.KV.get('index', { type: 'json' })) || {};
+  const list = (idx.recent || [])
+    .filter((x) => (Number(x.msgTime) || 0) > 0 && (!lim || Number(x.msgTime) <= lim))
+    .sort((a, b) => (Number(b.msgTime) || 0) - (Number(a.msgTime) || 0));
+  return list.length ? { msgTime: Number(list[0].msgTime) || 0, m: list[0] } : null;
+}
+
+/**
+ * 一次检测：新发言 / 她开直播 / 公演开播。
+ * 🔴 所有异常都吞掉 —— 推送是锦上添花，绝不能因为它把「同步数据 / 定时任务」搞挂。
+ */
+async function runPushCheck(env, opts) {
+  const o = { ok: true, reason: (opts && opts.reason) || 'manual', msg: null, live: null, perf: null, skipped: {} };
+  const kv = env && env.KV;
+  if (!kv) return { ok: false, error: 'kv-not-bound' };
+  if (PUSH_OFF) return { ok: false, paused: true, skipped: { off: true } };
+  try {
+    if (!(await loadVapid(env))) { o.skipped.noVapid = true; return o; }
+    const subs = await pushAllSubs(env);
+    if (!subs.length) { o.skipped.noSub = true; return o; }
+    o.subs = subs.length;
+    const now = Date.now();
+
+    /* ① 新口袋发言 */
+    let lastMsg = Number(await kv.get(PUSH_LAST + 'msg')) || 0;
+    // 🔴 2026-09-29 修：游标所有权归 GitHub 值守（push-watch.mjs 的 notify）。
+    //   runPushCheck 只做「备份广播」，绝不再写 push:last:msg ——
+    //   否则它会把游标推到最新档案时间、却对超过新鲜窗口的发言只前进游标不广播，把值守架空
+    //   （站长实测：00:32 那批发言游标被推到 00:32:58 却从没发到手机）。
+    if (!lastMsg) { o.skipped.noCursor = true; return o; } // 游标由值守初始化/推进，快车道不碰
+    else {
+      const fresh = await pushLatestMsgs(env, lastMsg, PUSH_CATCHUP_MAX);
+      if (fresh.length) {
+        // 🔴 只推「新鲜」的（2026-09-27 站长定：不要推送老的信息，只推新的）：
+        //    抓取停摆几小时后恢复时，积压的那批旧发言**一律不补推**（直接跳过），
+        //    但游标照常前进到最新 —— 下次只从这里往后推，绝不会把旧内容灌到手机上。
+        let newest = lastMsg, stale = 0, bad = 0, older = 0;
+        const sentMax = await pushNewestSent(env, now);
+        for (const f of fresh) {
+          // 🔴 非法时间戳（未来值 / 0）直接丢弃：既不能推，也**不能拿来推游标**
+          //    （游标一旦被顶到未来，之后所有真实发言都会被判成「还没到点」而永远不推）。
+          if (!tsPlausible(f.msgTime, now)) { bad += 1; continue; }
+          // 🔴 终极保险：比「已推过的最新那条」还旧 ⇒ 绝不推
+          if (sentMax && Number(f.msgTime) <= sentMax) { older += 1; continue; }
+          if (Number(f.msgTime) > newest) newest = Number(f.msgTime);
+          if (now - Number(f.msgTime) > PUSH_FRESH_MS) { stale += 1; continue; }
+          // 🔴 去重哨兵：值守探针已经推过的，这里就别再推一遍
+          if (!(await markMsgSent(env, Number(f.msgTime)))) {
+            o.skipped.dupMsgs = (o.skipped.dupMsgs || 0) + 1;
+            continue;
+          }
+          const r = await pushBroadcast(env, {
+            title: '王语晨', body: pushMsgText(f.m),
+            tag: 'wyc-msg-' + Number(f.msgTime),   // 同一条发言 tag 相同 ⇒ 万一重复也会被手机替换成一条
+            url: './', topic: 'msg'
+          }, 'msg');
+          o.msg = r;
+        }
+        if (bad) o.skipped.badTs = bad;
+        if (older) o.skipped.olderThanLast = older;
+        if (stale) o.skipped.staleMsgs = stale;
+        // 🔴 游标不再由快车道写（所有权归 GitHub 值守）。旧的发言不推、也不许把游标往前挪，
+        //    否则会把值守要推的「新鲜发言」一起跳过（此前 00:32 那批被吞的根因）。
+      }
+    }
+
+    /* ② 她开直播
+       🔴 数据源 2026-09-27 改了：原来是读 KV 'live'（**录播归档**，要等直播结束才出现）
+       ⇒ 她开播那一刻永远推不出来。现在读 'live-now'（值守探针发现的「正在进行的直播」），
+       兜底用 —— 正常情况值守自己就推了，这里只在值守没来得及推时补一刀。 */
+    if (!PUSH_MSG_ONLY) {
+    const lastLive = (await kv.get(PUSH_LAST + 'live')) || '';
+    // 🔴 单调闸：只认「比已报过的那场更新」的直播。
+    //    以前只比对 liveId ⇒ 一旦列表里又冒出更早那场（她关了重开时顺序会变），就会被当成新开播再推一遍旧的。
+    const lastLiveAt = Number(await kv.get(PUSH_LAST + 'live:at')) || 0;
+    const nowLive = await kv.get('live-now', { type: 'json' });
+    if (nowLive && nowLive.liveId && String(nowLive.liveId) !== String(lastLive)
+        && (!lastLiveAt || Number(nowLive.ctime) > lastLiveAt)
+        && tsPlausible(nowLive.ctime, now)
+        && now - (Number(nowLive.ctime) || 0) < PUSH_LIVE_FRESH_MS) {
+      const lts = Number(nowLive.ctime) || 0;
+      // 🔴 同一段连续在播只推一次（与 handlePushNotify 共用一套闸）：5 分钟这轮也不能绕过
+      let liveSkip = '';
+      if (await liveMerged(env, lts)) liveSkip = 'merged';
+      else if (lts && now - lts > PUSH_LIVE_START_MS) liveSkip = 'notJustStarted';
+      if (liveSkip) { o.skipped.liveSkip = liveSkip; }
+      else if (await markLiveSent(env, String(nowLive.liveId))) {
+        const ann = String(nowLive.title || '').trim();
+        o.live = await pushBroadcast(env, {
+          title: '🔴 王语晨开播啦！',
+          body: ann ? (ann.length > 40 ? ann.slice(0, 40) + '…' : ann) : '点开看直播',
+          tag: 'wyc-live-' + String(nowLive.liveId), url: './', topic: 'live'
+        }, 'live');
+        await markLivePushed(env, lts);
+      }
+      await kv.put(PUSH_LAST + 'live', String(nowLive.liveId));
+      if (Number(nowLive.ctime) > lastLiveAt) {
+        await kv.put(PUSH_LAST + 'live:at', String(Number(nowLive.ctime)));
+      }
+    }
+
+    /* ③ 公演开播 */
+    const lastPerf = (await kv.get(PUSH_LAST + 'perf')) || '';
+    const perfs = await kv.get('performances', { type: 'json' }) || [];
+    let cand = null;
+    for (const p of (Array.isArray(perfs) ? perfs : [])) {
+      const st = Number(p.stime || p.ctime) || 0;
+      if (!st) continue;
+      // 「刚开演」= 已经过点、但不超过 30 分钟。
+      // 🔴 2026-09-28 从 2 小时收到 30 分钟：站点长明确「只推新的」，
+      //    开演 1 小时后才想起来推一条「公演开演」属于旧内容（抓取 5 分钟一轮，30 分钟足够兜住延迟）。
+      if (st <= now + 2 * 60 * 1000 && st > now - 30 * 60 * 1000) { cand = p; break; }
+    }
+    if (cand && cand.liveId && String(cand.liveId) !== String(lastPerf)) {
+      const d = new Date(Number(cand.stime) + 8 * 3600 * 1000);
+      const hhmm = String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0');
+      const sub = String(cand.subTitle || cand.title || '').trim();
+      o.perf = await pushBroadcast(env, {
+        title: '🎭 公演开演 ' + hhmm,
+        body: sub ? (sub.length > 40 ? sub.slice(0, 40) + '…' : sub) : '点开看公演',
+        tag: 'wyc-perf', url: './', topic: 'perf'
+      }, 'perf');
+      await kv.put(PUSH_LAST + 'perf', String(cand.liveId));
+    }
+    }
+  } catch (e) {
+    o.ok = false;
+    o.error = String((e && e.message) || e).slice(0, 200);
+  }
+  return o;
+}
+
+/* ==========================================================================
+ * 口袋48 直连探测（2026-09-27 加，为了把推送压进 1 分钟）
+ * --------------------------------------------------------------------------
+ * 为什么需要它：原来「她发言 → 你手机响」要绕一大圈 ——
+ *   Cloudflare Cron 每 5 分钟 → 触发 GitHub Actions → Actions 排队+跑抓取 1~2 分钟
+ *   → 写入 KV/D1 → 下一轮 Cron 才发现有新内容 → 推送
+ *   合起来平均 4~7 分钟，慢的根因是「数据要先落库，推送只能读库」。
+ *
+ * 现在多开一条**快车道**：Worker 自己每分钟直接问口袋「最新几条发言是什么」，
+ *   命中新的就立刻推。档案数据仍走原来那条（5 分钟一轮），互不干扰：
+ *   快车道只比对时间戳 + 发推送，**不写库**（写库要走隐私清洗 scrape/scrub，
+ *   这里没有那套逻辑，绝不碰数据）。
+ *
+ * 代价与保护：
+ *   - 每分钟 1 个请求（1440 次/天）。接口失败（非 200）或抛错 ⇒ 熔断 5 分钟不再撞墙。
+ *   - 没有订阅者时**根本不发请求**（pushAllSubs 在前），白天没人订阅也是 0 请求。
+ * ========================================================================== */
+const POCKET_API = 'https://pocketapi.48.cn';
+const POCKET_SERVER_ID = 2278592;    // 口袋房间「一只鱼🐟」
+const POCKET_CHANNEL_ID = 2541547;   // 频道「萌学园ᜊ」（与抓取脚本一致，只认这一个频道）
+const POCKET_UA = 'PocketFans201807/6.0.16 (iPhone; iOS 13.5.1; Scale/2.00)';
+// 熔断（内存级，isolate 重启即恢复）：接口挂了/被风控时别每分钟撞墙
+let POCKET_DEAD_UNTIL = 0;
+let POCKET_LAST_TICK = 0;
+
+function pocketAppInfo() {
+  const s = 'QWERTYUIOPASDFGHJKLZXCVBNM1234567890';
+  const pick = (n) => Array.from({ length: n }, () => s[Math.floor(Math.random() * s.length)]).join('');
+  return JSON.stringify({
+    vendor: 'apple',
+    deviceId: `${pick(8)}-${pick(4)}-${pick(4)}-${pick(4)}-${pick(12)}`,
+    appVersion: '7.0.4', appBuild: '23011601', osVersion: '16.3.1',
+    osType: 'ios', deviceName: 'iPhone XR', os: 'ios'
+  });
+}
+
+/** 口袋 token：dashboard Secret → KV「SECRETS」→ KV「数据命名空间」（两个都找，站长填哪个都能生效） */
+async function pocketToken(env) {
+  if (env && env.POCKET48_TOKEN) return env.POCKET48_TOKEN;
+  for (const ns of [env && env.SECRETS, env && env.KV]) {
+    if (!ns || typeof ns.get !== 'function') continue;
+    try {
+      const v = await ns.get('POCKET48_TOKEN');
+      if (v) return String(v).trim();
+    } catch (_) { /* 换下一个 */ }
+  }
+  return '';
+}
+
+/** 诊断用：列出某个 KV 命名空间里的键名（只列名字，不列值） */
+async function kvKeyNames(ns) {
+  if (!ns || typeof ns.list !== 'function') return null;
+  try {
+    const page = await ns.list();
+    return (page && page.keys ? page.keys : []).map((k) => k.name);
+  } catch (e) {
+    return ['<list-failed: ' + String((e && e.message) || e).slice(0, 80) + '>'];
+  }
+}
+
+/** 直查口袋：最新 limit 条房主发言（homeowner 接口 = 只返回她自己的） */
+async function pocketLatest(env, limit = 5) {
+  const token = await pocketToken(env);
+  const headers = {
+    'Content-Type': 'application/json;charset=utf-8',
+    appInfo: pocketAppInfo(),
+    'User-Agent': POCKET_UA,
+    'Accept-Language': 'zh-Hans-AW;q=1',
+    pa: await paSign()
+  };
+  if (token) headers.token = token;
+  const res = await fetch(POCKET_API + '/im/api/v1/team/message/list/homeowner', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ channelId: POCKET_CHANNEL_ID, serverId: POCKET_SERVER_ID, nextTime: 0, limit: Number(limit) || 5 })
+  });
+  const text = await res.text();
+  let data = null;
+  try { data = JSON.parse(text); } catch (_) { /* 非 JSON（如 nginx 403 页面） */ }
+  const list = (data && data.content && Array.isArray(data.content.message)) ? data.content.message : [];
+  return { status: res.status, hasToken: !!token, count: list.length, list: list, raw: data ? '' : text.slice(0, 200) };
+}
+
+/** 把口袋原始消息压成一句推送文案（只取她本人说的话，不碰粉丝昵称/id） */
+function pocketMsgText(m) {
+  const type = String((m && m.msgType) || '');
+  let body = null;
+  try { body = JSON.parse(m && m.bodys); } catch (_) { body = null; }
+  let s = '';
+  if (body && typeof body === 'object') {
+    const ri = body.replyInfo || body.flipCardInfo || body.giftReplyInfo || body;
+    // ⚠️ 只取 text（她的回答）。replyText/replyName 是粉丝的提问与昵称 —— 一个字都不往推送里塞。
+    s = String((ri && (ri.text || ri.content)) || '');
+  }
+  if (!s) s = String((m && m.bodys) || '');
+  s = s.replace(/\s+/g, ' ').trim();
+  if (s && !/^[[{]/.test(s)) return s.length > 60 ? s.slice(0, 60) + '…' : s;
+  if (/IMAGE|PIC/i.test(type)) return '［图］';
+  if (/AUDIO|VOICE/i.test(type)) return '［语音］';
+  if (/VIDEO/i.test(type)) return '［视频］';
+  if (/FLIPCARD|REPLY|GIFTREPLY/i.test(type)) return '［翻牌］';
+  if (/REDPACKET|LUCKY/i.test(type)) return '［红包］';
+  return '［新消息］';
+}
+
+/**
+ * 🔴 2026-09-27 实测：**从 Cloudflare 出去请求 pocketapi.48.cn 一律 nginx 403**。
+ *    证据：把 Worker 里算出来的 pa 签名拿到本机，用同一个签名请求 → 200 成功
+ *    （⇒ 签名没问题，是 CF 的数据中心 IP 被口袋网关挡了）。
+ *    所以「每分钟问一次口袋」改由 GitHub Actions 值守（push-watch.yml → /api/push/notify）。
+ *    这个开关留着：哪天 CF 出口能通了，把它改回 false 就能切回 Worker 直查（更少一环）。
+ */
+const POCKET_FROM_CF_BLOCKED = true;
+
+/**
+ * 🔴 同一条发言**只准推一次**的哨兵（2026-09-27 加）。
+ * 为什么会重复：现在有两条路都会推「新发言」——
+ *   ① 值守探针（GitHub Actions，每分钟）→ /api/push/notify
+ *   ② 老检测 runPushCheck（CF Cron 每 5 分钟，读 D1）
+ * 它们共享游标 push:last:msg，但两边取的**时间戳来源不同**（接口 vs 数据库），
+ * 一旦有偏差就会各推一遍 ⇒ 站长手机上一模一样的消息收到好几条。
+ * 现在两边推之前都要先抢这个哨兵：抢到才推，抢不到就跳过。
+ *   （KV 写：每条发言 1 次，一天几十条，可忽略）
+ */
+async function markMsgSent(env, t) {
+  const ts = Number(t) || 0;
+  if (!ts) return true;
+  // 🔴 优先用 D1：SQLite 主键冲突是**原子的**，两条路同时推也只会有一个抢到。
+  //    （KV 是最终一致的 —— 并发时两边都读到「没推过」⇒ 各推一遍，这就是重复的根源。）
+  const db = env && env.DB;
+  if (db && typeof db.prepare === 'function') {
+    const ins = db.prepare('INSERT OR IGNORE INTO push_sent (t, at) VALUES (?, ?)').bind(ts, Date.now());
+    try {
+      const r = await ins.run();
+      const n = Number((r && r.meta && (r.meta.changes ?? r.meta.rows_written)) ?? (r && r.changes) ?? 0);
+      if (n === 1) { maybePrunePushSent(db); return true; }
+      return false;                       // 已存在 ⇒ 别人（或另一条路）已经推过了
+    } catch (e) {
+      const msg = String((e && e.message) || e);
+      if (/no such table/i.test(msg)) {
+        try {
+          await db.prepare('CREATE TABLE IF NOT EXISTS push_sent (t INTEGER PRIMARY KEY, at INTEGER)').run();
+          const r2 = await db.prepare('INSERT OR IGNORE INTO push_sent (t, at) VALUES (?, ?)').bind(ts, Date.now()).run();
+          const n2 = Number((r2 && r2.meta && (r2.meta.changes ?? r2.meta.rows_written)) ?? (r2 && r2.changes) ?? 0);
+          return n2 === 1;
+        } catch (_) { /* 建表也失败就退回 KV */ }
+      }
+    }
+  }
+  // 回退：D1 不可用时才走 KV（有极小并发窗口，但那时宁可偶尔重复也不能不推）
+  const kv = env && env.KV;
+  if (!kv) return true;
+  try {
+    const old = await kv.get('push:sent:' + String(ts));
+    if (old) return false;
+    await kv.put('push:sent:' + String(ts), '1', { expirationTtl: 86400 });
+    return true;
+  } catch (_) {
+    return true;   // 哨兵本身出错时宁可照推，不要因为去重把推送全掐了
+  }
+}
+
+/**
+ * 推送留痕：把「最近推过哪些发言」从 D1 哨兵表里读出来（同一条只会出现一行 ⇒ 一眼看出有没有重复推）。
+ * 排查「手机上同一条收到好几遍」时先看这个：行数 > 发言数 就说明还有第二条路在推。
+ */
+async function pushRecentSent(env, limit) {
+  const db = env && env.DB;
+  if (!db || typeof db.prepare !== 'function') return null;
+  try {
+    const r = await db.prepare('SELECT t, at FROM push_sent ORDER BY at DESC LIMIT ?').bind(Number(limit) || 20).all();
+    return (r && r.results) || [];
+  } catch (_) { return null; }
+}
+
+/**
+ * 开播通知的去重哨兵（走 KV，不用 D1 那张表）：
+ * liveId 是 19 位数字，**超出 JS 安全整数范围**，塞进 INTEGER 主键会被截断 ⇒ 只能单独存。
+ * 开播一天也就几次，KV 的并发窗口可以忽略。
+ */
+async function markLiveSent(env, id) {
+  const kv = env && env.KV;
+  const key = 'push:sent:live:' + String(id || '');
+  if (!kv || !id) return true;
+  try {
+    if (await kv.get(key)) return false;
+    await kv.put(key, '1', { expirationTtl: 86400 * 3 });
+    return true;
+  } catch (_) { return true; }
+}
+
+/** 顺手清掉 7 天前的哨兵行（约每 20 次才真跑一次，D1 写入可忽略） */
+let PRUNE_N = 0;
+function maybePrunePushSent(db) {
+  PRUNE_N += 1;
+  if (PRUNE_N % 20 !== 1) return;
+  try {
+    db.prepare('DELETE FROM push_sent WHERE at < ?').bind(Date.now() - 7 * 86400 * 1000).run().catch(() => null);
+  } catch (_) { /* 清理失败无所谓，表里有几百行也不影响查询 */ }
+}
+
+/** 快车道：直查口袋 → 有新且够新鲜就立刻推（不写库、不动档案数据） */
+async function pushFastTick(env, opts) {
+  const o = { ok: true, reason: (opts && opts.reason) || 'fast', msg: null, skipped: {} };
+  const kv = env && env.KV;
+  if (!kv) return { ok: false, error: 'kv-not-bound' };
+  if (PUSH_OFF) return { ok: false, paused: true, skipped: { off: true } };
+  if (POCKET_FROM_CF_BLOCKED) { o.skipped.cfBlocked = true; return o; }
+  const now = Date.now();
+  if (now < POCKET_DEAD_UNTIL) { o.skipped.cooldownUntil = POCKET_DEAD_UNTIL; return o; }
+  // 同一个 isolate 里 45 秒内不重复问（CF 可能同时起多个 isolate，重复也无害：游标保证不重复推）
+  if (now - POCKET_LAST_TICK < 45 * 1000) { o.skipped.tooSoon = true; return o; }
+  POCKET_LAST_TICK = now;
+  try {
+    if (!(await loadVapid(env))) { o.skipped.noVapid = true; return o; }
+    const subs = await pushAllSubs(env);
+    if (!subs.length) { o.skipped.noSub = true; return o; }   // 没人订阅 ⇒ 一个请求都不发
+    o.subs = subs.length;
+    // 🔴 没有凭证就别发请求：口袋必然 403，一分钟一次纯属白撞墙（也省得被当成异常流量）
+    if (!(await pocketToken(env))) { o.skipped.noToken = true; return o; }
+    const r = await pocketLatest(env, 5);
+    o.probe = { status: r.status, count: r.count, hasToken: r.hasToken };
+    if (r.status !== 200 || !r.count) {
+      // 「缺凭证」不算接口故障，别熔断（否则站长刚填好 token 还要干等熔断解除）
+      if (!r.hasToken) { o.skipped.noToken = true; return o; }
+      POCKET_DEAD_UNTIL = now + 5 * 60 * 1000;
+      o.skipped.badStatus = r.status;
+      if (r.raw) o.skipped.rawHead = r.raw.slice(0, 120);
+      return o;
+    }
+    let last = Number(await kv.get(PUSH_LAST + 'msg')) || 0;
+    const newest = r.list.reduce((a, x) => Math.max(a, Number(x.msgTime) || 0), 0);
+    if (!last) {
+      // 首次上线：只把游标记到「当前最新」，绝不把历史发言一次性推给所有人
+      await kv.put(PUSH_LAST + 'msg', String(newest));
+      o.skipped.firstRun = true;
+      return o;
+    }
+    const fresh = r.list
+      .map((x) => ({ msgTime: Number(x.msgTime) || 0, raw: x }))
+      .filter((x) => x.msgTime > last)
+      .sort((a, b) => a.msgTime - b.msgTime);
+    if (!fresh.length) { o.skipped.noNew = true; return o; }
+    let cursor = last, stale = 0, bad = 0;
+    // 🔴🔴 同一批新消息**合并成一条**推送，且 tag 必须带最新一条的 msgTime。
+    //   原因（2026-10-01 事故）：这里原来逐条推、tag 写死 'wyc-msg' ⇒
+    //   ① HTTP `topic: wyc-msg` 让 Apple 在**服务端**把同 topic 折叠成一条；
+    //   ② SW 里 tag 相同 ⇒ iOS 端**静默替换**，`renotify:true` 在 Safari 被忽略 ⇒ 不响铃不弹横幅。
+    //   表现就是"服务端 sent:3 全成功，用户一条都没感知到"。
+    //   合并推送既保证每批都能弹出来（tag 唯一），又不会连发 7 条刷屏（站长原本担心的事）。
+    const batch = [];
+    for (const f of fresh) {
+      // 🔴 非法时间戳（未来值 / 0）：丢弃，且**不许推游标**（顶到未来就永远不推了）
+      if (!tsPlausible(f.msgTime, now)) { bad += 1; continue; }
+      if (f.msgTime > cursor) cursor = f.msgTime;
+      // 🔴 新鲜度闸（站长定：只推新的）：超过 10 分钟的一律跳过，游标照常前进
+      if (now - f.msgTime > PUSH_FRESH_MS) { stale += 1; continue; }
+      batch.push(f);
+    }
+    if (batch.length) {
+      const top = batch[batch.length - 1];                 // fresh 已按时间升序 ⇒ 最后一条最新
+      const one = pocketMsgText(top.raw) || '';
+      const body = batch.length > 1
+        ? one + '　⋯等 ' + batch.length + ' 条'
+        : one;
+      o.msg = await pushBroadcast(env, {
+        title: '王语晨',
+        body: body.slice(0, 100),
+        tag: 'wyc-msg-' + Number(top.msgTime),              // 🔴 每批唯一 ⇒ iOS 才会真的弹出来
+        url: './', topic: 'msg'
+      }, 'msg');
+      o.batch = batch.length;
+    }
+    if (bad) o.skipped.badTs = bad;
+    if (stale) o.skipped.staleMsgs = stale;
+    // 🔴 游标只能前进、且必须是合法时刻
+    if (cursor > last && tsPlausible(cursor, now)) await kv.put(PUSH_LAST + 'msg', String(cursor));
+  } catch (e) {
+    o.ok = false;
+    o.error = String((e && e.message) || e).slice(0, 200);
+    POCKET_DEAD_UNTIL = Date.now() + 5 * 60 * 1000;
+  }
+  return o;
+}
+
+/** 调试用：只看「从 Cloudflare 出去能不能问到口袋」，不发任何推送 */
+async function pushProbe(env) {
+  const o = { ok: true, now: Date.now(), deadUntil: POCKET_DEAD_UNTIL };
+  try {
+    // 诊断：token 到底有没有被读到（只回长度和前 4 位，不泄露完整值）+ 两个命名空间里都有哪些键
+    const tk = await pocketToken(env);
+    o.token = tk ? { len: tk.length, head: tk.slice(0, 4) } : null;
+    // 诊断用：把 Worker 里算出来的 pa 签名原样吐出来，好在本机拿同一个签名做 A/B 对照
+    // （判断「403」到底是签名不对，还是 Cloudflare 出口 IP 被口袋拦）
+    try { o.pa = await paSign(); } catch (e) { o.paErr = String((e && e.message) || e).slice(0, 120); }
+    o.keys = { secrets: await kvKeyNames(env && env.SECRETS), data: await kvKeyNames(env && env.KV) };
+    const r = await pocketLatest(env, 5);
+    o.status = r.status;
+    o.hasToken = r.hasToken;
+    o.count = r.count;
+    o.raw = r.raw;
+    o.newest = r.list.slice(0, 3).map((x) => ({
+      t: Number(x.msgTime) || 0,
+      iso: new Date(Number(x.msgTime) || 0).toISOString(),
+      type: x.msgType,
+      text: pocketMsgText(x)
+    }));
+    o.cursor = Number(await env.KV.get(PUSH_LAST + 'msg')) || 0;
+    o.lastLiveAt = Number(await env.KV.get(PUSH_LAST + 'live:at')) || 0;
+    // 自检：同一个时间戳连抢两次哨兵，必须「第一次 true、第二次 false」，否则去重没生效
+    try {
+      const probeT = 1799999999999;   // 远未来的值，绝不会和真实发言冲突
+      // 🔴 必须先删干净再测：残留行会让 first 恒为 false，自检误报「去重失效」
+      //    （以前 DELETE 是 .run().catch() 没 await ⇒ 残留在库里，还会在 recentSent 里露出来吓人）
+      if (env.DB && env.DB.prepare) {
+        await env.DB.prepare('DELETE FROM push_sent WHERE t = ?').bind(probeT).run();
+      }
+      o.dedupe = {
+        first: await markMsgSent(env, probeT),
+        second: await markMsgSent(env, probeT)
+      };
+      if (env.DB && env.DB.prepare) {
+        await env.DB.prepare('DELETE FROM push_sent WHERE t = ?').bind(probeT).run();
+      }
+    } catch (e) { o.dedupeErr = String((e && e.message) || e).slice(0, 160); }
+  } catch (e) {
+    o.ok = false;
+    o.error = String((e && e.message) || e).slice(0, 300);
+  }
+  return o;
+}
+
+/**
+ * GitHub Actions 值守探针发现新发言后调这里：{ t: 发言时间戳(ms), text: 推送文案 }
+ * 职责全在 Worker 侧兜底：游标去重（同一条绝不会推两次）+ 新鲜度闸（旧的只推进游标、不推）。
+ */
+async function handlePushNotify(request, env) {
+  const kv = env && env.KV;
+  if (!kv) return json({ error: 'kv-not-bound' }, 500);
+  let b = null;
+  try { b = await request.json(); } catch (_) { return json({ error: 'bad-json' }, 400); }
+  const t = Number(b && b.t) || 0;
+  const text = String((b && b.text) || '').slice(0, 120);
+  const o = { ok: true, t: t };
+  if (PUSH_OFF) { o.paused = true; return json(o); }
+
+  /* 🔴 开播通知（2026-09-27 加）：以前「开播推送」读的是 KV 里的**录播归档**，
+     而归档要等直播结束才出现 ⇒ 她开播时永远推不出来（站长 22:48 亲眼看着她开播，站内却什么都没有）。
+     现在由值守探针查「正在进行的直播」（status=2）后从这里推，1 分钟内到手机。 */
+  if (b && b.type === 'live') {
+    const id = String(b.id || '');
+    if (!id) return json({ error: 'missing id' }, 400);
+    o.type = 'live'; o.id = id;
+    try {
+      if (!(await loadVapid(env))) { o.skipped = 'noVapid'; return json(o); }
+      const now = Date.now();
+      const last = String((await kv.get(PUSH_LAST + 'live')) || '');
+      // 🔴 单调闸：只认「比已报过那场更新」的直播。她关了重开时列表顺序会变，
+      //    旧场次会重新冒出来 —— 以前只比对 liveId ⇒ 会被当成新开播，把旧的那场又推一遍。
+      const lastAt = Number(await kv.get(PUSH_LAST + 'live:at')) || 0;
+      if (lastAt && t && t <= lastAt) { o.skipped = 'olderLive'; o.lastAt = lastAt; return json(o); }
+      if (last === id) { o.skipped = 'already'; return json(o); }
+      await kv.put(PUSH_LAST + 'live', id);
+      // 🔴 非法时间戳（未来值）：丢弃，且不许写进单调闸
+      if (t && !tsPlausible(t, now)) { o.skipped = 'badTs'; return json(o); }
+      if (t && t > lastAt) await kv.put(PUSH_LAST + 'live:at', String(t));
+      // 去重哨兵（liveId 是 19 位数字，超出 JS 安全整数 ⇒ 不能走 D1 那个数字主键，这里用 KV）
+      if (!(await markLiveSent(env, id))) { o.skipped = 'dup'; return json(o); }
+      // 留一份「当前在播」给 5 分钟那轮兜底用（它读不到实时接口，只能读这个）
+      await kv.put('live-now', JSON.stringify({ liveId: id, ctime: t, title: text }));
+      // 🔴 合并闸：和上一场算同一段连续在播 ⇒ 静默（她一晚连开几十场，每场都推＝轰炸）
+      if (await liveMerged(env, t)) { o.skipped = 'merged'; o.merged = true; return json(o); }
+      if (!t || now - t > PUSH_LIVE_FRESH_MS) { o.skipped = 'stale'; return json(o); }
+      // 只推「刚开始」的那场：发现得晚（值守断了一阵）就别补推了
+      if (t && now - t > PUSH_LIVE_START_MS) { o.skipped = 'notJustStarted'; o.ageMs = now - t; return json(o); }
+      o.msg = await pushBroadcast(env, {
+        title: '🔴 王语晨开播啦！', body: text || '点开看直播',
+        tag: 'wyc-live-' + id, url: './', topic: 'live'
+      }, 'live');
+      await markLivePushed(env, t);
+    } catch (e) { o.ok = false; o.error = String((e && e.message) || e).slice(0, 200); }
+    return json(o);
+  }
+
+  // 🔴 口袋每开一场直播会自动发一条 LIVEPUSH（「XXX 开播了」）系统提示，
+  //    它跟开播通知是同一件事 ⇒ 再推一遍纯属重复（她一晚连开几十场 ⇒ 几十条）。
+  const mt = String((b && b.mt) || '').toUpperCase();
+  if (mt === 'LIVEPUSH') { o.skipped = 'livepush'; return json(o); }
+  if (!t) return json({ error: 'missing t' }, 400);
+  try {
+    if (!(await loadVapid(env))) { o.skipped = 'noVapid'; return json(o); }
+    const now = Date.now();
+    // 🔴 时间戳合理性闸：未来值 / 0 一律丢弃（事故：t=1799999999999 ⇒ now-t 为负 ⇒ 新鲜度闸失效，
+    //    且游标被顶到未来 ⇒ 之后真实发言全被判「还没到点」）。这里**不推也不动游标**。
+    if (!tsPlausible(t, now)) { o.skipped = 'badTs'; return json(o); }
+    const rawLast = Number(await kv.get(PUSH_LAST + 'msg')) || 0;
+    // 🔴 游标自愈（2026-09-28）：若历史残留把游标顶到了未来（异常），回退到 0。
+    //    下方 sentMax 终极闸会挡掉「已推过的」，所以回退到 0 也只会放真实新发言、不会重推旧消息。
+    const last = (rawLast > now + 5 * 60 * 1000) ? 0 : rawLast;
+    if (t <= last) { o.skipped = 'already'; o.last = last; return json(o); }
+    // 🔴 终极保险：比「已推过的最新那条」还旧 ⇒ 绝不推（游标被写回去、去重失效都不怕）
+    const sentMax = await pushNewestSent(env, now);
+    if (sentMax && t <= sentMax) { o.skipped = 'olderThanLast'; o.sentMax = sentMax; return json(o); }
+    // 游标先往前走：无论这一条推不推，都不会再回头
+    await kv.put(PUSH_LAST + 'msg', String(t));
+    o.last = t;
+    if (now - t > PUSH_FRESH_MS) { o.skipped = 'stale'; return json(o); }
+    // 🔴 去重哨兵：老检测（读库那条路）已经推过的，这里不再推
+    if (!(await markMsgSent(env, t))) { o.skipped = 'dup'; return json(o); }
+    o.msg = await pushBroadcast(env, {
+      title: '王语晨', body: text || '［新消息］',
+      tag: 'wyc-msg-' + t,   // 同一条发言 tag 相同 ⇒ 万一重复也会被手机替换成一条
+      url: './', topic: 'msg'
+    }, 'msg');
+  } catch (e) {
+    o.ok = false;
+    o.error = String((e && e.message) || e).slice(0, 200);
+  }
+  return json(o);
+}
+
+/* ------------------------- HTTP 接口 ------------------------- */
+function pushBadSub() { return json({ error: 'bad subscription' }, 400); }
+
+async function handlePushSubscribe(request, env) {
+  const kv = env && env.KV;
+  if (!kv) { await pushDiag(env, request, { ok: false, why: 'kv-not-bound' }); return json({ error: 'kv-not-bound' }, 500); }
+  let b;
+  try { b = await request.json(); } catch (_) { await pushDiag(env, request, { ok: false, why: 'bad-json' }); return pushBadSub(); }
+  const sub = b && b.sub;
+  if (!sub || typeof sub.endpoint !== 'string' || !sub.keys || !sub.keys.p256dh || !sub.keys.auth) {
+    await pushDiag(env, request, { ok: false, why: 'sub-shape', has: !!sub, ep: sub && typeof sub.endpoint === 'string' ? sub.endpoint.slice(0, 40) : '' });
+    return pushBadSub();
+  }
+  let host = '';
+  try { host = new URL(sub.endpoint).hostname; } catch (_) { await pushDiag(env, request, { ok: false, why: 'bad-endpoint' }); return pushBadSub(); }
+  if (!PUSH_HOST_OK.test(host)) {
+    await pushDiag(env, request, { ok: false, why: 'host-not-allowed', host: host });
+    return json({ error: 'endpoint host not allowed: ' + host }, 400);
+  }
+  if (b64uToBytes(sub.keys.p256dh).length !== 65) {
+    await pushDiag(env, request, { ok: false, why: 'p256dh-len', len: b64uToBytes(sub.keys.p256dh).length, host: host });
+    return pushBadSub();
+  }
+
+  const key = await pushSubKeyOf(sub.endpoint);
+  const topics = (b && b.topics && typeof b.topics === 'object') ? b.topics : {};
+  await kv.put(key, JSON.stringify({
+    e: sub.endpoint,
+    k: { p: sub.keys.p256dh, a: sub.keys.auth },
+    t: { msg: topics.msg !== false, live: topics.live !== false, perf: topics.perf !== false },
+    at: Date.now()
+  }));
+  await pushDiag(env, request, { ok: true, why: 'saved', host: host, key: await pushSubKeyOf(sub.endpoint), quiet: !!(b && b.quiet) });
+
+  // 「静默补送」不发确认：自动重订 / 开面板补送都属于补登记，再弹一条就成了骚扰
+  // （2026-09-27 站长实测：取消再订阅收到 2 条 —— 就是这条确认被发了两次）
+  if (b && b.quiet) return json({ ok: true });
+
+  // 订阅一存下就立刻发一条「开好了」的确认 —— 目的有两个：
+  //   ① 用户点完开关马上能看见成效，不用猜；
+  //   ② 这条推送会**真的走一遍发送**。若订阅其实是旧的（换过 VAPID 密钥对），
+  //      推送服务会回 410 Gone ⇒ 我们当场知道「这条订阅发不出去」，
+  //      立刻删掉并让前端重订 —— 否则会变成「订阅库里有人、但一条也收不到」的哑巴状态。
+  try {
+    const r = await sendPush(env, { endpoint: sub.endpoint, keys: sub.keys }, {
+      title: '✅ 通知已开启', body: '她有新动态，手机就会收到', tag: 'wyc-welcome', url: './', topic: 'msg'
+    });
+    if (r && r.gone) {
+      await kv.delete(await pushSubKeyOf(sub.endpoint)).catch(() => {});
+      await pushDiag(env, request, { ok: false, why: 'welcome-gone', host: host });
+      return json({ ok: true, gone: true, resubscribe: true });
+    }
+    await pushDiag(env, request, { ok: true, why: 'welcome-sent', host: host });
+  } catch (_) { /* 确认推送失败不影响订阅本身 */ }
+  return json({ ok: true });
+}
+
+/**
+ * 订阅诊断（临时排查用）：记录最近 30 次订阅尝试的结果与请求头摘要。
+ * 「我和朋友都点了订阅、可服务端还是 0 人」—— 光看人数永远查不出原因，
+ * 必须知道请求到底有没有到、到了之后卡在哪一条校验上。
+ */
+async function pushDiag(env, request, rec) {
+  try {
+    const kv = env && env.KV;
+    if (!kv) return;
+    const h = request && request.headers ? request.headers : null;
+    const item = Object.assign({
+      at: Date.now(),
+      ua: h ? String(h.get('User-Agent') || '').slice(0, 100) : '',
+      origin: h ? String(h.get('Origin') || '') : '',
+      referer: h ? String(h.get('Referer') || '').slice(0, 60) : '',
+      fs: h ? String(h.get('Sec-Fetch-Site') || '') : '',
+      fm: h ? String(h.get('Sec-Fetch-Mode') || '') : ''
+    }, rec);
+    const cur = (await kv.get('push:diag', { type: 'json' })) || [];
+    cur.unshift(item);
+    await kv.put('push:diag', JSON.stringify(cur.slice(0, 30)));
+  } catch (_) { /* 诊断本身绝不能影响订阅 */ }
+}
+
+async function handlePushUnsubscribe(request, env) {
+  const kv = env && env.KV;
+  if (!kv) return json({ error: 'kv-not-bound' }, 500);
+  let b = {};
+  try { b = await request.json(); } catch (_) { /* 允许空 body：按下面的 endpoint 兜底 */ }
+  const ep = (b && b.sub && b.sub.endpoint) || b.endpoint;
+  if (!ep) return pushBadSub();
+  const key = await pushSubKeyOf(ep);
+  await kv.delete(key).catch(() => {});
+  await pushDiag(env, request, { ok: true, why: 'unsubscribed', key: key });
+  return json({ ok: true });
+}
+
+/** 订阅人数（list 读，不占写入配额）；给统计页用 */
+async function handlePushCount(env) {
+  const subs = await pushAllSubs(env);
+  const t = { msg: 0, live: 0, perf: 0 };
+  for (const s of subs) {
+    if (s.t.msg !== false) t.msg += 1;
+    if (s.t.live !== false) t.live += 1;
+    if (s.t.perf !== false) t.perf += 1;
+  }
+  // freshMs / off 顺便当部署指纹：改了推送参数后 curl 一眼就能确认线上是不是新代码
+  return json({ ok: true, subs: subs.length, topics: t, freshMs: PUSH_FRESH_MS, off: PUSH_OFF, ver: 'a53',
+    keys: subs.slice(0, 10).map((s) => s.key) });
+}
+
+/** 调试：按 KV 键直接读（token 保护）—— 用于判断「写了但 list 列不出来」这种一致性问题 */
+async function handlePushRaw(url, env) {
+  const k = url.searchParams.get('k') || '';
+  if (!/^push:(sub|diag|last:)/.test(k)) return json({ error: 'bad key' }, 400);
+  const v = await env.KV.get(k);
+  const meta = await env.KV.getWithMetadata ? await env.KV.getWithMetadata(k) : null;
+  return json({ ok: true, key: k, exists: v !== null, len: v ? v.length : 0, meta: meta ? meta.metadata : null });
+}
+
+/** 调试用：立刻给所有订阅发一条（需 sync token） */
+async function handlePushTest(request, env) {
+  let b = {};
+  try { b = await request.json(); } catch (_) { /* 用默认值 */ }
+  const payload = {
+    title: String(b.title || '王语晨 · 补档站'),
+    body: String(b.body || '推送测试：能收到就说明通了'),
+    tag: 'wyc-test', url: './', topic: 'msg'
+  };
+  const r = await pushBroadcast(env, payload, null);
+  return json({ ok: true, payload: payload, result: r });
+}
+
+/**
+ * 重放一条真实内容（需 sync token）—— 用来验证「端到端到底通不通」。
+ * 和真推送走完全同一条路（同样的标题/正文/图标/点击跳转），只是不查游标、不看新旧。
+ *   { "what":"msg" }            → 最新一条发言
+ *   { "what":"msg","before":ts } → 指定时刻之前的最后一条（例：重放她下午最后那条）
+ *   { "what":"live" | "perf" }  → 当前直播 / 公演
+ */
+async function handlePushReplay(request, env) {
+  let b = {};
+  try { b = await request.json(); } catch (_) { /* 用默认值 */ }
+  const what = String(b.what || 'msg');
+  if (what === 'msg') {
+    const one = await pushOneMsg(env, Number(b.before) || 0);
+    if (!one) return json({ ok: false, error: 'no-message' });
+    // 🔴 tag 必须唯一（同 pushFastTick）：写死 'wyc-msg' 会被 iOS 静默替换，看起来像"没推"
+    const payload = {
+      title: '王语晨', body: pushMsgText(one.m),
+      tag: 'wyc-msg-' + (Number(one.msgTime) || Date.now()),
+      url: './', topic: 'msg'
+    };
+    const r = await pushBroadcast(env, payload, 'msg');
+    return json({
+      ok: true, replay: 'msg',
+      at: new Date(one.msgTime + 8 * 3600 * 1000).toISOString().replace('T', ' ').slice(5, 16) + '(北京)',
+      payload: payload, result: r
+    });
+  }
+  if (what === 'live') {
+    const live = (await env.KV.get('live', { type: 'json' })) || [];
+    const top = Array.isArray(live) ? live[0] : null;
+    if (!top) return json({ ok: false, error: 'no-live' });
+    const ann = String(top.announcement || '').trim();
+    const payload = { title: '🔴 王语晨开播啦！', body: ann ? (ann.length > 40 ? ann.slice(0, 40) + '…' : ann) : '点开看直播', tag: 'wyc-live', url: './', topic: 'live' };
+    return json({ ok: true, replay: 'live', payload: payload, result: await pushBroadcast(env, payload, 'live') });
+  }
+  if (what === 'perf') {
+    const perfs = (await env.KV.get('performances', { type: 'json' })) || [];
+    const p = Array.isArray(perfs) ? perfs[0] : null;
+    if (!p) return json({ ok: false, error: 'no-perf' });
+    const sub = String(p.subTitle || p.title || '').trim();
+    const payload = { title: '🎭 公演开演', body: sub ? (sub.length > 40 ? sub.slice(0, 40) + '…' : sub) : '点开看公演', tag: 'wyc-perf', url: './', topic: 'perf' };
+    return json({ ok: true, replay: 'perf', payload: payload, result: await pushBroadcast(env, payload, 'perf') });
+  }
+  return json({ error: 'unknown what: ' + what }, 400);
+}
+
+/** 读订阅诊断（需 sync token）：看「点了订阅的人到底有没有送到服务器」 */
+async function handlePushDiagView(env) {
+  const subs = await pushAllSubs(env);
+  const diag = (await env.KV.get('push:diag', { type: 'json' })) || [];
+  // 「最近推过哪些发言」：同一条发言只应出现一行；出现两行就说明还有第二条路在重复推
+  const sent = await pushRecentSent(env, 20);
+  return json({ ok: true, subs: subs.length, recentSent: sent, diag: diag });
+}
+
+/** 读写 VAPID 私钥（需 sync token）—— 私钥只落在 KV，不进仓库，所以只能这样灌进去 */
+async function handleVapidSecret(request, env) {
+  if (!(await isSyncAuthorized(request, env) || await isGhAuthorized(request, env))) {
+    return json({ error: 'forbidden: sync token required' }, 403);
+  }
+  if (request.method === 'POST') {
+    const txt = await request.text();
+    let o = null;
+    try { o = JSON.parse(txt); } catch (_) { /* 也接受 pub=…&privJwk=… 之外就只有 JSON */ }
+    if (!o || !o.pub || !o.privJwk || !o.privJwk.d) return json({ error: 'need {pub, privJwk}' }, 400);
+    await env.SECRETS.put(PUSH_VAPID_KEY, JSON.stringify({ pub: o.pub, privJwk: o.privJwk }));
+    VAPID = { pub: o.pub, privJwk: o.privJwk };   // 立刻生效，不用等下一个进程
+    return json({ ok: true, pub: o.pub });
+  }
+  const v = await loadVapid(env);
+  return json({ has: !!v, pub: v ? v.pub : '' });
+}
+
+/* ------------------------- 口袋48 开播提醒（监控机器人回推） -------------------------
+ * 监控机器人 pocket48_monitor.mjs（REST 轮询 getLiveList 判开播/下播）POST /api/pocket/event
+ *   { type:'live:start'|'live:end', memberId, ts, liveId?, title? }
+ * 鉴权：x-notify-token == env.NOTIFY_TOKEN
+ * 写入 KV：pocket:live:<memberId>（当前直播态）+ pocket:events:<memberId>（环形缓冲 50 条）
+ * 读取：GET /api/pocket/events（前端卡片 + Wechaty 适配器共用）
+ * ⚠️ 仅开播/下播；房间粉丝消息默认不发（站长要求"不要粉丝的消息"）。
+ */
+const PE_MAX_EVENTS = 50;
+const PE_LIVE_KEY = (id) => 'pocket:live:' + id;
+const PE_EVENTS_KEY = (id) => 'pocket:events:' + id;
+const PE_ONLINE_KEY = (id) => 'pocket:online:' + id;
+
+async function handlePocketEvent(request, env) {
+  const want = env.NOTIFY_TOKEN || '';
+  const got = request.headers.get('x-notify-token') || '';
+  if (!want || got !== want) return json({ error: 'forbidden: notify token required' }, 403);
+  let b;
+  try { b = await request.json(); } catch (_) { return json({ error: 'bad json' }, 400); }
+  const memberId = String((b && b.memberId) || '').trim();
+  if (!/^\d{4,12}$/.test(memberId)) return json({ error: 'bad memberId' }, 400);
+  const type = String(b.type || '');
+  const ts = Number(b.ts) || Date.now();
+  try {
+    if (type === 'live:start') {
+      const cur = await env.KV.get(PE_LIVE_KEY(memberId), { type: 'json' }) || {};
+      const live = { liveId: String(b.liveId || ''), title: String(b.title || ''), startedAt: ts, endedAt: 0, prevStart: cur.startedAt || 0 };
+      await env.KV.put(PE_LIVE_KEY(memberId), JSON.stringify(live));
+      await peAppend(env, memberId, { type, liveId: live.liveId, title: live.title, ts });
+    } else if (type === 'live:end') {
+      const cur = await env.KV.get(PE_LIVE_KEY(memberId), { type: 'json' });
+      if (cur) { cur.endedAt = ts; await env.KV.put(PE_LIVE_KEY(memberId), JSON.stringify(cur)); }
+      await peAppend(env, memberId, { type, ts });
+    } else if (['online:active', 'online:idle', 'online:seen'].includes(type)) {
+      // 静默在线（lastTime 代理）：存在线态 + 记入事件环
+      const online = (type === 'online:active');
+      const lastTime = Number(b.lastTime || 0);
+      const rec = { online, lastTime, seenAt: lastTime || ts, updatedAt: ts, src: 'lastTime' };
+      await env.KV.put(PE_ONLINE_KEY(memberId), JSON.stringify(rec));
+      await peAppend(env, memberId, { type, lastTime, ts });
+    } else {
+      return json({ error: 'unknown type' }, 400);
+    }
+  } catch (e) {
+    return json({ error: 'kv-write-failed: ' + String((e && e.message) || e) }, 500);
+  }
+  return json({ ok: true });
+}
+async function peAppend(env, memberId, ev) {
+  let arr = [];
+  try { arr = await env.KV.get(PE_EVENTS_KEY(memberId), { type: 'json' }) || []; } catch (_) {}
+  if (!Array.isArray(arr)) arr = [];
+  arr.unshift(ev);
+  if (arr.length > PE_MAX_EVENTS) arr = arr.slice(0, PE_MAX_EVENTS);
+  await env.KV.put(PE_EVENTS_KEY(memberId), JSON.stringify(arr));
+}
+async function handlePocketEventsGet(env) {
+  const memberId = '89653517';
+  let live = null, events = [], online = null;
+  try {
+    live = await env.KV.get(PE_LIVE_KEY(memberId), { type: 'json' });
+    events = await env.KV.get(PE_EVENTS_KEY(memberId), { type: 'json' }) || [];
+    online = await env.KV.get(PE_ONLINE_KEY(memberId), { type: 'json' });
+  } catch (_) {}
+  if (!Array.isArray(events)) events = [];
+  return json({
+    live: live || { liveId: '', title: '', startedAt: 0, endedAt: 0 },
+    online: online || { online: false, lastTime: 0, seenAt: 0 },
+    events, serverTime: Date.now()
+  });
+}
+
+/* ==== PA_INLINE_BEGIN ==== */
+/* ------------------------------------------------------------------------
+ * 【自动生成，请勿手改】由 scripts/gen-pa-inline.mjs 生成。
+ * 口袋48 的反爬签名 pa：wasm 本体由 wrangler 预编译成 PA_MODULE（见文件顶部 import），
+ * 这里只是 wasm-bindgen 的胶水（把 wasm 返回的 [ptr,len] 解成 JS 字符串）。
+ * 对外只暴露 paSign()：懒加载，第一次用到才实例化。
+ * ---------------------------------------------------------------------- */
+let PA_READY = null;
+async function paInitOnce() {
+  // PA_MODULE 是 wrangler 预编译好的 WebAssembly.Module（rules: CompiledWasm）
+  if (!PA_READY) PA_READY = __wbg_init(PA_MODULE).then(() => true);
+  return PA_READY;
+}
+
+/** 生成口袋48 请求头里的 pa 签名（反爬，缺了会 403） */
+async function paSign() {
+  await paInitOnce();
+  return __x6c2adf8__();
+}
+
+/* ---- 下面是 wasm-bindgen 生成的胶水（原样搬运，仅去掉 export） ---- */
+let wasm;
+
+function addToExternrefTable0(obj) {
+    const idx = wasm.__externref_table_alloc();
+    wasm.__wbindgen_export_2.set(idx, obj);
+    return idx;
+}
+
+function handleError(f, args) {
+    try {
+        return f.apply(this, args);
+    } catch (e) {
+        const idx = addToExternrefTable0(e);
+        wasm.__wbindgen_exn_store(idx);
+    }
+}
+
+const cachedTextDecoder = (typeof TextDecoder !== 'undefined' ? new TextDecoder('utf-8', { ignoreBOM: true, fatal: true }) : { decode: () => { throw Error('TextDecoder not available') } } );
+
+if (typeof TextDecoder !== 'undefined') { cachedTextDecoder.decode(); };
+
+let cachedUint8ArrayMemory0 = null;
+
+function getUint8ArrayMemory0() {
+    if (cachedUint8ArrayMemory0 === null || cachedUint8ArrayMemory0.byteLength === 0) {
+        cachedUint8ArrayMemory0 = new Uint8Array(wasm.memory.buffer);
+    }
+    return cachedUint8ArrayMemory0;
+}
+
+function getStringFromWasm0(ptr, len) {
+    ptr = ptr >>> 0;
+    return cachedTextDecoder.decode(getUint8ArrayMemory0().subarray(ptr, ptr + len));
+}
+
+function isLikeNone(x) {
+    return x === undefined || x === null;
+}
+/**
+ * @returns {string}
+ */
+function __x6c2adf8__() {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.__x6c2adf8__();
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+async function __wbg_load(module, imports) {
+    if (typeof Response === 'function' && module instanceof Response) {
+        if (typeof WebAssembly.instantiateStreaming === 'function') {
+            try {
+                return await WebAssembly.instantiateStreaming(module, imports);
+
+            } catch (e) {
+                if (module.headers.get('Content-Type') != 'application/wasm') {
+                    console.warn("`WebAssembly.instantiateStreaming` failed because your server does not serve Wasm with `application/wasm` MIME type. Falling back to `WebAssembly.instantiate` which is slower. Original error:\n", e);
+
+                } else {
+                    throw e;
+                }
+            }
+        }
+
+        const bytes = await module.arrayBuffer();
+        return await WebAssembly.instantiate(bytes, imports);
+
+    } else {
+        const instance = await WebAssembly.instantiate(module, imports);
+
+        if (instance instanceof WebAssembly.Instance) {
+            return { instance, module };
+
+        } else {
+            return instance;
+        }
+    }
+}
+
+function __wbg_get_imports() {
+    const imports = {};
+    imports.wbg = {};
+    imports.wbg.__wbg_buffer_609cc3eee51ed158 = function(arg0) {
+        const ret = arg0.buffer;
+        return ret;
+    };
+    imports.wbg.__wbg_call_672a4d21634d4a24 = function() { return handleError(function (arg0, arg1) {
+        const ret = arg0.call(arg1);
+        return ret;
+    }, arguments) };
+    imports.wbg.__wbg_call_7cccdd69e0791ae2 = function() { return handleError(function (arg0, arg1, arg2) {
+        const ret = arg0.call(arg1, arg2);
+        return ret;
+    }, arguments) };
+    imports.wbg.__wbg_crypto_ed58b8e10a292839 = function(arg0) {
+        const ret = arg0.crypto;
+        return ret;
+    };
+    imports.wbg.__wbg_getRandomValues_bcb4912f16000dc4 = function() { return handleError(function (arg0, arg1) {
+        arg0.getRandomValues(arg1);
+    }, arguments) };
+    imports.wbg.__wbg_getTime_46267b1c24877e30 = function(arg0) {
+        const ret = arg0.getTime();
+        return ret;
+    };
+    imports.wbg.__wbg_msCrypto_0a36e2ec3a343d26 = function(arg0) {
+        const ret = arg0.msCrypto;
+        return ret;
+    };
+    imports.wbg.__wbg_new0_f788a2397c7ca929 = function() {
+        const ret = new Date();
+        return ret;
+    };
+    imports.wbg.__wbg_new_a12002a7f91c75be = function(arg0) {
+        const ret = new Uint8Array(arg0);
+        return ret;
+    };
+    imports.wbg.__wbg_newnoargs_105ed471475aaf50 = function(arg0, arg1) {
+        const ret = new Function(getStringFromWasm0(arg0, arg1));
+        return ret;
+    };
+    imports.wbg.__wbg_newwithbyteoffsetandlength_d97e637ebe145a9a = function(arg0, arg1, arg2) {
+        const ret = new Uint8Array(arg0, arg1 >>> 0, arg2 >>> 0);
+        return ret;
+    };
+    imports.wbg.__wbg_newwithlength_a381634e90c276d4 = function(arg0) {
+        const ret = new Uint8Array(arg0 >>> 0);
+        return ret;
+    };
+    imports.wbg.__wbg_node_02999533c4ea02e3 = function(arg0) {
+        const ret = arg0.node;
+        return ret;
+    };
+    imports.wbg.__wbg_process_5c1d670bc53614b8 = function(arg0) {
+        const ret = arg0.process;
+        return ret;
+    };
+    imports.wbg.__wbg_randomFillSync_ab2cfe79ebbf2740 = function() { return handleError(function (arg0, arg1) {
+        arg0.randomFillSync(arg1);
+    }, arguments) };
+    imports.wbg.__wbg_require_79b1e9274cde3c87 = function() { return handleError(function () {
+        const ret = module.require;
+        return ret;
+    }, arguments) };
+    imports.wbg.__wbg_set_65595bdd868b3009 = function(arg0, arg1, arg2) {
+        arg0.set(arg1, arg2 >>> 0);
+    };
+    imports.wbg.__wbg_static_accessor_GLOBAL_88a902d13a557d07 = function() {
+        const ret = typeof global === 'undefined' ? null : global;
+        return isLikeNone(ret) ? 0 : addToExternrefTable0(ret);
+    };
+    imports.wbg.__wbg_static_accessor_GLOBAL_THIS_56578be7e9f832b0 = function() {
+        const ret = typeof globalThis === 'undefined' ? null : globalThis;
+        return isLikeNone(ret) ? 0 : addToExternrefTable0(ret);
+    };
+    imports.wbg.__wbg_static_accessor_SELF_37c5d418e4bf5819 = function() {
+        const ret = typeof self === 'undefined' ? null : self;
+        return isLikeNone(ret) ? 0 : addToExternrefTable0(ret);
+    };
+    imports.wbg.__wbg_static_accessor_WINDOW_5de37043a91a9c40 = function() {
+        const ret = typeof window === 'undefined' ? null : window;
+        return isLikeNone(ret) ? 0 : addToExternrefTable0(ret);
+    };
+    imports.wbg.__wbg_subarray_aa9065fa9dc5df96 = function(arg0, arg1, arg2) {
+        const ret = arg0.subarray(arg1 >>> 0, arg2 >>> 0);
+        return ret;
+    };
+    imports.wbg.__wbg_versions_c71aa1626a93e0a1 = function(arg0) {
+        const ret = arg0.versions;
+        return ret;
+    };
+    imports.wbg.__wbindgen_init_externref_table = function() {
+        const table = wasm.__wbindgen_export_2;
+        const offset = table.grow(4);
+        table.set(0, undefined);
+        table.set(offset + 0, undefined);
+        table.set(offset + 1, null);
+        table.set(offset + 2, true);
+        table.set(offset + 3, false);
+        ;
+    };
+    imports.wbg.__wbindgen_is_function = function(arg0) {
+        const ret = typeof(arg0) === 'function';
+        return ret;
+    };
+    imports.wbg.__wbindgen_is_object = function(arg0) {
+        const val = arg0;
+        const ret = typeof(val) === 'object' && val !== null;
+        return ret;
+    };
+    imports.wbg.__wbindgen_is_string = function(arg0) {
+        const ret = typeof(arg0) === 'string';
+        return ret;
+    };
+    imports.wbg.__wbindgen_is_undefined = function(arg0) {
+        const ret = arg0 === undefined;
+        return ret;
+    };
+    imports.wbg.__wbindgen_memory = function() {
+        const ret = wasm.memory;
+        return ret;
+    };
+    imports.wbg.__wbindgen_string_new = function(arg0, arg1) {
+        const ret = getStringFromWasm0(arg0, arg1);
+        return ret;
+    };
+    imports.wbg.__wbindgen_throw = function(arg0, arg1) {
+        throw new Error(getStringFromWasm0(arg0, arg1));
+    };
+
+    return imports;
+}
+
+function __wbg_init_memory(imports, memory) {
+
+}
+
+function __wbg_finalize_init(instance, module) {
+    wasm = instance.exports;
+    __wbg_init.__wbindgen_wasm_module = module;
+    cachedUint8ArrayMemory0 = null;
+
+
+    wasm.__wbindgen_start();
+    return wasm;
+}
+
+function initSync(module) {
+    if (wasm !== undefined) return wasm;
+
+
+    if (typeof module !== 'undefined') {
+        if (Object.getPrototypeOf(module) === Object.prototype) {
+            ({module} = module)
+        } else {
+            console.warn('using deprecated parameters for `initSync()`; pass a single object instead')
+        }
+    }
+
+    const imports = __wbg_get_imports();
+
+    __wbg_init_memory(imports);
+
+    if (!(module instanceof WebAssembly.Module)) {
+        module = new WebAssembly.Module(module);
+    }
+
+    const instance = new WebAssembly.Instance(module, imports);
+
+    return __wbg_finalize_init(instance, module);
+}
+
+async function __wbg_init(module_or_path) {
+    if (wasm !== undefined) return wasm;
+
+
+    if (typeof module_or_path !== 'undefined') {
+        if (Object.getPrototypeOf(module_or_path) === Object.prototype) {
+            ({module_or_path} = module_or_path)
+        } else {
+            console.warn('using deprecated parameters for the initialization function; pass a single object instead')
+        }
+    }
+
+    if (typeof module_or_path === 'undefined') {
+        module_or_path = '2.wasm';
+    }
+    const imports = __wbg_get_imports();
+
+    if (typeof module_or_path === 'string' || (typeof Request === 'function' && module_or_path instanceof Request) || (typeof URL === 'function' && module_or_path instanceof URL)) {
+        module_or_path = fetch(module_or_path);
+    }
+
+    __wbg_init_memory(imports);
+
+    const { instance, module } = await __wbg_load(await module_or_path, imports);
+
+    return __wbg_finalize_init(instance, module);
+}
+/* ==== PA_INLINE_END ==== */
