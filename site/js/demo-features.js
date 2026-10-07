@@ -3714,10 +3714,64 @@
     }, { passive: true });
   }
 
+  /* 功能 ⑳ 照片皮肤（毛玻璃叠加 + 可切换；候选图从微博美图 DATA.social 取） */
+  function injectSkin() {
+    if (!document.getElementById('skinLayer')) {
+      const layer = document.createElement('div'); layer.id = 'skinLayer';
+      document.body.appendChild(layer);
+    }
+    if (!document.getElementById('skinBtn')) {
+      const btn = document.createElement('button');
+      btn.id = 'skinBtn'; btn.className = 'skin-fab'; btn.textContent = '🎨';
+      btn.setAttribute('aria-label', '换皮肤');
+      btn.onclick = openSkinPanel;
+      document.body.appendChild(btn);
+    }
+    if (!document.getElementById('skinPanel')) {
+      const p = document.createElement('div'); p.id = 'skinPanel'; p.className = 'skin-panel';
+      document.body.appendChild(p);
+    }
+    const saved = LS.get('wyc-skin');
+    if (saved) applySkin(saved);
+    document.addEventListener('click', (e) => {
+      const p = document.getElementById('skinPanel');
+      if (p && p.classList.contains('on') && !p.contains(e.target) && e.target.id !== 'skinBtn') p.classList.remove('on');
+    });
+  }
+  function applySkin(url) {
+    const layer = document.getElementById('skinLayer');
+    if (url) { layer.style.backgroundImage = 'url("' + proxyImg(url) + '")'; document.body.setAttribute('data-skin', '1'); }
+    else { layer.style.backgroundImage = 'none'; document.body.removeAttribute('data-skin'); }
+    LS.set('wyc-skin', url || '');
+    document.querySelectorAll('.skin-thumb').forEach((t) => t.classList.toggle('active', t.dataset.url === (url || '')));
+  }
+  function openSkinPanel() {
+    const p = document.getElementById('skinPanel');
+    if (p.classList.contains('on')) { p.classList.remove('on'); return; }
+    const social = (typeof DATA !== 'undefined' && DATA.social) || [];
+    const seen = {}; const picks = [];
+    social.forEach((it) => {
+      if (it.k === 'photo' && it.p && it.p[0] && !seen[it.p[0]]) { seen[it.p[0]] = 1; picks.push(it.p[0]); }
+    });
+    const list = picks.slice(0, 9);
+    let html = '<div class="skin-grid">';
+    html += '<div class="skin-thumb skin-none" data-url="" style="background:linear-gradient(135deg,#eaf6fb,#fdeef4)"><span>纯色</span></div>';
+    list.forEach((u) => {
+      html += '<div class="skin-thumb" data-url="' + esc(u) + '" style="background-image:url(\'' + proxyImg(u) + '\')"></div>';
+    });
+    html += '</div><button class="skin-reset">恢复默认纯色</button>';
+    p.innerHTML = html;
+    const reset = p.querySelector('.skin-reset'); if (reset) reset.onclick = () => applySkin('');
+    const cur = LS.get('wyc-skin') || '';
+    p.querySelectorAll('.skin-thumb').forEach((t) => { t.classList.toggle('active', t.dataset.url === cur); t.onclick = () => applySkin(t.dataset.url); });
+    p.classList.add('on');
+  }
+
   function boot() {
     injectToolbar();
     injectCalendar();
     injectChips();
+    injectSkin();
     buildHisDropdown();
     injectBlindBox();
     syncChipsTab();
