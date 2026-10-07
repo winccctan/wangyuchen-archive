@@ -1370,3 +1370,44 @@ button, select, input, textarea, a, .tkc-cell, .tkc-nav, .tkc-btn, .tkc-sel { to
 .ptr span { display: block; padding-bottom: 10px; }
 .ptr.dragging { transition: none; }
 .ptr.on { height: 56px; transition: height .22s ease; }
+
+/* ==========================================================================
+   ⑳ 照片皮肤（毛玻璃叠加 + 可切换；候选图从微博美图 DATA.social 取）
+   默认态 = 原蓝渐变顶栏 + 白字（style.css 不改）；选了照片皮肤态 = 顶栏变白半透明。
+   照片上的白色遮罩越淡 → 照片越清楚。d73 按站长「透明度还得高一点」由 .52 降到 .28。
+   遮罩淡了以后文字靠 blur 撑可读性，所以卡片本身别跟着太透（.50 + blur 18px）。
+   ========================================================================== */
+#skinLayer { position: fixed; inset: 0; z-index: -2; background-size: cover; background-position: center;
+  background-repeat: no-repeat; background-color: transparent; pointer-events: none; }
+body[data-skin] { background: transparent; }
+body[data-skin] #skinLayer::after { content: ''; position: fixed; inset: 0; z-index: -1;
+  background: rgba(247, 249, 252, .28); }
+body[data-skin] .card,
+body[data-skin] .sg-card,
+body[data-skin] .dm-modal {
+  background: rgba(255, 255, 255, .50) !important;
+  -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, .6);
+}
+body[data-skin] .site-header {
+  background: rgba(255, 255, 255, .26) !important;
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  color: var(--text, #26262c) !important;
+}
+.skin-fab { position: fixed; top: 10px; right: 10px; z-index: 60; width: 38px; height: 38px; border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, .6); background: rgba(255, 255, 255, .82);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  font-size: 17px; line-height: 1; cursor: pointer; box-shadow: 0 2px 8px rgba(0, 0, 0, .12); padding: 0; }
+.skin-fab:active { transform: scale(.94); }
+.skin-panel { position: fixed; top: 54px; right: 10px; z-index: 61; width: 244px; max-height: 62vh; overflow: auto;
+  background: #fff; border-radius: 14px; padding: 10px; box-shadow: 0 8px 28px rgba(0, 0, 0, .18); display: none; }
+.skin-panel.on { display: block; }
+.skin-panel .skin-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.skin-thumb { position: relative; aspect-ratio: 1; border-radius: 8px; background-size: cover; background-position: center;
+  cursor: pointer; border: 2px solid transparent; display: flex; align-items: flex-end; justify-content: center;
+  overflow: hidden; font-size: 11px; color: #555; }
+.skin-thumb span { padding: 2px 0; width: 100%; text-align: center; background: rgba(255, 255, 255, .7); }
+.skin-thumb.active { border-color: var(--primary, #ff7aa2); }
+.skin-reset { margin-top: 9px; width: 100%; padding: 7px; border: 1px solid #e3e3e3; border-radius: 9px;
+  background: #fafafa; cursor: pointer; font-size: 12.5px; color: #555; }
+.skin-reset:active { background: #f0f0f0; }
