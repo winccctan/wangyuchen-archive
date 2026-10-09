@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<title>行程后台</title>
+<style>
+  :root { --ink:#123a45; --ink2:#5b7c87; --line:rgba(13,69,86,.14); --brand:#0f7f9b; --bg:#eef7fa; }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:14px 12px 60px; background:var(--bg); color:var(--ink);
+    font:15px/1.6 -apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif; }
+  h1 { font-size:19px; margin:6px 0 14px; }
+  h2 { font-size:15px; margin:22px 0 8px; color:var(--brand); }
+  .card { background:#fff; border:1px solid var(--line); border-radius:14px; padding:14px; margin-bottom:14px; }
+  label { display:block; font-size:13px; color:var(--ink2); margin:10px 0 4px; }
+  input, textarea, select { width:100%; font:inherit; padding:11px 12px; border:1px solid var(--line);
+    border-radius:10px; background:#fff; color:var(--ink); -webkit-appearance:none; }
+  textarea { min-height:130px; line-height:1.5; }
+  textarea.sm { min-height:96px; }
+  button { width:100%; font:inherit; font-weight:600; padding:13px; border:0; border-radius:12px;
+    background:var(--brand); color:#fff; margin-top:10px; }
+  button.ghost { background:#fff; color:var(--brand); border:1px solid var(--brand); }
+  button.gray { background:#e3eef2; color:#40595f; }
+  button.mini { width:auto; padding:7px 12px; font-size:13px; font-weight:500; margin:0; }
+  .row { display:flex; gap:8px; }
+  .row > * { flex:1; }
+  .item { border:1px solid var(--line); border-radius:12px; padding:10px; margin-bottom:10px; background:#fbfdfe; }
+  .item input, .item select { padding:9px 10px; font-size:14px; margin-bottom:6px; }
+  .item .top { display:flex; gap:8px; align-items:center; }
+  .kind { font-size:12px; padding:3px 8px; border-radius:8px; background:rgba(62,201,221,.16); color:#0f8fa8; }
+  .kind.meet { background:rgba(224,122,154,.15); color:#c9557e; }
+  .log { font-size:13px; color:var(--ink2); border-top:1px dashed var(--line); padding:8px 0; }
+  .log b { color:var(--ink); }
+  .msg { padding:10px 12px; border-radius:10px; background:#e6f6f2; color:#0f6e56; margin:10px 0; font-size:14px; }
+  .msg.bad { background:#fdecec; color:#a32d2d; }
+  .hint { font-size:12.5px; color:var(--ink2); margin:6px 0 0; }
+  .muted { color:var(--ink2); font-size:13px; }
+  .hide { display:none; }
+  .head { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .addrow { margin-top:8px; }
+  .li { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+  .li input { margin:0; flex:1; }
+  .li .mini { flex:none; }
+  .ed input, .ed select { margin-bottom:6px; }
+</style>
+</head>
+<body>
+
+<div id="login" class="card">
+  <h1>行程后台</h1>
+  <label for="pw">密码</label>
+  <input id="pw" type="password" autocomplete="current-password" placeholder="请输入后台密码">
+  <button id="btnLogin">登录</button>
+  <p class="hint">登录状态保留 7 天。这个页面不对外公开，别转发地址。</p>
+  <div id="loginMsg"></div>
+</div>
+
+<div id="main" class="hide">
+  <div class="head"><h1>行程后台</h1><button id="btnOut" class="mini gray">退出</button></div>
+
+  <h2>1 · 粘贴新行程</h2>
+  <div class="card">
+    <label for="txt">把微博正文粘进来（一行一场）</label>
+    <textarea id="txt" placeholder="例如：&#10;9月26日 周六&#10;14:00 《拾忆：TEAM NIII》第二十八场&#10;17:30-19:30 中秋专场答谢见面会"></textarea>
+    <div class="row">
+      <div><label for="year">年份（正文没写年份时用它）</label><input id="year" type="number" value="2026"></div>
+      <div><label for="src">来源链接（选填）</label><input id="src" placeholder="https://weibo.com/..."></div>
+    </div>
+    <button id="btnParse">解析成条目</button>
+    <button id="btnAi" class="ghost">解析不出来？用 AI 再试一次</button>
+    <p class="hint">微博接口现在必须登录才能抓，所以是「复制正文粘进来」而不是填链接自动抓。解析完下面可以逐条改。</p>
+    <div id="parseMsg"></div>
+  </div>
+
+  <div id="editWrap" class="hide">
+    <h2>2 · 核对后发布</h2>
+    <div class="card">
+      <div id="editList"></div>
+      <button id="btnAdd" class="gray">＋ 手动加一条</button>
+      <button id="btnPublish">合并发布（只加新的，不删旧的）</button>
+      <button id="btnReplace" class="ghost">整份覆盖（谨慎）</button>
+      <div id="pubMsg"></div>
+    </div>
+  </div>
+
+  <h2>3 · 券种 / 计分</h2>
+  <div class="card">
+    <label for="ticketText">可用券种</label>
+    <textarea id="ticketText" class="sm" placeholder="例：&#10;《终极殿堂》握手券&#10;《Forever Young》《热恋专属(Love Ver.)》握手券、签名券、合影券"></textarea>
+    <p class="hint">一行一段。想换行就换行，怎么顺手怎么写，保存时会自动用「；」连起来。</p>
+    <label for="scorePeriod">计分时段</label>
+    <input id="scorePeriod" placeholder="9月26日 - 10月7日">
+    <label>计分规则（一行一条）</label>
+    <div id="scoreList"></div>
+    <button id="btnScoreAdd" class="mini gray addrow">＋ 加一条规则</button>
+    <p class="hint">这一块不用发行程也能单独保存。全部删掉再保存 = 清空，前端就不再显示它。</p>
+    <button id="btnMeta">保存券种 / 计分</button>
+    <div id="metaMsg"></div>
+  </div>
+
+  <h2>4 · 当前存档</h2>
+  <div class="card" id="curWrap"><p class="muted">读取中…</p></div>
+
+  <h2>5 · 提交历史</h2>
+  <div class="card" id="logWrap"><p class="muted">读取中…</p></div>
+
+  <h2>6 · 改密码</h2>
+  <div class="card">
+    <label for="oldP">当前密码</label><input id="oldP" type="password" autocomplete="current-password">
+    <label for="newP">新密码（至少 8 位）</label><input id="newP" type="password" autocomplete="new-password">
+    <button id="btnPass" class="gray">改密码</button>
+    <div id="passMsg"></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var API = location.origin;
+  var TOKEN = localStorage.getItem('wyc.admin.token') || '';
+  var EXP = Number(localStorage.getItem('wyc.admin.exp') || 0);
+  var cur = null;                    // 当前存档（KV 里的全量）
+  var rows = [];                     // 待发布条目（可编辑）
+  var scrs = [];                     // 计分规则（一行一条）
+
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function show(el, ok) { el.classList[ok ? 'remove' : 'add']('hide'); }
+  function msg(id, text, bad) {
+    var el = $(id);
+    if (!text) { el.innerHTML = ''; return; }
+    el.innerHTML = '<div class="msg' + (bad ? ' bad' : '') + '">' + text + '</div>';
+  }
+  function call(path, body) {
+    var opt = { headers: { 'content-type': 'application/json', 'x-admin-token': TOKEN } };
+    if (body) { opt.method = 'POST'; opt.body = JSON.stringify(body); }
+    return fetch(API + path, opt).then(function (r) {
+      return r.json().then(function (j) {
+        if (r.status === 401 || r.status === 403) { logout(); throw new Error('登录已过期，请重新登录'); }
+        return j;
+      });
+    });
+  }
+  function logout() {
+    localStorage.removeItem('wyc.admin.token');
+    localStorage.removeItem('wyc.admin.exp');
+    TOKEN = ''; EXP = 0;
+    show($('main'), false); show($('login'), true);
+  }
+  function dayText(ts) {
+    var d = new Date(ts + 8 * 3600 * 1000);
+    var p = function (n) { return String(n).padStart(2, '0'); };
+    return d.getUTCMonth() + 1 + '月' + d.getUTCDate() + '日 ' + p(d.getUTCHours()) + ':' + p(d.getUTCMinutes());
+  }
+
+  // ---- 登录 ----
+  $('btnLogin').onclick = function () {
+    var pass = $('pw').value.trim();
+    if (!pass) { msg('loginMsg', '请输入密码', true); return; }
+    $('btnLogin').disabled = true; $('btnLogin').textContent = '登录中…';
+    fetch(API + '/api/admin/login', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ pass: pass })
+    }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        if (!res.ok || !res.j.ok) { throw new Error((res.j && res.j.error) || '登录失败'); }
+        TOKEN = res.j.token; EXP = res.j.exp || 0;
+        localStorage.setItem('wyc.admin.token', TOKEN);
+        localStorage.setItem('wyc.admin.exp', String(EXP));
+        $('pw').value = '';
+        afterLogin();
+      })
+      .catch(function (e) { msg('loginMsg', e.message, true); })
+      .then(function () { $('btnLogin').disabled = false; $('btnLogin').textContent = '登录'; });
+  };
+  $('btnOut').onclick = logout;
+
+  function afterLogin() {
+    show($('login'), false); show($('main'), true);
+    loadCur();
+  }
+
+  // ---- 解析 ----
+  function doParse(useAi) {
+    var text = $('txt').value.trim();
+    if (!text) { msg('parseMsg', '先粘贴行程正文', true); return; }
+    msg('parseMsg', '解析中…');
+    call('/api/admin/parse', { text: text, year: $('year').value, ai: !!useAi })
+      .then(function (j) {
+        rows = j.items || [];
+        if (!rows.length) { msg('parseMsg', '没解析出条目，可以直接点「手动加一条」自己填', true); return; }
+        var tip = '解析出 ' + rows.length + ' 条（' + (j.via === 'ai' ? 'AI' : '规则') + '）';
+        if (j.noTime) tip += '，其中 ' + j.noTime + ' 条没认出时间，可在下面表格里补';
+        msg('parseMsg', tip + '，请核对后再发布');
+        renderEdit();
+        show($('editWrap'), true);
+        $('editWrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      })
+      .catch(function (e) { msg('parseMsg', e.message, true); });
+  }
+  $('btnParse').onclick = function () { doParse(false); };
+  $('btnAi').onclick = function () { doParse(true); };
+  $('btnAdd').onclick = function () {
+    rows.push({ date: '', time: '', title: '', kind: '公演' });
+    renderEdit();
+  };
+
+  function renderEdit() {
+    var box = $('editList');
+    box.innerHTML = '';
+    rows.forEach(function (r, i) {
+      var d = document.createElement('div');
+      d.className = 'item';
+      d.innerHTML = ''
+        + '<div class="top"><span class="kind' + (r.kind === '见面会' ? ' meet' : '') + '">' + (r.kind === '见面会' ? '见面会' : '公演') + '</span>'
+        + '<button class="mini gray" data-del="' + i + '" style="margin-left:auto">删除</button></div>'
+        + '<input type="date" value="' + (r.date || '') + '" data-f="date" data-i="' + i + '">'
+        + '<input placeholder="时间，如 14:00 或 17:30-19:30" value="' + (r.time || '') + '" data-f="time" data-i="' + i + '">'
+        + '<input placeholder="活动名称" value="' + (r.title || '').replace(/"/g, '&quot;') + '" data-f="title" data-i="' + i + '">'
+        + '<select data-f="kind" data-i="' + i + '"><option' + (r.kind === '公演' ? ' selected' : '') + '>公演</option><option' + (r.kind === '见面会' ? ' selected' : '') + '>见面会</option></select>';
+      box.appendChild(d);
+    });
+    box.querySelectorAll('[data-f]').forEach(function (el) {
+      el.onchange = function () { rows[Number(el.getAttribute('data-i'))][el.getAttribute('data-f')] = el.value; };
+    });
+    box.querySelectorAll('[data-del]').forEach(function (el) {
+      el.onclick = function () { rows.splice(Number(el.getAttribute('data-del')), 1); renderEdit(); };
+    });
+  }
+
+  // ---- 券种 / 计分（可单独保存，不用发行程也能改）----
+  // 券种就是一整段文本（站长要的就是「一大段，自己换行」）；
+  // 存进 KV 时再压成一行（换行 → 「；」），因为海报是 canvas 单行 wrapText，存换行会画不出来。
+  function readTicket() {
+    return String($('ticketText').value || '').split(/\r?\n/)
+      .map(function (s) { return s.trim(); }).filter(Boolean).join('；');
+  }
+  function renderLists() {
+    function draw(box, arr, key, delKey, empty, ph) {
+      box.innerHTML = '';
+      if (!arr.length) { box.innerHTML = '<p class="muted">' + empty + '</p>'; return; }
+      arr.forEach(function (v, i) {
+        var d = document.createElement('div');
+        d.className = 'li';
+        d.innerHTML = '<input value="' + esc(v) + '" placeholder="' + esc(ph) + '" data-' + key + '="' + i + '">'
+          + '<button class="mini gray" data-' + delKey + '="' + i + '">×</button>';
+        box.appendChild(d);
+      });
+      box.querySelectorAll('[data-' + key + ']').forEach(function (el) {
+        el.oninput = function () { arr[Number(el.getAttribute('data-' + key))] = el.value; };
+      });
+      box.querySelectorAll('[data-' + delKey + ']').forEach(function (el) {
+        el.onclick = function () { arr.splice(Number(el.getAttribute('data-' + delKey)), 1); renderLists(); };
+      });
+    }
+    // 数据还没回来时显示「读取中…」，别让站长误以为真的没有、顺手点了「加一条」
+    var wait = '读取中…';
+    draw($('scoreList'), scrs, 'sc', 'scdel', loaded ? '还没填计分规则' : wait, '如 每场公演 1 分');
+  }
+  $('btnScoreAdd').onclick = function () { if (!loaded) return; scrs.push(''); renderLists(); };
+  $('btnMeta').onclick = function () {
+    var tk = readTicket();
+    var per = $('scorePeriod').value.trim();
+    var rules = scrs.map(function (s) { return String(s).trim(); }).filter(Boolean);
+    var body = { ticket: tk, score: (rules.length || per) ? { period: per, rules: rules } : null };
+    msg('metaMsg', '保存中…');
+    call('/api/admin/schedule', body).then(function (j) {
+      msg('metaMsg', '已保存（行程仍为 ' + j.total + ' 条，没动）');
+      loadCur();
+    }).catch(function (e) { msg('metaMsg', e.message, true); });
+  };
+
+  // ---- 发布 ----
+  function publish(replace) {
+    var items = rows.filter(function (r) { return r.date && r.title; });
+    if (!items.length) { msg('pubMsg', '没有可发布的条目', true); return; }
+    if (replace && !confirm('整份覆盖会替换掉存档里的全部行程，确定？')) return;
+    var body = { items: items, replace: !!replace };
+    var src = $('src').value.trim();
+    if (src) body.source = { name: '微博', url: src, pub: new Date().toISOString().slice(0, 10) };
+    msg('pubMsg', '发布中…');
+    call('/api/admin/schedule', body).then(function (j) {
+      var t = '已发布：新增 ' + (j.added || []).length + ' 条，更新 ' + (j.updated || []).length + ' 条，现在共 ' + j.total + ' 条';
+      msg('pubMsg', t);
+      rows = [];
+      show($('editWrap'), false);
+      $('txt').value = '';
+      loadCur();
+    }).catch(function (e) { msg('pubMsg', e.message, true); });
+  }
+  $('btnPublish').onclick = function () { publish(false); };
+  $('btnReplace').onclick = function () { publish(true); };
+
+  // ---- 当前存档（可就地编辑 / 删除）----
+  var curEd = -1;            // 正在编辑的行号
+  var curDraft = null;       // 编辑中的副本
+
+  var loaded = false;                // 服务端数据是否已回填（回填后就别再覆盖站长正在改的内容）
+
+  function renderMeta() {
+    // 只在第一次回填。之后无论「删了一条行程」「发布了新行程」触发几次 loadCur，
+    // 都不再动站长手上的券种 / 计分 —— 否则他改到一半会被服务端数据冲掉。
+    if (!loaded) {
+      // 券种存进去是一行（用「；」隔开），这里还原成一段多行文本方便看改。
+      // ⚠️ 只按「；」切，**不按「、」或「，」切** —— 一条券种内部本来就会带「、」
+      //   （如「握手券、签名券、合影券」属于同一组歌），切开再 join 回来就把归属弄丢了。
+      var tk = (cur && cur.ticket) ? String(cur.ticket) : '';
+      $('ticketText').value = tk.replace(/\s*[；;]\s*/g, '\n');
+      var sc = (cur && cur.score) || {};
+      $('scorePeriod').value = sc.period || '';
+      scrs = (sc.rules || []).slice();
+      loaded = true;
+    }
+    renderLists();
+  }
+
+  function renderCur() {
+    var box = $('curWrap');
+    if (!cur.items || !cur.items.length) { box.innerHTML = '<p class="muted">存档还是空的</p>'; return; }
+    box.innerHTML = '';
+    cur.items.forEach(function (it, i) {
+      var d = document.createElement('div');
+      d.className = 'item';
+      if (curEd === i) {
+        var t = curDraft;
+        d.className = 'item ed';
+        d.innerHTML = '<div class="top"><span class="kind' + (t.kind === '见面会' ? ' meet' : '') + '">'
+          + (t.kind === '见面会' ? '见面会' : '公演') + '</span>'
+          + '<button class="mini" data-save="' + i + '" style="margin-left:auto">保存</button>'
+          + '<button class="mini gray" data-cancel="1">取消</button></div>'
+          + '<input type="date" value="' + esc(t.date) + '" data-ef="date">'
+          + '<input value="' + esc(t.time) + '" placeholder="时间，如 14:00 或 17:30-19:30" data-ef="time">'
+          + '<input value="' + esc(t.title) + '" placeholder="活动名称" data-ef="title">'
+          + '<select data-ef="kind"><option' + (t.kind === '公演' ? ' selected' : '') + '>公演</option>'
+          + '<option' + (t.kind === '见面会' ? ' selected' : '') + '>见面会</option></select>';
+      } else {
+        d.innerHTML = '<div class="top"><span class="kind' + (it.kind === '见面会' ? ' meet' : '') + '">'
+          + (it.kind === '见面会' ? '见面会' : '公演') + '</span>'
+          + '<span class="muted">' + esc(it.date) + ' ' + esc(it.weekday || '') + ' ' + esc(it.time || '') + '</span>'
+          + '<button class="mini gray" data-ed="' + i + '" style="margin-left:auto">编辑</button>'
+          + '<button class="mini gray" data-rm="' + i + '">删除</button></div>'
+          + '<div>' + esc(it.title) + '</div>';
+      }
+      box.appendChild(d);
+    });
+    box.querySelectorAll('[data-ef]').forEach(function (el) {
+      var fn = function () { curDraft[el.getAttribute('data-ef')] = el.value; };
+      el.oninput = fn; el.onchange = fn;
+    });
+    box.querySelectorAll('[data-ed]').forEach(function (el) {
+      el.onclick = function () {
+        curEd = Number(el.getAttribute('data-ed'));
+        curDraft = Object.assign({}, cur.items[curEd]);
+        renderCur();
+      };
+    });
+    box.querySelectorAll('[data-cancel]').forEach(function (el) {
+      el.onclick = function () { curEd = -1; curDraft = null; renderCur(); };
+    });
+    box.querySelectorAll('[data-save]').forEach(function (el) {
+      el.onclick = function () { saveItem(Number(el.getAttribute('data-save'))); };
+    });
+    box.querySelectorAll('[data-rm]').forEach(function (el) {
+      el.onclick = function () {
+        var i = Number(el.getAttribute('data-rm'));
+        if (!confirm('删除「' + cur.items[i].title + '」？')) return;
+        call('/api/admin/schedule', { remove: [{ date: cur.items[i].date, title: cur.items[i].title }] })
+          .then(function () { loadCur(); }).catch(function (e) { alert(e.message); });
+      };
+    });
+  }
+
+  // 改了日期或标题 = 换了一把主键，所以「先删旧键、再加新条目」一次提交
+  // （worker 里 remove 先于 items 处理，顺序安全）；同键改动走更新路径，能保住 flags 标记。
+  function saveItem(i) {
+    var old = cur.items[i], t = curDraft;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(t.date))) { alert('日期没选'); return; }
+    if (!String(t.title).trim()) { alert('活动名称不能为空'); return; }
+    var row = {
+      date: String(t.date), time: String(t.time || '').trim(),
+      title: String(t.title).trim(), kind: (t.kind === '见面会') ? '见面会' : '公演',
+    };
+    if (old.flags) row.flags = old.flags;
+    var body = { items: [row] };
+    if (row.date !== old.date || row.title !== old.title) body.remove = [{ date: old.date, title: old.title }];
+    call('/api/admin/schedule', body)
+      .then(function () { curEd = -1; curDraft = null; loadCur(); })
+      .catch(function (e) { alert(e.message); });
+  }
+
+  function loadCur() {
+    call('/api/admin/schedule').then(function (j) {
+      cur = j.schedule || { items: [] };
+      curEd = -1; curDraft = null;
+      renderMeta();
+      renderCur();
+      // 提交历史
+      var lw = $('logWrap');
+      var log = j.log || [];
+      if (!log.length) { lw.innerHTML = '<p class="muted">还没有提交记录</p>'; }
+      else {
+        lw.innerHTML = log.slice(0, 12).map(function (l) {
+          return '<div class="log"><b>' + dayText(l.at) + '</b> · 共 ' + l.n + ' 条 · 新增 ' + (l.added || []).length
+            + ' · 更新 ' + (l.updated || []).length + ((l.removed && l.removed.length) ? ' · 删除 ' + l.removed.length : '')
+            + (l.src ? '<br><a href="' + l.src + '" target="_blank" rel="noopener">来源</a>' : '') + '</div>';
+        }).join('');
+      }
+    }).catch(function (e) { $('curWrap').innerHTML = '<p class="muted">' + e.message + '</p>'; });
+  }
+
+  // ---- 改密码 ----
+  $('btnPass').onclick = function () {
+    var o = $('oldP').value, n = $('newP').value;
+    if (n.length < 8) { msg('passMsg', '新密码至少 8 位', true); return; }
+    call('/api/admin/pass', { old: o, next: n }).then(function (j) {
+      if (j && j.token) {
+        TOKEN = j.token;
+        localStorage.setItem('wyc.admin.token', TOKEN);
+        msg('passMsg', '密码已改，登录状态已刷新');
+        $('oldP').value = ''; $('newP').value = '';
+      }
+    }).catch(function (e) { msg('passMsg', e.message, true); });
+  };
+
+  // ---- 启动 ----
+  if (TOKEN && EXP > Date.now()) { afterLogin(); }
+  else if (TOKEN) { logout(); }
+})();
+</script>
+</body>
+</html>
