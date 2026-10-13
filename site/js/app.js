@@ -1253,7 +1253,7 @@ function syncToolbarSearch() {
   //    并且 style.css 里必须有 `.search-wrap[hidden]{display:none}` —— 显式 display:flex 会盖掉 UA 的 [hidden]。
   const w = $('#searchWrap') || $('#searchInput');
   const isGuide = state.tab === 'guide' || state.tab === 'schedule' || state.tab === 'mine';
-  const isSongs = state.tab === 'performances' && state.perfSub === 'songs';
+  const isSongs = state.tab === 'performances' && (state.perfSub === 'songs' || state.perfSub === 'music');
   const hide = isGuide || isSongs;
   if (w) w.hidden = hide;
   // 📅 时间按钮同进退：曲目列表不吃时间筛选，留着它是误导（点了没反应）
@@ -3458,7 +3458,8 @@ async function buildMineMemo(u, firstKey, activeSet) {
 const PERF_SUBS = [
   ['perf', '公演回放'],
   ['cuts', '公演cut'],
-  ['songs', '曲目']
+  ['songs', '曲目'],
+  ['music', '音乐作品']
 ];
 
 function renderPerformances() {
@@ -3485,6 +3486,11 @@ function renderPerfSub() {
     //    否则「在发言页搜过的词」会顺着 state.query 把曲目列表也悄悄过滤掉。
     state.perfJumpTo = null;    // 离开「定位视图」，下次进公演回放就是完整列表
     box.innerHTML = (typeof renderPerfSongs === 'function') ? renderPerfSongs('') : '';
+    return;
+  }
+  if (state.perfSub === 'music') {
+    // 音乐作品：无封面纯列表，一条一首；不吃顶部搜索（传 ''），与曲目一致。
+    box.innerHTML = (typeof renderMusicWorks === 'function') ? renderMusicWorks('') : '';
     return;
   }
   // 公演回放（原 renderPerformances 内容）

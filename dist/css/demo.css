@@ -1411,3 +1411,28 @@ body[data-skin] .site-header {
 .skin-reset { margin-top: 9px; width: 100%; padding: 7px; border: 1px solid #e3e3e3; border-radius: 9px;
   background: #fafafa; cursor: pointer; font-size: 12.5px; color: #555; }
 .skin-reset:active { background: #f0f0f0; }
+
+/* ===== 公演 → 音乐作品（无封面纯列表，一条一首） ===== */
+.mw-box { padding: 4px 2px; }
+.mw-head { font-size: 13px; color: #666; padding: 6px 4px 10px; }
+.mw-list { list-style: none; margin: 0; padding: 0; }
+.mw-row { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px;
+  padding: 11px 4px; border-bottom: 1px solid #eee; }
+.mw-row:last-child { border-bottom: none; }
+.mw-main { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; min-width: 160px; }
+.mw-title { font-size: 15px; font-weight: 600; color: #222; }
+.mw-credit { font-size: 12px; color: #999; }
+.mw-meta { font-size: 12.5px; color: #888; flex: 1 1 auto; }
+.mw-plats { display: flex; gap: 6px; }
+.mw-plat { font-size: 11.5px; padding: 2px 9px; border-radius: 20px; text-decoration: none;
+  color: #fff; white-space: nowrap; }
+.mw-qq { background: #31c27c; }
+.mw-nc { background: #c20c0c; }
+.mw-bili { background: #fb7299; }
+.mw-nc.mw-exact { box-shadow: 0 0 0 2px #fff, 0 0 0 3.5px #c20c0c; font-weight: 600; }
+.mw-bili.mw-exact { box-shadow: 0 0 0 2px #fff, 0 0 0 3.5px #fb7299; font-weight: 600; }
+.mw-plat:active { opacity: .82; }
+@media (max-width: 560px) {
+  .mw-meta { flex-basis: 100%; order: 3; }
+  .mw-plats { order: 4; }
+}

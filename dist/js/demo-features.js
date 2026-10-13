@@ -4699,6 +4699,48 @@
     if (e.target && e.target.closest && e.target.closest('[data-sub="songs"]')) trk('song:open');
   }, true);
 
+  /** 「音乐作品」子标签页：王语晨署名参与的发行曲 / 单曲，**无封面纯列表（一条一首）**。
+   *  - 数据 js/music-works.js → window.__MUSIC_WORKS__
+   *  - 各平台按钮只在确有该平台音源时才挂（nc / qqmid / bili），避免「打不开对应歌」
+   *  - ❌ 不落地音频文件（NCM / mgg 加密 + 版权） */
+  window.renderMusicWorks = function () {
+    const list = (typeof window !== 'undefined' && Array.isArray(window.__MUSIC_WORKS__)) ? window.__MUSIC_WORKS__ : [];
+    if (!list.length) return '<div class="empty-state">暂无音乐作品数据。</div>';
+    const esc = (typeof window.escapeHtml === 'function') ? window.escapeHtml : function (s) { return String(s); };
+    const rows = list.map((w) => {
+      const t = w.title || '未命名';
+      const credit = w.credit ? esc(w.credit) : '';
+      const album = w.album ? esc(w.album) : '';
+      const year = w.year ? w.year : '';
+      const meta = [album, year].filter(Boolean).join(' · ');
+      // QQ音乐：只有拿到精确 songmid 才显示按钮（点开即该首）；没有就不挂，避免「打不开对应歌」
+      const qqBtn = w.qqmid
+        ? '<a class="mw-plat mw-qq mw-exact" href="https://y.qq.com/n/ryqq/songDetail/' + encodeURIComponent(w.qqmid) + '" target="_blank" rel="noopener noreferrer">QQ音乐·直达</a>'
+        : '';
+      // 网易云：只有拿到精确 id（nc）才显示按钮，否则不放（避免「打不开对应歌」）
+      const ncBtn = w.nc
+        ? '<a class="mw-plat mw-nc mw-exact" href="https://music.163.com/song/' + encodeURIComponent(w.nc) + '" target="_blank" rel="noopener noreferrer">网易云·直达</a>'
+        : '';
+      // B站：有官方音源（bili=BV号，团体官方账号上传）才显示按钮，否则不放（饭拍 cut 不算官方音源）
+      const biliBtn = w.bili
+        ? '<a class="mw-plat mw-bili mw-exact" href="https://www.bilibili.com/video/' + encodeURIComponent(w.bili) + '" target="_blank" rel="noopener noreferrer">B站·官方</a>'
+        : '';
+      return '<li class="mw-row">'
+        + '<div class="mw-main"><span class="mw-title">' + esc(t) + '</span>'
+        + (credit ? '<span class="mw-credit">' + credit + '</span>' : '') + '</div>'
+        + (meta ? '<div class="mw-meta">' + meta + '</div>' : '')
+        + '<div class="mw-plats">'
+        + qqBtn
+        + ncBtn
+        + biliBtn
+        + '</div></li>';
+    }).join('');
+    return '<div class="mw-box">'
+      + '<div class="mw-head">音乐作品 · 收录 ' + list.length + ' 首</div>'
+      + '<ul class="mw-list">' + rows + '</ul>'
+      + '</div>';
+  };
+
   // 等 app.js 的 init() 把数据拉回来再启动
   (function waitData(n) {
     const ok = (typeof DATA !== 'undefined') && (DATA.messages.length > 0 || DATA.live.length > 0);
