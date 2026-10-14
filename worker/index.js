@@ -709,17 +709,83 @@ async function handleTrack(url, request, env, ctx) {
  * 🔴 报表里只有站长看得到；all48 站内不展示这些数字（站长 2026-10-15 定的）。
  */
 async function handleFol(url, request, env, ctx) {
+  // 跨域：all48 的前端直接 POST 到这里（关注名单可能上百个，URL 装不下，只能走 body）
+  const CORS = {
+    'access-control-allow-origin': 'https://all48.wyc0518.cc',
+    'access-control-allow-methods': 'POST, GET, OPTIONS',
+    'access-control-allow-headers': 'Content-Type',
+    'access-control-max-age': '86400',
+  };
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
+  const kv = env && env.SECRETS;
+  if (!kv || typeof kv.get !== 'function') return gif();
+
+  // ── POST：全量关注名单，服务端自己算「新增了谁 / 取消了谁」──────────────
+  // 为什么必须全量：只挂在「点关注按钮」上的话，**在埋点上线之前就已经关注的人一次都不会被计数**，
+  // 报表里就是空的（2026-10-15 实测：并集里已有 13 个成员，报表却是 0）。全量 diff 才能把历史补上。
+  if (request.method === 'POST') {
+    let body = null;
+    try { body = await request.json(); } catch (_) { body = null; }
+    const anon = String((body && body.a) || '').replace(/[^a-z0-9]/gi, '').slice(0, 24);
+    const uids = Array.isArray(body && body.uids)
+      ? body.uids.map((x) => String(x).replace(/[^0-9]/g, '').slice(0, 20)).filter(Boolean).slice(0, 200)
+      : [];
+    const names = (body && body.names && typeof body.names === 'object') ? body.names : {};
+    const job = (async () => {
+      try {
+        if (!anon) return;
+        // 和 all48 访问量共用那条独立日闸：真被人刷也不会吃掉本站的额度
+        const gateKey = 'stat:gate48:' + bjDay();
+        let used = 0;
+        try { used = Number((await kv.get(gateKey)) || 0); } catch (_) { used = 0; }
+        if (used >= STAT_WRITE_CAP48) return;
+        // 这台设备上一次报上来的名单（用于算出「取消了谁」）
+        const listKey = 'stat:fols:' + anon;
+        let prev = [];
+        try {
+          const p = JSON.parse((await kv.get(listKey)) || '[]');
+          if (Array.isArray(p)) prev = p.map(String);
+        } catch (_) { prev = []; }
+        const prevSet = new Set(prev);
+        const nextSet = new Set(uids);
+        let added = uids.filter((u) => !prevSet.has(u));
+        let removed = prev.filter((u) => !nextSet.has(u));
+        // 防刷：单次最多处理 60 个变化，超了就只记新增（宁可少记也不能把 KV 写额度打爆）
+        if (added.length + removed.length > 60) { added = added.slice(0, 60); removed = []; }
+        if (!added.length && !removed.length) return;
+        for (const u of added) {
+          await kv.put(`stat:folu:${u}:${anon}`, '1');
+          await incKV(kv, 'stat:folc:' + u);
+          const nm = cleanName(names[u]);
+          if (nm) {
+            const nk = 'stat:foln:' + u;
+            if (!(await kv.get(nk))) await kv.put(nk, nm);
+          }
+        }
+        for (const u of removed) {
+          await kv.delete(`stat:folu:${u}:${anon}`);
+          await decKV(kv, 'stat:folc:' + u);
+        }
+        await kv.put(listKey, JSON.stringify(uids));
+        if (Math.random() < 0.2) {
+          try { await kv.put(gateKey, String(used + 5)); } catch (_) {}
+        }
+      } catch (_) { /* 统计失败不影响页面 */ }
+    })();
+    if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(job);
+    return new Response('{"ok":true}', {
+      headers: Object.assign({ 'content-type': 'application/json; charset=utf-8' }, CORS)
+    });
+  }
+
+  // ── GET：单条（关注 / 取消一个成员），调试和兜底用 ──────────────────────
   const uid = String(url.searchParams.get('u') || '').replace(/[^0-9]/g, '').slice(0, 20);
   const anon = String(url.searchParams.get('a') || '').replace(/[^a-z0-9]/gi, '').slice(0, 24);
   const on = url.searchParams.get('on') === '1';
-  // 成员名：只留中日韩 / 字母数字 / 少量符号，防止有人往报表里塞奇怪内容
-  const name = String(url.searchParams.get('n') || '')
-    .replace(/[^一-龥぀-ヿa-zA-Z0-9·\-_. ]/g, '').trim().slice(0, 24);
-  const kv = env && env.SECRETS;
-  if (!uid || !anon || !kv || typeof kv.get !== 'function') return gif();
+  const name = cleanName(url.searchParams.get('n'));
+  if (!uid || !anon) return gif();
   const job = (async () => {
     try {
-      // 和 all48 访问量共用那条独立日闸：真被人刷也不会吃掉本站的额度
       const gateKey = 'stat:gate48:' + bjDay();
       let used = 0;
       try { used = Number((await kv.get(gateKey)) || 0); } catch (_) { used = 0; }
@@ -742,6 +808,11 @@ async function handleFol(url, request, env, ctx) {
   })();
   if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(job);
   return gif();
+}
+// 成员名：只留中日韩 / 字母数字 / 少量符号，防止有人往报表里塞奇怪内容
+function cleanName(v) {
+  return String(v == null ? '' : v)
+    .replace(/[^一-龥぀-ヿa-zA-Z0-9·\-_. ]/g, '').trim().slice(0, 24);
 }
 
 // 站长查看翻译使用情况：返回一张简单表格（累计次数 / 各语言 / 最近 7 天次数与独立访客）
