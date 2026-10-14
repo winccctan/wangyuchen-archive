@@ -1259,6 +1259,9 @@ async function handleApi(url, request, env, ctx) {
   if (p === '/api/performances') return withEdgeCache('/api/performances', 300, () => handleApiKey('performances', env));
   if (p === '/api/social') return withEdgeCache('/api/social', 300, () => handleApiKey('social', env));
   if (p === '/api/perf-cuts') return withEdgeCache('/api/perf-cuts', 300, () => handleApiKey('perf-cuts', env));
+  // 📷 口袋相册：data 由 scripts/build-album.mjs 从发言 KV 聚合后推上来（kind:'album'），
+  //    跟发言走同一条更新链路 —— 她新发的图才能进相册，不用改代码、不用重新部署。
+  if (p === '/api/album') return withEdgeCache('/api/album', 300, () => handleApiKey('album', env));
   if (p === '/api/live-cuts') return withEdgeCache('/api/live-cuts', 300, () => handleApiKey('live-cuts', env));
   // ---- 粉丝个人档案：凭 uid 只取回「你自己」的那一份 ----
   // 隐私红线（站长 2026-09-22 定）：粉丝名单不得以任何静态文件形式上公网；
@@ -1565,6 +1568,17 @@ async function handleFansUpsert(request, env) {
     if (!n) return json({ error: 'empty bd data' }, 400);
     if (kv) await kv.put('bd/all', JSON.stringify(map));
     return json({ ok: true, bd: 'all', uids: n });
+  }
+
+  // kind:'album' → 口袋相册（album，单键）：整键覆盖写 KV。
+  // body.data 形如 [{ id, text, images:[url], time, ts }]，由 scripts/build-album.mjs 从**发言 KV** 聚合产出
+  // （不是从本机那份 31MB 全量原始——CI 上没有它，而发言本来就在 msg/YYYY-MM 里）。
+  // 🔴 只留她本人（sender.userId===89653517）发的图，粉丝发的图一律不收。
+  if (body.kind === 'album') {
+    const arr = Array.isArray(body.data) ? body.data : [];
+    if (!arr.length) return json({ error: 'empty album data' }, 400);
+    if (kv) await kv.put('album', JSON.stringify(arr));
+    return json({ ok: true, album: arr.length });
   }
 
   // kind:'tk' → 陪伴票根桶（tk/<uid末两位>）：整桶覆盖写 KV，不进 D1。
