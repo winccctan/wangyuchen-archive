@@ -106,6 +106,15 @@ jobs:
         # 手动触发且勾选 rebuild 时，全量重建 KV（修正历史脏数据）；定时/普通运行只做增量。
         run: node scripts/sync-kv.mjs ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.rebuild == 'true') && '--rebuild' || '' }}
 
+      # 📷 口袋相册：她新发的图要跟发言一起进相册（2026-10-14 站长要求）。
+      #    做法：从发言 KV（/api/month）聚合「她本人发的图」→ 写回 KV 单键 album → 前端 /api/album 读。
+      #    默认**增量**（只刷最近 3 个月，约 1 秒）＋ **没变化就不写 KV**，所以跟着快通道每轮跑也几乎不花资源。
+      #    🔴 相册原本是一次性生成的静态快照（site/js/her-album.js），她之后发的图一条都进不去 —— 已废弃该路径。
+      #    失败绝不打断后续：脚本自带闸门（组数骤降不推），线上已有数据不会被冲掉。
+      - name: 口袋相册（从发言 KV 聚合 → 写回 KV）
+        continue-on-error: true
+        run: node scripts/build-album.mjs
+
       # ============================ 【重活】每 4 小时一轮 ============================
       # 全部排在同步之后：跑多久、甚至超时被杀，都不影响本轮发言已经进 KV。
       - name: 重解析历史消息（幂等）

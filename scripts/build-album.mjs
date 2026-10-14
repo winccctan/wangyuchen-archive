@@ -78,7 +78,32 @@ async function month(m) {
   return [];
 }
 
-const months = monthRange(MONTH_FROM, bjNowMonth());
+// ⚡ 默认**增量**：只重刷最近几个月，跟 KV 里已有的合并（几十秒 → 几秒，才能高频跑）。
+//   KV 里还没数据（首次）或加 --full 时才全量扫 2022-11 起。
+async function fetchCurrent() {
+  try {
+    const r = await fetch(SITE + '/api/album', { headers: UA });
+    if (!r.ok) return [];
+    const j = await r.json();
+    const a = Array.isArray(j) ? j : (j && Array.isArray(j.data) ? j.data : []);
+    return Array.isArray(a) ? a : [];
+  } catch { return []; }
+}
+function lastNMonths(n) {
+  const [y0, m0] = bjNowMonth().split('-').map(Number);
+  const out = [];
+  let y = y0, m = m0;
+  for (let i = 0; i < n; i++) {
+    out.push(y + '-' + String(m).padStart(2, '0'));
+    m -= 1; if (m < 1) { m = 12; y -= 1; }
+  }
+  return out.reverse();
+}
+const FULL = process.argv.includes('--full') || process.env.ALBUM_FULL === '1';
+const base = FULL ? [] : await fetchCurrent();
+const months = base.length ? lastNMonths(3) : monthRange(MONTH_FROM, bjNowMonth());
+console.log(`[相册] ${base.length ? '增量（刷最近 ' + months.length + ' 个月）' : '全量'}｜KV 现有 ${base.length} 组`);
+
 const out = [];
 let totalMsgs = 0;
 let emptyMonths = 0;
@@ -104,6 +129,16 @@ for (let i = 0; i < months.length; i += 6) {
     }
   }
 }
+// 合并：本次刷到的覆盖同 id 旧值（发言重解析后图可能变），其余沿用 KV 已有的历史
+if (base.length) {
+  const merged = new Map();
+  for (const it of base) if (it && it.id) merged.set(it.id, it);
+  for (const it of out) merged.set(it.id, it);
+  const keep = [];
+  for (const it of merged.values()) if (it && Array.isArray(it.images) && it.images.length) keep.push(it);
+  out.length = 0;
+  out.push(...keep);
+}
 out.sort((a, b) => (b.ts || 0) - (a.ts || 0) || String(b.time).localeCompare(String(a.time)));
 
 const years = {};
@@ -126,6 +161,12 @@ if (WRITE) {
   console.log('[相册] 已更新本地静态兜底 ' + STATIC_OUT);
 }
 
+// 没变化就不写：她没发新图时一次 KV 写入都不产生（高频跑也不费额度）
+if (base.length && out.length === base.length && out[0] && base[0] && out[0].ts === base[0].ts && !FORCE) {
+  console.log('[相册] 与线上一致（最新一条未变），跳过推送');
+  process.exit(0);
+}
+
 if (DRY) { console.log('[相册] --dry 模式，不推送'); process.exit(0); }
 
 const sync = process.env.SYNC_TOKEN || '';
@@ -134,7 +175,9 @@ if (!sync && !gh) { console.error('[相册] 缺 SYNC_TOKEN / GH_TOKEN，放弃')
 const headers = { 'content-type': 'application/json', ...UA };
 if (sync) headers['x-sync-token'] = sync; else headers['x-gh-token'] = gh;
 
-const res = await fetch(SITE + '/api/sync', {
+// 🔴 端点是 /api/_fans_upsert（不是 /api/sync）：kind 类写入（bd 生日祝福 / tk 票根 / album 相册）
+//    全部走这一个函数 handleFansUpsert；/api/sync 只认 rows/bucket 那套发言档案格式。
+const res = await fetch(SITE + '/api/_fans_upsert', {
   method: 'POST', headers, body: JSON.stringify({ kind: 'album', data: out }),
 });
 const txt = await res.text();
