@@ -66,10 +66,15 @@ function render(d) {
   const dayRows = (d.days || [])
     .map(x => '<tr><td>' + x.day + '</td><td class="n">' + (x.siteUv == null ? '-' : x.siteUv) + '</td>'
       + '<td class="n">' + x.count + '</td><td class="n">' + x.visitors + '</td></tr>').join('');
+  const evRow = e => '<tr><td>' + e.name + '</td><td class="n">' + e.total + '</td><td class="n">' + e.today + '</td>'
+    + '<td class="n">' + (e.uniqTotal == null ? '-' : e.uniqTotal) + '</td>'
+    + '<td class="n">' + (e.uniqToday == null ? '-' : e.uniqToday) + '</td></tr>';
   const evRows = (d.events && d.events.length)
-    ? d.events.map(e => '<tr><td>' + e.name + '</td><td class="n">' + e.total + '</td><td class="n">' + e.today + '</td>'
-        + '<td class="n">' + (e.uniqTotal == null ? '-' : e.uniqTotal) + '</td>'
-        + '<td class="n">' + (e.uniqToday == null ? '-' : e.uniqToday) + '</td></tr>').join('')
+    ? d.events.map(evRow).join('')
+    : '<tr><td colspan="5" class="dim">暂无记录</td></tr>';
+  // 姊妹站 all48.wyc0518.cc 的访问量：服务端已单独分组，这里单独成一栏（2026-10-14）
+  const evRows48 = (d.events48 && d.events48.length)
+    ? d.events48.map(evRow).join('')
     : '<tr><td colspan="5" class="dim">暂无记录</td></tr>';
 
   const el = document.getElementById('body');
@@ -79,6 +84,8 @@ function render(d) {
     '<h2>访客来自哪里（今日 / 近 7 天）</h2><table><tr><td>国家·地区</td><td class="n">今日</td><td class="n">近 7 天</td></tr>' + ctryRows + '</table>' +
     '<p class="dim">按 Cloudflare 给出的国家统计独立访客，不记 IP 明文。近 7 天＝每天独立访客相加，同一个人多天都来会重复计；数据从启用当天开始累计。</p>' +
     '<h2>功能使用（次数 / 独立访客）</h2><table class="wide"><tr><td>动作</td><td class="n">累计</td><td class="n">今日</td><td class="n">独立累计</td><td class="n">独立今日</td></tr>' + evRows + '</table>' +
+    '<h2>48 成员档案站（all48.wyc0518.cc）</h2><table class="wide"><tr><td>动作</td><td class="n">累计</td><td class="n">今日</td><td class="n">独立累计</td><td class="n">独立今日</td></tr>' + evRows48 + '</table>' +
+    '<p class="dim">姊妹站的访问量：那个站自己没有统计，页面一打开就往这里打一条。独立访客按 IP 去重（不保存明文 IP）。它的人<b>不进上面的「到访人数 / 国家分布」</b>，两站分开看。2026-10-14 起启用。</p>' +
     '<h2>各语言翻译次数</h2><table>' + langRows + '</table>' +
     '<h2>最近 7 天（到访人数 / 翻译）</h2><table><tr><td>日期</td><td class="n">到访人数</td><td class="n">翻译次数</td><td class="n">翻译访客</td></tr>' + dayRows + '</table>';
   el.hidden = false;

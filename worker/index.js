@@ -46,8 +46,9 @@ export default {
     }
 
     // 站点动作统计（前端 track() 用 1x1 图片上报）：只记动作次数，不含任何内容
+    // 2026-10-14 起额外接受姊妹站 all48.wyc0518.cc 的上报（两站访问数据进同一张报表）。
     if (url.pathname === '/track') {
-      if (!isSameSite(request)) return new Response('forbidden', { status: 403 });
+      if (!isSameSite(request) && !isTrackHost(request)) return new Response('forbidden', { status: 403 });
       return handleTrack(url, request, env, ctx);
     }
 
@@ -196,6 +197,26 @@ function isSameSite(request) {
 }
 function forbiddenNotSameSite() {
   return json({ error: 'forbidden: same-site only' }, 403);
+}
+
+/* ---------------------------------------------------------------------------
+ * 姊妹站埋点白名单（2026-10-14）
+ * all48.wyc0518.cc（48 成员档案）要和本站共用一张统计报表，所以它的页面也要能
+ * 往 /track 打点。它和本站同属 wyc0518.cc，浏览器本来就判成 same-site（Sec-Fetch-Site），
+ * 但图片上报不一定带得齐，这里显式再认一次 Origin/Referer，避免边缘节点差异导致漏记。
+ * 🔴 只放行 /track：翻译、手动抓取这些重接口仍然只能本站调用（isSameSite 管着）。
+ */
+const TRACK_HOSTS = new Set(['all48.wyc0518.cc']);
+function isTrackHost(request) {
+  const origin = request.headers.get('Origin');
+  const referer = request.headers.get('Referer');
+  for (const raw of [origin, referer]) {
+    if (!raw) continue;
+    try {
+      if (TRACK_HOSTS.has(String(new URL(raw).hostname).toLowerCase())) return true;
+    } catch (_) { /* 非法的 Origin/Referer，忽略 */ }
+  }
+  return false;
 }
 
 // 静态资源缓存策略：
@@ -356,6 +377,10 @@ const EVENTS = [
   ['album:dl', '相册 下载原图'],
   ['album:jump', '相册 查看原发言'],
   ['album:filter', '相册 时间筛选'],
+  // 姊妹站 all48.wyc0518.cc（48 成员档案）的访问量（2026-10-14）：
+  // 它自己没有统计，页面加载时往本站 /track 打一条；报表里单独成一栏，不跟本站动作混。
+  // 🔴 走**独立的每日写入闸**（下面的 GATE48），不会把本站动作额度挤掉。
+  ['all48:visit', '48 成员档案 打开'],
 ];
 // 允许写进 KV 的事件名集合（= EVENTS 的键）。2026-09-25 起 handleTrack 用它做准入校验，
 // 白名单外的事件一律不写（防随手灌数据 + 省 KV 写入额度）。
@@ -404,6 +429,10 @@ function bjDay(ts) { // 北京时间日期
 // 2026-09-24 精简后的开销：一次动作 = **1 次必写**（当天计数 stat:evd:<day>:<ev>），
 // 另外只有「某人当天第一次做某件事 / 某人当天第一次进站」才写。实测一天约 500~900 次写入。
 const STAT_WRITE_CAP = 1000;
+// 姊妹站 all48 的每日写入上限（2026-10-14）：单独一条闸，和本站的额度互不占用。
+// 别看它只有「打开站点」一个事件 —— 那个站面向全体 48 粉丝，访问量可能比补档站大得多，
+// 共用一条闸的话它一冲上来，本站的动作就全不计数了（页面照常、只是统计停摆，很难发现）。
+const STAT_WRITE_CAP48 = 1000;
 async function shortHash(s) {
   const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(s)));
   return Array.from(new Uint8Array(d)).slice(0, 8).map((x) => x.toString(16).padStart(2, '0')).join('');
@@ -608,8 +637,12 @@ async function handleTrack(url, request, env, ctx) {
         // 300 → 600（2026-09-23，补了档案卡埋点）→ 3000（2026-09-24，补齐口袋 7 个小功能后翻倍）
         // → 800（2026-09-24 站长要求收紧）→ **1000（同日晚上站长改回）**：确认超限只影响计数、
         // 页面功能不受损之后放宽。常态一天约 700~800 次动作，留了约 200 的余量。若哪天下午起数字不再增长 = 打满，改这个常量即可。
-        const gateKey = 'stat:gate:' + day;
-        const gateMax = STAT_WRITE_CAP;
+        // 姊妹站 all48 的上报**单独走一条闸**（2026-10-14）：那个站面向全体 48 粉丝，
+        // 访问量可能比补档站还大；共用一条的话它一冲上来，本站的动作就全不计数了
+        // （页面照常，只是统计停摆，不盯着根本发现不了）。
+        const is48 = ev.startsWith('all48:');
+        const gateKey = (is48 ? 'stat:gate48:' : 'stat:gate:') + day;
+        const gateMax = is48 ? STAT_WRITE_CAP48 : STAT_WRITE_CAP;
         let used = 0;
         try { used = Number((await kv.get(gateKey)) || 0); } catch (_) { used = 0; }
         if (used >= gateMax) return;
@@ -627,8 +660,11 @@ async function handleTrack(url, request, env, ctx) {
         await addUniq(kv, 'stat:evu:' + ev, hash);
         await addUniq(kv, `stat:evud:${day}:${ev}`, hash);
         // 站点级「当日独立访客」：原来每次上报都写一遍，改成只在当天首次出现时写（省 KV 写额度）
+        // 🔴 姊妹站 all48 的人**不进本站的到访人数 / 国家表**（2026-10-14）：
+        // 那张表是「补档站来了多少人」，混进另一个站的访客会让数字虚高、看不出真实趋势。
+        // all48 自己的到访人数看它那一栏（事件级 UV：stat:evu:all48:visit，照样按 IP 去重）。
         const uKey = `stat:u:${day}:${hash}`;
-        if (!(await kv.get(uKey))) {
+        if (!is48 && !(await kv.get(uKey))) {
           await kv.put(uKey, '1');
           // 访客国家：Cloudflare 每个请求都带（request.cf.country），不用前端传、也不碰 IP 明文。
           // 同样只在当天首次出现时记一次，所以一天最多写「人数」条，几乎不占额度。
@@ -781,18 +817,27 @@ async function handleStatsBody(url, env, kv, wantJson) {
 
   // 站点动作（tab 切换 / 视频播放 / 刷新 / 搜索 …）
   // 除「次数」外还算「独立访客」：累计 = 该功能一共有多少人来用过，今日 = 今天有多少人用过。
+  // 🔴 姊妹站 all48 的事件单独分一组（2026-10-14）：它的数字是「另一个站来了多少人」，
+  // 跟补档站的动作混在一张表里没法读，报表里单独成一栏。
   const evList = [];
+  const evList48 = [];
   evDefs.forEach(([key, name], i) => {
     const t = Number(evTotalsMap.get(key) || 0);
     const d = Number(evDayVals[i] || 0);
     if (t <= 0 && d <= 0) return;
-    evList.push({ key: key, name: name, total: t, today: d, uniqTotal: evUniqT[i] || 0, uniqToday: evUniqD[i] || 0 });
+    const row = { key: key, name: name, total: t, today: d, uniqTotal: evUniqT[i] || 0, uniqToday: evUniqD[i] || 0 };
+    if (key.startsWith('all48:')) evList48.push(row); else evList.push(row);
   });
   evList.sort((a, b) => b.total - a.total);
+  evList48.sort((a, b) => b.total - a.total);
+  const evRowHtml = (e) => `<tr><td>${e.name}</td><td class="n">${e.total}</td><td class="n">${e.today}</td>`
+    + `<td class="n">${e.uniqTotal}</td><td class="n">${e.uniqToday}</td></tr>`;
   const evHtml = evList.length
-    ? evList.map((e) => `<tr><td>${e.name}</td><td class="n">${e.total}</td><td class="n">${e.today}</td>`
-      + `<td class="n">${e.uniqTotal}</td><td class="n">${e.uniqToday}</td></tr>`).join('')
+    ? evList.map(evRowHtml).join('')
     : '<tr><td colspan="5" class="dim">暂无记录</td></tr>';
+  const evHtml48 = evList48.length
+    ? evList48.map(evRowHtml).join('')
+    : '<tr><td colspan="5" class="dim">暂无记录（姊妹站埋点 2026-10-14 起启用）</td></tr>';
   const ctryHtml = countries.length
     ? countries.map((c) => `<tr><td>${c.name}</td><td class="n">${c.today}</td><td class="n">${c.d7}</td></tr>`).join('')
     : '<tr><td colspan="3" class="dim">暂无记录（从启用当天开始累计）</td></tr>';
@@ -824,7 +869,8 @@ async function handleStatsBody(url, env, kv, wantJson) {
       // 不是写入次数：写入次数 ≥ 这个数（每个动作至少写 1 次）。够用来判断有没有撞上限就够了。
       actionsToday: gateUsed,
       actionCap: STAT_WRITE_CAP,
-      events: evList
+      events: evList,
+      events48: evList48
     }), {
       headers: {
         'content-type': 'application/json; charset=utf-8',
@@ -863,6 +909,8 @@ async function handleStatsBody(url, env, kv, wantJson) {
 2026-09-25 起 IPv6 已按运营商前缀（64 位）合并，同一条线路上换出来的多个地址算 1 个；<b>更早的数据还是按完整地址算的，所以历史那几天偏高</b>。<br>
 口径提醒：同一个人多天都来，每天的独立访客里各算一次；国家分布从 2026-09-24 才启用，之前有访客但没有国家数据。</p>
 <h2>功能使用（次数 / 独立访客）</h2><table><tr><td>动作</td><td class="n">累计</td><td class="n">今日</td><td class="n">独立累计</td><td class="n">独立今日</td></tr>${evHtml}</table>
+<h2>48 成员档案站（all48.wyc0518.cc）</h2><table><tr><td>动作</td><td class="n">累计</td><td class="n">今日</td><td class="n">独立累计</td><td class="n">独立今日</td></tr>${evHtml48}</table>
+<p class="dim">姊妹站的访问量：那个站自己没有统计，页面一打开就往这里打一条。独立访客按 IP 去重（不保存明文 IP）。它的人<b>不进上面的「到访人数 / 国家分布」</b>，两站分开看。2026-10-14 起启用。</p>
 <h2>最近 7 天（每天来了多少人 / 翻译次数）</h2><table><tr><td>日期</td><td class="n">到访人数</td><td class="n">翻译次数</td><td class="n">翻译访客</td></tr>${dayHtml}</table>`);
 }
 
