@@ -756,11 +756,10 @@ async function handleFol(url, request, env, ctx) {
         for (const u of added) {
           await kv.put(`stat:folu:${u}:${anon}`, '1');
           await incKV(kv, 'stat:folc:' + u);
+          // 名字**每次都覆盖写**（不是只在空缺时写）：万一之前存的是错的（例如调试时留下的），
+          // 下一个真实粉丝同步一次就会被纠正成真名。
           const nm = cleanName(names[u]);
-          if (nm) {
-            const nk = 'stat:foln:' + u;
-            if (!(await kv.get(nk))) await kv.put(nk, nm);
-          }
+          if (nm) await kv.put('stat:foln:' + u, nm);
         }
         for (const u of removed) {
           await kv.delete(`stat:folu:${u}:${anon}`);
@@ -796,10 +795,7 @@ async function handleFol(url, request, env, ctx) {
       if (on && !seen) {
         await kv.put(seenKey, '1');
         await incKV(kv, 'stat:folc:' + uid);
-        if (name) {
-          const nk = 'stat:foln:' + uid;
-          if (!(await kv.get(nk))) await kv.put(nk, name);
-        }
+        if (name) await kv.put('stat:foln:' + uid, name);
       } else if (!on && seen) {
         await kv.delete(seenKey);
         await decKV(kv, 'stat:folc:' + uid);
