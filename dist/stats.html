@@ -76,6 +76,10 @@ function render(d) {
   const evRows48 = (d.events48 && d.events48.length)
     ? d.events48.map(evRow).join('')
     : '<tr><td colspan="5" class="dim">暂无记录</td></tr>';
+  // 姊妹站「谁最被关注」（2026-10-15）
+  const folRows48 = (d.follows48 && d.follows48.length)
+    ? d.follows48.map((f, i) => '<tr><td>' + (i + 1) + '. ' + (f.name || ('uid ' + f.uid)) + '</td><td class="n">' + f.n + '</td></tr>').join('')
+    : '<tr><td colspan="2" class="dim">暂无记录</td></tr>';
 
   const el = document.getElementById('body');
   el.innerHTML =
@@ -86,6 +90,8 @@ function render(d) {
     '<h2>功能使用（次数 / 独立访客）</h2><table class="wide"><tr><td>动作</td><td class="n">累计</td><td class="n">今日</td><td class="n">独立累计</td><td class="n">独立今日</td></tr>' + evRows + '</table>' +
     '<h2>48 成员档案站（all48.wyc0518.cc）</h2><table class="wide"><tr><td>动作</td><td class="n">累计</td><td class="n">今日</td><td class="n">独立累计</td><td class="n">独立今日</td></tr>' + evRows48 + '</table>' +
     '<p class="dim">姊妹站的访问量：那个站自己没有统计，页面一打开就往这里打一条。独立访客按 IP 去重（不保存明文 IP）。它的人<b>不进上面的「到访人数 / 国家分布」</b>，两站分开看。2026-10-14 起启用。</p>' +
+    '<h2>48 成员档案站 · 谁最被关注</h2><table class="wide"><tr><td>成员</td><td class="n">被关注（设备数）</td></tr>' + folRows48 + '</table>' +
+    '<p class="dim">口径：一台设备（浏览器）对同一成员只算 1 人，取消关注会减回去；不记 IP、不记身份，匿名 id 是前端随机生成的。<b>数字只在站长报表里看得到，姊妹站站内不展示</b>。2026-10-15 起启用，只列前 20。</p>' +
     '<h2>各语言翻译次数</h2><table>' + langRows + '</table>' +
     '<h2>最近 7 天（到访人数 / 翻译）</h2><table><tr><td>日期</td><td class="n">到访人数</td><td class="n">翻译次数</td><td class="n">翻译访客</td></tr>' + dayRows + '</table>';
   el.hidden = false;

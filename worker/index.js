@@ -52,6 +52,13 @@ export default {
       return handleTrack(url, request, env, ctx);
     }
 
+    // 姊妹站的「关注热度」上报（2026-10-15）：哪个成员被多少台设备关注。
+    // 走 1x1 图片（跨域不用 CORS），同样只接受本站 / all48 页面发出。
+    if (url.pathname === '/api/fol') {
+      if (!isSameSite(request) && !isTrackHost(request)) return new Response('forbidden', { status: 403 });
+      return handleFol(url, request, env, ctx);
+    }
+
     if (url.pathname === '/translate') {
       if (!isSameSite(request)) return forbiddenNotSameSite();
       return handleTranslate(request, url, env, ctx);
@@ -462,6 +469,12 @@ async function incKV(kv, k) {
   const n = Number((await kv.get(k)) || 0) + 1;
   await kv.put(k, String(n));
 }
+// 减 1（all48 取消关注时用）：减到 0 就把键删掉，免得报表里 list 出一堆 0。
+async function decKV(kv, k) {
+  const n = Number((await kv.get(k)) || 0) - 1;
+  if (n <= 0) { await kv.delete(k); return; }
+  await kv.put(k, String(n));
+}
 // 「独立访客」：把去重后的 IP 短哈希存成一个小 JSON 数组（单个动作最多几百个 → 几 KB）。
 // 为什么不用「一个访客一个 KV 键」：那样读统计要 kv.list 分页、写也要多一次 put；
 // 数组方案读统计只要 1 次 get/动作，且**同一访客重复点同一功能时直接 return，不再写盘**
@@ -682,6 +695,55 @@ async function handleTrack(url, request, env, ctx) {
   return gif();
 }
 
+/* ---------------- 姊妹站的「关注热度」（2026-10-15） ----------------
+ * all48 站（48 成员档案）的关注只存在各人手机的 localStorage 里，服务端原本只有一份
+ * 「关注并集」（哪些 uid 被关注过，给抓取端用），看不出「多少人」。这里补一层计数：
+ *
+ *   ?u=<成员 uid>&a=<本机匿名 id>&on=1|0&n=<成员名>
+ *   stat:folc:<uid>          该成员被多少台设备关注（数字）
+ *   stat:folu:<uid>:<anon>   这台设备是否关注过该成员（去重键，存在 = 已计过）
+ *   stat:foln:<uid>          成员名（首次上报时记一次，报表里好认）
+ *
+ * 🔴 只记「一台设备关注了 / 取消了哪个成员」：不记 IP、不记身份，匿名 id 是前端随机生成的
+ *    一串字符（存 localStorage），同设备重复点不会重复计数、取消关注会减回去。
+ * 🔴 报表里只有站长看得到；all48 站内不展示这些数字（站长 2026-10-15 定的）。
+ */
+async function handleFol(url, request, env, ctx) {
+  const uid = String(url.searchParams.get('u') || '').replace(/[^0-9]/g, '').slice(0, 20);
+  const anon = String(url.searchParams.get('a') || '').replace(/[^a-z0-9]/gi, '').slice(0, 24);
+  const on = url.searchParams.get('on') === '1';
+  // 成员名：只留中日韩 / 字母数字 / 少量符号，防止有人往报表里塞奇怪内容
+  const name = String(url.searchParams.get('n') || '')
+    .replace(/[^一-龥぀-ヿa-zA-Z0-9·\-_. ]/g, '').trim().slice(0, 24);
+  const kv = env && env.SECRETS;
+  if (!uid || !anon || !kv || typeof kv.get !== 'function') return gif();
+  const job = (async () => {
+    try {
+      // 和 all48 访问量共用那条独立日闸：真被人刷也不会吃掉本站的额度
+      const gateKey = 'stat:gate48:' + bjDay();
+      let used = 0;
+      try { used = Number((await kv.get(gateKey)) || 0); } catch (_) { used = 0; }
+      if (used >= STAT_WRITE_CAP48) return;
+      if (Math.random() < 0.2) { try { await kv.put(gateKey, String(used + 5)); } catch (_) {} }
+      const seenKey = `stat:folu:${uid}:${anon}`;
+      const seen = await kv.get(seenKey);
+      if (on && !seen) {
+        await kv.put(seenKey, '1');
+        await incKV(kv, 'stat:folc:' + uid);
+        if (name) {
+          const nk = 'stat:foln:' + uid;
+          if (!(await kv.get(nk))) await kv.put(nk, name);
+        }
+      } else if (!on && seen) {
+        await kv.delete(seenKey);
+        await decKV(kv, 'stat:folc:' + uid);
+      }
+    } catch (_) { /* 统计失败不影响页面 */ }
+  })();
+  if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(job);
+  return gif();
+}
+
 // 站长查看翻译使用情况：返回一张简单表格（累计次数 / 各语言 / 最近 7 天次数与独立访客）
 async function handleStats(url, env) {
   // 站长看统计走 GitHub Pages（docs/stats.html），本域名上**不暴露任何统计页面**：
@@ -855,6 +917,26 @@ async function handleStatsBody(url, env, kv, wantJson) {
     push.subs = subs.length;
   } catch (_) { /* 推送没配好时只是没这个数，不影响其它统计 */ }
 
+  // 姊妹站「谁最被关注」（2026-10-15）：把 stat:folc:<uid> 列出来排个序。
+  // 成员名是上报时顺便存下的（stat:foln:<uid>），读不到就只显示 uid。
+  const folList = [];
+  try {
+    const folKeys = await ls('stat:folc:', 1000);
+    const rows = (folKeys && folKeys.keys) || [];
+    const [vals, names] = await Promise.all([
+      Promise.all(rows.map((k) => g(k.name))),
+      Promise.all(rows.map((k) => g('stat:foln:' + String(k.name).slice(10)))),
+    ]);
+    rows.forEach((k, i) => {
+      const n = Number(vals[i] || 0);
+      if (n > 0) folList.push({ uid: String(k.name).slice(10), name: names[i] || '', n: n });
+    });
+    folList.sort((a, b) => b.n - a.n);
+  } catch (_) { /* 读不到就当没有，不影响其它统计 */ }
+  const folHtml = folList.length
+    ? folList.slice(0, 20).map((f, i) => `<tr><td>${i + 1}. ${f.name || ('uid ' + f.uid)}</td><td class="n">${f.n}</td></tr>`).join('')
+    : '<tr><td colspan="2" class="dim">暂无记录（姊妹站 2026-10-15 起启用）</td></tr>';
+
   // JSON 模式：给 GitHub Pages 上的统计页面跨域读取（docs/stats.html）
   if (wantJson) {
     return new Response(JSON.stringify({
@@ -870,7 +952,8 @@ async function handleStatsBody(url, env, kv, wantJson) {
       actionsToday: gateUsed,
       actionCap: STAT_WRITE_CAP,
       events: evList,
-      events48: evList48
+      events48: evList48,
+      follows48: folList.slice(0, 20)
     }), {
       headers: {
         'content-type': 'application/json; charset=utf-8',
@@ -911,6 +994,8 @@ async function handleStatsBody(url, env, kv, wantJson) {
 <h2>功能使用（次数 / 独立访客）</h2><table><tr><td>动作</td><td class="n">累计</td><td class="n">今日</td><td class="n">独立累计</td><td class="n">独立今日</td></tr>${evHtml}</table>
 <h2>48 成员档案站（all48.wyc0518.cc）</h2><table><tr><td>动作</td><td class="n">累计</td><td class="n">今日</td><td class="n">独立累计</td><td class="n">独立今日</td></tr>${evHtml48}</table>
 <p class="dim">姊妹站的访问量：那个站自己没有统计，页面一打开就往这里打一条。独立访客按 IP 去重（不保存明文 IP）。它的人<b>不进上面的「到访人数 / 国家分布」</b>，两站分开看。2026-10-14 起启用。</p>
+<h2>48 成员档案站 · 谁最被关注</h2><table><tr><td>成员</td><td class="n">被关注（设备数）</td></tr>${folHtml}</table>
+<p class="dim">口径：一台设备（浏览器）对同一成员只算 1 人，取消关注会减回去；不记 IP、不记身份，匿名 id 是前端随机生成的。<b>数字只在站长报表里看得到，姊妹站站内不展示</b>。2026-10-15 起启用，只列前 20。</p>
 <h2>最近 7 天（每天来了多少人 / 翻译次数）</h2><table><tr><td>日期</td><td class="n">到访人数</td><td class="n">翻译次数</td><td class="n">翻译访客</td></tr>${dayHtml}</table>`);
 }
 
