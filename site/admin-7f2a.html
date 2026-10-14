@@ -72,6 +72,9 @@
     <button id="btnAi" class="ghost">解析不出来？用 AI 再试一次</button>
     <p class="hint">微博接口现在必须登录才能抓，所以是「复制正文粘进来」而不是填链接自动抓。解析完下面可以逐条改。</p>
     <div id="parseMsg"></div>
+    <hr style="border:0;border-top:1px dashed var(--line);margin:16px 0">
+    <button id="btnAddStandalone" class="ghost">＋ 手动新增行程（不用粘贴）</button>
+    <p class="hint">不想粘微博？直接手动填一条，日期/时间/名称自己写。</p>
   </div>
 
   <div id="editWrap" class="hide">
@@ -181,6 +184,7 @@
 
   function afterLogin() {
     show($('login'), false); show($('main'), true);
+    rows = []; renderEdit(); show($('editWrap'), true);
     loadCur();
   }
 
@@ -192,7 +196,7 @@
     call('/api/admin/parse', { text: text, year: $('year').value, ai: !!useAi })
       .then(function (j) {
         rows = j.items || [];
-        if (!rows.length) { msg('parseMsg', '没解析出条目，可以直接点「手动加一条」自己填', true); return; }
+        if (!rows.length) { msg('parseMsg', '没解析出条目，可以直接点「手动加一条」自己填', true); show($('editWrap'), true); return; }
         var tip = '解析出 ' + rows.length + ' 条（' + (j.via === 'ai' ? 'AI' : '规则') + '）';
         if (j.noTime) tip += '，其中 ' + j.noTime + ' 条没认出时间，可在下面表格里补';
         msg('parseMsg', tip + '，请核对后再发布');
@@ -208,9 +212,18 @@
     rows.push({ date: '', time: '', title: '', kind: '公演' });
     renderEdit();
   };
+  $('btnAddStandalone').onclick = function () {
+    show($('editWrap'), true);
+    $('editWrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    $('btnAdd').click();
+  };
 
   function renderEdit() {
     var box = $('editList');
+    if (!rows.length) {
+      box.innerHTML = '<p class="muted">还没有条目。点下面「＋ 手动加一条」填一条，或先粘贴微博正文自动解析。</p>';
+      return;
+    }
     box.innerHTML = '';
     rows.forEach(function (r, i) {
       var d = document.createElement('div');
