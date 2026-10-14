@@ -1421,16 +1421,39 @@ async function handleApiMine(request, env) {
       if (row) { try { data = JSON.parse(row.data || '{}'); } catch { data = {}; } nick = row.nick || ''; }
     } catch (_) { data = null; }
   }
+  // 她的生日祝福（前端「我的生贺」）：与档案同一套隐私口径 —— uid 即凭证，只回本人那一份。
+  // ⚠️ 被祝福过的人里有 27 位从没在房间留过记录（查不到档案），但确实收到过她的祝福，
+  //    所以 found:false 时也要带上，否则这一项对他们永远是空的。
+  const bd = await birthdayOf(uid, kv);
+
   if (!data) {
     // 档案只覆盖部分时段时，查不到 ≠ 没记录。带上覆盖起点让前端说实话。
     const FLOOR = Date.parse('2022-11-01T00:00:00+08:00');
+    if (bd && bd.length) return json({ found: false, bdOnly: true, bd });
     if (cov.since && cov.since > FLOOR + 86400e3) return json({ found: false, partial: true, since: cov.since });
     return json({ found: false });
   }
-  return json(Object.assign({ found: true }, data, {
+  const base = Object.assign({ found: true }, data, {
     nick: nick || data.nick || '',
     since: cov.since || 0,                       // 档案覆盖起点（0 = 已全量）
-  }));
+  });
+  if (bd && bd.length) base.bd = bd;
+  return json(base);
+}
+
+/** 「我的生贺」数据源：KV `bd/all` = { [粉丝uid]: [{ d:'YYYY-MM-DD', x:'祝福原文' }] }。
+ *  🔴 只在服务端 —— 前端永远拿不到别人的 uid，也不存在任何列举接口（与 fans 库同口径）。
+ *  由 scraper/scripts/fetch-her-birthday.mjs 产出 .cache/birthday-uid.json，
+ *  经写接口 /api/_fans_upsert（kind:'bd'，需 sync token）推送，与 tk 桶同一条通道。 */
+async function birthdayOf(uid, kv) {
+  if (!kv || !uid) return null;
+  try {
+    const raw = await kv.get('bd/all');
+    if (!raw) return null;
+    const map = JSON.parse(raw);
+    if (!map || typeof map !== 'object') return null;
+    return Array.isArray(map[uid]) ? map[uid] : null;
+  } catch (_) { return null; }
 }
 
 /** 陪伴票根「去年今日」：POST { uid, date } → 当天 { n 发言数, dk 鸡腿, ms [[时间戳, 正文], ...] }。
@@ -1531,6 +1554,17 @@ async function handleFansUpsert(request, env) {
       ).bind(covJson, Date.now()).run();
     } catch (_) { /* D1 写不动没关系，KV 已经是权威副本 */ }
     if (!rows.length) return json({ ok: true, written: 0, ready: true });
+  }
+
+  // kind:'bd' → 她的生日祝福（bd/all，单键）：整桶覆盖写 KV。
+  // body.data 形如 { [uid]: [{ d:'YYYY-MM-DD', x:'祝福原文' }] }，由 fetch-her-birthday.mjs 产出。
+  // 🔴 含粉丝 uid —— 只在服务端，前端仅凭本人 uid 经 /api/mine 单条回取。
+  if (body.kind === 'bd') {
+    const map = (body.data && typeof body.data === 'object') ? body.data : {};
+    const n = Object.keys(map).length;
+    if (!n) return json({ error: 'empty bd data' }, 400);
+    if (kv) await kv.put('bd/all', JSON.stringify(map));
+    return json({ ok: true, bd: 'all', uids: n });
   }
 
   // kind:'tk' → 陪伴票根桶（tk/<uid末两位>）：整桶覆盖写 KV，不进 D1。
