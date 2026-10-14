@@ -24,7 +24,8 @@
  * 用法：
  *   node scripts/build-ticket.mjs            # 只构建到 .cache/fans/tk/
  *   node scripts/build-ticket.mjs --push     # 构建完灌进 KV（经 worker /api/_fans_upsert kind:tk）
- *   node scripts/build-ticket.mjs --uid ***   # 只看某人校验口径
+ *   node scripts/build-ticket.mjs --uid <uid>       # 只看某人校验口径
+ *                                                   （🔴 仓库里不许写死任何人的 uid，一律从命令行传）
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -201,8 +202,9 @@ const isScoringName = (nm) => SCORE.byName[nm] != null;
   console.log(`[产出] ${buckets.size} 个桶 / ${per.size} 人 / ${daysTotal} 人日 / ${textTotal} 条发言 → ${OUT_DIR}（${((Date.now() - t0) / 1000).toFixed(1)}s）`);
 
   // ---- 7. 口径校验：与档案 n 对不上就大声说 ----
-  const me = ONLY_UID || '***';
-  const myDays = (buckets.get(me.slice(-2)) || {})[me];
+  // 🔴 默认值必须是空：这个仓库是公开的，任何人的 uid 都不许写死在源码里（2026-10-14 站长定）。
+  const me = ONLY_UID || '';
+  const myDays = me ? (buckets.get(me.slice(-2)) || {})[me] : null;
   if (myDays) {
     const nSum = Object.values(myDays).reduce((a, r) => a + r[0], 0);
     const dkSum = round1(Object.values(myDays).reduce((a, r) => a + r[1], 0));
