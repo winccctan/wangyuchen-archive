@@ -77,6 +77,7 @@ const files = [
   'js/demo-features.js',      // 候选功能：收藏码 / 搜索筛选 / 分享卡 / 随机考古 / 热力图 / 开播提醒
   'js/songs.js',              // 🎵 曲目：按公演场次(liveId)组织的真曲目清单（window.__SONGS__）
   'js/music-works.js',        // 🎵 音乐作品：她署名参与的发行曲（window.__MUSIC_WORKS__，2026-10-14 新增）
+  'js/her-album.js',          // 📷 口袋相册：她在口袋48 房间发的照片（window.__HER_ALBUM__，2026-10-14 新增）
   'assets/member-gs3.jpg',    // 2026 官网公式照（补齐，原先漏了）
   'og.png',                   // 分享卡片（og:image / twitter:image，1200×630，走根目录短链接）
   // —— 2026-09-27 新增：Web Push 推送（🔔 通知设置）+ 添加到主屏幕（🐟 一只鱼鱼）——

@@ -3692,7 +3692,8 @@ const GUIDE_SUBS = [
   ['cards', '生写小卡'],
   ['sticker', '饭制表情包'],
   ['gallery', '公式照'],
-  ['exp', '经历备注']
+  ['exp', '经历备注'],
+  ['album', '口袋相册']
 ];
 
 function renderGuide() {
@@ -3718,6 +3719,7 @@ function renderGuideSub() {
   if (state.guideSub === 'social') { box.innerHTML = renderSocialGallery(); renderSocialWall(); }
   else if (state.guideSub === 'gallery') box.innerHTML = renderGallery();
   else if (state.guideSub === 'exp') box.innerHTML = renderExperience();
+  else if (state.guideSub === 'album') box.innerHTML = (typeof renderAlbum === 'function') ? renderAlbum() : '';
   else box.innerHTML = renderGuideMain();
 }
 
@@ -4029,7 +4031,8 @@ function renderMsg(m) {
     </div>`;
   }
 
-  return `<div class="msg${isSelf ? '' : ' from-other'}" data-mid="${escapeHtml(msgKey(m))}">
+  // data-ts：供「口袋相册 → 查看原发言」按时间戳定位到这一条（相册条目存的是 msgTime）
+  return `<div class="msg${isSelf ? '' : ' from-other'}" data-mid="${escapeHtml(msgKey(m))}" data-ts="${Number(m.msgTime) || 0}">
     <div class="msg-head">
       <span class="msg-time">${fmtTime(m.msgTime)}</span>
       <span class="msg-type">${typeLabel}</span>

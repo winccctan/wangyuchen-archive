@@ -3767,6 +3767,276 @@
     p.classList.add('on');
   }
 
+  /** 图片 URL 处理。
+   *  🔴 口袋图床一律「直连」，不要走 /img 代理 —— 两个坑：
+   *    ① worker 的 /img 白名单不含 source.48.cn → 直接 403（250 张裂图）；
+   *    ② demo 站是静态快照、没有 Worker → /img 根本不存在（全部裂图）。
+   *  实测：source.48.cn / kd48-nosdn / nosdn.netease.im 直连均 200，且带 CORS `*`（可 blob 下载）。
+   *  只有微博图床（sinaimg 等）才需要代理（新浪按 UA 拦浏览器）。 */
+  const HA_DIRECT = /(^|\.)(source\.48\.cn|kd48-nosdn\.yunxinsvr\.com|nim-nosdn\.netease\.im|nosdn\.netease\.im)$/;
+  function haHost(u) { try { return new URL(u).hostname; } catch (e) { return ''; } }
+  function haImgUrl(u) {
+    if (!/^https?:\/\//i.test(u)) return u;
+    if (HA_DIRECT.test(haHost(u))) return u;
+    return (typeof proxyImg === 'function') ? proxyImg(u) : u;
+  }
+
+  /** 裂图兜底：换一条路重试一次（直连 ↔ 代理），再失败就把这张图移出 DOM（不留破图占位）。 */
+  window.__albumBroken = function (img) {
+    if (!img) return;
+    if (img.dataset.retried) { img.remove(); return; }
+    img.dataset.retried = '1';
+    const raw = img.dataset.src || '';
+    const viaProxy = (typeof proxyImg === 'function') ? proxyImg(raw) : raw;
+    const alt = (img.getAttribute('src') === raw) ? viaProxy : raw;
+    if (alt && alt !== img.getAttribute('src')) { img.setAttribute('src', alt); return; }
+    img.remove();
+  };
+
+  /** 「口袋相册」子标签页：王语晨在口袋48 房间发的照片（按 raw.extInfo.user.userId 过滤本人）。
+   *  - 数据 js/her-album.js → window.__HER_ALBUM__（聊天室本人发图，3k+ 组）
+   *  - 分批渲染：首批 80 组，点「加载更多」续加，避免一次性进 DOM 卡顿。
+   *  - 点图 → 灯箱放大（可下载 / 可左右翻 / 可跳原发言）；卡片底部「查看原发言」→ 时间流定位。 */
+  let __albumShown = 0;
+  let __albumFlat = [];
+  let __albumIdx = 0;
+
+  function haCardHtml(it, gi) {
+    const esc = (typeof window.escapeHtml === 'function') ? window.escapeHtml : function (s) { return String(s); };
+    const imgs = Array.isArray(it.images) && it.images.length
+      ? '<div class="ha-imgs">' + it.images.map((u, ii) =>
+          '<img class="ha-img" src="' + esc(haImgUrl(u)) + '" data-src="' + esc(u) + '"'
+          + ' alt="' + esc(it.text || '相册') + '" loading="lazy"'
+          + ' onclick="__albumOpen(' + gi + ',' + ii + ')" onerror="__albumBroken(this)">'
+        ).join('') + '</div>'
+      : '';
+    const cap = it.text ? '<div class="ha-cap">' + esc(it.text) + '</div>' : '';
+    const time = it.time ? '<span class="ha-time">' + esc(it.time) + '</span>' : '';
+    const jump = (it.ts ? '<button class="ha-jump" onclick="__albumJump(' + it.ts + ',\'' + esc(it.id || '') + '\')">查看原发言</button>' : '');
+    const bar = (cap || time || jump) ? '<div class="ha-meta">' + cap + '<div class="ha-row">' + time + jump + '</div></div>' : '';
+    return '<div class="ha-card">' + imgs + bar + '</div>';
+  }
+  function haMoreHtml(list, n) {
+    if (n >= list.length) return '';
+    return '<button class="ha-more" onclick="__albumLoadMore(this)">加载更多（剩 ' + (list.length - n) + ' 组）</button>';
+  }
+  /* ---- 相册时间筛选：年 / 年月 / 年月日 三级（time 字段为北京时间 YYYY-MM-DD） ---- */
+  let __albumFilter = { y: '', m: '', d: '' };
+  function albumAll() {
+    return (typeof window !== 'undefined' && Array.isArray(window.__HER_ALBUM__)) ? window.__HER_ALBUM__ : [];
+  }
+  function albumFiltered() {
+    const all = albumAll();
+    const f = __albumFilter;
+    let pre = '';
+    if (f.y) pre = f.y;                                 // 只选年
+    if (f.y && f.m) pre = f.y + '-' + f.m;              // 选到年月
+    if (f.y && f.m && f.d) pre = f.y + '-' + f.m + '-' + f.d;  // 选到年月日
+    if (!pre) return all;
+    return all.filter((x) => String(x.time || '').slice(0, pre.length) === pre);
+  }
+  /** 某年某月里「有照片」的日期（从数据反推，避免选到空日期白点一次）。 */
+  function albumDaysOf(all, y, m) {
+    if (!y || !m) return [];
+    const pre = y + '-' + m + '-';
+    return Array.from(new Set(all
+      .filter((x) => String(x.time || '').slice(0, pre.length) === pre)
+      .map((x) => String(x.time || '').slice(8, 10))
+      .filter(Boolean))).sort();
+  }
+  function albumFilterBar(all, shown) {
+    const f = __albumFilter;
+    const years = Array.from(new Set(all.map((x) => String(x.time || '').slice(0, 4)).filter(Boolean))).sort().reverse();
+    const yOpt = '<option value="">全部年份</option>'
+      + years.map((y) => '<option value="' + y + '"' + (f.y === y ? ' selected' : '') + '>' + y + ' 年</option>').join('');
+    const mOpt = '<option value="">全年</option>'
+      + Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'))
+          .map((mm) => '<option value="' + mm + '"' + (f.m === mm ? ' selected' : '') + '>' + Number(mm) + ' 月</option>').join('');
+    const days = albumDaysOf(all, f.y, f.m);
+    const dOpt = '<option value="">全月</option>'
+      + days.map((dd) => '<option value="' + dd + '"' + (f.d === dd ? ' selected' : '') + '>' + Number(dd) + ' 日</option>').join('');
+    const on = !!(f.y || f.m || f.d);
+    return '<div class="ha-bar">'
+      + '<select id="haYear" onchange="__albumApplyFilter()">' + yOpt + '</select>'
+      + '<select id="haMonth"' + (f.y ? '' : ' disabled') + ' onchange="__albumApplyFilter()">' + mOpt + '</select>'
+      + '<select id="haDay"' + (f.y && f.m ? '' : ' disabled') + ' onchange="__albumApplyFilter()">' + dOpt + '</select>'
+      + (on ? '<button class="ha-clr" onclick="__albumClearFilter()">清除</button>' : '')
+      + '<span class="ha-cnt">' + (on ? '筛出 ' + shown + ' 组 / 共 ' + all.length + ' 组' : '共 ' + all.length + ' 组') + '</span>'
+      + '</div>';
+  }
+  window.__albumApplyFilter = function () {
+    const ye = document.getElementById('haYear');
+    const mo = document.getElementById('haMonth');
+    const da = document.getElementById('haDay');
+    const y = ye ? ye.value : '';
+    let m = (mo && !mo.disabled) ? mo.value : '';
+    let d = (da && !da.disabled) ? da.value : '';
+    if (!y) { m = ''; d = ''; }   // 年一清空，月/日连带失效
+    if (!m) { d = ''; }           // 月一清空，日连带失效
+    __albumFilter = { y: y, m: m, d: d };
+    albumRerender();
+    try { if (typeof track === 'function') track('album:filter'); } catch (e) {}
+  };
+  window.__albumClearFilter = function () {
+    __albumFilter = { y: '', m: '', d: '' };
+    albumRerender();
+  };
+  /** 局部重绘相册（不整页重渲，避免跳回顶部）。 */
+  function albumRerender() {
+    const box = document.querySelector('.ha-box');
+    if (!box) return;
+    const wrap = document.createElement('div');
+    wrap.innerHTML = window.renderAlbum();
+    const nb = wrap.firstElementChild;
+    if (nb) box.replaceWith(nb);
+  }
+  /** 已渲染部分摊平成「图」序列（灯箱左右翻用，跨卡片连续）。 */
+  function albumFlat() {
+    const list = albumFiltered();          // 灯箱左右翻只走「当前筛选结果」，否则翻页会串到被筛掉的图
+    const flat = [];
+    const n = Math.min(__albumShown, list.length);
+    for (let g = 0; g < n; g++) {
+      const it = list[g];
+      (it.images || []).forEach((u, i) => flat.push({ g: g, i: i, url: u, time: it.time || '', ts: it.ts || 0, id: it.id || '', text: it.text || '' }));
+    }
+    return flat;
+  }
+  function haExt(u) {
+    const m = /\.([a-zA-Z0-9]{2,5})(?:[?#]|$)/.exec(u || '');
+    return m ? '.' + m[1].toLowerCase() : '.jpg';
+  }
+  window.renderAlbum = function () {
+    const all = albumAll();
+    if (!all.length) return '<div class="empty-state">暂无相册数据（抓取器尚未产出）。</div>';
+    const list = albumFiltered();
+    __albumShown = Math.min(80, list.length);
+    return '<div class="ha-box">'
+      + '<div class="ha-head">口袋相册 · 收录 ' + all.length + ' 组</div>'
+      + albumFilterBar(all, list.length)
+      + (list.length ? '<div class="ha-grid">' + list.slice(0, __albumShown).map(haCardHtml).join('') + '</div>' + haMoreHtml(list, __albumShown)
+                     : '<div class="empty-state">这个时间段没有照片。</div>')
+      + '</div>';
+  };
+  window.__albumLoadMore = function (btn) {
+    const list = albumFiltered();
+    if (!list.length) return;
+    __albumShown = Math.min(__albumShown + 80, list.length);
+    const box = btn.closest('.ha-box');
+    if (!box) return;
+    const grid = box.querySelector('.ha-grid');
+    if (grid) grid.innerHTML = list.slice(0, __albumShown).map(haCardHtml).join('');
+    const old = box.querySelector('.ha-more');
+    if (old) old.remove();
+    const nh = haMoreHtml(list, __albumShown);
+    if (nh) box.insertAdjacentHTML('beforeend', nh);
+  };
+  /** 「查看原发言」→ 站内切到「口袋发言」tab 并定位到那一条（不开新页面）。
+   *  做法：把时间筛选锁定到「那一天」→ renderMessages 会自己补齐该月历史数据 →
+   *       轮询等目标 DOM 出现 → 滚动到视野中央并高亮。
+   *  （比新开时间流页更符合直觉：相册和发言是同一个站的两个 tab，来回跳不换页。） */
+  window.__albumJump = function (ts, id) {
+    const t = Number(ts) || 0;
+    if (!t) return;
+    try { if (typeof track === 'function') track('album:jump'); } catch (e) {}   // 🔢 埋点：查看原发言
+    try {
+      const mid = String(id || '').replace(/^ph-/, '');
+      const d = new Date(t + 28800000);                                   // 锁北京时间
+      const from = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) - 28800000;
+      state.dateFrom = from;
+      state.dateTo = from + 86400000;                                     // dateTo 存「次日 0 点」
+      state.query = '';
+      if (typeof switchTab === 'function') switchTab('messages');
+      albumLocate(mid, t);
+    } catch (e) {
+      window.open('pocket-timeline.html#t=' + t, '_blank');               // 兜底
+    }
+  };
+  /** 等目标那条渲染出来（历史月可能还在下），出现后滚到中央 + 高亮。 */
+  function albumLocate(mid, t) {
+    let tries = 0;
+    const tick = function () {
+      let el = null;
+      if (mid) { try { el = document.querySelector('.msg[data-mid="' + mid + '"]'); } catch (e) { el = null; } }
+      if (!el && t) { try { el = document.querySelector('.msg[data-ts="' + t + '"]'); } catch (e) { el = null; } }
+      if (el) {
+        el.scrollIntoView({ block: 'center' });
+        el.classList.add('hit');
+        setTimeout(function () { el.classList.remove('hit'); }, 4000);
+        return;
+      }
+      if (++tries < 50) setTimeout(tick, 200);
+    };
+    setTimeout(tick, 250);
+  }
+  /** 打开灯箱：g=卡片序号，i=组内第几张。 */
+  window.__albumOpen = function (g, i) {
+    __albumFlat = albumFlat();
+    let k = -1;
+    for (let x = 0; x < __albumFlat.length; x++) { if (__albumFlat[x].g === g && __albumFlat[x].i === i) { k = x; break; } }
+    __albumIdx = k < 0 ? 0 : k;
+    haLbShow();
+    try { if (typeof track === 'function') track('album:open'); } catch (e) {}   // 🔢 埋点：点图放大
+  };
+  window.__albumNav = function (d) {
+    if (!__albumFlat.length) return;
+    __albumIdx = (__albumIdx + d + __albumFlat.length) % __albumFlat.length;
+    haLbShow();
+  };
+  window.__albumClose = function () {
+    const lb = document.getElementById('haLb');
+    if (lb) lb.remove();
+    document.removeEventListener('keydown', haLbKey);
+  };
+  function haLbKey(e) {
+    if (e.key === 'Escape') window.__albumClose();
+    else if (e.key === 'ArrowLeft') window.__albumNav(-1);
+    else if (e.key === 'ArrowRight') window.__albumNav(1);
+  }
+  function haLbShow() {
+    const cur = __albumFlat[__albumIdx];
+    if (!cur) return;
+    const esc = (typeof window.escapeHtml === 'function') ? window.escapeHtml : function (s) { return String(s); };
+    const jump = cur.ts ? '<button class="ha-lb-btn" onclick="__albumJump(' + cur.ts + ',\'' + esc(cur.id || '') + '\')">查看原发言</button>' : '';
+    const html = '<div class="ha-lb-bar">'
+      + '<span class="ha-lb-n">' + (__albumIdx + 1) + ' / ' + __albumFlat.length + (cur.time ? ' · ' + esc(cur.time) : '') + '</span>'
+      + '<span class="ha-lb-act">'
+      + '<button class="ha-lb-btn" onclick="__albumDownload()">下载</button>'
+      + jump
+      + '<button class="ha-lb-btn ha-lb-x" onclick="__albumClose()">✕</button>'
+      + '</span></div>'
+      + '<img class="ha-lb-img" src="' + esc(haImgUrl(cur.url)) + '" data-src="' + esc(cur.url) + '" onerror="__albumBroken(this)" alt="">'
+      + '<button class="ha-lb-nav ha-lb-prev" onclick="__albumNav(-1)">‹</button>'
+      + '<button class="ha-lb-nav ha-lb-next" onclick="__albumNav(1)">›</button>';
+    let lb = document.getElementById('haLb');
+    if (!lb) {
+      lb = document.createElement('div');
+      lb.id = 'haLb';
+      lb.className = 'ha-lb';
+      lb.addEventListener('click', function (e) { if (e.target === lb) window.__albumClose(); });
+      document.body.appendChild(lb);
+      document.addEventListener('keydown', haLbKey);
+    }
+    lb.innerHTML = html;
+  }
+  /** 下载原图：直连带 CORS `*`，走 fetch→blob→a[download]（iOS Safari 兜底为直接打开）。 */
+  window.__albumDownload = async function () {
+    const cur = __albumFlat[__albumIdx];
+    if (!cur) return;
+    try { if (typeof track === 'function') track('album:dl'); } catch (e) {}     // 🔢 埋点：下载原图
+    try {
+      const r = await fetch(cur.url, { mode: 'cors' });
+      const b = await r.blob();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(b);
+      a.download = 'wyc-' + (cur.time || '') + '-' + (__albumIdx + 1) + haExt(cur.url);
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    } catch (e) {
+      window.open(cur.url, '_blank');
+    }
+  };
   function boot() {
     injectToolbar();
     injectCalendar();

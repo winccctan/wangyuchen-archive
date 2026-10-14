@@ -1436,3 +1436,49 @@ body[data-skin] .site-header {
   .mw-meta { flex-basis: 100%; order: 3; }
   .mw-plats { order: 4; }
 }
+
+/* ===== 新粉指南 · 口袋相册（demo → 生产） ===== */
+/* ===== 新粉指南 · 口袋相册 ===== */
+.ha-box { padding: 4px 2px; }
+.ha-head { font-size: 13px; color: #888; padding: 8px 4px 10px; }
+.ha-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.ha-card { background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+.ha-imgs { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; }
+.ha-imgs .ha-img:only-child { grid-column: 1 / -1; }
+.ha-img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; display: block; background: #f2f2f2; }
+.ha-meta { padding: 8px 9px 10px; }
+.ha-cap { font-size: 12.5px; color: #333; line-height: 1.4; }
+.ha-time { font-size: 11px; color: #aaa; margin-top: 4px; }
+.ha-more { display: block; margin: 16px auto; padding: 9px 24px; border: 1px solid #f0d6e2; background: #fff; color: #d6336c; border-radius: 999px; font-size: 13px; cursor: pointer; }
+.ha-more:hover { background: #fff0f6; }
+.ha-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 5px; }
+/* 从相册「查看原发言」跳过来时，目标那条闪一下 */
+.msg.hit { animation: msgHit 1.4s ease-out 2; box-shadow: inset 0 0 0 2px #d6336c; border-radius: 8px; }
+@keyframes msgHit { 0% { background: #ffe3ef; } 100% { background: transparent; } }
+/* 相册时间筛选条 */
+.ha-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 6px 4px 10px; }
+.ha-bar select, .ha-bar input { padding: 5px 8px; border: 1px solid #f0d6e2; border-radius: 8px; background: #fff; color: #333; font-size: 12.5px; }
+.ha-bar select:disabled { background: #fafafa; color: #bbb; border-color: #eee; cursor: not-allowed; }
+.ha-bar .ha-cnt { font-size: 12px; color: #888; }
+.ha-bar .ha-clr { padding: 5px 12px; border: 1px solid #f0d6e2; background: #fff; color: #d6336c; border-radius: 999px; font-size: 12px; cursor: pointer; }
+.ha-bar .ha-clr:hover { background: #fff0f6; }
+.ha-img { cursor: zoom-in; }
+.ha-jump { padding: 3px 10px; border: 1px solid #f0d6e2; background: #fff; color: #d6336c; border-radius: 999px; font-size: 11.5px; cursor: pointer; white-space: nowrap; }
+.ha-jump:hover { background: #fff0f6; }
+/* 灯箱（点图放大：下载 / 左右翻 / 跳原发言） */
+.ha-lb { position: fixed; inset: 0; z-index: 2000; background: rgba(0,0,0,.92); display: flex; align-items: center; justify-content: center; }
+.ha-lb-img { max-width: 96vw; max-height: 82vh; object-fit: contain; }
+.ha-lb-bar { position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; color: #fff; font-size: 13px; }
+.ha-lb-n { opacity: .8; }
+.ha-lb-act { display: flex; gap: 8px; }
+.ha-lb-btn { padding: 6px 14px; border: 1px solid rgba(255,255,255,.35); background: rgba(255,255,255,.12); color: #fff; border-radius: 999px; font-size: 13px; cursor: pointer; }
+.ha-lb-btn:hover { background: rgba(255,255,255,.26); }
+.ha-lb-x { padding: 6px 12px; }
+.ha-lb-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; border: none; border-radius: 50%; background: rgba(255,255,255,.16); color: #fff; font-size: 26px; line-height: 1; cursor: pointer; }
+.ha-lb-nav:hover { background: rgba(255,255,255,.3); }
+.ha-lb-prev { left: 10px; }
+.ha-lb-next { right: 10px; }
+@media (max-width: 480px) { .ha-lb-nav { width: 36px; height: 36px; font-size: 22px; } }
+/* 相册「查看原发言」跳到发言后的高亮 */
+.msg.hit { animation: msgHit 1.4s ease-out 2; box-shadow: inset 0 0 0 2px #d6336c; border-radius: 8px; }
+@keyframes msgHit { 0% { background: #ffe3ef; } 100% { background: transparent; } }
