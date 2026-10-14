@@ -998,7 +998,12 @@ async function handleStatsBody(url, env, kv, wantJson) {
       const n = Number(vals[i] || 0);
       if (n > 0) folList.push({ uid: String(k.name).slice(10), name: names[i] || '', n: n });
     });
-    folList.sort((a, b) => b.n - a.n);
+    // 她本人（王语晨）永远排第一，其余按被关注数从高到低（站长 2026-10-15 定）
+    folList.sort((a, b) => {
+      if (a.uid === '89653517') return -1;
+      if (b.uid === '89653517') return 1;
+      return b.n - a.n;
+    });
   } catch (_) { /* 读不到就当没有，不影响其它统计 */ }
   const folHtml = folList.length
     ? folList.slice(0, 20).map((f, i) => `<tr><td>${i + 1}. ${f.name || ('uid ' + f.uid)}</td><td class="n">${f.n}</td></tr>`).join('')
