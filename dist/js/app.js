@@ -2083,6 +2083,11 @@ const fmtScore = (v) => {
 const FIRST_OPT_KEY = 'wyc-demo-mine-first-opt-v1';
 const firstOptOn = () => { try { return localStorage.getItem(FIRST_OPT_KEY) !== '0'; } catch (_) { return true; } };
 const firstOptSet = (on) => { try { localStorage.setItem(FIRST_OPT_KEY, on ? '1' : '0'); } catch (_) {} };
+/* 「她的生日祝福」同样由本人决定写不写进分享图（这是她的原话，有人想晒、有人只想自己看）。
+   数据来源：48动态里她 @你 的生日祝福帖，服务端按 uid 只回本人那一份。 */
+const BD_OPT_KEY = 'wyc-demo-mine-bd-opt-v1';
+const bdOptOn = () => { try { return localStorage.getItem(BD_OPT_KEY) !== '0'; } catch (_) { return true; } };
+const bdOptSet = (on) => { try { localStorage.setItem(BD_OPT_KEY, on ? '1' : '0'); } catch (_) {} };
 /* ⚠️ canvas 换行用下面已有的 wrapText(ctx, text, maxW, maxLines) ——
    注意它必须传 maxLines：不传时内部 `out.length < undefined` 恒为 false，
    会一行都不返回（2026-09-23 踩过：分享卡上「第一句话」只剩标题、正文空白）。 */
@@ -2469,6 +2474,27 @@ function drawShareCard(ctx, d, W, PAD, FONT, bgOnly, H) {
     ctx.fillStyle = '#eaf1ff';
     qLines.forEach((line, i) => drawTokenLine(ctx, line, cx, y + 52 + i * lh, 25, 'center', Q_EM));
     y += bh + 26;
+  }
+
+  /* 「她给我的生日祝福」（可选，默认写）—— 紧跟在「我对她说的第一句话」之后：
+     一句是我对她说的、一句是她对我说的，两句话挨着放，才是这张卡最该留下的部分。
+     多条时只画最近那条正文，标题上标「共 N 次」，免得整张卡被祝福语撑爆。 */
+  if (d.showBd && Array.isArray(d.bd) && d.bd.length) {
+    const bs = d.bd.slice().sort((a, b) => (String(a.d) < String(b.d) ? -1 : 1));
+    const bw = bs[bs.length - 1] || {};
+    f('400', 25);
+    const bLines = layoutTokens(ctx, tokenizeText('「' + String(bw.x || '') + '」'), CW - 96, 4, Q_EM);
+    const blh = 40;
+    const bbh = 52 + bLines.length * blh + 22;
+    ctx.fillStyle = 'rgba(255,255,255,.07)';
+    rr(ctx, PAD + 12, y, CW - 24, bbh, 20); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.13)'; ctx.lineWidth = 2; ctx.stroke();
+    f('400', 16); ctx.fillStyle = '#93a8c6'; ctx.textAlign = 'center';
+    ctx.fillText('她 给 我 的 生 日 祝 福' + (bw.d ? ' · ' + bw.d : '')
+      + (bs.length > 1 ? ' · 共 ' + bs.length + ' 次' : ''), cx, y + 18);
+    ctx.fillStyle = '#eaf1ff';
+    bLines.forEach((line, i) => drawTokenLine(ctx, line, cx, y + 52 + i * blh, 25, 'center', Q_EM));
+    y += bbh + 26;
   }
 
   // 累计鸡腿（可选：本人可以在分享前关掉，默认写）
@@ -3118,6 +3144,38 @@ function bindGiftTabs() {
 }
 
 // 只送过礼、没在房间留过言的人
+/* ---------- 我的生贺（她给本人的生日祝福）----------
+ * 数据：/api/mine 的 bd 字段 = [{ d:'YYYY-MM-DD', x:'祝福原文' }]，源是她 48 动态里的生日祝福帖。
+ * 🔴 隐私：服务端按 uid 只回本人那一份，前端没有任何列举接口，也拿不到别人的 uid。
+ * 形态（站长 2026-10-14 定）：与「我的档案 / 去年今日」并列的第三个子页签，点进来才看得到。
+ * -------------------------------------------------------------------------- */
+function renderMineBd(bd) {
+  const list = Array.isArray(bd) ? bd.slice().sort((a, b) => (a.d < b.d ? 1 : a.d > b.d ? -1 : 0)) : [];
+  if (!list.length) return '';
+  let h = '<div class="mine-sec mine-bd-cover" style="animation-delay:.08s">'
+    + '<div class="mine-bd-emo">🎂</div>'
+    + '<div class="mine-cover-t">她给我送过 <b>' + list.length + '</b> 次生日祝福</div>'
+    + '<div class="mine-cover-s">来自她的 48 动态</div></div>';
+  list.forEach((w, i) => {
+    h += '<div class="mine-sec mine-bd" style="animation-delay:' + (0.12 + i * 0.04).toFixed(2) + 's">'
+      + '<div class="mine-h"><b>' + escapeHtml(String(w.d || '')) + '</b>'
+      + '<span>' + (list.length > 1 ? '第 ' + (list.length - i) + ' 次' : '') + '</span></div>'
+      + '<div class="mine-bd-q">「' + escapeHtml(String(w.x || '')) + '」</div></div>';
+  });
+  return h;
+}
+
+// 在房间里没留过记录、但收到过她生日祝福的人（只有「我的生贺」这一页）
+function renderMineBdOnly(bd, box) {
+  const h = '<div class="mine-report"><div class="mine-cover">'
+    + '<div class="mine-avatar">🐟</div>'
+    + '<div class="mine-cover-t">' + roomTitle() + '</div>'
+    + '<div class="mine-cover-s">你在房间里还没留下过记录<br>但她给你送过生日祝福</div></div>'
+    + renderMineBd(bd)
+    + '</div>';
+  box.innerHTML = h;
+}
+
 function renderMineGiftOnly(g, box) {
   const gg = g || {};
   const sc26 = Number(gg.score26) || 0;
@@ -3198,6 +3256,8 @@ async function lookupMine(uid) {
     return;
   }
   if (!d || !d.found) {
+    // 没在房间留过记录、却收到过她生日祝福的人 —— 只给他「我的生贺」这一页
+    if (d && d.bdOnly && Array.isArray(d.bd) && d.bd.length) { renderMineBdOnly(d.bd, box); return; }
     // 档案还没补完全历史时，查不到 ≠ 没记录 —— 如实说明覆盖区间，别冤枉人
     if (d && d.partial && d.since) {
       box.innerHTML = '<div class="mine-empty">目前档案只补到 <b>' + bjDayKey(d.since) + '</b> 之后，'
@@ -3219,6 +3279,11 @@ async function lookupMine(uid) {
     from: '',                                   // 全量已回溯到 2022-11，不再需要「至少」措辞
   };
   const u = d;
+  // 早期入库的不完整条目可能只有 n（缺 f / d / b）—— bjDayKey(undefined) 会抛
+  // Invalid time value 让整页卡在「正在找你的那一份…」，这里补上兜底（2026-10-14 实测踩到）。
+  if (!u.f) u.f = Date.parse((u.start || startKey) + 'T00:00:00+08:00');
+  u.d = Number(u.d) || 0;
+  u.b = Number(u.b) || 0;
   // 鸡腿（直播弹幕礼物 + 口袋房间送礼折算），服务端已按「2026 / 2024 年起」分别算好
   const gAll = giftNums(d);
   const g = (gAll.p26.total > 0 || gAll.p24.total > 0 || gAll.totalAll > 0) ? gAll : null;
@@ -3238,10 +3303,14 @@ async function lookupMine(uid) {
   const atLeast = firstKey <= S.from;
   const maxH = Math.max(1, ...hs.map((x) => Number(x) || 0));
 
-  // 查到之后出现两个子页：档案 / 去年今日（票根）。都是同一份 uid 数据，页签只负责切换显示
+  // 她的生日祝福（服务端按 uid 只回本人那一份）；没有就不出现这个子页签
+  const bd = Array.isArray(d.bd) && d.bd.length ? d.bd : null;
+
+  // 查到之后出现子页：档案 / 去年今日（票根）/ 我的生贺。都是同一份 uid 数据，页签只负责切换显示
   let html = '<div class="mine-subtabs">'
     + '<button type="button" class="mine-subtab on" data-mtab="archive">我的档案</button>'
     + '<button type="button" class="mine-subtab" data-mtab="ticket">我的去年今日</button>'
+    + (bd ? '<button type="button" class="mine-subtab" data-mtab="bd">我的生贺</button>' : '')
     + '</div>'
     + '<div class="mine-report" id="minePaneArchive">';
   html += '<div class="mine-cover">'
@@ -3327,6 +3396,11 @@ async function lookupMine(uid) {
     html += '<label class="mine-share-opt"><input type="checkbox" id="mineFirstOpt"'
       + (firstOptOn() ? ' checked' : '') + '>分享图里也写上我的第一句话</label>';
   }
+  // 她给我的生日祝福：同样本人决定写不写（这是她的原话，有人想晒、有人只想自己留着）
+  if (bd) {
+    html += '<label class="mine-share-opt"><input type="checkbox" id="mineBdOpt"'
+      + (bdOptOn() ? ' checked' : '') + '>分享图里也写上她给我的生日祝福</label>';
+  }
   // 鸡腿是隐私敏感度最高的那一项：由本人决定写不写进分享图
   if (Number(d.total) > 0) {
     html += '<label class="mine-share-opt"><input type="checkbox" id="mineGiftOpt"'
@@ -3349,15 +3423,19 @@ async function lookupMine(uid) {
       + '<div class="mine-h"><b>我的陪伴票根</b></div>'
       + renderTicket({ uid, start: firstKey, days: knowDays }) + '</div></div>';
   }
+  // 「我的生贺」第三个子页：只在服务端确实回了这一份数据时才出现
+  if (bd) html += '<div class="mine-report" id="minePaneBd" hidden>' + renderMineBd(bd) + '</div>';
   box.innerHTML = html;
-  // 档案 / 去年今日 子页切换
+  // 档案 / 去年今日 / 我的生贺 子页切换
   box.querySelectorAll('.mine-subtab').forEach((b) => {
     b.addEventListener('click', () => {
       box.querySelectorAll('.mine-subtab').forEach((x) => x.classList.toggle('on', x === b));
       const arc = document.getElementById('minePaneArchive');
       const tkt = document.getElementById('minePaneTicket');
+      const bdp = document.getElementById('minePaneBd');
       if (arc) arc.hidden = b.dataset.mtab !== 'archive';
       if (tkt) tkt.hidden = b.dataset.mtab !== 'ticket';
+      if (bdp) bdp.hidden = b.dataset.mtab !== 'bd';
       window.scrollTo({ top: 0, behavior: 'smooth' });
     });
   });
@@ -3373,6 +3451,7 @@ async function lookupMine(uid) {
     giftTotal: giftNum(g), giftLabel: giftLabel(g), showGift: false,   // 鸡腿：导出时按勾选决定
     score26: giftScore(g), showScore: false,                           // 活动打分：另一个开关
     firstWord, firstWordAt, showFirst: false,                          // 第一句话：第三个开关
+    bd: bd || [], showBd: false,                                       // 她的生日祝福：第四个开关
     hs, bandName: band.name, bandDesc: band.desc, bandHours: band.h,
     badges,
     dayCount2: Math.max(1, Math.round((Date.parse(nowDay + 'T00:00:00Z') - Date.parse((dayKeys[0] || firstKey) + 'T00:00:00Z')) / 86400e3) + 1),
@@ -3398,6 +3477,8 @@ async function lookupMine(uid) {
   if (scoreOpt) scoreOpt.addEventListener('change', () => scoreOptSet(scoreOpt.checked));
   const firstOpt = document.getElementById('mineFirstOpt');
   if (firstOpt) firstOpt.addEventListener('change', () => firstOptSet(firstOpt.checked));
+  const bdOpt = document.getElementById('mineBdOpt');
+  if (bdOpt) bdOpt.addEventListener('change', () => bdOptSet(bdOpt.checked));
   const dl = document.getElementById('mineDl');
   if (dl) dl.addEventListener('click', () => {
     const memoEl = document.querySelector('#mineMemo .mine-memo');
@@ -3407,6 +3488,7 @@ async function lookupMine(uid) {
     cardData.showGift = !!(giftOpt && giftOpt.checked) && Number(cardData.giftTotal) > 0;
     cardData.showScore = !!(scoreOpt && scoreOpt.checked) && Number(cardData.score26) > 0;
     cardData.showFirst = !!(firstOpt && firstOpt.checked) && !!cardData.firstWord;
+    cardData.showBd = !!(bdOpt && bdOpt.checked) && !!(cardData.bd && cardData.bd.length);
     saveShareCard(cardData);
   });
 

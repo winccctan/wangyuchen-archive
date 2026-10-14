@@ -671,6 +671,20 @@ button.sc-btn { border: 0; cursor: pointer; font-family: inherit; line-height: 1
 }
 .mine-first-q .msg-emoji { width: 1.45em; height: 1.45em; vertical-align: -.34em; margin: 0 1px; }
 
+/* 「我的生贺」—— 她在 48 动态里 @本人 的生日祝福（服务端按 uid 只回本人那一份）。
+   和「第一句话」同族：一句是我对她说的、一句是她对我说的，所以样式照抄引言块。 */
+.mine-bd-cover { text-align: center; padding: 22px 16px 18px; }
+.mine-bd-emo { font-size: 40px; line-height: 1; margin: 0 0 12px; }
+.mine-bd-cover .mine-cover-s { margin-top: 2px; }
+.mine-bd {
+  background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 16px; padding: 14px 15px 15px;
+}
+.mine-bd-q {
+  font-size: 16px; line-height: 1.72; color: #eaf1ff;
+  text-align: center; word-break: break-word; letter-spacing: .3px;
+}
+
 /* 时段 */
 .mine-band { background: rgba(255, 255, 255, .055); border: 1px solid rgba(255, 255, 255, .09); border-radius: 16px; padding: 14px 13px 12px; }
 .mine-hours { display: flex; align-items: flex-end; gap: 2.5px; height: 64px; }
