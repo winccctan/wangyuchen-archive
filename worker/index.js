@@ -347,6 +347,15 @@ const EVENTS = [
   ['social:open', '美图点开大图'],
   ['bili', 'B 站跳转'],
   ['search', '搜索'],
+  // 2026-10-14 新增：音乐作品（公演 → 音乐作品）+ 口袋相册
+  ['music:view', '音乐作品 打开'],
+  ['music:qq', '音乐作品 点 QQ音乐'],
+  ['music:nc', '音乐作品 点 网易云'],
+  ['music:bili', '音乐作品 点 B站'],
+  ['album:open', '相册 点图放大'],
+  ['album:dl', '相册 下载原图'],
+  ['album:jump', '相册 查看原发言'],
+  ['album:filter', '相册 时间筛选'],
 ];
 // 允许写进 KV 的事件名集合（= EVENTS 的键）。2026-09-25 起 handleTrack 用它做准入校验，
 // 白名单外的事件一律不写（防随手灌数据 + 省 KV 写入额度）。
@@ -362,7 +371,8 @@ const isStoppedEv = (ev) => STOP_EVENTS.has(ev) || ev.startsWith('lang:');
 // 总闸压到 800 之后它会把 tab / 行程 / 档案这些更要看的指标一起挤掉。
 // 给它单独设一条自适应子闸：超过之后**只停记盲盒**，其余事件照常记录。
 // 2026-09-24 晚：确认「停记」只是不再计数、抽卡功能照常 ⇒ 站长放宽到 500/天（原 300）。
-const EV_DAY_CAP = { 'box:open': 500 };
+// 相册「点图放大」也是高频动作（翻相册会连点），同样给一条子闸，别把其它指标挤掉。
+const EV_DAY_CAP = { 'box:open': 500, 'album:open': 300 };
 const LANGS = ['en', 'es', 'fr', 'nl', 'pt', 'ro', 'ja', 'vi', 'ko', 'th'];
 // 统计数据的读取密钥：只有带这个 key 才拿得到，避免统计接口挂在主域名上被随手访问。
 // 可用 KV 里的 STATS_KEY 覆盖（无需改代码）。
@@ -978,7 +988,9 @@ async function handleImageProxy(url, ctx) {
   let t;
   try { t = new URL(target); } catch (e) { return new Response('bad url', { status: 400 }); }
   if (!/^https?:$/i.test(t.protocol)) return new Response('bad protocol', { status: 400 });
-  if (!/(^|\.)sinaimg\.cn$|(^|\.)weibocdn\.com$|(^|\.)kd48-nosdn\.yunxinsvr\.com$|(^|\.)nim-nosdn\.netease\.im$|(^|\.)nosdn\.netease\.im$/.test(t.hostname)) {
+  // source.48.cn：口袋图床之一（她发的图有 250 张在这）。2026-10-14 补进白名单 ——
+  // 相册里这批图走 /img 曾被 403 判「forbidden host」全裂（平时靠前端直连绕开，这里补上是双保险）。
+  if (!/(^|\.)sinaimg\.cn$|(^|\.)weibocdn\.com$|(^|\.)kd48-nosdn\.yunxinsvr\.com$|(^|\.)nim-nosdn\.netease\.im$|(^|\.)nosdn\.netease\.im$|(^|\.)source\.48\.cn$/.test(t.hostname)) {
     return new Response('forbidden host', { status: 403 });
   }
 

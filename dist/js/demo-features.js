@@ -4706,6 +4706,7 @@
   window.renderMusicWorks = function () {
     const list = (typeof window !== 'undefined' && Array.isArray(window.__MUSIC_WORKS__)) ? window.__MUSIC_WORKS__ : [];
     if (!list.length) return '<div class="empty-state">暂无音乐作品数据。</div>';
+    trk('music:view');   // 🔢 埋点：打开「音乐作品」（事件名须在 worker EVENTS 白名单内才计得进 KV）
     const esc = (typeof window.escapeHtml === 'function') ? window.escapeHtml : function (s) { return String(s); };
     const rows = list.map((w) => {
       const t = w.title || '未命名';
@@ -4714,16 +4715,17 @@
       const year = w.year ? w.year : '';
       const meta = [album, year].filter(Boolean).join(' · ');
       // QQ音乐：只有拿到精确 songmid 才显示按钮（点开即该首）；没有就不挂，避免「打不开对应歌」
+      // 🔢 埋点：按钮 onclick 跑在全局作用域 → 必须用全局的 track()（IIFE 内的 trk 在 onclick 里取不到）
       const qqBtn = w.qqmid
-        ? '<a class="mw-plat mw-qq mw-exact" href="https://y.qq.com/n/ryqq/songDetail/' + encodeURIComponent(w.qqmid) + '" target="_blank" rel="noopener noreferrer">QQ音乐·直达</a>'
+        ? '<a class="mw-plat mw-qq mw-exact" href="https://y.qq.com/n/ryqq/songDetail/' + encodeURIComponent(w.qqmid) + '" target="_blank" rel="noopener noreferrer" onclick="track(\'music:qq\')">QQ音乐·直达</a>'
         : '';
       // 网易云：只有拿到精确 id（nc）才显示按钮，否则不放（避免「打不开对应歌」）
       const ncBtn = w.nc
-        ? '<a class="mw-plat mw-nc mw-exact" href="https://music.163.com/song/' + encodeURIComponent(w.nc) + '" target="_blank" rel="noopener noreferrer">网易云·直达</a>'
+        ? '<a class="mw-plat mw-nc mw-exact" href="https://music.163.com/song/' + encodeURIComponent(w.nc) + '" target="_blank" rel="noopener noreferrer" onclick="track(\'music:nc\')">网易云·直达</a>'
         : '';
       // B站：有官方音源（bili=BV号，团体官方账号上传）才显示按钮，否则不放（饭拍 cut 不算官方音源）
       const biliBtn = w.bili
-        ? '<a class="mw-plat mw-bili mw-exact" href="https://www.bilibili.com/video/' + encodeURIComponent(w.bili) + '" target="_blank" rel="noopener noreferrer">B站·官方</a>'
+        ? '<a class="mw-plat mw-bili mw-exact" href="https://www.bilibili.com/video/' + encodeURIComponent(w.bili) + '" target="_blank" rel="noopener noreferrer" onclick="track(\'music:bili\')">B站·官方</a>'
         : '';
       return '<li class="mw-row">'
         + '<div class="mw-main"><span class="mw-title">' + esc(t) + '</span>'
