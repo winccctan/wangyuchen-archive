@@ -3825,6 +3825,34 @@
   function albumAll() {
     return (typeof window !== 'undefined' && Array.isArray(window.__HER_ALBUM__)) ? window.__HER_ALBUM__ : [];
   }
+  /* ---- 相册数据：优先 KV（/api/album），静态 js 只当首屏兜底 ----
+   * 静态 her-album.js 是一次性生成的快照，她之后新发的图进不去；
+   * KV 那份由 scripts/build-album.mjs 从**发言 KV** 聚合，跟发言走同一条更新链路。 */
+  let __albumKv = 0;                                   // 0=未拉 1=拉取中 2=已完成
+  function albumLoadKv() {
+    if (__albumKv) return;
+    __albumKv = 1;
+    const base = (typeof API_BASE !== 'undefined' && API_BASE) ? API_BASE : '';
+    fetch(base + '/api/album')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        __albumKv = 2;
+        const arr = Array.isArray(d) ? d : (d && Array.isArray(d.data) ? d.data : null);
+        if (!arr || !arr.length) return;
+        // 🔴 闸门：KV 若明显比静态少（抓崩/半截数据），继续用静态，别把好数据冲掉
+        const cur = albumAll().length;
+        if (cur && arr.length < cur * 0.9) return;
+        window.__HER_ALBUM__ = arr;
+        albumRerender();
+      })
+      .catch(() => { __albumKv = 0; });
+  }
+  function albumRerender() {
+    const box = document.querySelector('.ha-box');
+    if (!box || !box.parentNode) return;
+    if (__albumShown > 80) return;                     // 用户已翻页就不打断，下次进来生效
+    box.parentNode.innerHTML = window.renderAlbum();
+  }
   function albumFiltered() {
     const all = albumAll();
     const f = __albumFilter;
@@ -3906,6 +3934,7 @@
     return m ? '.' + m[1].toLowerCase() : '.jpg';
   }
   window.renderAlbum = function () {
+    albumLoadKv();                                     // 后台拉 KV 最新版，拉到就替换静态快照
     const all = albumAll();
     if (!all.length) return '<div class="empty-state">暂无相册数据（抓取器尚未产出）。</div>';
     const list = albumFiltered();
