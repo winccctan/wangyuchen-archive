@@ -1,0 +1,88 @@
+# 生日祝福周更：重抓她「48动态」里的生日祝福 → 灌进 KV（bd/all），供「我的生贺」按本人 uid 查
+#
+# 为什么单开一个 workflow（不并进 fans-sync）：
+#   - 源不同：这份来自 posts timeline（48动态），不是房间发言；
+#   - 节奏不同：生日祝福一年也就新增十几条（2026 已 16 条），每周一次足够，不必每天跑；
+#   - 写入面不同：只覆盖 KV 一个键，不碰 D1、不碰前端静态文件。
+#
+# 🔴 全程**不提交任何东西**（permissions: contents: read）：
+#   抓取会顺带覆盖 site/js/birthday-wishes.js（剥了 uid 的公开列表，站长指示暂不发生产），
+#   那只是 runner 里的临时改动，job 结束即丢弃，不会触发 Cloudflare 全站重建。
+#   含 uid 的 .cache/birthday-uid.json 同样只在 runner 内存活，且不进 git（.gitignore）。
+#
+# 🔴 两道闸门（抓崩了不许写线上）：KV 是整键覆盖写，抓少一次就会把历史冲掉。
+#   ① 抓取脚本：48动态 <200 条 或 祝福 <90 条 → 直接 exit 1（基线 272/112，都只增不减）
+#   ② 推送脚本：uid 数 <60 → 放弃推送（基线 87 人）
+#   确要覆盖：手动 Run workflow 勾 force。
+#
+# 触发：北京时间每周一 04:23（UTC 周日 20:23）——错开 fans-sync(17:23)、songs-sync(21:23/09:23)。
+
+name: 生日祝福周更
+
+on:
+  schedule:
+    - cron: '23 20 * * 0'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: '跳过两道闸门（确要用这份更少的数据覆盖线上才勾）'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read                   # 🔴 只读：本 workflow 永不提交
+
+concurrency:
+  group: birthday-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SYNC_TOKEN: ${{ secrets.SYNC_TOKEN }}     # 仓库没配 GH_TOKEN，鉴权只走这一条
+      POCKET48_TOKEN: ${{ secrets.POCKET48_TOKEN }}
+      SITE: 'https://idol.wyc0518.cc'
+      # 与 push-watch / scrape 一致：口袋接口走 CI 配的出口代理。
+      # 代理坏了不用管 —— scraper/lib/api.mjs 有熔断（PROXY_DEAD）会自动回退直连。
+      SCRAPE_PROXY: ${{ secrets.SCRAPE_PROXY }}
+      BD_FORCE: ${{ inputs.force && '1' || '' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install scraper deps
+        working-directory: scraper
+        run: npm ci
+
+      - name: 抓取生日祝福（48动态）
+        run: |
+          if [ "${{ inputs.force }}" = "true" ]; then
+            export BD_MIN_POSTS=0 BD_MIN_WISHES=0
+            echo "⚠️ force 模式：已跳过抓取完整性闸门"
+          fi
+          node scraper/scripts/fetch-her-birthday.mjs
+
+      - name: 推 KV（bd/all）
+        run: node scripts/push-birthday.mjs
+
+      - name: 报告
+        if: always()
+        run: |
+          # 只报统计（人数/条数/按年），不打印任何 uid
+          node -e "
+            const m = require('./.cache/birthday-uid.json');
+            const ks = Object.keys(m);
+            const n = ks.reduce((a, k) => a + m[k].length, 0);
+            const y = {};
+            for (const k of ks) for (const w of m[k]) y[w.d.slice(0, 4)] = (y[w.d.slice(0, 4)] || 0) + 1;
+            console.log('生日祝福 ' + n + ' 条 / ' + ks.length + ' 人，按年 ' + JSON.stringify(y));
+          " || echo "⚠️ 本轮没有产出（多半被闸门拦下，线上沿用上一轮数据）"
