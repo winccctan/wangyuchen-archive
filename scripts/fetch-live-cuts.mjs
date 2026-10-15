@@ -32,7 +32,12 @@ import { dirname, resolve } from 'node:path';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const OUT = resolve(__dirname, '../site/data/live-cuts.js');
 const LIVE_JSON = resolve(__dirname, '../site/data/live.json');
-const PROXY_URL = process.env.SCRAPE_PROXY || process.env.HTTPS_PROXY || process.env.https_proxy || '';
+// 🔴 SCRAPE_PROXY 支持**逗号分隔的多个备用代理**（与 scraper/lib/api.mjs / fetch-bili-videos.mjs 一致）。
+//    以前这里把整串当成单个 URL 解析 ⇒ 多代理时 `new URL()` 抛「Invalid URL」，代理兜底整条失效，
+//    只剩直连 → 被 B 站 -412 风控，一轮只能抢到零星几条（2026-10-15 查出）。
+const PROXY_LIST = (process.env.SCRAPE_PROXY || process.env.HTTPS_PROXY || process.env.https_proxy || '')
+  .split(',').map((s) => s.trim()).filter(Boolean);
+let PROXY_IDX = 0;
 const PAGE_SLEEP = Number(process.env.PAGE_SLEEP || 2500);
 const PAGE_BUDGET = Number(process.env.BILI_CUT_PAGE_BUDGET || 0);
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
@@ -52,9 +57,9 @@ const KEEP_TITLE = /王语晨|语晨/i;
 // buvid3 等 cookie：缺它空间接口会返回 -352「风控校验失败」，故预热一次并带在所有请求上
 let EXTRA_COOKIE = '';
 
-function proxyGet(urlStr, referer) {
+function proxyGet(urlStr, referer, proxyUrl) {
   return new Promise((resolve, reject) => {
-    const p = new URL(PROXY_URL);
+    const p = new URL(proxyUrl);
     const t = new URL(urlStr);
     const headers = { Host: `${t.hostname}:443` };
     if (p.username) {
@@ -135,18 +140,21 @@ let PROXY_DEAD = false;
 //    日志却只显示代理超时，真正的直连错误（-412 还是 -352）被吞掉，排查非常费劲。
 async function getJson(urlStr, referer, tries = 2) {
   const msgs = [];
-  const routes = (PROXY_URL && !PROXY_DEAD) ? ['direct', 'proxy'] : ['direct'];
+  const routes = (PROXY_LIST.length && !PROXY_DEAD) ? ['direct', 'proxy'] : ['direct'];
   for (const route of routes) {
     for (let n = 0; n < tries; n++) {
       let res;
       try {
-        res = route === 'proxy' ? await proxyGet(urlStr, referer) : await directGet(urlStr, referer);
+        res = route === 'proxy'
+          ? await proxyGet(urlStr, referer, PROXY_LIST[PROXY_IDX % PROXY_LIST.length])
+          : await directGet(urlStr, referer);
       } catch (e) {
         // 代理 407/401/403 = 代理本身挂了（要认证 / 额度用完），重试一万次也没用 ⇒ 熔断
         if (route === 'proxy' && /CONNECT (407|401|403)/.test(e.message)) {
           PROXY_DEAD = true;
           console.warn(`   [代理不可用] ${e.message} —— 本轮后续请求只走直连`);
         }
+        if (route === 'proxy') PROXY_IDX++;   // 换下一个备用代理再试
         msgs.push(`${route}:${e.message}`);
         await sleep(1200 * (n + 1));
         continue;
@@ -235,6 +243,37 @@ function parseOut(file) {
 const bjDate = (sec) => new Date(Number(sec) * 1000 + 8 * 3600e3).toISOString().slice(0, 10);
 const cleanTitle = (t) => String(t || '').replace(/<[^>]+>/g, '').trim();
 
+/* ---------------- 直播场次表（把切片挂到对应直播用） ----------------
+ * 🔴 为什么不能只读本地 live.json：那份文件只有「手工提交」时才更新，CI checkout 到的可能停在
+ *    几周前（现状：HEAD 788 场 / 线上 KV 796 场）⇒ 新直播在本轮「找不到对应场次」，
+ *    它刚剪出来的切片就挂不上去。所以本地快照 ∪ 线上 KV（scrape.mjs 每 5 分钟刷新的那份）。 */
+const LIVE_LIST = [];
+{
+  const seen = new Set();
+  const push = (l) => {
+    const ms = Number(l && l.ctime);
+    if (!ms) return;
+    const liveId = String(l.liveId || '');
+    if (!liveId || seen.has(liveId)) return;
+    seen.add(liveId);
+    LIVE_LIST.push({ liveId, ctime: ms, day: bjDate(Math.round(ms / 1000)) });
+  };
+  try {
+    const lj = JSON.parse(readFileSync(LIVE_JSON, 'utf8'));
+    for (const l of (lj.live || [])) push(l);
+  } catch (_) { /* 没 live.json 就先不匹配 */ }
+  const local = LIVE_LIST.length;
+  try {
+    const r = await fetch(WORKER_URL + '/api/live', { headers: { 'user-agent': 'wyc-archive-fetch-live-cuts' } });
+    if (r.ok) {
+      const d = await r.json();
+      for (const l of (Array.isArray(d) ? d : (d.live || []))) push(l);
+    }
+  } catch (_) { /* KV 拿不到就只用本地快照 */ }
+  LIVE_LIST.sort((a, b) => a.ctime - b.ctime);
+  console.log(`   [直播匹配] 直播场次 ${LIVE_LIST.length} 场（本地快照 ${local} + 线上 KV 补 ${LIVE_LIST.length - local}）`);
+}
+
 // ★ 标题里的日期优先于发布时间：本 UP 的回放标题写作「【王语晨】20260921 直播回放」，
 //   而发布时间常在次日（如 09-18 发布、内容是 09-17 的直播）——
 //   用发布时间做日期匹配会整体错一天，必须从标题里取。
@@ -301,16 +340,7 @@ function save() {
   //   旧规则「发布日 ±1 天」67.3%  →  新规则「发布时间之前最近的一场直播」91.8%
   //   剩余差异主要是 UP 标题年份手滑（写 2025 实为 2026）与跨零点日期口径，并非匹配错误。
   // 发布-直播开始间隔：中位 2.9h、P75 8h、max 40.5h；切片更晚，故窗口放宽到 72h。
-  const liveList = [];
-  try {
-    const lj = JSON.parse(readFileSync(LIVE_JSON, 'utf8'));
-    for (const l of (lj.live || [])) {
-      const ms = Number(l.ctime);
-      if (!ms) continue;
-      liveList.push({ liveId: String(l.liveId), ctime: ms, day: bjDate(Math.round(ms / 1000)) });
-    }
-    liveList.sort((a, b) => a.ctime - b.ctime);
-  } catch (_) { /* 没 live.json 就先不匹配 */ }
+  const liveList = LIVE_LIST;
   const liveByDay = new Map();
   for (const l of liveList) if (!liveByDay.has(l.day)) liveByDay.set(l.day, l);
   const MATCH_WINDOW_MS = 72 * 3600e3;
@@ -618,7 +648,7 @@ async function crawlDynamics(up) {
 
 /* ---------------- 主流程 ---------------- */
 console.log(`[直播切片] 目标 ${UP_TARGETS.map((t) => `${t.label}(${t.mid})`).join('、')}`
-  + ` | 出口：${PROXY_URL ? '直连→代理兜底' : '直连'}`);
+  + ` | 出口：${PROXY_LIST.length ? `直连→代理兜底(${PROXY_LIST.length}个)` : '直连'}`);
 const seeded = await seedFromKV();
 if (seeded) console.log(`[直播切片] 已从线上 KV 合并回 ${seeded} 条历史记录（单轮抓不全也不会丢）`);
 let ok = 0;

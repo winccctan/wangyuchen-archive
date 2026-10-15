@@ -103,18 +103,43 @@ def part_to_songs(part):
     return out
 
 
+BAN_CODES = (-412, -352, -799)   # B站 风控三兄弟：request was banned / 风控校验失败 / 请求过于频繁
+
+
+def _open_json(req, proxies, timeout=25):
+    op = urllib.request.build_opener(urllib.request.ProxyHandler(proxies))
+    return json.loads(op.open(req, timeout=timeout).read().decode('utf-8'))
+
+
 def http_json(url, referer):
+    """取 B站 JSON。
+
+    🔴 先直连，撞风控（-412/-352/-799）或网络异常时**再用 SCRAPE_PROXY 兜底**。
+       GitHub Actions 是数据中心 IP，分P 接口虽然比空间接口宽松，但一样会被 -412；
+       没有这层兜底，「只看这首」的自动补全到 CI 里就会稳定抓 0 条（2026-10-15 加）。
+    """
     req = urllib.request.Request(url, headers={
         'User-Agent': UA, 'Referer': referer, 'Origin': 'https://www.bilibili.com',
         'Accept': 'application/json, text/plain, */*'})
     if os.environ.get('NO_PROXY'):
         req = urllib.request.Request(url, headers=dict(req.headers))
+    err = None
     try:
-        op = urllib.request.build_opener(urllib.request.ProxyHandler({}))
-        return json.loads(op.open(req, timeout=25).read().decode('utf-8'))
+        d = _open_json(req, {})
+        if isinstance(d, dict) and d.get('code') in BAN_CODES:
+            err = 'code=%s %s' % (d.get('code'), d.get('message'))
+        else:
+            return d
     except Exception as e:
-        print('   ! 请求失败 %s: %s' % (url, e))
-        return None
+        err = e
+    proxy = (os.environ.get('SCRAPE_PROXY') or '').split(',')[0].strip()
+    if proxy:
+        try:
+            return _open_json(req, {'http': proxy, 'https': proxy}, timeout=30)
+        except Exception as e2:
+            print('   ! 代理兜底也失败 %s: %s' % (url, e2))
+    print('   ! 请求失败 %s: %s' % (url, err))
+    return None
 
 
 def load_perf_cuts():

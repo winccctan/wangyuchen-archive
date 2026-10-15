@@ -42,7 +42,11 @@ const budgetLeft = () => PAGE_BUDGET <= 0 || pagesUsed < PAGE_BUDGET;
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // 出口代理：数据中心 IP 易被 B 站 WAF 限流，SCRAPE_PROXY（杭州阿里云）可绕过
-const PROXY_URL = process.env.SCRAPE_PROXY || process.env.HTTPS_PROXY || process.env.https_proxy || '';
+// 🔴 SCRAPE_PROXY 支持**逗号分隔的多个备用代理**（与 scraper/lib/api.mjs 一致）。
+//    以前把整串当单个 URL ⇒ 多代理时 `new URL()` 抛「Invalid URL」，代理兜底整条失效（2026-10-15 查出）。
+const PROXY_LIST = (process.env.SCRAPE_PROXY || process.env.HTTPS_PROXY || process.env.https_proxy || '')
+  .split(',').map((s) => s.trim()).filter(Boolean);
+let PROXY_IDX = 0;
 
 /* ---------------- 要抓的 UP 与通道 ---------------- */
 // 用户指定的三个 B 站数据源：企理鹅大帝 + 忘记自己是猪 + Chzhnh
@@ -77,9 +81,9 @@ function directGet(urlStr, referer, ua = UA) {
   });
 }
 
-function proxyGet(urlStr, referer, ua = UA) {
+function proxyGet(urlStr, referer, ua = UA, proxyUrl = PROXY_LIST[0]) {
   return new Promise((resolve, reject) => {
-    const p = new URL(PROXY_URL);
+    const p = new URL(proxyUrl);
     const t = new URL(urlStr);
     const headers = { Host: `${t.hostname}:443` };
     if (p.username) {
@@ -138,15 +142,18 @@ function proxyGet(urlStr, referer, ua = UA) {
 function getJson(urlStr, referer, tries = 4, banTries = Number(process.env.BILI_BAN_TRIES ?? 2), ua = UA, proxyFirst = false) {
   return new Promise(async (resolveP, rejectP) => {
     // 默认直连优先；空间投稿列表走 proxyFirst（直连是数据中心 IP，必被 -412，住宅代理才是通的）
-    const routes = PROXY_URL ? (proxyFirst ? ['proxy', 'direct'] : ['direct', 'proxy']) : ['direct'];
+    const routes = PROXY_LIST.length ? (proxyFirst ? ['proxy', 'direct'] : ['direct', 'proxy']) : ['direct'];
     let lastMsg = '';
     const maxAttempts = Math.max(tries, banTries);
     for (const route of routes) {
       for (let n = 0; n < maxAttempts; n++) {
         let res;
         try {
-          res = route === 'proxy' ? await proxyGet(urlStr, referer, ua) : await directGet(urlStr, referer, ua);
+          res = route === 'proxy'
+            ? await proxyGet(urlStr, referer, ua, PROXY_LIST[PROXY_IDX % Math.max(1, PROXY_LIST.length)])
+            : await directGet(urlStr, referer, ua);
         } catch (e) {
+          if (route === 'proxy') PROXY_IDX++;   // 换下一个备用代理再试
           lastMsg = `${route}:${e.message}`;
           await sleep(1500 * (n + 1));
           continue;

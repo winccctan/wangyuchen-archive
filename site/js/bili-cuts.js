@@ -6,9 +6,11 @@
  * 字段：[日期, 标题, BV号, 封面URL]。日期为北京时间 YYYY-MM-DD（优先从标题 8 位日期解析，
  *       解析不到回退上传时间），与公演 stime 转北京时间一致，确保能挂到对应公演。
  * 注：本文件随站上线（静态资源，不进 KV）；改它并 bump index.html 的 ?v= 即生效。
- * 共 164 条，覆盖 2022-10-02 → 2026-09-27。
+ * 共 180 条，覆盖 2022-10-02 → 2026-10-11。
  */
 window.__BILI_CUTS__ = [
+  ["2026-10-11","【王语晨】20261011 GNZ48 Team NIII《拾忆：TEAM NIII》公演cut","BV1TEpn6cEJi",""],
+  ["2026-10-07","【王语晨】20261007 GNZ48《CALL爆你3008》全团联合公演cut","BV1baH16eEss",""],
   ["2026-09-27","【王语晨】20260927 GNZ48《4 Future》《Classic 8》肆班&捌班中秋联合公演cut","BV12ha86LEbh",""],
   ["2026-09-26","【王语晨】20260926 GNZ48 Team NIII 《拾忆：TEAM NIII》公演cut","BV1ZCh96hEMt",""],
   ["2026-09-13","GNZ48 Team NIII 《拾忆：TEAM NIII》公演cut","BV17vYz6tEn7","https://i1.hdslb.com/bfs/archive/cac219ce572990cabc5744857a05d2c239c92278.jpg"],
@@ -169,6 +171,20 @@ window.__BILI_CUTS__ = [
   ["2024-05-04","GNZ48 team NIII《天枢之弈》首演第一场cut","BV1Wi421y723","https://i1.hdslb.com/bfs/archive/4d4f016954d6d3ea6851fd76fbdf678dc13a00e7.jpg"],
   ["2024-04-27","《启程:Team NIII》千秋乐公演cut","BV1gH4y1V72k","https://i2.hdslb.com/bfs/archive/74e0838adcc5c173299168fc9c5c75e8706c5dbd.jpg"],
   ["2024-04-19","最佳拍档公演cut","BV1uw4m1U7jr","https://i0.hdslb.com/bfs/archive/87f603c47358424d528a856aa4dcebabcedbaced.png"],
+  ["2023-05-01","【王语晨】20230501 GNZ48 Team NIII《启程：Team NIII》公演cut","BV1Wbp168Ead",""],
+  ["2023-04-22","【王语晨】20230422 GNZ48 Team NIII《启程：Team NIII》公演cut","BV11xp16aE4f",""],
+  ["2023-04-08","【王语晨】20230408 GNZ48 Team NIII《他们所不知道的TEAM NIII》原TEAM NIII千秋乐公演cut","BV1Mmpj6REZq",""],
+  ["2023-04-02","【王语晨】20230402 GNZ48 Team NIII《他们所不知道的TEAM NIII》公演cut","BV1v7p76PEK2",""],
+  ["2023-04-01","【王语晨】20230401 GNZ48 Team NIII《他们所不知道的TEAM NIII》公演cut","BV1Cfpj6jEJC",""],
+  ["2023-03-26","【王语晨】20230326 GNZ48 Team G《他们所不知道的TEAM G》公演cut","BV1Kep76WEdK",""],
+  ["2023-03-25","【王语晨】20230325 GNZ48 Team NIII《他们所不知道的TEAM NIII》公演cut","BV1Tap76REq3",""],
+  ["2023-03-24","【王语晨】20230324 GNZ48 Team NIII《他们所不知道的TEAM NIII》公演cut","BV1aHp76hEe7",""],
+  ["2023-03-19","【王语晨】20230319 GNZ48 Team NIII《他们所不知道的TEAM NIII》公演cut","BV1Ynp76wEWv",""],
+  ["2023-03-12","【王语晨】20230312 GNZ48 Team NIII《他们所不知道的TEAM NIII》公演cut","BV1UCp56UEBm",""],
+  ["2023-03-05","【王语晨】20230305 GNZ48梦想奋进计划B组《与你的第18次手牵手》偶像研究计划升格纪念公演cut","BV1sYpL6LE81",""],
+  ["2023-02-15","【王语晨】20230215 GNZ48 梦想奋进计划B组《与你的第17次手牵手》公演cut","BV1gDpu6zE1j",""],
+  ["2023-02-12","【王语晨】20230212 GNZ48 梦想奋进计划B组《与你的第16次手牵手》公演cut","BV17Bpu6mETG",""],
+  ["2023-02-04","【王语晨】20230204 GNZ48 梦想奋进计划B组《与你的第15次手牵手》公演cut","BV1nGpg6sEkn",""],
   ["2022-10-21","【王语晨】20221021 GNZ48 梦想奋进计划《偶像研究计划》云公演cut","BV1fRhD6xEvc",""],
   ["2022-10-19","【王语晨】20221019 GNZ48 梦想奋进计划B组《与星空手牵手》公演cut","BV1Lghy6AEqb",""],
   ["2022-10-13","【王语晨】20221013 GNZ48 梦想奋进计划B组《与星空手牵手》公演cut","BV1cZhC6GERu",""],
