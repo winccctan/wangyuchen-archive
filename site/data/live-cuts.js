@@ -1,9 +1,9 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-10-15T05:45:59.300Z",
-  "count": 697,
+  "updatedAt": "2026-10-15T13:30:55.415Z",
+  "count": 698,
   "matched": 482,
   "replays": 260,
-  "clips": 437,
+  "clips": 438,
   "targets": [
     {
       "mid": "1805448354",
@@ -28,6 +28,19 @@ window.LIVE_CUTS = {
     "358477444:space": 3
   },
   "cuts": [
+    {
+      "bvid": "BV1TvJy6dEmo",
+      "title": "【王语晨】20230501 GNZ48《爱》曾艾佳生日主题公演cut",
+      "created": 1792059642,
+      "date": "2026-10-15",
+      "titleDate": "2023-05-01",
+      "kind": "cut",
+      "cover": "http://i1.hdslb.com/bfs/archive/6f2f5f11009b4d1f2bba393e5bb2b6b2991808bc.jpg",
+      "url": "https://www.bilibili.com/video/BV1TvJy6dEmo",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨公演cut"
+    },
     {
       "bvid": "BV1Wbp168Ead",
       "title": "【王语晨】20230501 GNZ48 Team NIII《启程：Team NIII》公演cut",
