@@ -33,7 +33,7 @@ concurrency:
 jobs:
   sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 40
     env:
       SCRAPE_PROXY: ${{ secrets.SCRAPE_PROXY }}     # 逗号分隔的多个备用代理（数据中心 IP 吃 -412 时兜底）
       SYNC_TOKEN: ${{ secrets.SYNC_TOKEN }}
@@ -48,12 +48,17 @@ jobs:
           node-version: '22'
 
       # 两个抓取脚本都只依赖 node 内置模块（https/tls/crypto/fs），不需要 npm ci。
-      # 失败不中断：脚本都是「增量并集 + 断点」，抓到多少算多少，下一轮接着补。
-      - name: 抓 B站 视频库（Chzhnh / 企理鹅大帝 的公演录像与切片）
-        run: BILI_PAGE_BUDGET=6 BILI_SPACE_BAN_TRIES=4 node scripts/fetch-bili-videos.mjs || true
+      # 🔴 每一步都套 `timeout` 硬上限（GNU coreutils，ubuntu 自带）：B站 撞 -412 时脚本会
+      #    自己等 60/120/180 秒重试，实测单步能跑到 20 分钟 —— 一旦把整轮 timeout-minutes 吃满，
+      #    后面「提交」「推 KV」会被整轮杀掉，等于又白跑一轮（2026-10-15 实跑撞到）。
+      #    两个抓取脚本都是**逐页落盘**的（每抓完一页就 save），被杀掉也不会丢已抓到的部分。
+      - name: 抓 B站 直播切片 / 直播回放（先跑，合集通道最稳）
+        run: timeout 600 env BILI_CUT_SPACE_PAGES=3 node scripts/fetch-live-cuts.mjs || true
 
-      - name: 抓 B站 直播切片 / 直播回放
-        run: BILI_CUT_SPACE_PAGES=3 node scripts/fetch-live-cuts.mjs || true
+      - name: 抓 B站 视频库（Chzhnh / 企理鹅大帝 的公演录像与切片）
+        # BILI_SPACE_BAN_TRIES 从 4 降到 2：空间投稿通道在数据中心 IP 上基本必吃 -412，
+        # 重试 4 次只是白等 3 分钟；新投稿靠「合集/动态」两条通道已经能覆盖。
+        run: timeout 600 env BILI_PAGE_BUDGET=6 BILI_SPACE_BAN_TRIES=2 node scripts/fetch-bili-videos.mjs || true
 
       - name: 合并进「公演 B站cut」清单（bili-cuts.js，含 index.html 版本号）
         run: node scripts/sync-bili-cuts.mjs || true
