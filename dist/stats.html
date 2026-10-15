@@ -80,6 +80,10 @@ function render(d) {
   const folRows48 = (d.follows48 && d.follows48.length)
     ? d.follows48.map((f, i) => '<tr><td>' + (i + 1) + '. ' + (f.name || ('uid ' + f.uid)) + '</td><td class="n">' + f.n + '</td></tr>').join('')
     : '<tr><td colspan="2" class="dim">暂无记录</td></tr>';
+  // 姊妹站 all48 的访客国家分布（独立键，不进主站）
+  const ctryRows48 = (d.country48 && d.country48.length)
+    ? d.country48.map(c => '<tr><td>' + c.name + '</td><td class="n">' + c.today + '</td><td class="n">' + c.d7 + '</td></tr>').join('')
+    : '<tr><td colspan="3" class="dim">暂无记录（姊妹站国家分布 2026-10-15 起启用）</td></tr>';
 
   const el = document.getElementById('body');
   el.innerHTML =
@@ -89,7 +93,8 @@ function render(d) {
     '<p class="dim">按 Cloudflare 给出的国家统计独立访客，不记 IP 明文。近 7 天＝每天独立访客相加，同一个人多天都来会重复计；数据从启用当天开始累计。</p>' +
     '<h2>功能使用（次数 / 独立访客）</h2><table class="wide"><tr><td>动作</td><td class="n">累计</td><td class="n">今日</td><td class="n">独立累计</td><td class="n">独立今日</td></tr>' + evRows + '</table>' +
     '<h2>48 成员档案站（all48.wyc0518.cc）</h2><table class="wide"><tr><td>动作</td><td class="n">累计</td><td class="n">今日</td><td class="n">独立累计</td><td class="n">独立今日</td></tr>' + evRows48 + '</table>' +
-    '<p class="dim">姊妹站的访问量：那个站自己没有统计，页面一打开就往这里打一条。独立访客按 IP 去重（不保存明文 IP）。它的人<b>不进上面的「到访人数 / 国家分布」</b>，两站分开看。2026-10-14 起启用。</p>' +
+    '<h2>48 成员档案站 · 访客来自哪里（今日 / 近 7 天）</h2><table><tr><td>国家·地区</td><td class="n">今日</td><td class="n">近 7 天</td></tr>' + ctryRows48 + '</table>' +
+    '<p class="dim">姊妹站的访问量：那个站自己没有统计，页面一打开就往这里打一条。独立访客按 IP 去重（不保存明文 IP）。它的人<b>不进上面的「到访人数 / 国家分布」</b>，这张是它的独立国家分布，两站分开看。2026-10-15 起启用国家分布。</p>' +
     '<h2>48 成员档案站 · 谁最被关注</h2><table class="wide"><tr><td>成员</td><td class="n">被关注（设备数）</td></tr>' + folRows48 + '</table>' +
     '<p class="dim">口径：一台设备（浏览器）对同一成员只算 1 人，取消关注会减回去；不记 IP、不记身份，匿名 id 是前端随机生成的。<b>数字只在站长报表里看得到，姊妹站站内不展示</b>。2026-10-15 起启用，只列前 20。</p>' +
     '<h2>各语言翻译次数</h2><table>' + langRows + '</table>' +

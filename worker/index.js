@@ -695,6 +695,16 @@ async function handleTrack(url, request, env, ctx) {
           // 写入次数和原来一样都是 1 次 put（原方案还要多一次 get），不增加 KV 开销。
           const cc = String((request.cf && request.cf.country) || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
           if (cc) await kv.put(`stat:ctry:${day}:${cc}:${hash}`, '1');
+        } else if (is48) {
+          // 🔴 姊妹站 all48 的访客国家：单独建一套键（stat:ctry48:），**不进主站的 stat:ctry:**，
+          // 否则会把「补档站来了多少人 / 来自哪」这张表彻底污染（站长 2026-10-14 定的两站分开原则）。
+          // 同样只在「当天首次出现」记一次：用 stat:u48:<day>:<hash> 判重，一人一个键、无写冲突。
+          const u48Key = `stat:u48:${day}:${hash}`;
+          if (!(await kv.get(u48Key))) {
+            await kv.put(u48Key, '1');
+            const cc = String((request.cf && request.cf.country) || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+            if (cc) await kv.put(`stat:ctry48:${day}:${cc}:${hash}`, '1');
+          }
         }
       } catch (_) { /* 统计失败不影响页面 */ }
     })();
@@ -999,6 +1009,25 @@ async function handleStatsBody(url, env, kv, wantJson) {
   });
   countries.sort((a, b) => (b.d7 - a.d7) || (b.today - a.today));
 
+  // 姊妹站 all48 的访客国家分布：独立一套键 stat:ctry48:<day>:<cc>:<访客键>，不进主站 stat:ctry:。
+  // 同样「一人一个键」、按前缀数列即可（无历史旧方案兼容，2026-10-15 起才建）。
+  const ctry48Lists = await Promise.all(days7.map((d) => ls(`stat:ctry48:${d}:`, 1000)));
+  const ccSet48 = new Set();
+  (ctry48Lists || []).forEach((l) => ((l && l.keys) || []).forEach((k) => {
+    const cc = String((k && k.name) || '').split(':')[3];
+    if (cc) ccSet48.add(cc);
+  }));
+  const ccs48 = Array.from(ccSet48);
+  const countries48 = ccs48.map((c) => {
+    const per = days7.map((d, di) => {
+      const nNew = ((ctry48Lists[di] && ctry48Lists[di].keys) || [])
+        .filter((k) => String((k && k.name) || '').split(':')[3] === c).length;
+      return nNew;
+    });
+    return { cc: c, name: CC_NAME[c] || c, today: per[0], d7: per.reduce((a, b) => a + b, 0) };
+  });
+  countries48.sort((a, b) => (b.d7 - a.d7) || (b.today - a.today));
+
   const langHtml = langRows.length
     ? langRows.map(([l, n]) => `<tr><td>${LANG_NAME[l] || l}</td><td class="n">${n}</td></tr>`).join('')
     : '<tr><td colspan="2" class="dim">暂无记录</td></tr>';
@@ -1030,6 +1059,9 @@ async function handleStatsBody(url, env, kv, wantJson) {
   const ctryHtml = countries.length
     ? countries.map((c) => `<tr><td>${c.name}</td><td class="n">${c.today}</td><td class="n">${c.d7}</td></tr>`).join('')
     : '<tr><td colspan="3" class="dim">暂无记录（从启用当天开始累计）</td></tr>';
+  const ctry48Html = countries48.length
+    ? countries48.map((c) => `<tr><td>${c.name}</td><td class="n">${c.today}</td><td class="n">${c.d7}</td></tr>`).join('')
+    : '<tr><td colspan="3" class="dim">暂无记录（姊妹站国家分布 2026-10-15 起启用）</td></tr>';
 
   // 手机通知订阅人数（Web Push）：订阅现在只有个位数～几十条，list 一下几乎不花钱。
   // 记三个分类：有人只想收「她开播」，不想收每条发言 ⇒ 光看总人数不知道该推给谁。
@@ -1079,6 +1111,7 @@ async function handleStatsBody(url, env, kv, wantJson) {
       langs: langRows.map(([l, n]) => ({ lang: l, name: LANG_NAME[l] || l, count: n })),
       days: days.map(([d, n, u, su]) => ({ day: d, count: n, visitors: u, siteUv: su })),
       countries: countries,
+      country48: countries48,
       // stat:gate:<day> 是「当天处理了多少次动作」的**粗估**（1/5 抽样、每次加 5，所以和实际值可能差几百），
       // 不是写入次数：写入次数 ≥ 这个数（每个动作至少写 1 次）。够用来判断有没有撞上限就够了。
       actionsToday: gateUsed,
@@ -1125,7 +1158,8 @@ async function handleStatsBody(url, env, kv, wantJson) {
 口径提醒：同一个人多天都来，每天的独立访客里各算一次；国家分布从 2026-09-24 才启用，之前有访客但没有国家数据。</p>
 <h2>功能使用（次数 / 独立访客）</h2><table><tr><td>动作</td><td class="n">累计</td><td class="n">今日</td><td class="n">独立累计</td><td class="n">独立今日</td></tr>${evHtml}</table>
 <h2>48 成员档案站（all48.wyc0518.cc）</h2><table><tr><td>动作</td><td class="n">累计</td><td class="n">今日</td><td class="n">独立累计</td><td class="n">独立今日</td></tr>${evHtml48}</table>
-<p class="dim">姊妹站的访问量：那个站自己没有统计，页面一打开就往这里打一条。独立访客按 IP 去重（不保存明文 IP）。它的人<b>不进上面的「到访人数 / 国家分布」</b>，两站分开看。2026-10-14 起启用。</p>
+<h2>48 成员档案站 · 访客来自哪里（今日 / 近 7 天）</h2><table><tr><td>国家·地区</td><td class="n">今日</td><td class="n">近 7 天</td></tr>${ctry48Html}</table>
+<p class="dim">姊妹站的访问量：那个站自己没有统计，页面一打开就往这里打一条。独立访客按 IP 去重（不保存明文 IP）。它的人<b>不进上面的「到访人数 / 国家分布」</b>，两站分开看（这张是它的独立国家分布）。2026-10-14 起启用访问统计，国家分布 2026-10-15 起启用。</p>
 <h2>48 成员档案站 · 谁最被关注</h2><table><tr><td>成员</td><td class="n">被关注（设备数）</td></tr>${folHtml}</table>
 <p class="dim">口径：一台设备（浏览器）对同一成员只算 1 人，取消关注会减回去；不记 IP、不记身份，匿名 id 是前端随机生成的。<b>数字只在站长报表里看得到，姊妹站站内不展示</b>。2026-10-15 起启用，只列前 20。</p>
 <h2>最近 7 天（每天来了多少人 / 翻译次数）</h2><table><tr><td>日期</td><td class="n">到访人数</td><td class="n">翻译次数</td><td class="n">翻译访客</td></tr>${dayHtml}</table>`);
