@@ -1,8 +1,9 @@
 # 曲库增量：把 B 站新抓到的公演 cut 的 unit 分 P，自动补进曲目库 site/js/songs.js
+#           ★ 2026-10-15 起还负责「只看这首」的视频链接（auto-song-videos.py）
 #
 # 🔴 为什么单独一个 workflow：主抓取（scrape.yml）是「只写 KV、不写仓库」（permissions: contents: read），
 #    而曲目库 songs.js 是**前端静态文件**，只能靠提交 → Cloudflare 从 main 构建才会更新。
-#    两者混在一起会让 scrape.yml 每 30 分钟提一次 ⇒ 一天 48 次 CF 构建，所以这里**每天只跑一次**。
+#    两者混在一起会让 scrape.yml 每 30 分钟提一次 ⇒ 一天 48 次 CF 构建，所以这里**每天只跑两次**。
 #
 # 触发：北京时间每天 05:23（UTC 21:23），也可手动 workflow_dispatch（勾选 all 全量重扫老 cut）。
 # 只处理「扫描清单里没有的新投稿」——历史那 133 条已标记为已扫，不会一次性灌几百首没核对过的歌。
@@ -37,6 +38,8 @@ jobs:
       # 微博 Cookie 存在 Cloudflare KV（SECRETS 命名空间，键 WEIBO_COOKIE），用它去取
       SYNC_TOKEN: ${{ secrets.SYNC_TOKEN }}
       WORKER_URL: ${{ secrets.WORKER_URL || 'https://idol.wyc0518.cc' }}
+      # 数据中心 IP 抓 B站 分P 会吃 -412 ⇒ 给 sync-cut-units.py 的 http_json 一层代理兜底
+      SCRAPE_PROXY: ${{ secrets.SCRAPE_PROXY }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -66,6 +69,16 @@ jobs:
       - name: 合并进曲目库
         id: merge
         run: python scripts/sync-cut-units.py --ver "$(date +%s)000"
+      - name: 自动补「只看这首」视频（按 日期 + 公演曲目名 匹配 B站 分P / 直拍）
+        # 站长 2026-10-15 定：曲目弹窗里的「只看这首」按「该场公演的日期 + 曲目名」去挂链接，
+        # 源有两个：① Chzhnh 的「公演cut」视频分P（part 名如 `unit:City Lights`）
+        #           ② 甜橙小铺的单曲直拍（标题里带日期 + 曲名）
+        # 🔴 它以前**完全没有自动通道**：只有人工维护的 boss-song-video-picks.txt，
+        #    所以线上 628 个 (场次,曲目) 里只有 60.7% 有「查看」按钮。
+        #    现在每天跟着这里补一轮；对不上该场曲目单的候选写进 song-video-pending.json 等人工确认，
+        #    绝不擅自建歌/乱挂。抓不到不影响本轮（下轮再试，两个源都是 bvid 级增量合并）。
+        continue-on-error: true
+        run: python scripts/auto-song-videos.py --fetch --limit 120
       - name: 有改动就提交（不带 site/data 等抓取产物）
         run: |
           git config user.name  "songs-sync bot"
@@ -73,6 +86,8 @@ jobs:
           git add scripts/cut-units.json scripts/cut-units-scanned.json \
                   scripts/orange-shop.json scripts/orange-new.json \
                   scripts/song-pending.json scripts/song-aliases.json \
+                  scripts/song-video-picks.json scripts/song-video-pending.json \
+                  scripts/cut-unit-auto.json \
                   site/data/performance-cuts.js \
                   site/js/songs.js dist/js/songs.js \
                   site/js/bili-cuts.js dist/js/bili-cuts.js \
