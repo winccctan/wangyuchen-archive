@@ -2170,6 +2170,7 @@
     if (ok) {
       calStoreOk = true;
       try { calStoreBytes = (localStorage.getItem(CAL_LS) || '').length; } catch (_) {}
+      if (typeof calBackup === 'function') calBackup();   // 本机落盘成功后，按设备备份到服务端兜底
     } else {
       calStoreFail(what);
     }
@@ -2259,6 +2260,57 @@
   (function calPhotoProbe() {
     try { calPhotoBytes = (localStorage.getItem(CAL_PH_LS) || '').length; } catch (_) { calPhotoBytes = 0; }
   })();
+  /* 追星日历「按设备备份」（2026-10-15）：本机存档优先，服务端只兜底。
+     🔴 不备份照片（太大）、不备份 met（含站长本人 uid，最高机密）。只备份 going/went 日期标记。
+     设备 id 本机生成（localStorage + cookie 双写），不登录、不绑账号；本地空了才从服务端拉回。 */
+  var CAL_DEV_KEY = 'wyc-cal-dev-v1';
+  function calDevId() {
+    try {
+      var d = (function () { try { return localStorage.getItem(CAL_DEV_KEY); } catch (_) { return ''; } })();
+      if (!d || !/^[A-Za-z0-9_-]{6,64}$/.test(d)) {
+        d = 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+        try { localStorage.setItem(CAL_DEV_KEY, d); } catch (_) {}
+        try { document.cookie = CAL_DEV_KEY + '=' + d + '; max-age=31536000; path=/; SameSite=Lax'; } catch (_) {}
+      }
+      return d;
+    } catch (_) { return ''; }
+  }
+  var calBakTimer = null, calBakSig = '';
+  function calBackup() {
+    if (!calStoreOk) return;                       // 本机都写不进，备份没意义
+    var sig = JSON.stringify([calStore.going || {}, calStore.went || {}]);
+    if (sig === calBakSig) return;                 // 没变化不重复打
+    if (calBakTimer) clearTimeout(calBakTimer);
+    calBakTimer = setTimeout(function () {
+      calBakSig = sig;
+      var dev = calDevId(); if (!dev) return;
+      try {
+        fetch('/api/cal', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ deviceId: dev, going: calStore.going || {}, went: calStore.went || {} })
+        }).catch(function () {});
+      } catch (_) {}
+    }, 2500);
+  }
+  function calRestore() {
+    var dev = calDevId(); if (!dev) return;
+    if (Object.keys(calStore.going).length || Object.keys(calStore.went).length) return; // 本地有就不覆盖
+    fetch('/api/cal?d=' + encodeURIComponent(dev), { headers: { Accept: 'application/json' } })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) {
+        if (!j) return;
+        var g = (j.going && typeof j.going === 'object') ? j.going : {};
+        var w = (j.went && typeof j.went === 'object') ? j.went : {};
+        if (!Object.keys(g).length && !Object.keys(w).length) return;
+        calStore.going = g; calStore.went = w;
+        if (calSave()) { calSig = ''; calRender(); }   // 写回本机 + 重渲
+      })
+      .catch(function () {});
+  }
+  // 初始：本地空了就从服务端拉回；本地有就顺手备份一份（保持服务端兜底是最新的）
+  calRestore();
+  if (Object.keys(calStore.going).length || Object.keys(calStore.went).length) calBackup();
   /* 🔴「认识以后」起点 = 我的档案里那个 uid 的认识日（/api/mine 的 f = 他最早留下记录的时间戳）。
      站长 2026-09-25 定的规则：uid 在（没被清除）就显示这一档；uid 清掉了 → 整档不显示，不猜、不写死日期。 */
   const CAL_MET_KEY = 'wyc-demo-cal-met-v1';

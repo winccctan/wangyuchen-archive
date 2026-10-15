@@ -59,6 +59,14 @@ export default {
       return handleFol(url, request, env, ctx);
     }
 
+    // 追星日历「按设备备份」：本机存档优先，服务端只兜底（清缓存 / 换设备也能拉回打卡标记）。
+    // 🔴 只存 going/went 日期标记，**不存照片（太大）、不存 met（含站长本人 uid，最高机密）**。
+    // 设备 id 由前端生成（localStorage + cookie），不登录、不绑任何账号（2026-10-15）。
+    if (url.pathname === '/api/cal') {
+      if (!isSameSite(request)) return forbiddenNotSameSite();
+      return handleCal(url, request, env, ctx);
+    }
+
     if (url.pathname === '/translate') {
       if (!isSameSite(request)) return forbiddenNotSameSite();
       return handleTranslate(request, url, env, ctx);
@@ -804,6 +812,58 @@ async function handleFol(url, request, env, ctx) {
   })();
   if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(job);
   return gif();
+}
+
+// 追星日历「按设备备份」（2026-10-15）：本机存档优先，服务端只兜底。
+// 🔴 只存 going/went 日期标记，**不存照片（太大）、不存 met（含站长本人 uid，最高机密）**。
+// 设备 id 由前端生成（localStorage + cookie 双写），不登录、不绑任何账号。
+async function handleCal(url, request, env, ctx) {
+  const CORS = {
+    'access-control-allow-origin': 'https://idol.wyc0518.cc',
+    'access-control-allow-methods': 'POST, GET, OPTIONS',
+    'access-control-allow-headers': 'Content-Type',
+    'access-control-max-age': '86400',
+  };
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
+  const kv = env && env.SECRETS;
+  if (!kv || typeof kv.get !== 'function') return json({ ok: false }, 500);
+
+  // GET ?d=<dev>：拉回这台设备的备份（本机被清空时用）
+  if (request.method === 'GET') {
+    const dev = String(url.searchParams.get('d') || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 64);
+    if (!dev) return json({ going: {}, went: {} });
+    let j = {};
+    try { j = JSON.parse((await kv.get('cal:dev:' + dev)) || '{}'); } catch (_) { j = {}; }
+    if (!j || typeof j !== 'object') j = {};
+    return json({ going: (j.going && typeof j.going === 'object') ? j.going : {}, went: (j.went && typeof j.went === 'object') ? j.went : {} });
+  }
+
+  // POST：覆盖写这台设备的标记（前端本地落盘成功后调）
+  if (request.method === 'POST') {
+    let body = null;
+    try { body = await request.json(); } catch (_) { body = null; }
+    const dev = String((body && body.deviceId) || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 64);
+    if (!dev) return json({ ok: false, e: 'no dev' }, 400);
+    const going = (body && body.going && typeof body.going === 'object') ? body.going : {};
+    const went = (body && body.went && typeof body.went === 'object') ? body.went : {};
+    // 只收「日期|时间」键（防止塞奇怪结构把 KV 撑爆）；went 值只留 ts/auto/cancelled
+    const pick = (o) => {
+      const out = {};
+      Object.keys(o || {}).forEach((k) => {
+        if (!/^[0-9]{4}-[0-9]{2}-[0-9]{2}\|/.test(k) || k.length > 40) return;
+        const v = o[k];
+        out[k] = (v && typeof v === 'object') ? { ts: Number(v.ts) || 0, auto: !!v.auto, cancelled: !!v.cancelled } : 1;
+      });
+      return out;
+    };
+    const data = { going: pick(going), went: pick(went) };
+    const str = JSON.stringify(data);
+    if (str.length > 200 * 1024) return json({ ok: false, e: 'too big' }, 413);
+    const job = (async () => { try { await kv.put('cal:dev:' + dev, str); } catch (_) {} })();
+    if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(job);
+    return json({ ok: true });
+  }
+  return new Response('405', { status: 405 });
 }
 // 成员名：只留中日韩 / 字母数字 / 少量符号，防止有人往报表里塞奇怪内容
 function cleanName(v) {
