@@ -944,6 +944,10 @@ button.sc-btn { border: 0; cursor: pointer; font-family: inherit; line-height: 1
 .cardx-thumb img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .cardx-cnt { position: absolute; right: 9px; top: 9px; background: rgba(20,20,40,.62); color: #fff;
              font-size: 11.5px; padding: 2px 9px; border-radius: 999px; backdrop-filter: blur(4px); }
+/* 新增系列角标：CARD_SERIES 里 nw: true 的卡片才渲染（左上角，跟右上角「N 款」不打架） */
+.cardx-new { position: absolute; left: 9px; top: 9px; background: #e11d48; color: #fff;
+             font-size: 10.5px; font-weight: 700; letter-spacing: .04em;
+             padding: 2px 8px; border-radius: 999px; box-shadow: 0 2px 8px rgba(225,29,72,.35); }
 .cardx-body { padding: 11px 13px 13px; display: flex; flex-direction: column; gap: 7px; flex: 1; }
 .cardx-name { font-size: 14px; font-weight: 600; line-height: 1.45; }
 .cardx-tag { align-self: flex-start; font-size: 11px; padding: 2px 9px; border-radius: 6px; font-weight: 600; }
