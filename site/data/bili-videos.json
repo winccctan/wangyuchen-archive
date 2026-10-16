@@ -1,6 +1,6 @@
 {
-  "updatedAt": "2026-10-16T13:21:31.809Z",
-  "count": 1261,
+  "updatedAt": "2026-10-16T19:37:14.976Z",
+  "count": 1266,
   "targets": [
     {
       "mid": "2086351451",
@@ -26,10 +26,55 @@
     "358477444:season:7130625": 2,
     "358477444:season:6805043": 2,
     "358477444:season:2812669": 2,
-    "358477444:space": 1,
+    "358477444:space": 2,
     "2086351451:space": 2
   },
   "videos": [
+    {
+      "bvid": "BV1DyJ86pE9R",
+      "aid": 117451417197242,
+      "title": "【SNH48】20261016 Team HII 《赫兹共振》2.0公演",
+      "created": 1792167181,
+      "duration": 11184,
+      "play": 506,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1HHJ86uEQ1",
+      "aid": 117451333377623,
+      "title": "【GNZ48】20261016 Team NIII 《拾忆：TEAM NIII》公演",
+      "created": 1792165621,
+      "duration": 12112,
+      "play": 1112,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1J6J46bEAE",
+      "aid": 117451014538343,
+      "title": "【王语晨】20261016 GNZ48 Team NIII《拾忆：TEAM NIII》公演cut",
+      "created": 1792160412,
+      "duration": 4357,
+      "play": 70,
+      "mid": "358477444"
+    },
+    {
+      "bvid": "BV11SJt63EYU",
+      "aid": 117450192456364,
+      "title": "【王语晨】20230502 GNZ48 Team NIII《启程：Team NIII》公演cut",
+      "created": 1792147934,
+      "duration": 1666,
+      "play": 45,
+      "mid": "358477444"
+    },
+    {
+      "bvid": "BV1x5JX6GEVY",
+      "aid": 117450125345197,
+      "title": "【王语晨】20230503 GNZ48 Team NIII《启程：Team NIII》公演cut",
+      "created": 1792146895,
+      "duration": 1574,
+      "play": 41,
+      "mid": "358477444"
+    },
     {
       "bvid": "BV1XSJ16NEs9",
       "aid": 117445746564995,
