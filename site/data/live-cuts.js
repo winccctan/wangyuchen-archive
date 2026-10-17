@@ -1,9 +1,9 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-10-16T19:36:57.698Z",
-  "count": 701,
+  "updatedAt": "2026-10-17T12:16:39.405Z",
+  "count": 702,
   "matched": 482,
   "replays": 260,
-  "clips": 441,
+  "clips": 442,
   "targets": [
     {
       "mid": "1805448354",
@@ -28,6 +28,19 @@ window.LIVE_CUTS = {
     "358477444:space": 3
   },
   "cuts": [
+    {
+      "bvid": "BV1AbJi6ZETV",
+      "title": "【王语晨】20261017 GNZ48 TEAM Z《Zenith ·穹顶之上》公演cut",
+      "created": 1792234882,
+      "date": "2026-10-17",
+      "titleDate": "2026-10-17",
+      "kind": "cut",
+      "cover": "http://i2.hdslb.com/bfs/archive/7cc5eefcecec5c57a30864d10a153f02130b7141.jpg",
+      "url": "https://www.bilibili.com/video/BV1AbJi6ZETV",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨公演cut"
+    },
     {
       "bvid": "BV1J6J46bEAE",
       "title": "【王语晨】20261016 GNZ48 Team NIII《拾忆：TEAM NIII》公演cut",
