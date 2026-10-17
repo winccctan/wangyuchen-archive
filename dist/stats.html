@@ -138,6 +138,16 @@ const GAME_NAME = {
 };
 const GAME_KIND = { solo: '单机 局数', on: '联机 局数', room: '联机 房间' };
 
+// 国家/地区代码 → 中文名（只用于展示，不涉及任何 IP）
+const CC_FIX = { HK: '中国香港', MO: '中国澳门', TW: '中国台湾' };
+function ccName(cc) {
+  if (CC_FIX[cc]) return CC_FIX[cc];
+  try {
+    const n = new Intl.DisplayNames(['zh-Hans'], { type: 'region' }).of(cc);
+    return n || cc;
+  } catch (e) { return cc; }
+}
+
 function gameHtml(g) {
   const rows = (g && g.rows) || [];
   const d0 = (g && g.days && g.days[0]) || { rounds: 0, players: 0, rooms: 0 };
@@ -156,9 +166,20 @@ function gameHtml(g) {
     : '<tr><td colspan="5" class="dim">还没有人玩（2026-10-16 起开始记）</td></tr>';
   const days = ((g && g.days) || []).map(x => '<tr><td>' + x.day + '</td>'
     + '<td class="n">' + x.rounds + '</td><td class="n">' + x.players + '</td><td class="n">' + x.rooms + '</td></tr>').join('');
+  // 玩的人来自哪里（只按国家/地区，服务器只存两位代码，不存 IP）
+  const ccToday = {};
+  ((g && g.countries) || []).forEach(x => { ccToday[x.cc] = x.n; });
+  const ccAll = (g && g.countriesAll) || [];
+  const ccRows = ccAll.length
+    ? ccAll.map(x => '<tr><td>' + ccName(x.cc) + ' <span class="dash">' + x.cc + '</span></td>'
+        + '<td class="n">' + (ccToday[x.cc] || 0) + '</td><td class="n">' + x.n + '</td></tr>').join('')
+    : '<tr><td colspan="3" class="dim">今天还没有带地区的数据（2026-10-17 起才开始记，之前的补不回来）</td></tr>';
   return cards +
     '<table class="wide"><tr><td>玩法 · 口径</td><td class="n">今日</td><td class="n">累计</td><td class="n">今日人数</td><td class="n">累计人数</td></tr>' + body + '</table>' +
     '<p class="dim">「人数」按浏览器去重（同一台设备开几次都算 1 人，清掉浏览器数据会重新计），比真实人数偏少；只记动作，不记 IP、不记身份。联机的局数由服务端记，一局只算一次。</p>' +
+    '<h2>48 小游戏 · 玩的人来自哪里</h2><table><tr><td>国家·地区</td><td class="n">今日</td><td class="n">累计</td></tr>' + ccRows + '</table>' +
+    '<p class="dim">口径 = 访问时 Cloudflare 判定的出口国家/地区，<b>只存两位代码，不存 IP、不存城市</b>，一个人（同一浏览器）在同一国家只算 1 次。' +
+    '它统计的是 IP 出口地不是籍贯，用梯子会显示梯子的地区；同一 WiFi 下多人也只算 1 人。2026-10-17 起启用，之前的补不回来。</p>' +
     '<h2>最近 7 天（局数 / 玩过的人 / 房间）</h2><table><tr><td>日期</td><td class="n">局数</td><td class="n">玩过的人</td><td class="n">房间</td></tr>' + days + '</table>';
 }
 
