@@ -1,6 +1,6 @@
 {
-  "updatedAt": "2026-10-17T15:46:36.608Z",
-  "count": 1273,
+  "updatedAt": "2026-10-17T18:36:19.340Z",
+  "count": 1275,
   "targets": [
     {
       "mid": "2086351451",
@@ -30,6 +30,24 @@
     "2086351451:space": 2
   },
   "videos": [
+    {
+      "bvid": "BV1sDJq6aEET",
+      "aid": 117457155005432,
+      "title": "【SNH48】20261017 Team SII 《48Hz》公演",
+      "created": 1792254849,
+      "duration": 12548,
+      "play": 354,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV14tJB6TEje",
+      "aid": 117457020854090,
+      "title": "【GNZ48】20261017 Team G《拾忆：TEAM G》公演",
+      "created": 1792252357,
+      "duration": 11199,
+      "play": 785,
+      "mid": "2086351451"
+    },
     {
       "bvid": "BV1RQJB6SE3e",
       "aid": 117456752352968,
