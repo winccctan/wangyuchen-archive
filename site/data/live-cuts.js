@@ -1,8 +1,8 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-10-17T12:16:39.405Z",
-  "count": 702,
-  "matched": 482,
-  "replays": 260,
+  "updatedAt": "2026-10-17T15:45:25.613Z",
+  "count": 703,
+  "matched": 483,
+  "replays": 261,
   "clips": 442,
   "targets": [
     {
@@ -28,6 +28,21 @@ window.LIVE_CUTS = {
     "358477444:space": 3
   },
   "cuts": [
+    {
+      "bvid": "BV14HJi6YE3c",
+      "title": "【王语晨】20261017 直播回放",
+      "created": 1792241382,
+      "date": "2026-10-17",
+      "titleDate": "2026-10-17",
+      "kind": "replay",
+      "cover": "http://i0.hdslb.com/bfs/archive/2fdc19654571c2f69d4788d30d3f074d2fb8aa2c.jpg",
+      "url": "https://www.bilibili.com/video/BV14HJi6YE3c",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨直播回放",
+      "liveId": "1318293373380792320",
+      "liveDate": "2026-10-17"
+    },
     {
       "bvid": "BV1AbJi6ZETV",
       "title": "【王语晨】20261017 GNZ48 TEAM Z《Zenith ·穹顶之上》公演cut",
