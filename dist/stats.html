@@ -20,6 +20,13 @@
  .wide td:first-child{padding-left:10px}
  @media (max-width:420px){ .wide td{padding:7px 5px;font-size:12px} }
  .err{color:#ff9a9a;font-size:14px}
+ /* 房间明细：每天一个可折叠块，今天默认展开 */
+ details{margin:0 0 8px}
+ summary{cursor:pointer;font-size:13px;color:#8b90a0;padding:7px 2px;outline:none}
+ summary:hover{color:#e8eaf2}
+ details[open] summary{color:#c8cde0}
+ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;color:#9fd0ff;letter-spacing:.3px}
+ .dash{color:#5a5f70}
  #gate{max-width:320px}
  #gate input{width:100%;padding:10px 12px;font-size:15px;border-radius:8px;border:1px solid #2a2e3d;background:#1c1f2b;color:#e8eaf2;box-sizing:border-box}
  #gate button{margin-top:10px;width:100%;padding:10px;font-size:15px;border:0;border-radius:8px;background:#4a7cf7;color:#fff;cursor:pointer}
@@ -43,6 +50,15 @@ const API = 'https://idol.wyc0518.cc/stats?k=wyc-stats-2026&format=json';
 // 48 小游戏（どっぼーん / 斗地主 / 卡牌对战，跑在 snh48-dobon 这个 Worker 上）的埋点。
 // 它自己存自己的 DO SQLite，不占补档站的 KV 写入额度，所以单独取、单独渲染，读不到也不影响上面那堆。
 const GAME_API = 'https://snh48-dobon.yqz-tansy.workers.dev/api/gamestats?k=wyc-stats-2026';
+// 房间明细（房间号 + 谁开的）。昵称 2026-10-17 起才开始记，更早的房只留房间号。
+const ROOM_API = 'https://snh48-dobon.yqz-tansy.workers.dev/api/roomlist?k=wyc-stats-2026&days=7';
+
+// 昵称是用户自己输入的，拼 innerHTML 前必须转义
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+}
 
 async function sha256(s) {
   const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
@@ -93,6 +109,7 @@ function render(d) {
     '<p class="dim">「独立访客」按 IP 短哈希去重估算（不保存明文 IP），同一 WiFi 下多人会算作 1 人，实际人数只会更多。功能表里的「独立累计 / 独立今日」＝该功能一共有多少人 / 今天有多少人用过（不是次数）。「通知订阅人数」＝在手机上开了提醒的人，发言 / 开播 / 公演是各人自己勾的。数据约 1 分钟同步延迟。</p>' +
     cards +
     '<h2>48 小游戏 · 玩的人数 / 开的局数</h2><div id="game"><p class="dim">读取中…</p></div>' +
+    '<div id="rooms"><p class="dim">读取中…</p></div>' +
     '<h2>访客来自哪里（今日 / 近 7 天）</h2><table><tr><td>国家·地区</td><td class="n">今日</td><td class="n">近 7 天</td></tr>' + ctryRows + '</table>' +
     '<p class="dim">按 Cloudflare 给出的国家统计独立访客，不记 IP 明文。近 7 天＝每天独立访客相加，同一个人多天都来会重复计；数据从启用当天开始累计。</p>' +
     '<h2>功能使用（次数 / 独立访客）</h2><table class="wide"><tr><td>动作</td><td class="n">累计</td><td class="n">今日</td><td class="n">独立累计</td><td class="n">独立今日</td></tr>' + evRows + '</table>' +
@@ -115,7 +132,10 @@ function render(d) {
  *   房间 = 当天有过人的房间号个数（同一个房间号只算一间）
  * 只记动作，不记 IP、不记身份、不带任何牌局内容。
  */
-const GAME_NAME = { dobon: 'どっぼーん', ddz: '成员斗地主', ccg: '成员卡牌对战' };
+const GAME_NAME = {
+  dobon: 'どっぼーん', ddz: '成员斗地主', ccg: '成员卡牌对战',
+  turtle: '成员抓乌龟', showdown: '大乱斗', overcooked: '胡闹厨房'
+};
 const GAME_KIND = { solo: '单机 局数', on: '联机 局数', room: '联机 房间' };
 
 function gameHtml(g) {
@@ -145,6 +165,7 @@ function gameHtml(g) {
 async function loadGame() {
   const box = document.getElementById('game');
   if (!box) return;
+  loadRooms();   // 房间明细单独拉，互不影响
   try {
     const r = await fetch(GAME_API, { cache: 'no-store' });
     if (!r.ok) throw new Error('接口返回 HTTP ' + r.status);
@@ -154,6 +175,44 @@ async function loadGame() {
   } catch (e) {
     // 小游戏那台 Worker 万一挂了 / 被限流，只影响这一栏，上面的统计照常看
     box.innerHTML = '<p class="dim">小游戏数据暂时读不到（' + (e && e.message ? e.message : '未知错误') + '），上面其它统计不受影响。</p>';
+  }
+}
+
+/* ---------- 房间明细：哪一天、哪个游戏、房间号、谁开的 ---------- */
+function roomHtml(d) {
+  const rows = (d && d.rows) || [];
+  if (!rows.length) return '<h2>48 小游戏 · 开的房间</h2><p class="dim">最近 7 天没有联机房间记录。</p>';
+  const byDay = {};
+  rows.forEach(r => { (byDay[r.day] = byDay[r.day] || []).push(r); });
+  const days = Object.keys(byDay).sort().reverse();
+  const blocks = days.map((day, i) => {
+    const list = byDay[day];
+    const trs = list.map(r =>
+      '<tr><td>' + esc(GAME_NAME[r.g] || r.g) + '</td>' +
+      '<td><code>' + esc(r.r) + '</code></td>' +
+      '<td>' + (r.name ? esc(r.name) : '<span class="dash">—</span>') + '</td></tr>'
+    ).join('');
+    return '<details' + (i === 0 ? ' open' : '') + '><summary>' + esc(day) + ' · ' + list.length + ' 间</summary>' +
+      '<table class="wide"><tr><td>游戏</td><td>房间号</td><td>谁开的</td></tr>' + trs + '</table></details>';
+  }).join('');
+  return '<h2>48 小游戏 · 开的房间</h2>' + blocks +
+    '<p class="dim">口径：一个房间号只算一间，记的是<b>第一个进房的人</b>（一般是房主）。' +
+    '「谁开的」这列 <b>2026-10-17 起才开始记</b>，更早的房间只有房间号（当时没存昵称，补不回来）。' +
+    '昵称是玩家自己输入的，只存到统计库、不对外展示；自动化测试开的房间整间不入库。</p>';
+}
+
+async function loadRooms() {
+  const box = document.getElementById('rooms');
+  if (!box) return;
+  try {
+    const r = await fetch(ROOM_API, { cache: 'no-store' });
+    if (!r.ok) throw new Error('接口返回 HTTP ' + r.status);
+    const d = await r.json();
+    if (d && d.error) throw new Error(d.error);
+    box.innerHTML = roomHtml(d);
+  } catch (e) {
+    box.innerHTML = '<h2>48 小游戏 · 开的房间</h2><p class="dim">房间明细暂时读不到（' +
+      esc(e && e.message ? e.message : '未知错误') + '）。</p>';
   }
 }
 
