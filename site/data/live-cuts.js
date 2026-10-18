@@ -1,9 +1,9 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-10-17T18:35:03.432Z",
-  "count": 703,
-  "matched": 483,
+  "updatedAt": "2026-10-18T04:42:22.885Z",
+  "count": 704,
+  "matched": 484,
   "replays": 261,
-  "clips": 442,
+  "clips": 443,
   "targets": [
     {
       "mid": "1805448354",
@@ -24,10 +24,25 @@ window.LIVE_CUTS = {
     "358477444:season:7130625": 2,
     "358477444:season:6805043": 2,
     "358477444:season:2812669": 2,
-    "1805448354:space": 2,
+    "1805448354:space": 3,
     "358477444:space": 3
   },
   "cuts": [
+    {
+      "bvid": "BV18pJB66EPW",
+      "title": "❗️鱼总近期翻牌禁止条例有哈哈哈哈【王语晨】",
+      "created": 1792253759,
+      "date": "2026-10-18",
+      "titleDate": "",
+      "kind": "cut",
+      "cover": "http://i0.hdslb.com/bfs/archive/0e241916e7c063236e0e12bb36a3cd23e0920da1.jpg",
+      "url": "https://www.bilibili.com/video/BV18pJB66EPW",
+      "up": "忘记自己是猪",
+      "mid": "1805448354",
+      "collection": "",
+      "liveId": "1318336297363640320",
+      "liveDate": "2026-10-17"
+    },
     {
       "bvid": "BV14HJi6YE3c",
       "title": "【王语晨】20261017 直播回放",
