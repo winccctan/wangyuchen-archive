@@ -1,6 +1,6 @@
 {
-  "updatedAt": "2026-10-18T04:43:35.141Z",
-  "count": 1276,
+  "updatedAt": "2026-10-18T12:41:39.471Z",
+  "count": 1280,
   "targets": [
     {
       "mid": "2086351451",
@@ -30,6 +30,42 @@
     "2086351451:space": 2
   },
   "videos": [
+    {
+      "bvid": "BV1qpn36UE23",
+      "aid": 117461902953150,
+      "title": "【王语晨】20261018 GNZ48 Team Z《Zenith ·穹顶之上》公演cut",
+      "created": 1792326645,
+      "duration": 68,
+      "play": 6,
+      "mid": "358477444"
+    },
+    {
+      "bvid": "BV1trnu6ZE1j",
+      "aid": 117460795660271,
+      "title": "【CGT48】20261017《偶像进阶计划》逐梦·追光联合特殊公演",
+      "created": 1792309899,
+      "duration": 10084,
+      "play": 833,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1aYnu6PEu7",
+      "aid": 117460694991852,
+      "title": "【王语晨】20261018 GNZ48 Team NIII《拾忆：TEAM NIII》公演cut",
+      "created": 1792308238,
+      "duration": 4567,
+      "play": 274,
+      "mid": "358477444"
+    },
+    {
+      "bvid": "BV16onu6mE2d",
+      "aid": 117460426627967,
+      "title": "【BEJ48】20261017 Team B《B.RISE 梦之门》公演",
+      "created": 1792304150,
+      "duration": 12453,
+      "play": 584,
+      "mid": "2086351451"
+    },
     {
       "bvid": "BV1Jrng6mEPo",
       "aid": 117459940087264,

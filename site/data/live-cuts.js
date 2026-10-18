@@ -1,9 +1,9 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-10-18T04:42:22.885Z",
-  "count": 704,
+  "updatedAt": "2026-10-18T12:40:23.739Z",
+  "count": 706,
   "matched": 484,
   "replays": 261,
-  "clips": 443,
+  "clips": 445,
   "targets": [
     {
       "mid": "1805448354",
@@ -28,6 +28,32 @@ window.LIVE_CUTS = {
     "358477444:space": 3
   },
   "cuts": [
+    {
+      "bvid": "BV1qpn36UE23",
+      "title": "【王语晨】20261018 GNZ48 Team Z《Zenith ·穹顶之上》公演cut",
+      "created": 1792326645,
+      "date": "2026-10-18",
+      "titleDate": "2026-10-18",
+      "kind": "cut",
+      "cover": "http://i0.hdslb.com/bfs/archive/f6a422d1158fe2b9fdd107f7bfb9f219addc4839.jpg",
+      "url": "https://www.bilibili.com/video/BV1qpn36UE23",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨公演cut"
+    },
+    {
+      "bvid": "BV1aYnu6PEu7",
+      "title": "【王语晨】20261018 GNZ48 Team NIII《拾忆：TEAM NIII》公演cut",
+      "created": 1792308238,
+      "date": "2026-10-18",
+      "titleDate": "2026-10-18",
+      "kind": "cut",
+      "cover": "http://i0.hdslb.com/bfs/archive/298bda32b5014e30ce197bf3de4845b7c9bad9a4.jpg",
+      "url": "https://www.bilibili.com/video/BV1aYnu6PEu7",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨公演cut"
+    },
     {
       "bvid": "BV18pJB66EPW",
       "title": "❗️鱼总近期翻牌禁止条例有哈哈哈哈【王语晨】",
