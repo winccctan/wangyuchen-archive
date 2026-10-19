@@ -1,9 +1,9 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-10-18T18:42:16.253Z",
-  "count": 707,
-  "matched": 485,
+  "updatedAt": "2026-10-19T04:50:34.341Z",
+  "count": 708,
+  "matched": 486,
   "replays": 262,
-  "clips": 445,
+  "clips": 446,
   "targets": [
     {
       "mid": "1805448354",
@@ -28,6 +28,21 @@ window.LIVE_CUTS = {
     "358477444:space": 3
   },
   "cuts": [
+    {
+      "bvid": "BV1G4nE6FEDK",
+      "title": "【王语晨】关于今天大歌忘记拿麦这件事‖陈珊玲把麦递给我，我说她还挺善良的，结果居然是在挑衅我！！！",
+      "created": 1792382984,
+      "date": "2026-10-19",
+      "titleDate": "",
+      "kind": "cut",
+      "cover": "http://i0.hdslb.com/bfs/archive/7ad05a01f7861594697a366a3bb6044f2b38b029.jpg",
+      "url": "https://www.bilibili.com/video/BV1G4nE6FEDK",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨直播cut",
+      "liveId": "1318725020655882240",
+      "liveDate": "2026-10-18"
+    },
     {
       "bvid": "BV1FrnG6xEEL",
       "title": "【王语晨】20261018 直播回放",
