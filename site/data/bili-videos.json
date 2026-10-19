@@ -1,6 +1,6 @@
 {
-  "updatedAt": "2026-10-19T15:46:17.489Z",
-  "count": 1285,
+  "updatedAt": "2026-10-19T21:11:15.997Z",
+  "count": 1290,
   "targets": [
     {
       "mid": "2086351451",
@@ -27,9 +27,18 @@
     "358477444:season:6805043": 2,
     "358477444:season:2812669": 2,
     "358477444:space": 2,
-    "2086351451:space": 1
+    "2086351451:space": 2
   },
   "videos": [
+    {
+      "bvid": "BV179J96vEAf",
+      "aid": 117468362312512,
+      "title": "【王语晨】广芭的规矩是不洗头不给做造型。弹幕:这样就没有几天不洗头的谣言了",
+      "created": 1792425076,
+      "duration": 99,
+      "play": 774,
+      "mid": "358477444"
+    },
     {
       "bvid": "BV1eFJR68EM6",
       "aid": 117468295072344,
@@ -38,6 +47,42 @@
       "duration": 4638,
       "play": 5,
       "mid": "358477444"
+    },
+    {
+      "bvid": "BV11HJR6LEP7",
+      "aid": 117468127368938,
+      "title": "【SNH48】20261018 Team HII 《赫兹共振》2.0公演",
+      "created": 1792422071,
+      "duration": 12446,
+      "play": 528,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1YPJR6oELX",
+      "aid": 117467976309642,
+      "title": "【GNZ48】20261018 Team Z《Zenith ·穹顶之上》公演",
+      "created": 1792419664,
+      "duration": 10063,
+      "play": 758,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1SGJR6HEgY",
+      "aid": 117467892489047,
+      "title": "【SNH48】20261018 Team X 《Fire X》2.0公演",
+      "created": 1792418081,
+      "duration": 12846,
+      "play": 439,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1YmJR6tEFo",
+      "aid": 117467775045876,
+      "title": "【GNZ48】20261018 Team NIII 《拾忆：TEAM NIII》李咏薇生日公演",
+      "created": 1792416406,
+      "duration": 15561,
+      "play": 738,
+      "mid": "2086351451"
     },
     {
       "bvid": "BV1G4nE6FEDK",

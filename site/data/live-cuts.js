@@ -1,9 +1,9 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-10-19T15:43:06.216Z",
-  "count": 709,
-  "matched": 487,
+  "updatedAt": "2026-10-19T21:09:06.053Z",
+  "count": 710,
+  "matched": 488,
   "replays": 263,
-  "clips": 446,
+  "clips": 447,
   "targets": [
     {
       "mid": "1805448354",
@@ -28,6 +28,21 @@ window.LIVE_CUTS = {
     "358477444:space": 3
   },
   "cuts": [
+    {
+      "bvid": "BV179J96vEAf",
+      "title": "【王语晨】广芭的规矩是不洗头不给做造型。弹幕:这样就没有几天不洗头的谣言了",
+      "created": 1792425076,
+      "date": "2026-10-19",
+      "titleDate": "",
+      "kind": "cut",
+      "cover": "http://i2.hdslb.com/bfs/archive/91f8c927bbd32ff481a211d8ee203aa01efba6bf.jpg",
+      "url": "https://www.bilibili.com/video/BV179J96vEAf",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨直播cut",
+      "liveId": "1319058294217445376",
+      "liveDate": "2026-10-19"
+    },
     {
       "bvid": "BV1eFJR68EM6",
       "title": "【王语晨】20261019 直播回放",
