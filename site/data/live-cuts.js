@@ -1,9 +1,9 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-10-19T21:09:06.053Z",
-  "count": 710,
-  "matched": 488,
+  "updatedAt": "2026-10-20T13:38:28.072Z",
+  "count": 711,
+  "matched": 489,
   "replays": 263,
-  "clips": 447,
+  "clips": 448,
   "targets": [
     {
       "mid": "1805448354",
@@ -28,6 +28,21 @@ window.LIVE_CUTS = {
     "358477444:space": 3
   },
   "cuts": [
+    {
+      "bvid": "BV1JtnP6AE76",
+      "title": "【王语晨】以后要剥夺曾雨思当瓜的权利了，居然连我都抱不起来！",
+      "created": 1792494131,
+      "date": "2026-10-20",
+      "titleDate": "",
+      "kind": "cut",
+      "cover": "http://i0.hdslb.com/bfs/archive/0bf927d4c04e7a92ac7d082ac47a66daaa5cad18.jpg",
+      "url": "https://www.bilibili.com/video/BV1JtnP6AE76",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨直播cut",
+      "liveId": "1319058294217445376",
+      "liveDate": "2026-10-19"
+    },
     {
       "bvid": "BV179J96vEAf",
       "title": "【王语晨】广芭的规矩是不洗头不给做造型。弹幕:这样就没有几天不洗头的谣言了",
