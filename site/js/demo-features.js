@@ -4351,7 +4351,10 @@
   // 🔴 编号按「内容」追加，不是按下载编号：e01..e42 是 a17 起就在线的那批（文件名/内容一字未改），
   //    e43..e74 是 2026-09-26 新导出、且内容与旧的确实不重复的（用 md5 比对过）。
   const STK_GIF = new Set([1, 4, 7, 8, 10, 11, 13, 15, 18, 21, 24, 27, 30, 33, 36, 41, 43, 52, 54, 57, 60, 63, 66, 69, 74]);
+  // 2026-10-20 新增两张（菜刀梗「浪一个试试」/「给老娘低调点」）：排最前 + 左上角 NEW 角标
+  const STK_NEW = new Set(['e75.png', 'e76.png']);
   const STK_EMO = [
+    'e75.png', 'e76.png',
     'e01.gif', 'e02.png', 'e03.png', 'e04.gif', 'e05.png', 'e06.png', 'e07.gif', 'e08.gif', 'e09.png', 'e10.gif',
     'e11.gif', 'e12.png', 'e13.gif', 'e14.png', 'e15.gif', 'e16.png', 'e17.png', 'e18.gif', 'e19.png', 'e20.png',
     'e21.gif', 'e22.png', 'e23.png', 'e24.gif', 'e25.png', 'e26.png', 'e27.gif', 'e28.png', 'e29.png', 'e30.gif',
@@ -4365,7 +4368,7 @@
     'm01.png', 'm02.png', 'm03.png', 'm04.png', 'm05.png', 'm06.png', 'm07.png', 'm08.png', 'm09.png'
   ];
 
-  // 分类：三类**并列不重叠**（动 25 + 静 49 + 中秋 9 = 全部 83，静图不含中秋）
+  // 分类：三类**并列不重叠**（动 25 + 静 51 + 中秋 9 = 全部 85，静图不含中秋）
   const STK_POOL = {
     all: STK_EMO.concat(STK_MID),
     ani: STK_EMO.filter((f) => f.endsWith('.gif')),
@@ -4388,6 +4391,7 @@
   const stkCell = (f) => `
       <div class="stk-cell" data-stk-img="${esc(STK_DIR + f)}" data-stk-name="${esc(stkName(f))}">
         <img src="${esc(STK_DIR + f)}" loading="lazy" alt="饭制表情">
+        ${STK_NEW.has(f) ? '<span class="stk-new">NEW</span>' : ''}
       </div>`;
 
   window.renderSticker = function () {
