@@ -1,8 +1,8 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-10-20T13:38:28.072Z",
-  "count": 711,
-  "matched": 489,
-  "replays": 263,
+  "updatedAt": "2026-10-20T20:03:20.119Z",
+  "count": 712,
+  "matched": 490,
+  "replays": 264,
   "clips": 448,
   "targets": [
     {
@@ -28,6 +28,21 @@ window.LIVE_CUTS = {
     "358477444:space": 3
   },
   "cuts": [
+    {
+      "bvid": "BV1ZKnA6tEaW",
+      "title": "【王语晨】20261020 直播回放",
+      "created": 1792508046,
+      "date": "2026-10-20",
+      "titleDate": "2026-10-20",
+      "kind": "replay",
+      "cover": "http://i0.hdslb.com/bfs/archive/4079cd8fc4e1fedea82914118aab6ec4a6098bab.jpg",
+      "url": "https://www.bilibili.com/video/BV1ZKnA6tEaW",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨直播cut",
+      "liveId": "1319400777312964608",
+      "liveDate": "2026-10-20"
+    },
     {
       "bvid": "BV1JtnP6AE76",
       "title": "【王语晨】以后要剥夺曾雨思当瓜的权利了，居然连我都抱不起来！",
