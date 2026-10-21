@@ -1,9 +1,9 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-10-20T20:03:20.119Z",
-  "count": 712,
-  "matched": 490,
+  "updatedAt": "2026-10-21T13:54:02.764Z",
+  "count": 713,
+  "matched": 491,
   "replays": 264,
-  "clips": 448,
+  "clips": 449,
   "targets": [
     {
       "mid": "1805448354",
@@ -28,6 +28,21 @@ window.LIVE_CUTS = {
     "358477444:space": 3
   },
   "cuts": [
+    {
+      "bvid": "BV1o5nz6ZERR",
+      "title": "【王语晨】cc是重庆最美的市花山茶花！",
+      "created": 1792580660,
+      "date": "2026-10-21",
+      "titleDate": "",
+      "kind": "cut",
+      "cover": "http://i2.hdslb.com/bfs/archive/80816a94e432f4218c9ef8cf6e5d97b8da2509ec.jpg",
+      "url": "https://www.bilibili.com/video/BV1o5nz6ZERR",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨直播cut",
+      "liveId": "1319400777312964608",
+      "liveDate": "2026-10-20"
+    },
     {
       "bvid": "BV1ZKnA6tEaW",
       "title": "【王语晨】20261020 直播回放",
