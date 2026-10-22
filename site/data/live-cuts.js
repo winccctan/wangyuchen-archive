@@ -1,9 +1,9 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-10-22T04:58:28.663Z",
-  "count": 717,
-  "matched": 495,
+  "updatedAt": "2026-10-22T13:52:44.019Z",
+  "count": 719,
+  "matched": 496,
   "replays": 264,
-  "clips": 453,
+  "clips": 455,
   "targets": [
     {
       "mid": "1805448354",
@@ -28,6 +28,34 @@ window.LIVE_CUTS = {
     "358477444:space": 3
   },
   "cuts": [
+    {
+      "bvid": "BV13Fnm63EQm",
+      "title": "【王语晨】和王珺一起报的双人项目，到时候想着落水的话拉着王珺一起下去丨王珺:我也是这么想的",
+      "created": 1792667174,
+      "date": "2026-10-22",
+      "titleDate": "",
+      "kind": "cut",
+      "cover": "http://i0.hdslb.com/bfs/archive/6408d1aed08dc7944f3708ffce74f0afb45dd3d5.jpg",
+      "url": "https://www.bilibili.com/video/BV13Fnm63EQm",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨直播cut",
+      "liveId": "1319400777312964608",
+      "liveDate": "2026-10-20"
+    },
+    {
+      "bvid": "BV19en16uE4k",
+      "title": "【王语晨】20230520 GNZ48 Team NIII《启程：Team NIII》公演cut",
+      "created": 1792644418,
+      "date": "2026-10-22",
+      "titleDate": "2023-05-20",
+      "kind": "cut",
+      "cover": "http://i1.hdslb.com/bfs/archive/c958929323640b1b71e6cafb409b317046c2c9f9.jpg",
+      "url": "https://www.bilibili.com/video/BV19en16uE4k",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨公演cut"
+    },
     {
       "bvid": "BV1o5nz6ZERR",
       "title": "【王语晨】cc是重庆最美的市花山茶花！",
