@@ -1,9 +1,9 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-10-21T20:14:50.460Z",
-  "count": 713,
-  "matched": 491,
+  "updatedAt": "2026-10-22T04:58:28.663Z",
+  "count": 717,
+  "matched": 495,
   "replays": 264,
-  "clips": 449,
+  "clips": 453,
   "targets": [
     {
       "mid": "1805448354",
@@ -44,6 +44,21 @@ window.LIVE_CUTS = {
       "liveDate": "2026-10-20"
     },
     {
+      "bvid": "BV1fGnN6wE6f",
+      "title": "【王语晨丨孔美迪】真人版胡闹厨房。是时候展示真正的厨艺了",
+      "created": 1792518539,
+      "date": "2026-10-21",
+      "titleDate": "",
+      "kind": "cut",
+      "cover": "http://i2.hdslb.com/bfs/archive/f304f3497a586adcc4c1d9ba8e6d64ca5c106410.jpg",
+      "url": "https://www.bilibili.com/video/BV1fGnN6wE6f",
+      "up": "忘记自己是猪",
+      "mid": "1805448354",
+      "collection": "",
+      "liveId": "1319400777312964608",
+      "liveDate": "2026-10-20"
+    },
+    {
       "bvid": "BV1ZKnA6tEaW",
       "title": "【王语晨】20261020 直播回放",
       "created": 1792508046,
@@ -70,6 +85,21 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
+      "liveId": "1319058294217445376",
+      "liveDate": "2026-10-19"
+    },
+    {
+      "bvid": "BV1ZzJo6rEt3",
+      "title": "[王语晨]定制找了秦露丹剧情都已经想好了",
+      "created": 1792426156,
+      "date": "2026-10-20",
+      "titleDate": "",
+      "kind": "cut",
+      "cover": "http://i1.hdslb.com/bfs/archive/96e219eeaf3a95ab42f953f547dbca41b20f0160.jpg",
+      "url": "https://www.bilibili.com/video/BV1ZzJo6rEt3",
+      "up": "忘记自己是猪",
+      "mid": "1805448354",
+      "collection": "",
       "liveId": "1319058294217445376",
       "liveDate": "2026-10-19"
     },
@@ -104,6 +134,21 @@ window.LIVE_CUTS = {
       "liveDate": "2026-10-19"
     },
     {
+      "bvid": "BV1i6n76hEvA",
+      "title": "n3队综之一只鱼历险记【王语晨】",
+      "created": 1792389446,
+      "date": "2026-10-19",
+      "titleDate": "",
+      "kind": "cut",
+      "cover": "http://i1.hdslb.com/bfs/archive/ef1395dc4581f0cd3489347677fed76c3145bc89.jpg",
+      "url": "https://www.bilibili.com/video/BV1i6n76hEvA",
+      "up": "忘记自己是猪",
+      "mid": "1805448354",
+      "collection": "",
+      "liveId": "1318725020655882240",
+      "liveDate": "2026-10-18"
+    },
+    {
       "bvid": "BV1G4nE6FEDK",
       "title": "【王语晨】关于今天大歌忘记拿麦这件事‖陈珊玲把麦递给我，我说她还挺善良的，结果居然是在挑衅我！！！",
       "created": 1792382984,
@@ -115,6 +160,21 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
+      "liveId": "1318725020655882240",
+      "liveDate": "2026-10-18"
+    },
+    {
+      "bvid": "BV1GZnG6yEBN",
+      "title": "[王语晨]自曝想上Z队公演竟然是因为",
+      "created": 1792342435,
+      "date": "2026-10-19",
+      "titleDate": "",
+      "kind": "cut",
+      "cover": "http://i2.hdslb.com/bfs/archive/1121ce2e4efd463a8bdfbcac8a7263f2da02a199.jpg",
+      "url": "https://www.bilibili.com/video/BV1GZnG6yEBN",
+      "up": "忘记自己是猪",
+      "mid": "1805448354",
+      "collection": "",
       "liveId": "1318725020655882240",
       "liveDate": "2026-10-18"
     },
