@@ -1,6 +1,6 @@
 {
-  "updatedAt": "2026-10-23T13:34:21.181Z",
-  "count": 1299,
+  "updatedAt": "2026-10-23T20:02:19.335Z",
+  "count": 1303,
   "targets": [
     {
       "mid": "2086351451",
@@ -30,6 +30,42 @@
     "2086351451:space": 2
   },
   "videos": [
+    {
+      "bvid": "BV111na6WEkv",
+      "aid": 117491481183759,
+      "title": "【王语晨】GNZ48《CALL爆你3008》丨VLOG cut",
+      "created": 1792777923,
+      "duration": 82,
+      "play": 24,
+      "mid": "358477444"
+    },
+    {
+      "bvid": "BV1qNnY66EiR",
+      "aid": 117491195975616,
+      "title": "【SNH48】20261023 Team X 《Fire X》2.0公演",
+      "created": 1792774018,
+      "duration": 12232,
+      "play": 474,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1iNnY66Ean",
+      "aid": 117491195969589,
+      "title": "【王语晨】20261023 直播回放",
+      "created": 1792773580,
+      "duration": 1532,
+      "play": 52,
+      "mid": "358477444"
+    },
+    {
+      "bvid": "BV1Hdna6mEa1",
+      "aid": 117491095444045,
+      "title": "【GNZ48】20261023 Team Z《Zenith ·穹顶之上》公演",
+      "created": 1792772215,
+      "duration": 9981,
+      "play": 655,
+      "mid": "2086351451"
+    },
     {
       "bvid": "BV1vAnh6PEYi",
       "aid": 117490390666208,

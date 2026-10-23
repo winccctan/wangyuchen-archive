@@ -1,9 +1,9 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-10-23T13:33:05.402Z",
-  "count": 720,
-  "matched": 496,
-  "replays": 264,
-  "clips": 456,
+  "updatedAt": "2026-10-23T20:00:57.224Z",
+  "count": 722,
+  "matched": 498,
+  "replays": 265,
+  "clips": 457,
   "targets": [
     {
       "mid": "1805448354",
@@ -28,6 +28,36 @@ window.LIVE_CUTS = {
     "358477444:space": 3
   },
   "cuts": [
+    {
+      "bvid": "BV111na6WEkv",
+      "title": "【王语晨】GNZ48《CALL爆你3008》丨VLOG cut",
+      "created": 1792777923,
+      "date": "2026-10-24",
+      "titleDate": "",
+      "kind": "cut",
+      "cover": "http://i0.hdslb.com/bfs/archive/e2ef6e46ed9339b5579747f85ff0f4c901fa9432.jpg",
+      "url": "https://www.bilibili.com/video/BV111na6WEkv",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨官方视频cut",
+      "liveId": "1320539253223788544",
+      "liveDate": "2026-10-23"
+    },
+    {
+      "bvid": "BV1iNnY66Ean",
+      "title": "【王语晨】20261023 直播回放",
+      "created": 1792773580,
+      "date": "2026-10-24",
+      "titleDate": "2026-10-23",
+      "kind": "replay",
+      "cover": "http://i1.hdslb.com/bfs/archive/22e756e3a9d89b367bdfa9a084c80cf8809e4b00.jpg",
+      "url": "https://www.bilibili.com/video/BV1iNnY66Ean",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨直播cut",
+      "liveId": "1320539253223788544",
+      "liveDate": "2026-10-23"
+    },
     {
       "bvid": "BV1vAnh6PEYi",
       "title": "【王语晨】20261023 GNZ48 Team Z《Zenith ·穹顶之上》公演cut",
