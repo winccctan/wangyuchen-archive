@@ -1,6 +1,6 @@
 {
-  "updatedAt": "2026-10-22T23:30:25.599Z",
-  "count": 1297,
+  "updatedAt": "2026-10-23T13:34:21.181Z",
+  "count": 1299,
   "targets": [
     {
       "mid": "2086351451",
@@ -30,6 +30,24 @@
     "2086351451:space": 2
   },
   "videos": [
+    {
+      "bvid": "BV1vAnh6PEYi",
+      "aid": 117490390666208,
+      "title": "【王语晨】20261023 GNZ48 Team Z《Zenith ·穹顶之上》公演cut",
+      "created": 1792761368,
+      "duration": 77,
+      "play": 9,
+      "mid": "358477444"
+    },
+    {
+      "bvid": "BV1idnx6pEud",
+      "aid": 117488595507399,
+      "title": "【SNH48】20261022 Team SII 《48Hz》公演",
+      "created": 1792734022,
+      "duration": 12854,
+      "play": 1040,
+      "mid": "2086351451"
+    },
     {
       "bvid": "BV1DEnH6wE9o",
       "aid": 117485189730600,

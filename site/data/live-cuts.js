@@ -1,9 +1,9 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-10-22T23:28:14.554Z",
-  "count": 719,
+  "updatedAt": "2026-10-23T13:33:05.402Z",
+  "count": 720,
   "matched": 496,
   "replays": 264,
-  "clips": 455,
+  "clips": 456,
   "targets": [
     {
       "mid": "1805448354",
@@ -28,6 +28,19 @@ window.LIVE_CUTS = {
     "358477444:space": 3
   },
   "cuts": [
+    {
+      "bvid": "BV1vAnh6PEYi",
+      "title": "【王语晨】20261023 GNZ48 Team Z《Zenith ·穹顶之上》公演cut",
+      "created": 1792761368,
+      "date": "2026-10-23",
+      "titleDate": "2026-10-23",
+      "kind": "cut",
+      "cover": "http://i1.hdslb.com/bfs/archive/2fa200bd363cafc0e2bfcb2fdf12ef16523b7db8.jpg",
+      "url": "https://www.bilibili.com/video/BV1vAnh6PEYi",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨公演cut"
+    },
     {
       "bvid": "BV13Fnm63EQm",
       "title": "【王语晨】和王珺一起报的双人项目，到时候想着落水的话拉着王珺一起下去丨王珺:我也是这么想的",
