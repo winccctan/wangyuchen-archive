@@ -4,6 +4,26 @@
 //    rules: [{ type: "CompiledWasm", globs: ["**/*.wasm"] }]。别改成读文件/读 base64。
 import PA_MODULE from '../scraper/lib/pa.wasm';
 
+// ===== 实时直播流（msg48.org 中转，CF Worker 可海外直连）=====
+// 🔴 数据源 = msg48.org（第三方镜像口袋48，海外节点可直连；直接打口袋48 会被地域封锁 403）。
+// 🔴 路径注意：镜像的是 /api/live/getLiveOne（没有官网的 /api/v1 段），写错会 404。
+// 🔴 本站「在播态」复用既有 pocket 探针（写 KV `pocket:live:89653517`），前端经 /api/pocket/events 读 liveId；
+//    这里只补「取流」这一环，不复用 all48 那套全站聚合 DO（单人站不需要）。
+const MSG48_BASE = 'https://msg48.org/api';
+const MSG48_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
+
+async function fetchMsg48(path, body) {
+  const r = await fetch(MSG48_BASE + path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'User-Agent': MSG48_UA },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error('msg48 HTTP ' + r.status);
+  const j = await r.json();
+  if (!j || j.success !== true) throw new Error('msg48 返回失败：' + ((j && j.message) || '未知'));
+  return j;
+}
+
 // 王语晨补档站 · Cloudflare Worker
 // 职责：
 //   1) 静态站点：dist/ 里的文件通过 env.ASSETS 提供（HTML/CSS/JS/数据）；
@@ -139,6 +159,36 @@ export default {
           'access-control-max-age': '86400',
         }
       });
+    }
+
+    // ===== 实时直播流地址（点开看直播时按需取，返回 HLS 等候选流，前端挑可播放的）=====
+    // 🔴 只取流，不开播检测（在播态由 /api/pocket/events 的 live.liveId 提供）。
+    if (url.pathname === '/api/live-one') {
+      const liveId = (url.searchParams.get('liveId') || '').trim();
+      if (!/^\d{6,30}$/.test(liveId)) {
+        return new Response(JSON.stringify({ error: 'liveId 无效' }), {
+          status: 400, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },
+        });
+      }
+      try {
+        const j = await fetchMsg48('/live/getLiveOne', { liveId });
+        const c = (j && j.content) || {};
+        return new Response(JSON.stringify({
+          liveId,
+          title: c.title || '',
+          ctime: c.ctime || '',
+          hlsStreamPath: c.hlsStreamPath || '',
+          liveStreamPath: c.liveStreamPath || '',
+          streamPath: c.streamPath || '',
+          playStreamPath: c.playStreamPath || '',
+          rtmpPath: c.rtmpPath || '',
+          onlineUserNum: c.onlineUserNum || 0,
+        }), { status: 200, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+      } catch (e) {
+        return new Response(JSON.stringify({ error: '获取直播流失败：' + String((e && e.message) || e) }), {
+          status: 502, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },
+        });
+      }
     }
 
     if (url.pathname.startsWith('/api/')) {
