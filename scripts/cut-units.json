@@ -1522,7 +1522,8 @@
   "occ": "",
   "song": "HIGHLIGHT",
   "type": "unit",
-  "src": "Chzhnh"
+  "src": "Chzhnh",
+  "lid": "1317452346491211776"
  },
  {
   "bvid": "BV1aYnu6PEu7",
@@ -1531,7 +1532,8 @@
   "occ": "",
   "song": "粉色城堡",
   "type": "unit",
-  "src": "Chzhnh"
+  "src": "Chzhnh",
+  "lid": "1317452346491211776"
  },
  {
   "bvid": "BV1aYnu6PEu7",
@@ -1540,7 +1542,8 @@
   "occ": "",
   "song": "下一站是你",
   "type": "unit",
-  "src": "Chzhnh"
+  "src": "Chzhnh",
+  "lid": "1317452346491211776"
  },
  {
   "bvid": "BV1aYnu6PEu7",
@@ -1586,5 +1589,85 @@
   "song": "NEON",
   "type": "unit",
   "src": "Chzhnh"
+ },
+ {
+  "bvid": "BV1K6Hi6MEe2",
+  "p": 2,
+  "d": "2026-10-03",
+  "occ": "",
+  "song": "藏笑",
+  "type": "unit",
+  "src": "Chzhnh",
+  "lid": "1311308134280400896"
+ },
+ {
+  "bvid": "BV1K6Hi6MEe2",
+  "p": 4,
+  "d": "2026-10-03",
+  "occ": "",
+  "song": "CIRCLE",
+  "type": "unit",
+  "src": "Chzhnh",
+  "lid": "1311308134280400896"
+ },
+ {
+  "bvid": "BV11HHx6zE7e",
+  "p": 2,
+  "d": "2026-10-05",
+  "occ": "",
+  "song": "偶像宣言",
+  "type": "unit",
+  "src": "Chzhnh",
+  "lid": "1311308615815860224"
+ },
+ {
+  "bvid": "BV11HHx6zE7e",
+  "p": 3,
+  "d": "2026-10-05",
+  "occ": "",
+  "song": "双人舞",
+  "type": "unit",
+  "src": "Chzhnh",
+  "lid": "1311308615815860224"
+ },
+ {
+  "bvid": "BV118pP6mEm3",
+  "p": 1,
+  "d": "2026-10-06",
+  "occ": "",
+  "song": "慢慢的",
+  "type": "unit",
+  "src": "Chzhnh",
+  "lid": "1311309288825491456"
+ },
+ {
+  "bvid": "BV118pP6mEm3",
+  "p": 3,
+  "d": "2026-10-06",
+  "occ": "",
+  "song": "HIGH LIGHT",
+  "type": "unit",
+  "src": "Chzhnh",
+  "lid": "1311309288825491456"
+ },
+ {
+  "bvid": "BV118pP6mEm3",
+  "p": 4,
+  "d": "2026-10-06",
+  "occ": "",
+  "song": "AFTER PARTY",
+  "type": "unit",
+  "src": "Chzhnh",
+  "lid": "1311309288825491456"
+ },
+ {
+  "bvid": "BV1qpn36UE23",
+  "p": 2,
+  "d": "2026-10-18",
+  "occ": "",
+  "song": "冷月光",
+  "type": "unit",
+  "src": "Chzhnh",
+  "lid": "1317452524820434944"
  }
 ]
