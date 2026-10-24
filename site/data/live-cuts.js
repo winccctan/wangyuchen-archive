@@ -1,9 +1,9 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-10-23T20:00:57.224Z",
-  "count": 722,
+  "updatedAt": "2026-10-24T04:45:44.185Z",
+  "count": 725,
   "matched": 498,
   "replays": 265,
-  "clips": 457,
+  "clips": 460,
   "targets": [
     {
       "mid": "1805448354",
@@ -28,6 +28,45 @@ window.LIVE_CUTS = {
     "358477444:space": 3
   },
   "cuts": [
+    {
+      "bvid": "BV1YKHA6HEuS",
+      "title": "【王语晨】20230528 GNZ48 Team NIII《启程：Team NIII》青春时刻公演cut",
+      "created": 1792807697,
+      "date": "2026-10-24",
+      "titleDate": "2023-05-28",
+      "kind": "cut",
+      "cover": "http://i0.hdslb.com/bfs/archive/dcec8a43404d5b1df888905ca987087600f0699f.jpg",
+      "url": "https://www.bilibili.com/video/BV1YKHA6HEuS",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨公演cut"
+    },
+    {
+      "bvid": "BV1zvHA6aEGS",
+      "title": "【王语晨】20230526 GNZ48 Team NIII《启程：Team NIII》公演cut",
+      "created": 1792806714,
+      "date": "2026-10-24",
+      "titleDate": "2023-05-26",
+      "kind": "cut",
+      "cover": "http://i1.hdslb.com/bfs/archive/ef564b8c14c335517fb6a95eb0895fbaae247ea2.jpg",
+      "url": "https://www.bilibili.com/video/BV1zvHA6aEGS",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨公演cut"
+    },
+    {
+      "bvid": "BV15rHA6tEdZ",
+      "title": "【王语晨】20230521 GNZ48 Team NIII《启程：Team NIII》公演cut",
+      "created": 1792805725,
+      "date": "2026-10-24",
+      "titleDate": "2023-05-21",
+      "kind": "cut",
+      "cover": "http://i0.hdslb.com/bfs/archive/2c407b489944df278a5ddfac6b48c410d3cb813f.jpg",
+      "url": "https://www.bilibili.com/video/BV15rHA6tEdZ",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨公演cut"
+    },
     {
       "bvid": "BV111na6WEkv",
       "title": "【王语晨】GNZ48《CALL爆你3008》丨VLOG cut",
