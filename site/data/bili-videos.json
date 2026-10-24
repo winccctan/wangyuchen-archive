@@ -1,6 +1,6 @@
 {
-  "updatedAt": "2026-10-24T04:48:17.819Z",
-  "count": 1306,
+  "updatedAt": "2026-10-24T12:49:42.588Z",
+  "count": 1307,
   "targets": [
     {
       "mid": "2086351451",
@@ -30,6 +30,15 @@
     "2086351451:space": 1
   },
   "videos": [
+    {
+      "bvid": "BV1V1HA6REvq",
+      "aid": 117495071508367,
+      "title": "【王语晨】20261024 GNZ48 Team NIII《拾忆：TEAM NIII》公演cut",
+      "created": 1792832703,
+      "duration": 2042,
+      "play": 28,
+      "mid": "358477444"
+    },
     {
       "bvid": "BV1YKHA6HEuS",
       "aid": 117493427341017,

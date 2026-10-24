@@ -1,9 +1,9 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-10-24T04:45:44.185Z",
-  "count": 725,
-  "matched": 498,
+  "updatedAt": "2026-10-24T12:46:33.966Z",
+  "count": 726,
+  "matched": 499,
   "replays": 265,
-  "clips": 460,
+  "clips": 461,
   "targets": [
     {
       "mid": "1805448354",
@@ -28,6 +28,21 @@ window.LIVE_CUTS = {
     "358477444:space": 3
   },
   "cuts": [
+    {
+      "bvid": "BV1V1HA6REvq",
+      "title": "【王语晨】20261024 GNZ48 Team NIII《拾忆：TEAM NIII》公演cut",
+      "created": 1792832704,
+      "date": "2026-10-24",
+      "titleDate": "2026-10-24",
+      "kind": "cut",
+      "cover": "http://i0.hdslb.com/bfs/archive/26b2ca18f3dd507647b48137234366843d568f3e.jpg",
+      "url": "https://www.bilibili.com/video/BV1V1HA6REvq",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "",
+      "liveId": "1320539253223788544",
+      "liveDate": "2026-10-23"
+    },
     {
       "bvid": "BV1YKHA6HEuS",
       "title": "【王语晨】20230528 GNZ48 Team NIII《启程：Team NIII》青春时刻公演cut",
