@@ -1,6 +1,6 @@
 {
-  "updatedAt": "2026-10-24T12:49:42.588Z",
-  "count": 1307,
+  "updatedAt": "2026-10-24T18:53:39.771Z",
+  "count": 1316,
   "targets": [
     {
       "mid": "2086351451",
@@ -27,9 +27,90 @@
     "358477444:season:6805043": 2,
     "358477444:season:2812669": 2,
     "358477444:space": 2,
-    "2086351451:space": 1
+    "2086351451:space": 2
   },
   "videos": [
+    {
+      "bvid": "BV1Y3HT6eEqg",
+      "aid": 117497185439089,
+      "title": "【王语晨】20261025 直播回放",
+      "created": 1792865082,
+      "duration": 4430,
+      "play": 14,
+      "mid": "358477444"
+    },
+    {
+      "bvid": "BV1d3HT6eEFL",
+      "aid": 117497185506884,
+      "title": "【CGT48】20261024 《偶像进阶计划》追光组公演",
+      "created": 1792865022,
+      "duration": 9132,
+      "play": 170,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1NGHM6XEDs",
+      "aid": 117496782788485,
+      "title": "【BEJ48】20261024 Team E《寻光而行》郭晓盈2025年度MVP定制公演",
+      "created": 1792859136,
+      "duration": 13402,
+      "play": 418,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV13cHM6cEKM",
+      "aid": 117496648570931,
+      "title": "【GNZ48】20261024 《4 Future》4班首演",
+      "created": 1792857442,
+      "duration": 10393,
+      "play": 1143,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1jhHM66Eq8",
+      "aid": 117496581527270,
+      "title": "【CGT48】20261024 《偶像进阶计划》逐梦组公演",
+      "created": 1792856180,
+      "duration": 9347,
+      "play": 329,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1LYHM6uEz6",
+      "aid": 117496497642460,
+      "title": "【CKG48】20261024 Team K《我的太阳》公演",
+      "created": 1792855246,
+      "duration": 9792,
+      "play": 315,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1kEHM6UEZc",
+      "aid": 117496447375222,
+      "title": "【SNH48】20261024 Team HII 《赫兹共振》2.0公演",
+      "created": 1792854155,
+      "duration": 10996,
+      "play": 384,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1nBHN6MEAz",
+      "aid": 117496329804751,
+      "title": "【GNZ48】20261024 Team NIII 《拾忆：TEAM NIII》公演（8月乐曜曲首演）",
+      "created": 1792852216,
+      "duration": 10603,
+      "play": 1129,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV17rHN6KE4a",
+      "aid": 117496229137260,
+      "title": "【王语晨】20261024 GNZ48 4班《4 Future》首演cut",
+      "created": 1792850439,
+      "duration": 2011,
+      "play": 100,
+      "mid": "358477444"
+    },
     {
       "bvid": "BV1V1HA6REvq",
       "aid": 117495071508367,

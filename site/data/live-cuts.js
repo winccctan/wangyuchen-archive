@@ -1,9 +1,9 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-10-24T12:46:33.966Z",
-  "count": 726,
-  "matched": 499,
-  "replays": 265,
-  "clips": 461,
+  "updatedAt": "2026-10-24T18:51:28.749Z",
+  "count": 728,
+  "matched": 500,
+  "replays": 266,
+  "clips": 462,
   "targets": [
     {
       "mid": "1805448354",
@@ -17,7 +17,7 @@ window.LIVE_CUTS = {
   "progress": {
     "358477444:season:2812583": 7,
     "358477444:season:2812580": 10,
-    "358477444:season:4752040": 8,
+    "358477444:season:4752040": 9,
     "358477444:season:2812573": 2,
     "358477444:season:2840164": 2,
     "358477444:season:5834827": 2,
@@ -28,6 +28,34 @@ window.LIVE_CUTS = {
     "358477444:space": 3
   },
   "cuts": [
+    {
+      "bvid": "BV1Y3HT6eEqg",
+      "title": "【王语晨】20261025 直播回放",
+      "created": 1792865082,
+      "date": "2026-10-25",
+      "titleDate": "2026-10-25",
+      "kind": "replay",
+      "cover": "http://i1.hdslb.com/bfs/archive/4c622fadd3ad7bf0a16582e24ecdd3dfdae61dd5.jpg",
+      "url": "https://www.bilibili.com/video/BV1Y3HT6eEqg",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨直播回放",
+      "liveId": "1320905647597621248",
+      "liveDate": "2026-10-25"
+    },
+    {
+      "bvid": "BV17rHN6KE4a",
+      "title": "【王语晨】20261024 GNZ48 4班《4 Future》首演cut",
+      "created": 1792850439,
+      "date": "2026-10-24",
+      "titleDate": "2026-10-24",
+      "kind": "cut",
+      "cover": "http://i0.hdslb.com/bfs/archive/9e4357765d905d11712bbd7bc485d0f78d8977d5.jpg",
+      "url": "https://www.bilibili.com/video/BV17rHN6KE4a",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨公演cut"
+    },
     {
       "bvid": "BV1V1HA6REvq",
       "title": "【王语晨】20261024 GNZ48 Team NIII《拾忆：TEAM NIII》公演cut",
