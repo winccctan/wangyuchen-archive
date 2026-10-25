@@ -15,6 +15,7 @@ on:
 
 permissions:
   contents: read
+  actions: write          # 下播后要 dispatch fans-sync 重算档案
 
 concurrency:
   group: watch-live-rank
@@ -27,6 +28,7 @@ jobs:
     env:
       POCKET48_TOKEN: ${{ secrets.POCKET48_TOKEN }}
       REPO_ROOT: ${{ github.workspace }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -63,6 +65,16 @@ jobs:
               echo '```'
             done
           } >> "$GITHUB_STEP_SUMMARY"
+
+      # 「我的档案」的鸡腿（live2026 + room2026）由 build-fans 全量重算，原来一天只跑一次
+      # （01:23 的 cron，实测常延后到 03:30）⇒ 她刚下播的这场要等次日凌晨才进档案。
+      # 这里在「弹幕 LRC 定稿」后立刻拨一次 fans-sync（实测 3~4 分钟跑完），
+      # **直播礼物和口袋房间礼物是一起重算的** —— 房间侧数据本来就在 R2/发言库里，只是以前没人触发。
+      # 防重复、窗口、锚点全在脚本里：以 LRC 的 last-modified 为准，定稿后 2~45 分钟内只看一次。
+      - name: 刚下播且弹幕已定稿 → 让档案立刻重算
+        continue-on-error: true
+        run: |
+          node scripts/detect-live-end.mjs | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: 上传快照
         if: always()
