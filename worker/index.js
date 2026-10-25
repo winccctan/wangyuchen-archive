@@ -774,7 +774,9 @@ async function handleTrack(url, request, env, ctx) {
           // ── 页面级国家分布（2026-10-25，站长要「每个页面的 IP 分布」）──────────
           // ev = all48:p:<page>；一人一页一天一条（stat:u48p 判重），每人每天最多写 3 组。
           // 仍然只有「8 字节短哈希 + CF 给的国家码」，**不存明文 IP**。
-          const pg = ev.slice(8);
+          // 🔴 必须先用 startsWith 卡前缀：直接 slice(8) 会把 all48:visit 截成 "sit"，
+          //    上线当天真的这么错过一次（报表里冒出一个 "sit" 页面），别再犯。
+          const pg = ev.startsWith('all48:p:') ? ev.slice(8) : '';
           if (cc && /^[a-z]{1,12}$/.test(pg)) {
             const upKey = `stat:u48p:${day}:${pg}:${hash}`;
             if (!(await kv.get(upKey))) {
@@ -1115,6 +1117,9 @@ async function handleStatsBody(url, env, kv, wantJson) {
       const parts = String((k && k.name) || '').split(':');
       const pg = parts[3], cc = parts[4];
       if (!pg || !cc) return;
+      // 2026-10-25 上线当天写进去的脏数据：all48:visit 被 slice(8) 误截成 "sit"。
+      // 写入侧已修（改成 startsWith 卡前缀），这里只是别让那条历史键冒充成一个页面。
+      if (pg === 'sit') return;
       if (!pageCtry48Map.has(pg)) pageCtry48Map.set(pg, new Map());
       const m = pageCtry48Map.get(pg);
       if (!m.has(cc)) m.set(cc, [0, 0]);
