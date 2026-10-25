@@ -1,6 +1,6 @@
 {
-  "updatedAt": "2026-10-24T18:53:39.771Z",
-  "count": 1316,
+  "updatedAt": "2026-10-25T04:52:41.534Z",
+  "count": 1323,
   "targets": [
     {
       "mid": "2086351451",
@@ -30,6 +30,69 @@
     "2086351451:space": 2
   },
   "videos": [
+    {
+      "bvid": "BV1hbHV6jECY",
+      "aid": 117499702019879,
+      "title": "【王语晨】20230617 GNZ48《HERO》朱怡欣生日主题公演cut",
+      "created": 1792903324,
+      "duration": 791,
+      "play": 6,
+      "mid": "358477444"
+    },
+    {
+      "bvid": "BV1VBHg6CEA6",
+      "aid": 117499483982930,
+      "title": "【王语晨】20230617 GNZ48 Team NIII《启程：Team NIII》公演cut",
+      "created": 1792899986,
+      "duration": 2131,
+      "play": 7,
+      "mid": "358477444"
+    },
+    {
+      "bvid": "BV196Hg63EY1",
+      "aid": 117499467143743,
+      "title": "【CKG48】20261024 Team C《第一人称》公演",
+      "created": 1792899844,
+      "duration": 9732,
+      "play": 304,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1HpHg69Ewh",
+      "aid": 117499316209629,
+      "title": "【王语晨】20230611 GNZ48 Team NIII《启程：Team NIII》公演cut",
+      "created": 1792897556,
+      "duration": 1542,
+      "play": 7,
+      "mid": "358477444"
+    },
+    {
+      "bvid": "BV14DHg6vEUm",
+      "aid": 117499081395207,
+      "title": "【王语晨】20230610 GNZ48 Team NIII《启程：Team NIII》公演cut",
+      "created": 1792893762,
+      "duration": 1842,
+      "play": 13,
+      "mid": "358477444"
+    },
+    {
+      "bvid": "BV15EH36jErE",
+      "aid": 117498980730753,
+      "title": "【王语晨】20230604 GNZ48 Team NIII《启程：Team NIII》公演cut",
+      "created": 1792892346,
+      "duration": 3519,
+      "play": 11,
+      "mid": "358477444"
+    },
+    {
+      "bvid": "BV1MbH36zEUZ",
+      "aid": 117498930400405,
+      "title": "【王语晨】20230603 GNZ48 Team NIII《启程：Team NIII》公演cut",
+      "created": 1792891593,
+      "duration": 515,
+      "play": 12,
+      "mid": "358477444"
+    },
     {
       "bvid": "BV1Y3HT6eEqg",
       "aid": 117497185439089,
