@@ -833,6 +833,23 @@ function track(ev) {
   } catch (_) { /* 忽略 */ }
 }
 
+/* 站点打开（2026-10-25）：补上统计里最大的一个洞。
+   以前 /track 只挂在「点 tab / 搜索 / 播放 / 抽盲盒 …」这些动作上，而
+   「到访人数」（stat:u:<day>:<hash>）就是靠这些上报写的 ⇒ **只浏览、什么都不点的人完全不计**，
+   报表里就成了「今天只有 2~8 个人来过」，跟实际打开的人数对不上（站长指出）。
+   这里在页面一打开就补一条（一次浏览器会话只报一次，刷新不重复 ⇒ 写入量 ≈ 每天的会话数，
+   不会像 PV 那样把 KV 写入额度冲掉）。 */
+(function () {
+  let first = true;
+  try {
+    const d = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);   // 北京时间当天
+    const k = 'wyc-open-' + d;
+    if (sessionStorage.getItem(k)) first = false;
+    else sessionStorage.setItem(k, '1');
+  } catch (_) { /* 无痕/存储被禁 → 照报一次：宁可多记一条，也别把真人漏掉 */ }
+  if (first) track('site:open');
+})();
+
 // 搜索框防抖统计（停止输入 800ms 才记一次，避免敲每个字都打点）
 let trackSearchTimer = null;
 function trackSearch() {
