@@ -183,7 +183,8 @@ function pickLiveId(entry, byDay) {
   if (same.length === 1) return String(same[0].liveId || '');
   const m = (entry.perf || '').match(/《([^》]+)》/);
   if (m) {
-    const hit = same.filter((p) => ((p.subTitle || '') + (p.title || '')).includes(m[1]));
+    const kw = m[1].replace(/\s+/g, '');   // 去空格：微博正文与场次 subTitle 的剧名间距不一定一致（含首尾/中间空格）
+    const hit = same.filter((p) => ((p.subTitle || '') + (p.title || '')).replace(/\s+/g, '').includes(kw));
     if (hit.length === 1) return String(hit[0].liveId || '');
   }
   return '';
