@@ -147,7 +147,12 @@ def main():
         for u in load_json(path, []) or []:
             if not u.get('bvid'):        # 微博 cut（无 B站 BV）→ vid 用不上，跳过
                 continue
-            perf = scu.pick_live(u.get('d'), perfs)
+            # 🔴 优先用 cut-units 里显式写的 lid（避免同日多场歧义，如 10-18/10-24），日期只作兜底
+            perf = None
+            if u.get('lid'):
+                perf = next((x for x in perfs if str(x.get('liveId')) == str(u.get('lid'))), None)
+            if not perf:
+                perf = scu.pick_live(u.get('d'), perfs)
             if not perf:
                 continue
             cn = canon(u.get('song') or '')
