@@ -765,11 +765,22 @@ async function handleTrack(url, request, env, ctx) {
           // 🔴 姊妹站 all48 的访客国家：单独建一套键（stat:ctry48:），**不进主站的 stat:ctry:**，
           // 否则会把「补档站来了多少人 / 来自哪」这张表彻底污染（站长 2026-10-14 定的两站分开原则）。
           // 同样只在「当天首次出现」记一次：用 stat:u48:<day>:<hash> 判重，一人一个键、无写冲突。
+          const cc = String((request.cf && request.cf.country) || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
           const u48Key = `stat:u48:${day}:${hash}`;
           if (!(await kv.get(u48Key))) {
             await kv.put(u48Key, '1');
-            const cc = String((request.cf && request.cf.country) || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
             if (cc) await kv.put(`stat:ctry48:${day}:${cc}:${hash}`, '1');
+          }
+          // ── 页面级国家分布（2026-10-25，站长要「每个页面的 IP 分布」）──────────
+          // ev = all48:p:<page>；一人一页一天一条（stat:u48p 判重），每人每天最多写 3 组。
+          // 仍然只有「8 字节短哈希 + CF 给的国家码」，**不存明文 IP**。
+          const pg = ev.slice(8);
+          if (cc && /^[a-z]{1,12}$/.test(pg)) {
+            const upKey = `stat:u48p:${day}:${pg}:${hash}`;
+            if (!(await kv.get(upKey))) {
+              await kv.put(upKey, '1');
+              await kv.put(`stat:ctry48p:${day}:${pg}:${cc}:${hash}`, '1');
+            }
           }
         }
       } catch (_) { /* 统计失败不影响页面 */ }
@@ -1094,6 +1105,36 @@ async function handleStatsBody(url, env, kv, wantJson) {
   });
   countries48.sort((a, b) => (b.d7 - a.d7) || (b.today - a.today));
 
+  // 页面级国家分布（2026-10-25）：stat:ctry48p:<day>:<page>:<cc>:<访客键>
+  // 站长要「每个页面的 IP 分布」——一行一个「页面 × 国家」，带今日 / 近 7 天。
+  // 同样一人一页一天一个键，按前缀数列即可；从 2026-10-25 起才有数据。
+  const pctry48Lists = await Promise.all(days7.map((d) => ls(`stat:ctry48p:${d}:`, 1000)));
+  const pageCtry48Map = new Map();     // page -> Map(cc -> [today, d7])
+  (pctry48Lists || []).forEach((l, di) => {
+    ((l && l.keys) || []).forEach((k) => {
+      const parts = String((k && k.name) || '').split(':');
+      const pg = parts[3], cc = parts[4];
+      if (!pg || !cc) return;
+      if (!pageCtry48Map.has(pg)) pageCtry48Map.set(pg, new Map());
+      const m = pageCtry48Map.get(pg);
+      if (!m.has(cc)) m.set(cc, [0, 0]);
+      const a = m.get(cc);
+      if (di === 0) a[0]++;
+      a[1]++;
+    });
+  });
+  const pageCountries48 = Array.from(pageCtry48Map.entries()).map(([pg, m]) => {
+    const rows = Array.from(m.entries())
+      .map(([cc, v]) => ({ cc, name: CC_NAME[cc] || cc, today: v[0], d7: v[1] }))
+      .sort((a, b) => (b.today - a.today) || (b.d7 - a.d7));
+    return {
+      page: pg,
+      today: rows.reduce((s, r) => s + r.today, 0),
+      d7: rows.reduce((s, r) => s + r.d7, 0),
+      countries: rows,
+    };
+  }).sort((a, b) => (b.today - a.today) || (b.d7 - a.d7));
+
   const langHtml = langRows.length
     ? langRows.map(([l, n]) => `<tr><td>${LANG_NAME[l] || l}</td><td class="n">${n}</td></tr>`).join('')
     : '<tr><td colspan="2" class="dim">暂无记录</td></tr>';
@@ -1164,7 +1205,7 @@ async function handleStatsBody(url, env, kv, wantJson) {
     });
   } catch (_) { /* 读不到就当没有，不影响其它统计 */ }
   const folHtml = folList.length
-    ? folList.slice(0, 20).map((f, i) => `<tr><td>${i + 1}. ${f.name || ('uid ' + f.uid)}</td><td class="n">${f.n}</td></tr>`).join('')
+    ? folList.map((f, i) => `<tr><td>${i + 1}. ${f.name || ('uid ' + f.uid)}</td><td class="n">${f.n}</td></tr>`).join('')
     : '<tr><td colspan="2" class="dim">暂无记录（姊妹站 2026-10-15 起启用）</td></tr>';
 
   // JSON 模式：给 GitHub Pages 上的统计页面跨域读取（docs/stats.html）
@@ -1178,13 +1219,17 @@ async function handleStatsBody(url, env, kv, wantJson) {
       days: days.map(([d, n, u, su]) => ({ day: d, count: n, visitors: u, siteUv: su })),
       countries: countries,
       country48: countries48,
+      // 各页面的访客国家分布（2026-10-25 起）：[{page, today, d7, countries:[{cc,name,today,d7}]}]
+      pageCountries48: pageCountries48,
       // stat:gate:<day> 是「当天处理了多少次动作」的**粗估**（1/5 抽样、每次加 5，所以和实际值可能差几百），
       // 不是写入次数：写入次数 ≥ 这个数（每个动作至少写 1 次）。够用来判断有没有撞上限就够了。
       actionsToday: gateUsed,
       actionCap: STAT_WRITE_CAP,
       events: evList,
       events48: evList48,
-      follows48: folList.slice(0, 20)
+      // 关注名单（2026-10-25 站长要「红蓝关注的名单」）：以前只给前 20，现在给全量。
+      // 成员数 ≈ 48 系在册成员（两百上下），一条 {uid,name,n} 很小，JSON 不会变大多少。
+      follows48: folList
     }), {
       headers: {
         'content-type': 'application/json; charset=utf-8',
