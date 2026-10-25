@@ -1671,33 +1671,6 @@
   "lid": "1317452524820434944"
  },
  {
-  "bvid": "BV1V1HA6REvq",
-  "p": 2,
-  "d": "2026-10-24",
-  "occ": "",
-  "song": "非正式告别",
-  "type": "unit",
-  "src": "Chzhnh"
- },
- {
-  "bvid": "BV1V1HA6REvq",
-  "p": 3,
-  "d": "2026-10-24",
-  "occ": "",
-  "song": "HIGHLIGHT",
-  "type": "unit",
-  "src": "Chzhnh"
- },
- {
-  "bvid": "BV1V1HA6REvq",
-  "p": 4,
-  "d": "2026-10-24",
-  "occ": "",
-  "song": "AFTER PARTY",
-  "type": "unit",
-  "src": "Chzhnh"
- },
- {
   "bvid": "BV1YKHA6HEuS",
   "p": 2,
   "d": "2023-05-28",
@@ -1813,5 +1786,45 @@
   "song": "CITY LIGHTS",
   "type": "unit",
   "src": "Chzhnh"
+ },
+ {
+  "bvid": "BV1V1HA6REvq",
+  "p": 2,
+  "d": "2026-10-24",
+  "occ": "",
+  "song": "非正式告别",
+  "type": "unit",
+  "src": "Chzhnh",
+  "lid": "1319977559300837376"
+ },
+ {
+  "bvid": "BV1V1HA6REvq",
+  "p": 3,
+  "d": "2026-10-24",
+  "occ": "",
+  "song": "HIGH LIGHT",
+  "type": "unit",
+  "src": "Chzhnh",
+  "lid": "1319977559300837376"
+ },
+ {
+  "bvid": "BV1V1HA6REvq",
+  "p": 4,
+  "d": "2026-10-24",
+  "occ": "",
+  "song": "AFTER PARTY",
+  "type": "unit",
+  "src": "Chzhnh",
+  "lid": "1319977559300837376"
+ },
+ {
+  "bvid": "BV17rHN6KE4a",
+  "p": 2,
+  "d": "2026-10-24",
+  "occ": "",
+  "song": "双人舞",
+  "type": "unit",
+  "src": "Chzhnh",
+  "lid": "1319977684794413056"
  }
 ]
