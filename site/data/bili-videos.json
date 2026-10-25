@@ -1,6 +1,6 @@
 {
-  "updatedAt": "2026-10-25T04:52:41.534Z",
-  "count": 1323,
+  "updatedAt": "2026-10-25T19:11:32.264Z",
+  "count": 1335,
   "targets": [
     {
       "mid": "2086351451",
@@ -30,6 +30,114 @@
     "2086351451:space": 2
   },
   "videos": [
+    {
+      "bvid": "BV1CynU6FETY",
+      "aid": 117502403285237,
+      "title": "【GNZ48】20261025 Team G《拾忆：TEAM G》公演",
+      "created": 1792945119,
+      "duration": 11402,
+      "play": 655,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1b8nU6zE1M",
+      "aid": 117502352890699,
+      "title": "【BEJ48】20261025 Team B《B·RISE梦之门》公演千秋乐",
+      "created": 1792943942,
+      "duration": 13037,
+      "play": 224,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1ManU6MEXc",
+      "aid": 117502268938084,
+      "title": "【SNH48】20261025 Team X 《Fire X》2.0公演",
+      "created": 1792942773,
+      "duration": 12741,
+      "play": 310,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1HQHV6hEPs",
+      "aid": 117501597849215,
+      "title": "【CGT48】20261025 《偶像进阶计划》逐梦组公演",
+      "created": 1792932407,
+      "duration": 8901,
+      "play": 675,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1gVH56jEoz",
+      "aid": 117501430076687,
+      "title": "【CKG48】20261025 《结伴》校园主题公演",
+      "created": 1792929986,
+      "duration": 10017,
+      "play": 677,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1TJH56GErW",
+      "aid": 117501362968680,
+      "title": "【SNH48】20261025 Team NII《肆·时墟》公演",
+      "created": 1792928911,
+      "duration": 12684,
+      "play": 1011,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1FvH56wEZs",
+      "aid": 117501128087139,
+      "title": "【GNZ48】20261025 《Classic 8》8班首演",
+      "created": 1792925212,
+      "duration": 9589,
+      "play": 2177,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1FaH56PE1c",
+      "aid": 117500960311762,
+      "title": "【王语晨】20230702  GNZ48 Team NIII《启程：Team NIII》川渝巡演成都站cut",
+      "created": 1792922660,
+      "duration": 1574,
+      "play": 10,
+      "mid": "358477444"
+    },
+    {
+      "bvid": "BV1TfH561Ekc",
+      "aid": 117500859713260,
+      "title": "【王语晨】20230629  GNZ48 Team NIII《启程：Team NIII》川渝巡演重庆站cut",
+      "created": 1792921134,
+      "duration": 1343,
+      "play": 16,
+      "mid": "358477444"
+    },
+    {
+      "bvid": "BV1UdH562Enp",
+      "aid": 117500691876601,
+      "title": "【王语晨】20230624 GNZ48《德多·BOSS·计划》郑丹妮生日主题公演cut",
+      "created": 1792918602,
+      "duration": 1350,
+      "play": 32,
+      "mid": "358477444"
+    },
+    {
+      "bvid": "BV1uRH56EE92",
+      "aid": 117500641609218,
+      "title": "【王语晨】20230623 GNZ48《风》张琼予生日主题公演cut",
+      "created": 1792917598,
+      "duration": 924,
+      "play": 19,
+      "mid": "358477444"
+    },
+    {
+      "bvid": "BV15rHG6JEHm",
+      "aid": 117500289287803,
+      "title": "【王语晨】20230618 GNZ48《\"我\"》刘力菲生日主题公演cut",
+      "created": 1792912318,
+      "duration": 2022,
+      "play": 31,
+      "mid": "358477444"
+    },
     {
       "bvid": "BV1hbHV6jECY",
       "aid": 117499702019879,
