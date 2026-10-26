@@ -54,12 +54,14 @@
     <button class="tab" type="button" role="tab" data-tab="wyc">wyc 档案站</button>
     <button class="tab" type="button" role="tab" data-tab="a48">48 档案站</button>
     <button class="tab" type="button" role="tab" data-tab="game">游戏</button>
+    <button class="tab" type="button" role="tab" data-tab="health">体检</button>
   </div>
   <div id="loading" class="dim" hidden>读取中…</div>
   <div id="err" hidden></div>
   <div class="pane" id="pane-wyc" role="tabpanel" hidden></div>
   <div class="pane" id="pane-a48" role="tabpanel" hidden></div>
   <div class="pane" id="pane-game" role="tabpanel" hidden></div>
+  <div class="pane" id="pane-health" role="tabpanel" hidden></div>
 </div>
 
 <script>
@@ -71,6 +73,11 @@ const API = 'https://idol.wyc0518.cc/stats?k=wyc-stats-2026&format=json';
 const GAME_API = 'https://snh48-dobon.yqz-tansy.workers.dev/api/gamestats?k=wyc-stats-2026';
 // 房间明细（房间号 + 谁开的）。昵称 2026-10-17 起才开始记，更早的房只留房间号。
 const ROOM_API = 'https://snh48-dobon.yqz-tansy.workers.dev/api/roomlist?k=wyc-stats-2026&days=7';
+// 站点体检（2026-10-26）：all48 那套抓取链路还活着没有。
+// 🔴 判据是「数据多久没进库」，**不是 GitHub 状态码** —— Actions 挂了、被限流、
+//    只是跑得慢，结果都一样：数据停了。所以只读时间戳。
+//    走 workers.dev 而不是 all48.wyc0518.cc：那个 zone 开了 Bot Fight，跨域偶发被挡。
+const HEALTH_API = 'https://all48-archive.yqz-tansy.workers.dev/api/status';
 
 // 昵称是用户自己输入的，拼 innerHTML 前必须转义
 function esc(s) {
@@ -84,13 +91,14 @@ async function sha256(s) {
   return Array.from(new Uint8Array(d)).map(x => x.toString(16).padStart(2, '0')).join('');
 }
 
-/* ---------- 分 tab：wyc 档案站 / 48 档案站 / 游戏 ----------
+/* ---------- 分 tab：wyc 档案站 / 48 档案站 / 游戏 / 体检 ----------
  * 只切显示，不重绘；地址栏带 #hash，刷新后停在同一个 tab。
- * 「游戏」的数据在另一台 Worker 上，所以第一次切过去才拉，省一次跨域请求。
+ * 「游戏」「体检」的数据都在别的 Worker 上，所以第一次切过去才拉，省一次跨域请求。
  */
-const TABS = ['wyc', 'a48', 'game'];
+const TABS = ['wyc', 'a48', 'game', 'health'];
 let curTab = 'wyc';
 let gameLoaded = false;
+let healthLoaded = false;
 // 刷新后停在上一次看的 tab
 try {
   const h = String(location.hash || '').replace('#', '');
@@ -107,6 +115,7 @@ function switchTab(name) {
     if (p) p.hidden = (k !== name);
   }
   if (name === 'game' && !gameLoaded) { gameLoaded = true; loadGame(); }
+  if (name === 'health' && !healthLoaded) { healthLoaded = true; loadHealth(); }
   try { history.replaceState(null, '', '#' + name); } catch (_) { /* file:// 等场景忽略 */ }
 }
 
@@ -198,12 +207,12 @@ function render(d) {
   document.getElementById('pane-a48').innerHTML =
     '<h2>各页面访问（all48.wyc0518.cc）</h2><table class="wide"><tr><td>页面</td><td class="n">累计</td><td class="n">今日</td><td class="n">独立累计</td><td class="n">独立今日</td><td class="n">今日占比</td></tr>' + pageRows48 + '</table>' +
     '<p class="dim">「累计 / 今日」＝该页面被打开的次数（PV），「独立」＝按 IP 去重后的人（UV），同一 WiFi 下多人算 1 人。「今日占比」＝该页今日打开次数 / 三页合计。三个页面从 <b>2026-10-25</b> 起分开统计，之前的数字只覆盖首页。</p>' +
-    '<h2>各页面 · 访客来自哪里（今日 / 近 7 天）</h2><table class="wide"><tr><td>页面</td><td>国家·地区</td><td class="n">今日</td><td class="n">近 7 天</td></tr>' + pageCtryRows48 + '</table>' +
-    '<p class="dim">按 Cloudflare 给出的国家统计独立访客，<b>不保存明文 IP</b>（只存 8 字节短哈希 + 国家码）。一人一页一天只算 1 人，同一 WiFi 下多人算 1 人。「今日 N 人」＝这一页今天各国家去重访客之和。<b>2026-10-25 起才有分页面数据</b>，之前的页面访问补不出国家。</p>' +
     '<h2>全站合计</h2><table class="wide"><tr><td>动作</td><td class="n">累计</td><td class="n">今日</td><td class="n">独立累计</td><td class="n">独立今日</td></tr>' + evRows48 + '</table>' +
     '<p class="dim">这一行＝那个站打开的<b>总次数</b>（三个页面相加）。2026-10-25 之前 /gift、/mvp 两个页面还没有埋点，所以那之前的累计只算了首页，偏少。</p>' +
     '<h2>访客来自哪里（今日 / 近 7 天）</h2><table><tr><td>国家·地区</td><td class="n">今日</td><td class="n">近 7 天</td></tr>' + ctryRows48 + '</table>' +
     '<p class="dim">姊妹站的访问量：那个站自己没有统计，页面一打开就往这里打一条。独立访客按 IP 去重（不保存明文 IP）。它的人<b>不进 wyc 档案站的「到访人数 / 国家分布」</b>，这张是它自己的独立国家分布，两站分开看。2026-10-15 起启用国家分布。</p>' +
+    '<h2>各页面 · 访客来自哪里（今日 / 近 7 天）</h2><table class="wide"><tr><td>页面</td><td>国家·地区</td><td class="n">今日</td><td class="n">近 7 天</td></tr>' + pageCtryRows48 + '</table>' +
+    '<p class="dim">按 Cloudflare 给出的国家统计独立访客，<b>不保存明文 IP</b>（只存 8 字节短哈希 + 国家码）。一人一页一天只算 1 人，同一 WiFi 下多人算 1 人。「今日 N 人」＝这一页今天各国家去重访客之和。<b>2026-10-25 起才有分页面数据</b>，之前的页面访问补不出国家。</p>' +
     '<h2>关注名单（谁被关注得最多）</h2><table class="wide"><tr><td class="n">#</td><td>成员</td><td class="n">被关注（设备数）</td></tr>' + folRows48 + '</table>' +
     '<p class="dim">口径：一台设备（浏览器）对同一成员只算 1 人，取消关注会减回去；不记 IP、不记身份，匿名 id 是前端随机生成的。<b>数字只在站长报表里看得到，姊妹站站内不展示</b>。2026-10-15 起启用；<b>2026-10-25 起列全量</b>（以前只列前 20），王语晨（她本人）永远置顶，其余按被关注数从高到低。</p>';
 
@@ -328,6 +337,65 @@ async function loadRooms() {
   }
 }
 
+/* ---------- 站点体检（2026-10-26）----------
+ * 数据来自 all48 worker 的 /api/status，每项是 { k, name, level, ageSec, main, sub }。
+ * 这个 tab 只看「新鲜度和条数」，接口里没有任何成员或送礼人明细。
+ */
+const LV_NAME = { ok: '正常', warn: '注意', bad: '异常' };
+const LV_COLOR = { ok: '#4ade80', warn: '#fbbf24', bad: '#f87171' };
+
+function agoText(s) {
+  if (s == null || s < 0) return '—';
+  if (s < 60) return s + ' 秒前';
+  if (s < 3600) return Math.round(s / 60) + ' 分钟前';
+  if (s < 86400) return (s / 3600).toFixed(1).replace(/\.0$/, '') + ' 小时前';
+  return (s / 86400).toFixed(1).replace(/\.0$/, '') + ' 天前';
+}
+
+function healthHtml(j) {
+  const items = (j && j.items) || [];
+  const v = (j && j.verdict) || 'bad';
+  const dot = l => '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'
+    + (LV_COLOR[l] || '#8b90a0') + ';margin-right:7px;vertical-align:1px"></span>';
+  const rows = items.length
+    ? items.map(i => '<tr><td>' + dot(i.level) + esc(i.name) + '</td>'
+        + '<td class="n" style="color:' + (LV_COLOR[i.level] || '#e8eaf2') + '">' + (LV_NAME[i.level] || i.level) + '</td>'
+        + '<td class="n">' + agoText(i.ageSec) + '</td>'
+        + '<td class="n">' + esc(i.main) + '</td></tr>').join('')
+    : '<tr><td colspan="4" class="dim">没有读到任何数据源</td></tr>';
+  return '<div class="cards">'
+      + '<div class="card"><div class="k">总体</div><div class="v" style="color:' + (LV_COLOR[v] || '#e8eaf2') + '">'
+      + (LV_NAME[v] || v) + '</div><div class="k" style="margin-top:6px">' + esc((j && j.day) || '') + '</div></div>'
+      + '<div class="card"><div class="k">检查项</div><div class="v">' + items.length + '</div>'
+      + '<div class="k" style="margin-top:6px">每 60 秒自动刷新</div></div>'
+    + '</div>'
+    + '<h2>各条链路</h2><table class="wide"><tr><td>数据源</td><td class="n">状态</td><td class="n">多久前</td><td class="n">情况</td></tr>'
+    + rows + '</table>'
+    + '<p class="dim">判据是<b>数据多久没进库</b>，不是 GitHub 的状态 —— Actions 挂了、被限流、只是跑得慢，结果都一样：数据停了。'
+    + '「直播热窗」由 sync.yml 每 15 分钟上报一次，<b>没有在播场次时本来就不一定写</b>，所以阈值放到 25 分钟 / 1 小时；'
+    + '「红蓝歌会礼物」每 2 分钟一轮，5 分钟不进库就不正常。'
+    + '这个页只有新鲜度和条数，<b>不含任何成员或送礼人明细</b>。</p>';
+}
+
+async function loadHealth() {
+  const box = document.getElementById('pane-health');
+  if (!box) return;
+  // 已经有内容就别闪成「读取中」，后台刷完再换
+  if (box.innerHTML.indexOf('各条链路') < 0) box.innerHTML = '<p class="dim">读取中…</p>';
+  try {
+    const r = await fetch(HEALTH_API, { cache: 'no-store' });
+    if (!r.ok) throw new Error('接口返回 HTTP ' + r.status);
+    const j = await r.json();
+    if (j && j.error) throw new Error(j.error);
+    box.innerHTML = healthHtml(j);
+  } catch (e) {
+    box.innerHTML = '<p class="dim">体检数据暂时读不到（' + esc(e && e.message ? e.message : '未知错误')
+      + '）。<button id="hretry" type="button" style="flex:0 0 auto;padding:4px 10px;margin-left:8px;border:0;border-radius:7px;background:#1c1f2b;color:#8b90a0;cursor:pointer;font-family:inherit">重试</button></p>';
+    const b = document.getElementById('hretry');
+    if (b) b.addEventListener('click', loadHealth);
+  }
+}
+
 function showErr(msg) {
   const ld = document.getElementById('loading');
   if (ld) ld.hidden = true;
@@ -378,6 +446,12 @@ document.getElementById('pw').addEventListener('keydown', (e) => { if (e.key ===
 document.querySelectorAll('.tab').forEach(b => {
   b.addEventListener('click', () => switchTab(b.dataset.tab));
 });
+
+// 体检每 60 秒自己刷一次（只在这个 tab 正显示时才拉，切走就不打扰）
+setInterval(() => {
+  const b = document.getElementById('body');
+  if (curTab === 'health' && b && !b.hidden) loadHealth();
+}, 60000);
 
 // 启动：本机已输过密码就免输（只记在本机浏览器里）
 function boot() {
