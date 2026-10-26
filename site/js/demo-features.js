@@ -5609,7 +5609,8 @@
     }
     L.push('SUMMARY:' + calEsc(icon + ' ' + title));
     if (kind) L.push('CATEGORIES:' + calEsc(kind));
-    if (kind === '公演') L.push('LOCATION:' + calEsc('GNZ48 星梦剧院'));
+    // 地点只在明确是剧场公演时写（外务/巡演写星梦剧院就错了）
+    if (/GNZ48剧场|星梦剧院/.test(title)) L.push('LOCATION:' + calEsc('GNZ48 星梦剧院'));
     L.push('DESCRIPTION:' + calEsc('王语晨（GNZ48 TEAM NIII）' + (kind ? ' · ' + kind : '')
       + (time ? ' · ' + time : '') + '\n来源：王语晨补档站 ' + CAL_BASE + '/'));
     L.push('URL:' + CAL_BASE + '/');

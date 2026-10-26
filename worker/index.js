@@ -2826,7 +2826,8 @@ function buildScheduleIcs(items) {
     }
     out.push('SUMMARY:' + icsEsc(icon + ' ' + title));
     if (kind) out.push('CATEGORIES:' + icsEsc(kind));
-    if (kind === '公演') out.push('LOCATION:' + icsEsc('GNZ48 星梦剧院'));
+    // 地点只在明确是剧场公演时写（外务/巡演写成星梦剧院就错了）
+    if (/GNZ48剧场|星梦剧院/.test(title)) out.push('LOCATION:' + icsEsc('GNZ48 星梦剧院'));
     out.push('DESCRIPTION:' + icsEsc('王语晨（GNZ48 TEAM NIII）' + (kind ? ' · ' + kind : '')
       + (it.time ? ' · ' + String(it.time) : '') + '\n来源：王语晨补档站 https://idol.wyc0518.cc/'));
     out.push('URL:https://idol.wyc0518.cc/');
