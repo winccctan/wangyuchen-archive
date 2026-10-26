@@ -771,6 +771,25 @@
       el.parentNode.insertBefore(b, el.nextSibling);
     });
 
+    // ㉒ 公演回放卡片：「📋 详情」入口（场次详情卡）。
+    //    🔴 必须用**独立**的 dataset 标记（pfDone），不能复用 dmDone：
+    //    收藏那一轮已经把 dmDone 置 1，复用会导致这个按钮永远不出现。
+    //    🔴 只挂 data-t="perf"：直播回放的卡片没有「场次」概念，别误挂。
+    $$('.card[data-t="perf"]').forEach((el) => {
+      if (el.dataset.pfDone) return;
+      el.dataset.pfDone = '1';
+      const lid = el.getAttribute('data-live') || '';
+      if (!lid) return;
+      const acts = $('.card-actions', el);
+      if (!acts) return;
+      const b = document.createElement('button');
+      b.className = 'cut-btn pf-open';
+      b.type = 'button';
+      b.dataset.perfDetail = lid;
+      b.textContent = '📋 详情';
+      acts.appendChild(b);
+    });
+
     syncFavButtons();
     renderMultiChecks();
     applyTypeFilter();
@@ -4883,26 +4902,80 @@
     });
   }
 
-  /** 曲目弹窗：唱过的每一场（场次名/时间/日期），一行两个按钮
-   *  🔴 按 liveId 跳，不按日期 —— 一天两场时按日期会跳到第一张卡（站长报的「跳转不对」）
-   *  「看这场 →」= 跳到站内这一场的回放卡片；「只看这首」= 直接去 B 站看这一首的视频
-   *     （是 `<a target=_blank>`：微信内置浏览器常拦 window.open，链接本身才一定跳得出去）
-   *  🔴 只给「站点当下真有这一场回放卡片」的场次挂「看这场 →」；
-   *    其余一律显示「无回放」不可点（站长 2026-09-26：没有卡片的就不该能跳）。 */
-  function sgSongModal(name) {
-    const S = SONGS();
-    if (!S) return;
+  /* ---- 单曲详情（d21，2026-10-26）：在原来「唱过哪几场」的弹窗上加统计头 ----
+     为什么加：弹窗原来只有「N 场 + 一串场次」，粉丝最想知道的其实是
+     **这首她第一次唱是什么时候、最近一次是什么时候、在哪个剧目里唱的**。
+     这些用 bySong + info 现算即可，不需要任何新数据。
+     ⚠️ 大歌已在 songs.js 里按剧目剔过，这里不再过滤（见 sgIsDage 注释）。 */
+  const SG_SHOWS = [
+    ['没有我的世界', /没有我的世界/],
+    ['天枢之弈', /天枢之弈/],
+    ['拾忆', /拾忆/],
+    ['启程', /启程/]
+  ];
+  /** 场次名 → 剧目。场次名写法不统一（「TEAM NIII天枢之弈·第七十场」/
+   *  「拾忆：TEAM NIII·第二十八场」），只按关键词命中，命中不了归「其他」。 */
+  function sgShowOf(n) {
+    const s = String(n || '');
+    for (let i = 0; i < SG_SHOWS.length; i++) if (SG_SHOWS[i][1].test(s)) return SG_SHOWS[i][0];
+    return '其他';
+  }
+  /** 单曲统计：场次（日期升序）/ 首唱 / 最近 / 各剧目场次 / 各年份场次 / 有视频场次 */
+  function sgStats(name) {
+    const S = SONGS() || {};
     const lids = (S.bySong && S.bySong[name]) || [];
-    if (!lids.length) { sgToast('这首没有记录'); return; }
-    trk('song:view');
-    sgLiveSet = sgLiveSetBuild();       // 每次打开都按站点当下的数据重建
-    const rows = lids.map(sgInfo).filter(Boolean).reverse().map((x) => {
+    const items = lids.map(sgInfo).filter(Boolean).sort((a, b) => {
+      const ka = (a.d || '') + ' ' + (a.t || ''), kb = (b.d || '') + ' ' + (b.t || '');
+      return ka < kb ? -1 : (ka > kb ? 1 : 0);
+    });
+    const shows = {}, years = {};
+    items.forEach((x) => {
+      const k = sgShowOf(x.n); shows[k] = (shows[k] || 0) + 1;
+      const y = String(x.d || '').slice(0, 4); if (y) years[y] = (years[y] || 0) + 1;
+    });
+    return {
+      lids: lids, items: items, shows: shows, years: years,
+      first: items[0] || null,
+      last: items[items.length - 1] || null,
+      nv: lids.filter((l) => sgVidOf(l, name)).length
+    };
+  }
+  /** 单曲详情正文：统计头 + 剧目筛选 + 年份分布 + 每场（看这场 / 只看这首）
+   *  `show` = 当前选中的剧目（'' = 全部），由 chips 切换后只重渲这一块 */
+  function sgSongBody(name, show) {
+    const st = sgStats(name);
+    if (!st.items.length) return '<div class="empty-state">这首没有记录。</div>';
+    const dot = (d) => String(d || '').replace(/-/g, '.');
+    // 首唱 / 最近：两个小卡并排（沿用行程页「上次见面 / 下次见面」的形态）
+    // 只唱过一场时不重复显示两张一样的卡，只留「首唱」
+    const met = (lab, x) => x ? '<div class="sgd-met-c"><span class="sgd-met-l">' + lab + '</span>'
+      + '<b class="sgd-met-d">' + esc(dot(x.d)) + '</b>'
+      + '<span class="sgd-met-n">' + esc(x.n) + '</span></div>' : '';
+    const onlyOne = !!(st.first && st.last && st.first.lid === st.last.lid);
+    // 剧目 chips：点一下只看这个剧目，再点回「全部」
+    const showK = Object.keys(st.shows).sort((a, b) => st.shows[b] - st.shows[a]);
+    const chips = showK.length > 1 ? '<div class="sgd-chips">'
+      + '<button class="sgd-chip' + (show ? '' : ' on') + '" type="button" data-sg-show="">全部 ' + st.items.length + '</button>'
+      + showK.map((k) => '<button class="sgd-chip' + (show === k ? ' on' : '') + '" type="button" data-sg-show="'
+        + esc(k) + '">' + esc(k) + ' ' + st.shows[k] + '</button>').join('')
+      + '</div>' : '';
+    // 年份分布：细条形，宽度按当年场次占比
+    const yrs = Object.keys(st.years).sort();
+    const ymax = Math.max.apply(null, yrs.map((y) => st.years[y]).concat([1]));
+    const ybar = yrs.length > 1 ? '<div class="sgd-years">' + yrs.map((y) =>
+      '<span class="sgd-year"><b>' + y + '</b>'
+      + '<i><em style="width:' + Math.max(6, Math.round(st.years[y] / ymax * 100)) + '%"></em></i>'
+      + '<span class="sgd-yc">' + st.years[y] + '</span></span>').join('') + '</div>' : '';
+
+    // 倒序列场次（最近的在上）；首唱 / 最近各打一枚标记
+    const list = st.items.filter((x) => !show || sgShowOf(x.n) === show).slice().reverse();
+    const rows = list.map((x) => {
       // 日期写成 2025.12.28（站长口径）；站点没收录的场次没有确切时间，就不显示时间
-      const d = String(x.d || '').replace(/-/g, '.') + (x.t ? ' ' + x.t : '');
+      const d = dot(x.d) + (x.t ? ' ' + x.t : '');
       const vs = sgVidList(x.lid, name);
       let vidBtn = '';
       if (vs.length === 1) {
-        // 只有一个版本：直接就是链接，点一下就跳（371/378 走这条，不给多余步骤）
+        // 只有一个版本：直接就是链接，点一下就跳（多数场次走这条）
         const v = vs[0];
         vidBtn = `<a class="sg-vid" href="${esc(v.url)}" target="_blank" rel="noopener noreferrer"`
           + ` title="来源：${esc(v.src)}">只看这首</a>`;
@@ -4911,22 +4984,353 @@
         vidBtn = `<button class="sg-vid is-multi" type="button" data-sg-vid="${esc(x.lid)}|${esc(name)}">`
           + '只看这首<i class="sg-vid-c">▾</i></button>';
       }
+      const badge = (st.first && x.lid === st.first.lid) ? '<i class="sgd-b sgd-b-first">首唱</i>'
+        : ((st.last && x.lid === st.last.lid) ? '<i class="sgd-b sgd-b-last">最近</i>' : '');
       if (x.v || !sgHasCard(x.lid)) {
         return '<div class="sg-line is-no"><div class="sg-main">'
-          + '<span class="sg-rt">' + esc(x.n) + '</span>'
+          + '<span class="sg-rt">' + badge + esc(x.n) + '</span>'
           + '<span class="sg-sub"><span class="sg-rd">' + esc(d) + '</span>'
           + '<span class="sg-ra">无回放</span></span></div>' + vidBtn + '</div>';
       }
       return `<div class="sg-line"><button class="sg-main" type="button" data-sg-go="${esc(x.lid)}">`
-        + `<span class="sg-rt">${esc(x.n)}</span>`
+        + `<span class="sg-rt">${badge}${esc(x.n)}</span>`
         + `<span class="sg-sub"><span class="sg-rd">${esc(d)}</span>`
         + '<span class="sg-ra">看这场 →</span></span></button>' + vidBtn + '</div>';
     }).join('');
-    const nv = lids.filter((l) => sgVidOf(l, name)).length;
-    modal(name, `<div class="sg-meta">${lids.length} 场${nv ? ' · ' + nv + ' 场有单曲视频' : ''}</div>`
-      + `<div class="sg-rows">${rows}</div>`);
+
+    return '<div class="sgd">'
+      + '<div class="sg-meta">' + st.items.length + ' 场 · '
+      + (st.nv ? st.nv + ' 场有单曲视频' : '暂无单曲视频') + '</div>'
+      + '<div class="sgd-met">' + met('首唱', st.first) + (onlyOne ? '' : met('最近', st.last)) + '</div>'
+      + ybar + chips
+      + '<div class="sg-rows">' + rows + '</div></div>';
   }
 
+  let sgCurSong = '', sgCurShow = '';
+  function sgSongModal(name) {
+    if (!SONGS()) return;
+    if (!sgStats(name).items.length) { sgToast('这首没有记录'); return; }
+    trk('song:view');
+    sgLiveSet = sgLiveSetBuild();   // 每次打开都按站点当下的数据重建
+    sgCurSong = name; sgCurShow = '';
+    modal(name, sgSongBody(name, ''), { wide: true });
+  }
+
+  /* =====================================================================
+     ㉒ 场次详情卡（d22，2026-10-26）：一场公演 = 一张可查看、可分享的卡
+     ---------------------------------------------------------------------
+     数据全部来自已有源，不新增任何抓取：
+       DATA.performances → 日期 / 剧目 / 官方回放 / B 站整场录像
+       window.__SONGS__  → 本场曲目（byLive）+ 每首的单曲视频（vid）
+       DATA.perfCuts     → 微博应援会按单曲切的 cut（liveId 精确匹配）
+       window.__BILI_CUTS__ → UP 主整场个人 cut（按日期匹配）
+     🔴 同日可能两场（2026-06-13 / 10-18 / 10-24）⇒ 曲目与 cut 一律按 liveId 取；
+        只有「该场未收录」时才按日期回退，且必须当天仅一场，否则会把两场混在一起。
+     ===================================================================== */
+  const PF_WD = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+  const pfDot = (d) => String(d || '').replace(/-/g, '.');
+
+  function pfItem(lid) {
+    const arr = (typeof DATA !== 'undefined' && DATA && DATA.performances) || [];
+    for (let i = 0; i < arr.length; i++) if (String(arr[i].liveId) === String(lid)) return arr[i];
+    return null;
+  }
+  function pfDateOf(lid) {
+    const it = pfItem(lid);
+    const info = sgInfo(lid);
+    if (info && info.d) return info.d;
+    const ts = it && (it.stime || it.ctime);
+    return ts ? fmtDate(ts) : '';
+  }
+  /** 本场曲目对应的 songs.js 键：优先 liveId；未收录时只有「当天仅一场」才按日期回退 */
+  function pfSongKey(lid, date) {
+    const S = SONGS();
+    if (!S || !S.byLive) return '';
+    if (S.byLive[lid] && S.byLive[lid].length) return lid;
+    if (!date) return '';
+    const same = Object.keys(S.info || {}).filter((k) => S.info[k] && S.info[k].d === date);
+    return (same.length === 1 && S.byLive[same[0]]) ? same[0] : '';
+  }
+  function pfCutsOf(lid) {
+    const cs = (typeof DATA !== 'undefined' && DATA && DATA.perfCuts && DATA.perfCuts.cuts) || [];
+    return cs.filter((c) => String(c.liveId) === String(lid));
+  }
+  /** 场次名 → 剧目 / 第几场。写法太杂（「TEAM Z·《Zenith·穹顶之上》第二十四场」/
+   *  「拾忆：TEAM NIII」），能拆就拆，拆不出就把整条当标题 */
+  function pfParse(lid) {
+    const it = pfItem(lid), info = sgInfo(lid);
+    const full = String((info && info.n) || (it && (it.subTitle || it.title)) || '公演');
+    const t = full.match(/《([^》]+)》/);
+    const no = full.match(/第([0-9一二三四五六七八九十百零]+)场/);
+    // 没有《》时（如「拾忆：TEAM NIII·第十三场」）把尾部「·第N场」剔掉当剧目，
+    // 否则标题会和旁边的「第N场」徽标重复一遍
+    const play = t ? t[1].trim()
+      : full.replace(/[·・、\s]*第[0-9一二三四五六七八九十百零]+场\s*$/, '').trim();
+    // 副标题：只有「剔掉第N场后仍和剧目不同」才有信息量（如「《CALL爆你3008》全团联合公演」），
+    // 否则会跟标题重复一遍，显得很啰嗦
+    const base = full.replace(/[·・、\s]*第[0-9一二三四五六七八九十百零]+场\s*$/, '').trim();
+    const extra = (base && base !== play) ? full : '';
+    return { full: full, play: play, no: no ? no[1] : '', sub: extra };
+  }
+  function pfStats(lid) {
+    const date = pfDateOf(lid);
+    const key = pfSongKey(lid, date);
+    const songs = key ? SONGS().byLive[key].filter((s) => !sgIsDage(s)) : [];
+    const cuts = pfCutsOf(lid);
+    // 🔴 曲目名大小写不一致（songs.js 写「AFTER PARTY」，微博 cut 写「After Party」）⇒
+    //    必须归一化后再对，否则明明是同一首也会被塞进「其他 cut」里重复一遍。
+    const norm = (s) => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+    const idx = {};
+    songs.forEach((s) => { idx[norm(s)] = s; });
+    const byName = {}, extra = [];
+    cuts.forEach((c) => {
+      const hit = idx[norm(c.song)];
+      if (hit) { if (!byName[hit]) byName[hit] = c; }
+      else extra.push(c);
+    });
+    return { date: date, key: key, songs: songs, cuts: cuts, byName: byName, extra: extra };
+  }
+  function pfBiliCut(lid) {
+    const it = pfItem(lid);
+    if (!it || typeof biliCutFor !== 'function') return null;
+    const bc = biliCutFor(it);
+    if (!bc || !bc.bvid) return null;
+    // 🔴 有些场次 performance 的 biliUrl 与 __BILI_CUTS__ 指向**同一个 BV**
+    //    （都是那支「公演&青春时刻cut」），不去重就会并排出现两条一模一样的东西
+    const m = String(it.biliUrl || '').match(/BV[0-9A-Za-z]+/);
+    return (m && m[0] === bc.bvid) ? null : bc;
+  }
+
+  /** 场次详情正文 */
+  function pfBody(lid) {
+    const it = pfItem(lid), info = sgInfo(lid), st = pfStats(lid), p = pfParse(lid);
+    if (!it && !info) return '<div class="empty-state">这一场没有记录。</div>';
+    const d = st.date;
+    const wd = d ? PF_WD[new Date(d + 'T00:00:00Z').getUTCDay()] : '';
+    const tm = (info && info.t) || (it && it.stime ? fmtTime(it.stime).slice(0, 5) : '');
+    // ---- 头部：剧目 + 第几场 + 日期 ----
+    const head = '<div class="pfd-top">'
+      + '<b class="pfd-play">' + esc(p.play || p.full) + '</b>'
+      + (p.no ? '<i class="pfd-no">第' + esc(p.no) + '场</i>' : '')
+      + '</div>'
+      + '<div class="pfd-day">' + esc(pfDot(d)) + (wd ? ' ' + wd : '') + (tm ? ' ' + esc(tm) : '')
+      + (p.sub ? '<span class="pfd-full">' + esc(p.sub) + '</span>' : '') + '</div>';
+
+    // ---- 本场曲目：每行 = 序号 + 歌名（点开单曲详情）+ 该曲 cut / 单曲视频 ----
+    const srows = st.songs.map((s, i) => {
+      const c = st.byName[s];
+      const v = sgVidOf(st.key, s);
+      const cutA = c
+        ? '<a class="pfd-tag pfd-cut" href="' + esc(c.h5 || c.url || '#') + '" target="_blank" rel="noopener noreferrer" title="微博 cut">cut</a>'
+        : '';
+      const vidA = (!c && v)
+        ? '<a class="pfd-tag pfd-vid" href="' + esc(v.url) + '" target="_blank" rel="noopener noreferrer" title="单曲视频 · ' + esc(v.src) + '">▶</a>'
+        : '';
+      return '<div class="pfd-srow"><i class="pfd-num">' + String(i + 1).padStart(2, '0') + '</i>'
+        + '<button class="pfd-name" type="button" data-song="' + esc(s) + '">' + esc(s) + '</button>'
+        + cutA + vidA + '</div>';
+    }).join('');
+    // 曲目表里没有的 cut（MC、串场、「片段」等）
+    // 🔴 这里**不能**带 data-song：带了会被上面的 [data-song] 委托截走、弹出单曲详情，
+    //    同时 a 的默认跳转也照走，等于一次点击做两件事。
+    const erows = st.extra.map((c) => '<div class="pfd-srow is-extra"><i class="pfd-num">·</i>'
+      + '<a class="pfd-name is-link" href="' + esc(c.h5 || c.url || '#') + '" target="_blank" rel="noopener noreferrer">'
+      + esc(c.song || '片段') + '</a>'
+      + '<a class="pfd-tag pfd-cut" href="' + esc(c.h5 || c.url || '#') + '" target="_blank" rel="noopener noreferrer">cut</a></div>').join('');
+
+    // ---- 视频来源 ----
+    const srcs = [];
+    let nSrc = 0;
+    if (it && /^https?:/i.test(it.playUrl || '')) {
+      nSrc++;
+      srcs.push('<div class="pfd-srcrow"><span class="pfd-srcn">官方回放</span>'
+        + '<button class="pfd-go" type="button" data-play="' + esc(it.playUrl) + '"'
+        + ' data-title="' + esc(p.full + ' · ' + pfDot(d)) + '">▶ 播放</button></div>');
+    } else if (it && it.playUrl) {
+      srcs.push('<div class="pfd-srcrow is-off"><span class="pfd-srcn">官方回放</span>'
+        + '<span class="pfd-off">官方流已失效</span></div>');
+    }
+    if (it && it.biliUrl) {
+      nSrc++;
+      srcs.push('<div class="pfd-srcrow"><span class="pfd-srcn">B 站整场</span>'
+        + '<a class="pfd-go" href="' + esc(it.biliUrl) + '" target="_blank" rel="noopener noreferrer">'
+        + esc(it.biliTitle || '去 B 站看') + '</a></div>');
+    }
+    const bc = pfBiliCut(lid);
+    if (bc && bc.bvid) {
+      nSrc++;
+      srcs.push('<div class="pfd-srcrow"><span class="pfd-srcn">整场 cut</span>'
+        + '<a class="pfd-go" href="https://www.bilibili.com/video/' + esc(bc.bvid) + '" target="_blank" rel="noopener noreferrer">'
+        + esc(bc.title || bc.bvid) + '</a></div>');
+    }
+    if (st.cuts.length) {
+      srcs.push('<div class="pfd-srcrow"><span class="pfd-srcn">单曲 cut</span>'
+        + '<span class="pfd-off">' + st.cuts.length + ' 条 · 见上方曲目</span></div>');
+    }
+
+    return '<div class="pfd">' + head
+      + '<div class="pfd-met">'
+      + '<div><span>曲目</span><b>' + (st.songs.length ? st.songs.length + ' 首' : '—') + '</b></div>'
+      + '<div><span>单曲 cut</span><b>' + (st.cuts.length || '—') + '</b></div>'
+      + '<div><span>视频来源</span><b>' + (nSrc ? nSrc + ' 个' : '—') + '</b></div>'
+      + '</div>'
+      + '<h4 class="pfd-h4">本场曲目</h4>'
+      + (st.songs.length ? '<div class="pfd-songs">' + srows + '</div>'
+        : '<div class="pfd-none">本场曲目未收录<span>这一场没有对应的剧目曲目表（新场次要等曲目库同步）。</span></div>')
+      + (erows ? '<h4 class="pfd-h4">其他 cut</h4><div class="pfd-songs">' + erows + '</div>' : '')
+      + '<h4 class="pfd-h4">视频来源</h4>'
+      + (srcs.length ? '<div class="pfd-srcs">' + srcs.join('') + '</div>'
+        : '<div class="pfd-none">暂无视频来源</div>')
+      + '</div>';
+  }
+
+  /** 纯文本版（复制给同担） */
+  function pfText(lid) {
+    const it = pfItem(lid), st = pfStats(lid), p = pfParse(lid);
+    const out = ['【GNZ48 王语晨 · 公演记录】', pfDot(st.date) + ' ' + p.full];
+    if (st.songs.length) out.push('', '曲目（' + st.songs.length + ' 首）：' + st.songs.join('、'));
+    const bc = pfBiliCut(lid);
+    if (bc && bc.bvid) out.push('', '整场 cut：https://www.bilibili.com/video/' + bc.bvid);
+    if (it && it.biliUrl) out.push('B 站录像：' + it.biliUrl);
+    if (st.cuts.length) out.push('单曲 cut：' + st.cuts.length + ' 条（点开本页看）');
+    out.push('', '王语晨补档站 idol.wyc0518.cc');
+    return out.join('\n');
+  }
+
+  /** 分享图：880×N 白底卡（纯 Canvas 绘制，不加载远程图，绝不会被 CORS 污染） */
+  function makePerfCard(lid) {
+    const st = pfStats(lid), p = pfParse(lid), info = sgInfo(lid);
+    const d = pfDot(st.date);
+    const wd = st.date ? PF_WD[new Date(st.date + 'T00:00:00Z').getUTCDay()] : '';
+    const tm = (info && info.t) || '';
+    const W = 880, PAD = 56, CW = W - PAD * 2;
+    const c = document.createElement('canvas');
+    const g = c.getContext('2d');
+    const font = (w, sz) => w + ' ' + sz + 'px "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif';
+    const cut = (s, max) => {
+      let t = String(s || '');
+      if (g.measureText(t).width <= max) return t;
+      while (t.length > 1 && g.measureText(t + '…').width > max) t = t.slice(0, -1);
+      return t + '…';
+    };
+    // 曲目两列排版（最多 24 首，超出折成「等 N 首」）
+    const cap = 24;
+    const items = st.songs.slice(0, cap);
+    const colW = (CW - 24) / 2;
+    const rows = Math.ceil(items.length / 2);
+    const rowH = 38;
+    const HEAD = 300, FOOT = 116;
+    const bodyH = items.length ? rows * rowH + 30 : 70;
+    const H = HEAD + bodyH + FOOT;
+
+    const dpr = 2;
+    c.width = W * dpr; c.height = H * dpr;
+    g.scale(dpr, dpr);
+    g.fillStyle = '#ffffff'; g.fillRect(0, 0, W, H);
+    const grd = g.createLinearGradient(0, 0, W, 8);
+    grd.addColorStop(0, '#2bc4e0'); grd.addColorStop(1, '#7fd9ea');
+    g.fillStyle = grd; g.fillRect(0, 0, W, 8);
+    g.fillStyle = 'rgba(43,196,224,.06)';
+    g.beginPath(); g.arc(W - 30, H - 20, 170, 0, Math.PI * 2); g.fill();
+
+    // 剧目
+    g.textBaseline = 'alphabetic'; g.textAlign = 'left';
+    g.fillStyle = '#0f2b33';
+    g.font = font(700, 56);
+    const playTxt = cut(p.play || p.full, CW - 130);
+    g.fillText(playTxt, PAD, 128);
+    if (p.no) {
+      const w = g.measureText(playTxt).width;
+      g.font = font(500, 26); g.fillStyle = '#2bc4e0';
+      g.fillText('第' + p.no + '场', PAD + w + 14, 128);
+    }
+    // 日期 / 星期 / 时间
+    g.fillStyle = '#5d7480'; g.font = font(400, 28);
+    g.fillText(d + (wd ? '  ' + wd : '') + (tm ? '  ' + tm : ''), PAD, 180);
+    if (p.sub) {
+      g.fillStyle = '#9aabb6'; g.font = font(400, 22);
+      g.fillText(cut(p.sub, CW), PAD, 216);
+    }
+    // 分隔线
+    g.strokeStyle = '#e8eef2'; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(PAD, 244); g.lineTo(W - PAD, 244); g.stroke();
+    // 指标
+    const nSrc = (pfItem(lid) && pfItem(lid).biliUrl ? 1 : 0) + (pfBiliCut(lid) ? 1 : 0);
+    g.fillStyle = '#8a97a4'; g.font = font(400, 24);
+    g.fillText('曲目 ' + st.songs.length + ' 首 · 单曲 cut ' + st.cuts.length + ' 个'
+      + (nSrc ? ' · 整场视频 ' + nSrc + ' 路' : ''), PAD, 282);
+
+    // 曲目两列
+    g.font = font(500, 25);
+    items.forEach((s, i) => {
+      const col = i < rows ? 0 : 1;
+      const row = i % rows;
+      const x = PAD + col * (colW + 24);
+      const y = HEAD + 26 + row * rowH;
+      g.fillStyle = '#b6c4ce'; g.font = font(400, 20);
+      g.fillText(String(i + 1).padStart(2, '0'), x, y);
+      g.fillStyle = '#26343c'; g.font = font(500, 25);
+      g.fillText(cut(s, colW - 44), x + 34, y);
+    });
+    if (st.songs.length > cap) {
+      g.fillStyle = '#9aabb6'; g.font = font(400, 21);
+      g.fillText('等 ' + st.songs.length + ' 首', PAD, HEAD + 26 + rows * rowH + 16);
+    }
+    if (!items.length) {
+      g.fillStyle = '#9aabb6'; g.font = font(400, 24);
+      g.fillText('本场曲目未收录', PAD, HEAD + 44);
+    }
+
+    // 页脚
+    const fy = H - FOOT + 46;
+    g.strokeStyle = '#e8eef2';
+    g.beginPath(); g.moveTo(PAD, fy - 30); g.lineTo(W - PAD, fy - 30); g.stroke();
+    g.fillStyle = '#0f2b33'; g.font = font(600, 24);
+    g.fillText('王语晨补档站', PAD, fy);
+    g.fillStyle = '#9aabb6'; g.font = font(400, 21);
+    g.fillText('idol.wyc0518.cc', PAD, fy + 30);
+    // 右下角小标
+    g.textAlign = 'right';
+    g.fillStyle = '#c3d2db'; g.font = font(400, 20);
+    g.fillText('GNZ48 · NIII', W - PAD, fy + 30);
+    g.textAlign = 'left';
+    return c.toDataURL('image/png');
+  }
+
+  function pfOpen(lid) {
+    if (!lid) { sgToast('这场没有记录'); return; }
+    const wrap = modal('场次详情', pfBody(lid), {
+      wide: true,
+      footer: '<button class="dm-btn primary" id="pfCopy" type="button">📋 复制曲目表</button>'
+        + '<button class="dm-btn" id="pfImg" type="button">🖼 生成分享图</button>'
+    });
+    const b1 = $('#pfCopy', wrap);
+    if (b1) b1.addEventListener('click', () => copyText(pfText(lid), '✅ 已复制本场信息'));
+    const b2 = $('#pfImg', wrap);
+    if (b2) b2.addEventListener('click', () => pfShare(lid));
+  }
+
+  async function pfShare(lid) {
+    const wrap = modal('生成分享图', '<div class="dm-share-loading">正在生成图片…</div>', { wide: true });
+    try {
+      const url = makePerfCard(lid);
+      $('.dm-modal-b', wrap).innerHTML = '<div class="dm-share-prev"><img src="' + url + '" alt="场次卡预览" /></div>'
+        + '<div class="dm-share-tip">' + saveTip('，或先把曲目表复制过去。') + '</div>';
+      const f = document.createElement('div');
+      f.className = 'dm-share-foot';
+      f.innerHTML = '<button class="dm-btn primary" id="pfDl" type="button">' + saveBtnText() + '</button>';
+      $('.dm-modal', wrap).appendChild(f);
+      const dl = $('#pfDl', wrap);
+      if (dl) dl.addEventListener('click', () => {
+        saveShareImage(url, 'wyc-perf-' + String(pfStats(lid).date || '').replace(/-/g, '') + '.png');
+      });
+    } catch (e) {
+      $('.dm-modal-b', wrap).innerHTML = '<div class="dm-share-tip">生成失败：' + esc(e.message) + '</div>';
+    }
+  }
+
+  /** 跳到「公演回放」里**那一场**（按 liveId 定位）并高亮 */
+  
   /** 跳到「公演回放」里**那一场**（按 liveId 定位）并高亮 */
   function sgGoPerf(lid) {
     closeModal();
@@ -4982,6 +5386,23 @@
   }
 
   document.addEventListener('click', (e) => {
+    // ㉒ 场次详情卡：卡片上的「📋 详情」按钮，或直接点卡片标题
+    const pfBtn = e.target.closest('[data-perf-detail]');
+    if (pfBtn) { pfOpen(pfBtn.getAttribute('data-perf-detail')); return; }
+    const pfTitle = e.target.closest('.card[data-t="perf"] .card-title');
+    if (pfTitle) {
+      const card = pfTitle.closest('.card');
+      const lid2 = card ? (card.getAttribute('data-live') || '') : '';
+      if (lid2) { pfOpen(lid2); return; }
+    }
+    // 单曲详情里的剧目筛选：只重渲弹窗正文，不重开弹窗（否则滚动位置会回到顶部）
+    const showBtn = e.target.closest('[data-sg-show]');
+    if (showBtn && sgCurSong) {
+      sgCurShow = showBtn.getAttribute('data-sg-show') || '';
+      const b = document.querySelector('#dmModal .dm-modal-b');
+      if (b) b.innerHTML = sgSongBody(sgCurSong, sgCurShow);
+      return;
+    }
     const songBtn = e.target.closest('[data-song]');
     if (songBtn) { sgSongModal(songBtn.getAttribute('data-song')); return; }
     const goBtn = e.target.closest('[data-sg-go]');
