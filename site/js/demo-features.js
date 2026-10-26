@@ -5264,7 +5264,7 @@
     const nSrc = (pfItem(lid) && pfItem(lid).biliUrl ? 1 : 0) + (pfBiliCut(lid) ? 1 : 0);
     g.fillStyle = '#8a97a4'; g.font = font(400, 24);
     g.fillText('曲目 ' + st.songs.length + ' 首 · 单曲 cut ' + st.cuts.length + ' 个'
-      + (nSrc ? ' · 整场视频 ' + nSrc + ' 路' : ''), PAD, 282);
+      + (nSrc ? ' · 视频来源 ' + nSrc + ' 个' : ''), PAD, 282);
 
     // 曲目两列
     g.font = font(500, 25);
