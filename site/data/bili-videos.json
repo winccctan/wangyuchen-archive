@@ -1,6 +1,6 @@
 {
-  "updatedAt": "2026-10-26T04:56:52.617Z",
-  "count": 1337,
+  "updatedAt": "2026-10-26T15:17:28.721Z",
+  "count": 1340,
   "targets": [
     {
       "mid": "2086351451",
@@ -27,9 +27,36 @@
     "358477444:season:6805043": 2,
     "358477444:season:2812669": 2,
     "358477444:space": 2,
-    "2086351451:space": 1
+    "2086351451:space": 2
   },
   "videos": [
+    {
+      "bvid": "BV1uBnR6tEvw",
+      "aid": 117506916223737,
+      "title": "【王语晨】20230729 GNZ48 Team NIII《启程：Team NIII》巡演上海站cut",
+      "created": 1793013536,
+      "duration": 2006,
+      "play": 32,
+      "mid": "358477444"
+    },
+    {
+      "bvid": "BV1Cbn96yE3i",
+      "aid": 117505523713754,
+      "title": "【王语晨】20230708 GNZ48《向阳时的影子又名轨迹》唐莉佳生日主题公演cut",
+      "created": 1792992311,
+      "duration": 189,
+      "play": 20,
+      "mid": "358477444"
+    },
+    {
+      "bvid": "BV1UFnR6WEGc",
+      "aid": 117505456669782,
+      "title": "【王语晨】20230715《Redamancy》洪静雯生日主题公演cut",
+      "created": 1792991127,
+      "duration": 1782,
+      "play": 8,
+      "mid": "358477444"
+    },
     {
       "bvid": "BV1h9n96tEHE",
       "aid": 117505255278943,
