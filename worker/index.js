@@ -72,12 +72,13 @@ export default {
       return handleTrack(url, request, env, ctx);
     }
 
-    /* 行程日历订阅（2026-10-26）—— 手机日历填这个地址，站长以后在后台发的新行程自动进粉丝日历。
-     * 刻意用 /schedule.ics 而不是 /api/schedule.ics：/api/* 上挂了 4 小时边缘缓存规则，
-     * 走那边会让新行程最多迟到 4 小时；这里自己控 10 分钟。
-     * 零存储、零写入：只是读一次 KV + 拼字符串，见 handleScheduleIcs。 */
+    /* 行程日历订阅（2026-10-26）—— 正式地址是 /api/schedule.ics（见 handleApi）。
+     * 🔴 这里只是给早期链接留的跳转：站点的 Cache Rule 把「/api/* 以外」全按 4 小时
+     *    缓存（连 query 都忽略），所以 /schedule.ics 会被边缘钉住 4 小时，
+     *    站长发的新行程要等 4 小时才进订阅；/api/* 那条规则是 bypass，实时。
+     *    等早期链接自然过期后，这段也可以删。 */
     if (url.pathname === '/schedule.ics') {
-      return withEdgeCache('/schedule.ics', 600, () => handleScheduleIcs(env));
+      return Response.redirect(new URL('/api/schedule.ics', url).toString(), 302);
     }
 
     // 姊妹站的「关注热度」上报（2026-10-15）：哪个成员被多少台设备关注。
@@ -1757,6 +1758,12 @@ async function handleApi(url, request, env, ctx) {
    * POST /api/admin/pass      改后台密码（需 token）
    */
   if (p === '/api/schedule') return withEdgeCache('/api/schedule', 60, () => handleScheduleGet(env));
+  /* 行程日历订阅：手机日历里填这个地址，站长在后台发的新行程会自动出现。
+   * 零存储、零写入（读一次 KV + 拼字符串）；Worker 内部缓存 5 分钟，
+   * /api/* 不在站点的 4 小时 Cache Rule 里，所以新行程最多 5 分钟就能进订阅。 */
+  if (p === '/api/schedule.ics') {
+    return withEdgeCache('/schedule.ics', 300, () => handleScheduleIcs(env));
+  }
   if (p === '/api/admin/login' && request.method === 'POST') return handleAdminLogin(request, env);
   if (p === '/api/admin/schedule') {
     if (!(await adminOk(request, env))) return json({ error: 'forbidden: admin token required' }, 403);

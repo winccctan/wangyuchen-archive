@@ -5544,6 +5544,9 @@
      任何时区的手机打开都对，而且不用附带 VTIMEZONE（不少客户端对自定义 TZID 支持差）。
   */
   const CAL_BASE = 'https://idol.wyc0518.cc';
+  // 🔴 必须是 /api/ 开头的路径：站点 Cache Rule 对「/api/* 以外」按 4 小时缓存，
+  //    连 query 都忽略；只有 /api/* 是 bypass，新行程才能在几分钟内进订阅。
+  const CAL_ICS = '/api/schedule.ics';
 
   function calPad(n) { return String(n).padStart(2, '0'); }
   function calEsc(v) {
@@ -5650,7 +5653,7 @@
   }
 
   function calSubModal() {
-    const url = CAL_BASE + '/schedule.ics';
+    const url = CAL_BASE + CAL_ICS;
     modal('订阅日历', '<div class="calbox">'
       + '<p class="calbox-p">订阅一次，她以后的<b>新行程会自动</b>出现在你手机日历里，不用再来点。</p>'
       + '<div class="calbox-url"><code>' + esc(url) + '</code></div>'
@@ -5681,7 +5684,7 @@
       return;
     }
     if (e.target.closest('#scCalBtn')) { calSubModal(); return; }
-    if (e.target.closest('[data-cal-copy]')) { calCopy(CAL_BASE + '/schedule.ics'); return; }
+    if (e.target.closest('[data-cal-copy]')) { calCopy(CAL_BASE + CAL_ICS); return; }
   });
 
   // 等 app.js 的 init() 把数据拉回来再启动
