@@ -72,6 +72,14 @@ export default {
       return handleTrack(url, request, env, ctx);
     }
 
+    /* 行程日历订阅（2026-10-26）—— 手机日历填这个地址，站长以后在后台发的新行程自动进粉丝日历。
+     * 刻意用 /schedule.ics 而不是 /api/schedule.ics：/api/* 上挂了 4 小时边缘缓存规则，
+     * 走那边会让新行程最多迟到 4 小时；这里自己控 10 分钟。
+     * 零存储、零写入：只是读一次 KV + 拼字符串，见 handleScheduleIcs。 */
+    if (url.pathname === '/schedule.ics') {
+      return withEdgeCache('/schedule.ics', 600, () => handleScheduleIcs(env));
+    }
+
     // 姊妹站的「关注热度」上报（2026-10-15）：哪个成员被多少台设备关注。
     // 走 1x1 图片（跨域不用 CORS），同样只接受本站 / all48 页面发出。
     if (url.pathname === '/api/fol') {
@@ -2708,6 +2716,139 @@ async function handleScheduleGet(env) {
   if (kv) { try { cur = await kv.get(SCHED_KEY, { type: 'json' }); } catch (_) { cur = null; } }
   if (!cur || !Array.isArray(cur.items)) return json({ ok: true, empty: true, items: [] });
   return json(Object.assign({ ok: true }, cur));
+}
+
+/* ------------------------- 行程 → iCalendar -------------------------
+ * 给「订阅日历」用的公开导出：GET /schedule.ics
+ * 口径（与前端「加入日历」按钮、行程页显示保持一致）：
+ *   - time 有「14:00」→ 1 场 2 小时；有「17:30-19:30」→ 用区间；整天没时间 → 全天事件
+ *   - date 为空（「更远」那批只知月份）→ **不进日历**，日历没法表示「不知道哪天」
+ *   - 一律按**北京时间**解释，输出成 UTC（DTSTART:...Z）。这样粉丝在任何时区打开都正确，
+ *     也不需要附带 VTIMEZONE 定义（部分客户端对自定义 TZID 支持很差）。
+ *   - UID 由「日期+时间+标题」哈希而来 ⇒ 同一场每次取到的 UID 相同，订阅端是**更新**而不是重复新增。
+ */
+const SCHED_ICS_PAD = (n) => String(n).padStart(2, '0');
+
+function icsEsc(v) {
+  return String(v == null ? '' : v)
+    .replace(/\\/g, '\\\\')
+    .replace(/;/g, '\\;')
+    .replace(/,/g, '\\,')
+    .replace(/\r?\n/g, '\\n');
+}
+
+/** RFC 5545 折行：每行 ≤75 **字节**（UTF-8 中文 1 字 3 字节），续行以 1 个空格开头 */
+function icsFold(line) {
+  const enc = new TextEncoder();
+  const parts = [];
+  let cur = '', bytes = 0;
+  for (const ch of String(line)) {
+    const n = enc.encode(ch).length;
+    if (bytes + n > 75) { parts.push(cur); cur = ' '; bytes = 1; }
+    cur += ch; bytes += n;
+  }
+  parts.push(cur);
+  return parts.join('\r\n');
+}
+
+/** 'YYYY-MM-DD' + 当天的第几分钟 → 'YYYYMMDDTHHMMSSZ'（按北京时间 UTC+8 换算） */
+function icsStamp(dateStr, minutes) {
+  const [y, mo, d] = String(dateStr).split('-').map(Number);
+  const t = new Date(Date.UTC(y, mo - 1, d) + minutes * 60000 - 8 * 3600000);
+  return t.getUTCFullYear() + SCHED_ICS_PAD(t.getUTCMonth() + 1) + SCHED_ICS_PAD(t.getUTCDate())
+    + 'T' + SCHED_ICS_PAD(t.getUTCHours()) + SCHED_ICS_PAD(t.getUTCMinutes()) + '00Z';
+}
+function icsDateOnly(dateStr, plusDays) {
+  const [y, mo, d] = String(dateStr).split('-').map(Number);
+  const t = new Date(Date.UTC(y, mo - 1, d + (plusDays || 0)));
+  return t.getUTCFullYear() + SCHED_ICS_PAD(t.getUTCMonth() + 1) + SCHED_ICS_PAD(t.getUTCDate());
+}
+/** '14:00' / '17:30-19:30' / '' → { s: 起始分钟, e: 结束分钟 } | null */
+function icsTimeSpan(t) {
+  const m = String(t || '').match(/(\d{1,2}):(\d{2})\s*(?:[-–—~～至]\s*(\d{1,2}):(\d{2}))?/);
+  if (!m) return null;
+  const s = Number(m[1]) * 60 + Number(m[2]);
+  let e = (m[3] != null) ? Number(m[3]) * 60 + Number(m[4]) : s + 120;   // 没写结束就按公演 2 小时
+  if (!(e > s)) e = s + 120;                                            // 跨零点这种脏数据也兜住
+  return { s: s, e: e };
+}
+function icsHash(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return (h >>> 0).toString(36);
+}
+function icsKindIcon(k) {
+  return k === '见面会' ? '🤝' : k === '预告' ? '📣' : k === '公演' ? '🎭' : '📌';
+}
+
+/** 一整份行程 → .ics 文本 */
+function buildScheduleIcs(items) {
+  const nowD = new Date();
+  const dtstamp = nowD.getUTCFullYear() + SCHED_ICS_PAD(nowD.getUTCMonth() + 1) + SCHED_ICS_PAD(nowD.getUTCDate())
+    + 'T' + SCHED_ICS_PAD(nowD.getUTCHours()) + SCHED_ICS_PAD(nowD.getUTCMinutes()) + SCHED_ICS_PAD(nowD.getUTCSeconds()) + 'Z';
+  const out = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//wangyuchen-archive//schedule//CN',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    'X-WR-CALNAME:王语晨 行程',
+    'X-WR-CALDESC:GNZ48 TEAM NIII 王语晨的公演与见面会安排（订阅后自动同步）',
+    'X-WR-TIMEZONE:Asia/Shanghai',
+    'REFRESH-INTERVAL;VALUE=DURATION:PT2H',
+    'X-PUBLISHED-TTL:PT2H'
+  ];
+  (items || []).forEach((it) => {
+    const date = String((it && it.date) || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return;      // 「更远」那批没有确切日期，不进日历
+    const title = String(it.title || '').trim() || '王语晨 行程';
+    const kind = String(it.kind || '').trim();
+    const icon = icsKindIcon(kind);
+    const span = icsTimeSpan(it.time);
+    const uid = 'wyc-sched-' + icsHash(date + '|' + String(it.time || '') + '|' + title) + '@idol.wyc0518.cc';
+    out.push('BEGIN:VEVENT');
+    out.push('UID:' + uid);
+    out.push('DTSTAMP:' + dtstamp);
+    if (span) {
+      out.push('DTSTART:' + icsStamp(date, span.s));
+      out.push('DTEND:' + icsStamp(date, span.e));
+    } else {
+      out.push('DTSTART;VALUE=DATE:' + icsDateOnly(date, 0));
+      out.push('DTEND;VALUE=DATE:' + icsDateOnly(date, 1));
+    }
+    out.push('SUMMARY:' + icsEsc(icon + ' ' + title));
+    if (kind) out.push('CATEGORIES:' + icsEsc(kind));
+    if (kind === '公演') out.push('LOCATION:' + icsEsc('GNZ48 星梦剧院'));
+    out.push('DESCRIPTION:' + icsEsc('王语晨（GNZ48 TEAM NIII）' + (kind ? ' · ' + kind : '')
+      + (it.time ? ' · ' + String(it.time) : '') + '\n来源：王语晨补档站 https://idol.wyc0518.cc/'));
+    out.push('URL:https://idol.wyc0518.cc/');
+    out.push('TRANSP:OPAQUE');
+    out.push('BEGIN:VALARM');
+    out.push('TRIGGER:-PT30M');
+    out.push('ACTION:DISPLAY');
+    out.push('DESCRIPTION:' + icsEsc(icon + ' ' + title));
+    out.push('END:VALARM');
+    out.push('END:VEVENT');
+  });
+  out.push('END:VCALENDAR');
+  return out.map(icsFold).join('\r\n') + '\r\n';
+}
+
+async function handleScheduleIcs(env) {
+  const kv = env && env.KV;
+  let cur = null;
+  if (kv) { try { cur = await kv.get(SCHED_KEY, { type: 'json' }); } catch (_) { cur = null; } }
+  const items = (cur && Array.isArray(cur.items)) ? cur.items : [];
+  const body = buildScheduleIcs(items);
+  return new Response(body, {
+    status: 200,
+    headers: {
+      'content-type': 'text/calendar; charset=utf-8',
+      'content-disposition': 'inline; filename="wangyuchen.ics"; filename*=UTF-8\'\'%E7%8E%8B%E8%AF%AD%E6%99%A8-%E8%A1%8C%E7%A8%8B.ics',
+      'cache-control': 'public, max-age=600',
+      'access-control-allow-origin': '*'
+    }
+  });
 }
 
 async function handleAdminLogin(request, env) {

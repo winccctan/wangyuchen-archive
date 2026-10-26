@@ -5532,6 +5532,157 @@
       + '</div>';
   };
 
+  /* =====================================================================
+     ㉓ 行程日历（2026-10-26）：两种用法都做
+     ---------------------------------------------------------------------
+     ① 订阅：手机日历里「订阅日历」填 https://idol.wyc0518.cc/schedule.ics，
+        站长在后台发的新行程会自动出现在粉丝日历里（Worker 读 KV 现算，
+        零存储、零写入，见 worker 的 handleScheduleIcs）。
+     ② 单场：每个行程行右边的 📅 按钮，纯前端拼一个只有这一场的 .ics 下载，
+        不碰任何接口（数据就在 DOM 的 data-* 上）。
+     时区口径：行程里的时间都是**北京时间**，导出时换算成 UTC（...Z）——
+     任何时区的手机打开都对，而且不用附带 VTIMEZONE（不少客户端对自定义 TZID 支持差）。
+  */
+  const CAL_BASE = 'https://idol.wyc0518.cc';
+
+  function calPad(n) { return String(n).padStart(2, '0'); }
+  function calEsc(v) {
+    return String(v == null ? '' : v).replace(/\\/g, '\\\\').replace(/;/g, '\\;')
+      .replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+  }
+  /** RFC 5545 折行：每行 ≤75 字节（中文 1 字 3 字节），续行以 1 个空格开头 */
+  function calFold(line) {
+    const enc = new TextEncoder();
+    const parts = []; let cur = '', bytes = 0;
+    for (const ch of String(line)) {
+      const n = enc.encode(ch).length;
+      if (bytes + n > 75) { parts.push(cur); cur = ' '; bytes = 1; }
+      cur += ch; bytes += n;
+    }
+    parts.push(cur);
+    return parts.join('\r\n');
+  }
+  /** 'YYYY-MM-DD' + 当天第几分钟 → 'YYYYMMDDTHHMMSSZ'（按北京时间 UTC+8 换算） */
+  function calStamp(date, minutes) {
+    const p = String(date).split('-').map(Number);
+    const t = new Date(Date.UTC(p[0], p[1] - 1, p[2]) + minutes * 60000 - 8 * 3600000);
+    return '' + t.getUTCFullYear() + calPad(t.getUTCMonth() + 1) + calPad(t.getUTCDate())
+      + 'T' + calPad(t.getUTCHours()) + calPad(t.getUTCMinutes()) + '00Z';
+  }
+  function calDateOnly(date, plus) {
+    const p = String(date).split('-').map(Number);
+    const t = new Date(Date.UTC(p[0], p[1] - 1, p[2] + (plus || 0)));
+    return '' + t.getUTCFullYear() + calPad(t.getUTCMonth() + 1) + calPad(t.getUTCDate());
+  }
+  /** '14:00' / '17:30-19:30' / '' → 起止分钟（没写结束按 2 小时） */
+  function calSpan(t) {
+    const m = String(t || '').match(/(\d{1,2}):(\d{2})\s*(?:[-–—~～至]\s*(\d{1,2}):(\d{2}))?/);
+    if (!m) return null;
+    const s = Number(m[1]) * 60 + Number(m[2]);
+    let e = (m[3] != null) ? Number(m[3]) * 60 + Number(m[4]) : s + 120;
+    if (!(e > s)) e = s + 120;
+    return { s: s, e: e };
+  }
+  function calHash(str) {
+    let h = 2166136261;
+    for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return (h >>> 0).toString(36);
+  }
+  function calIcon(k) { return k === '见面会' ? '🤝' : k === '预告' ? '📣' : k === '公演' ? '🎭' : '📌'; }
+
+  /** 单场 → 只含这一个事件的 .ics（UID 与订阅源里那条一致，重复导入不会变两条） */
+  function calIcs(date, time, title, kind) {
+    const icon = calIcon(kind);
+    const span = calSpan(time);
+    const uid = 'wyc-sched-' + calHash(date + '|' + (time || '') + '|' + title) + '@idol.wyc0518.cc';
+    const n = new Date();
+    const stamp = '' + n.getUTCFullYear() + calPad(n.getUTCMonth() + 1) + calPad(n.getUTCDate())
+      + 'T' + calPad(n.getUTCHours()) + calPad(n.getUTCMinutes()) + calPad(n.getUTCSeconds()) + 'Z';
+    const L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//wangyuchen-archive//schedule//CN',
+      'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'BEGIN:VEVENT', 'UID:' + uid, 'DTSTAMP:' + stamp];
+    if (span) {
+      L.push('DTSTART:' + calStamp(date, span.s));
+      L.push('DTEND:' + calStamp(date, span.e));
+    } else {
+      L.push('DTSTART;VALUE=DATE:' + calDateOnly(date, 0));
+      L.push('DTEND;VALUE=DATE:' + calDateOnly(date, 1));
+    }
+    L.push('SUMMARY:' + calEsc(icon + ' ' + title));
+    if (kind) L.push('CATEGORIES:' + calEsc(kind));
+    if (kind === '公演') L.push('LOCATION:' + calEsc('GNZ48 星梦剧院'));
+    L.push('DESCRIPTION:' + calEsc('王语晨（GNZ48 TEAM NIII）' + (kind ? ' · ' + kind : '')
+      + (time ? ' · ' + time : '') + '\n来源：王语晨补档站 ' + CAL_BASE + '/'));
+    L.push('URL:' + CAL_BASE + '/');
+    L.push('BEGIN:VALARM', 'TRIGGER:-PT30M', 'ACTION:DISPLAY',
+      'DESCRIPTION:' + calEsc(icon + ' ' + title), 'END:VALARM');
+    L.push('END:VEVENT', 'END:VCALENDAR');
+    return L.map(calFold).join('\r\n') + '\r\n';
+  }
+
+  /** 下载一个 .ics（Blob，不走服务端） */
+  function calDownload(fname, text) {
+    const blob = new Blob([text], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a2 = document.createElement('a');
+    a2.href = url; a2.download = fname; a2.rel = 'noopener';
+    document.body.appendChild(a2); a2.click(); a2.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  }
+
+  function calCopyFallback(text, done) {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.setAttribute('readonly', '');
+    ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0';
+    document.body.appendChild(ta); ta.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (_) { ok = false; }
+    ta.remove();
+    if (ok) done(); else sgToast('复制没成功，请长按链接手动复制');
+  }
+  function calCopy(text) {
+    const done = () => sgToast('订阅链接已复制');
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(() => calCopyFallback(text, done));
+      return;
+    }
+    calCopyFallback(text, done);
+  }
+
+  function calSubModal() {
+    const url = CAL_BASE + '/schedule.ics';
+    modal('订阅日历', '<div class="calbox">'
+      + '<p class="calbox-p">订阅一次，她以后的<b>新行程会自动</b>出现在你手机日历里，不用再来点。</p>'
+      + '<div class="calbox-url"><code>' + esc(url) + '</code></div>'
+      + '<div class="calbox-b">'
+      + '<button type="button" class="calbox-btn primary" data-cal-copy>复制订阅链接</button>'
+      + '<a class="calbox-btn" href="' + esc(url) + '" download="王语晨-行程.ics">下载 .ics</a>'
+      + '</div>'
+      + '<h4 class="calbox-h">怎么订阅</h4>'
+      + '<ul class="calbox-ul">'
+      + '<li><b>iPhone</b>：设置 → 日历 → 账户 → 添加账户 → 其他 → 添加已订阅的日历 → 粘贴链接</li>'
+      + '<li><b>Google 日历</b>：电脑上打开日历 → 左侧「其他日历」＋ → 从网址添加</li>'
+      + '<li><b>国产手机</b>（华为/小米/OPPO 等）多数不支持订阅网址 → 用「下载 .ics」导入，或点每场右边的「＋日历」</li>'
+      + '</ul>'
+      + '<p class="calbox-note">订阅是只读的，日历 App 每隔几小时自己同步一次；不想看了，在日历 App 里删掉这个日历就行。</p>'
+      + '</div>', { wide: true });
+  }
+
+  // 一个独立的点击委托：不碰 ㉒ 那条（那里是场次详情/单曲详情的地盘）
+  document.addEventListener('click', (e) => {
+    const one = e.target.closest('[data-cal-date]');
+    if (one) {
+      const date = one.getAttribute('data-cal-date') || '';
+      if (!date) return;
+      const title = one.getAttribute('data-cal-title') || '王语晨 行程';
+      calDownload('王语晨-' + date + '.ics',
+        calIcs(date, one.getAttribute('data-cal-time') || '', title, one.getAttribute('data-cal-kind') || ''));
+      sgToast('已下载，用日历 App 打开即可加入');
+      return;
+    }
+    if (e.target.closest('#scCalBtn')) { calSubModal(); return; }
+    if (e.target.closest('[data-cal-copy]')) { calCopy(CAL_BASE + '/schedule.ics'); return; }
+  });
+
   // 等 app.js 的 init() 把数据拉回来再启动
   (function waitData(n) {
     const ok = (typeof DATA !== 'undefined') && (DATA.messages.length > 0 || DATA.live.length > 0);

@@ -1591,3 +1591,27 @@ body[data-skin] .site-header {
   .pfd-play { font-size: 18px; }
   .pfd-srcn { flex: 0 0 54px; }
 }
+
+/* ===== ㉓ 行程日历（a47，2026-10-26）：每行「加入日历」+ 订阅弹窗 ===== */
+/* 行尾「＋日历」：小字、描边不明显，别跟时间/标题抢视线 */
+.sc-cal { flex: 0 0 auto; margin-left: auto; padding: 2px 7px; border: 0; border-radius: 8px;
+  background: transparent; color: #93a2b1; font-family: inherit; font-size: 11.5px;
+  line-height: 1.5; cursor: pointer; white-space: nowrap; }
+.sc-cal:hover { background: #eef7fb; color: #0e7490; }
+.calbox { font-size: 13px; color: #3f5560; }
+.calbox-p { margin: 0 0 10px; line-height: 1.7; }
+.calbox-p b { color: #0e7490; }
+.calbox-url { background: #f4f9fb; border: 1px solid #e3edf1; border-radius: 10px;
+  padding: 9px 11px; overflow-x: auto; }
+.calbox-url code { font-family: ui-monospace, Menlo, monospace; font-size: 12px;
+  color: #0e7490; white-space: nowrap; }
+.calbox-b { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 4px; }
+.calbox-btn { display: inline-flex; align-items: center; justify-content: center; height: 34px;
+  padding: 0 14px; border-radius: 999px; border: 1px solid #bfe9f2; background: #fff;
+  color: #0e7490; font-size: 13px; text-decoration: none; cursor: pointer; font-family: inherit; }
+.calbox-btn.primary { background: #2bc4e0; border-color: #2bc4e0; color: #fff; font-weight: 600; }
+.calbox-h { margin: 16px 0 6px; font-size: 12.5px; font-weight: 600; color: #4a6572; }
+.calbox-ul { margin: 0; padding-left: 18px; }
+.calbox-ul li { margin: 0 0 6px; line-height: 1.65; font-size: 12.5px; }
+.calbox-ul b { color: #2b3d46; }
+.calbox-note { margin: 10px 0 0; font-size: 11.5px; color: #8a97a4; line-height: 1.65; }
