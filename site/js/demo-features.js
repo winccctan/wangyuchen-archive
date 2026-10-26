@@ -771,23 +771,31 @@
       el.parentNode.insertBefore(b, el.nextSibling);
     });
 
-    // ㉒ 公演回放卡片：「📋 详情」入口（场次详情卡）。
+    // ㉒ 公演回放卡片：「详情」入口（场次详情卡）。
     //    🔴 必须用**独立**的 dataset 标记（pfDone），不能复用 dmDone：
     //    收藏那一轮已经把 dmDone 置 1，复用会导致这个按钮永远不出现。
     //    🔴 只挂 data-t="perf"：直播回放的卡片没有「场次」概念，别误挂。
+    //    🎯 站长 2026-10-26：入口从下面那排按钮挪到**标题最右边的小字**——
+    //       按钮排本来就有「▶ 播放 / 📺 B 站观看 / 🎬 cut …」，再塞一个会挤成两行。
     $$('.card[data-t="perf"]').forEach((el) => {
       if (el.dataset.pfDone) return;
       el.dataset.pfDone = '1';
       const lid = el.getAttribute('data-live') || '';
       if (!lid) return;
-      const acts = $('.card-actions', el);
-      if (!acts) return;
+      const t = $('.card-title', el);
+      if (!t) return;
+      // 标题文字先包一层 span：flex 里文本节点没法单独做省略号
+      const tt = document.createElement('span');
+      tt.className = 'pf-tt';
+      while (t.firstChild) tt.appendChild(t.firstChild);
+      t.appendChild(tt);
+      t.classList.add('pf-has');
       const b = document.createElement('button');
-      b.className = 'cut-btn pf-open';
+      b.className = 'pf-tlink';
       b.type = 'button';
       b.dataset.perfDetail = lid;
-      b.textContent = '📋 详情';
-      acts.appendChild(b);
+      b.textContent = '详情';
+      t.appendChild(b);
     });
 
     syncFavButtons();
@@ -4946,12 +4954,11 @@
     const st = sgStats(name);
     if (!st.items.length) return '<div class="empty-state">这首没有记录。</div>';
     const dot = (d) => String(d || '').replace(/-/g, '.');
-    // 首唱 / 最近：两个小卡并排（沿用行程页「上次见面 / 下次见面」的形态）
-    // 只唱过一场时不重复显示两张一样的卡，只留「首唱」
+    // 最近一次：只留这一张（站长 2026-10-26：**去掉「首唱」**——
+    // 曲目库里最早的一条记录不一定是真首唱，标错了更误导，不如不标）
     const met = (lab, x) => x ? '<div class="sgd-met-c"><span class="sgd-met-l">' + lab + '</span>'
       + '<b class="sgd-met-d">' + esc(dot(x.d)) + '</b>'
       + '<span class="sgd-met-n">' + esc(x.n) + '</span></div>' : '';
-    const onlyOne = !!(st.first && st.last && st.first.lid === st.last.lid);
     // 剧目 chips：点一下只看这个剧目，再点回「全部」
     const showK = Object.keys(st.shows).sort((a, b) => st.shows[b] - st.shows[a]);
     const chips = showK.length > 1 ? '<div class="sgd-chips">'
@@ -4967,7 +4974,7 @@
       + '<i><em style="width:' + Math.max(6, Math.round(st.years[y] / ymax * 100)) + '%"></em></i>'
       + '<span class="sgd-yc">' + st.years[y] + '</span></span>').join('') + '</div>' : '';
 
-    // 倒序列场次（最近的在上）；首唱 / 最近各打一枚标记
+    // 倒序列场次（最近的在上）；最近一次打一枚标记
     const list = st.items.filter((x) => !show || sgShowOf(x.n) === show).slice().reverse();
     const rows = list.map((x) => {
       // 日期写成 2025.12.28（站长口径）；站点没收录的场次没有确切时间，就不显示时间
@@ -4984,8 +4991,7 @@
         vidBtn = `<button class="sg-vid is-multi" type="button" data-sg-vid="${esc(x.lid)}|${esc(name)}">`
           + '只看这首<i class="sg-vid-c">▾</i></button>';
       }
-      const badge = (st.first && x.lid === st.first.lid) ? '<i class="sgd-b sgd-b-first">首唱</i>'
-        : ((st.last && x.lid === st.last.lid) ? '<i class="sgd-b sgd-b-last">最近</i>' : '');
+      const badge = (st.last && x.lid === st.last.lid) ? '<i class="sgd-b sgd-b-last">最近</i>' : '';
       if (x.v || !sgHasCard(x.lid)) {
         return '<div class="sg-line is-no"><div class="sg-main">'
           + '<span class="sg-rt">' + badge + esc(x.n) + '</span>'
@@ -5001,7 +5007,7 @@
     return '<div class="sgd">'
       + '<div class="sg-meta">' + st.items.length + ' 场 · '
       + (st.nv ? st.nv + ' 场有单曲视频' : '暂无单曲视频') + '</div>'
-      + '<div class="sgd-met">' + met('首唱', st.first) + (onlyOne ? '' : met('最近', st.last)) + '</div>'
+      + (st.last ? '<div class="sgd-met is-one">' + met('最近', st.last) + '</div>' : '')
       + ybar + chips
       + '<div class="sg-rows">' + rows + '</div></div>';
   }
