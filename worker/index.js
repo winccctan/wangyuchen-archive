@@ -78,7 +78,7 @@ export default {
      *    站长发的新行程要等 4 小时才进订阅；/api/* 那条规则是 bypass，实时。
      *    等早期链接自然过期后，这段也可以删。 */
     if (url.pathname === '/schedule.ics') {
-      return Response.redirect(new URL('/api/schedule.ics', url).toString(), 302);
+      return Response.redirect(new URL('/api/calendar.ics', url).toString(), 302);
     }
 
     // 姊妹站的「关注热度」上报（2026-10-15）：哪个成员被多少台设备关注。
@@ -1758,11 +1758,14 @@ async function handleApi(url, request, env, ctx) {
    * POST /api/admin/pass      改后台密码（需 token）
    */
   if (p === '/api/schedule') return withEdgeCache('/api/schedule', 60, () => handleScheduleGet(env));
-  /* 行程日历订阅：手机日历里填这个地址，站长在后台发的新行程会自动出现。
-   * 零存储、零写入（读一次 KV + 拼字符串）；Worker 内部缓存 5 分钟，
-   * /api/* 不在站点的 4 小时 Cache Rule 里，所以新行程最多 5 分钟就能进订阅。 */
-  if (p === '/api/schedule.ics') {
-    return withEdgeCache('/schedule.ics', 300, () => handleScheduleIcs(env));
+  /* 行程日历订阅（2026-10-26）：手机日历里填这个地址，站长在后台发的新行程会自动出现。
+   * 零存储、零写入（读一次 KV + 拼字符串）。
+   * 🔴 **不能走 withEdgeCache**：站点对「/api/*」有一条 4 小时边缘缓存规则，
+   *    连 query string 都忽略 —— 一旦被缓存，站长新发的行程最多要 4 小时才进订阅。
+   *    所以这里直接回响应，并显式发 no-cache/no-store 把边缘缓存关掉（日历 App 几小时才来一次，
+   *    KV 一次读而已，扛得住）。 */
+  if (p === '/api/calendar.ics') {
+    return handleScheduleIcs(env);
   }
   if (p === '/api/admin/login' && request.method === 'POST') return handleAdminLogin(request, env);
   if (p === '/api/admin/schedule') {
@@ -2861,7 +2864,7 @@ async function handleScheduleIcs(env) {
     headers: {
       'content-type': 'text/calendar; charset=utf-8',
       'content-disposition': 'inline; filename="wangyuchen.ics"; filename*=UTF-8\'\'%E7%8E%8B%E8%AF%AD%E6%99%A8-%E8%A1%8C%E7%A8%8B.ics',
-      'cache-control': 'public, max-age=600',
+      'cache-control': 'no-cache, no-store, must-revalidate',
       'access-control-allow-origin': '*'
     }
   });
