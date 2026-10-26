@@ -1,9 +1,9 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-10-25T19:07:23.518Z",
-  "count": 730,
-  "matched": 500,
+  "updatedAt": "2026-10-26T04:55:36.991Z",
+  "count": 731,
+  "matched": 501,
   "replays": 266,
-  "clips": 464,
+  "clips": 465,
   "targets": [
     {
       "mid": "1805448354",
@@ -53,6 +53,21 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨公演cut"
+    },
+    {
+      "bvid": "BV1zPHT6uEGH",
+      "title": "串是不敢串别人的，被串了是一笑而过的（Ծ‸Ծ）【王语晨】",
+      "created": 1792866174,
+      "date": "2026-10-25",
+      "titleDate": "",
+      "kind": "cut",
+      "cover": "http://i2.hdslb.com/bfs/archive/d52c72632ed44f17d6865a37ee00be38e59e67ee.jpg",
+      "url": "https://www.bilibili.com/video/BV1zPHT6uEGH",
+      "up": "忘记自己是猪",
+      "mid": "1805448354",
+      "collection": "",
+      "liveId": "1320905647597621248",
+      "liveDate": "2026-10-25"
     },
     {
       "bvid": "BV1Y3HT6eEqg",
