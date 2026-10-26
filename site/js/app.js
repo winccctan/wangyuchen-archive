@@ -1477,9 +1477,10 @@ function renderSchedule() {
         + (t && t.flags && t.flags.length
           ? t.flags.map((f) => `<span class="sc-flag">${escapeHtml(f)}</span>`).join('') : '')
         // 每场一个「加入日历」：纯前端拼 .ics（data-* 交给 demo-features.js 的 ㉓ 段处理）
-        + `<button class="sc-cal" type="button" title="加入日历" aria-label="把这一场加入日历"`
-        + ` data-cal-date="${escapeHtml(d)}" data-cal-time="${escapeHtml(it.time || '')}"`
-        + ` data-cal-title="${escapeHtml(it.title || '')}" data-cal-kind="${escapeHtml(it.kind || '')}">＋日历</button>`
+        // 已结束的不给按钮（站长 2026-10-26：不要历史）
+        + (passed ? '' : `<button class="sc-cal" type="button" title="加入日历" aria-label="把这一场加入日历"`
+          + ` data-cal-date="${escapeHtml(d)}" data-cal-time="${escapeHtml(it.time || '')}"`
+          + ` data-cal-title="${escapeHtml(it.title || '')}" data-cal-kind="${escapeHtml(it.kind || '')}">＋日历</button>`)
         + '</div>';
     });
     return s + '</div></section>';

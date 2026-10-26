@@ -2781,7 +2781,14 @@ function icsKindIcon(k) {
   return k === '见面会' ? '🤝' : k === '预告' ? '📣' : k === '公演' ? '🎭' : '📌';
 }
 
-/** 一整份行程 → .ics 文本 */
+/** 北京时间的今天 'YYYY-MM-DD'（Worker 跑在 UTC，必须 +8h 再取日期） */
+function bjTodayStr() {
+  return new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
+}
+
+/** 一整份行程 → .ics 文本
+ *  🔴 只导出**今天及以后**的安排（站长 2026-10-26）：订阅是「以后有什么」，
+ *     把 25 场已经结束的历史塞进手机日历只会碍事（推送/查找都被历史挤满）。 */
 function buildScheduleIcs(items) {
   const nowD = new Date();
   const dtstamp = nowD.getUTCFullYear() + SCHED_ICS_PAD(nowD.getUTCMonth() + 1) + SCHED_ICS_PAD(nowD.getUTCDate())
@@ -2801,6 +2808,7 @@ function buildScheduleIcs(items) {
   (items || []).forEach((it) => {
     const date = String((it && it.date) || '').trim();
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return;      // 「更远」那批没有确切日期，不进日历
+    if (date < bjTodayStr()) return;                       // 已结束的不进订阅（只要今天的和以后）
     const title = String(it.title || '').trim() || '王语晨 行程';
     const kind = String(it.kind || '').trim();
     const icon = icsKindIcon(kind);
