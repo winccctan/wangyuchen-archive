@@ -92,6 +92,8 @@ jobs:
                   site/js/songs.js dist/js/songs.js \
                   site/js/bili-cuts.js dist/js/bili-cuts.js \
                   site/index.html dist/index.html
+          # 体积护栏（2026-10-26）：>10 MB 的文件自动从本次提交移除 + ::warning::，不阻断流程
+          node scripts/git-size-guard.mjs --drop
           if git diff --cached --quiet; then
             echo "本次没有新增曲目，跳过提交"
           else

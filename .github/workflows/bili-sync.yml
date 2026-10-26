@@ -82,6 +82,9 @@ jobs:
           git add site/data/live-cuts.js site/data/bili-videos.json \
                   site/js/bili-cuts.js dist/js/bili-cuts.js \
                   site/index.html dist/index.html
+          # 体积护栏（2026-10-26）：万一以后清单里混进 >10 MB 的存档（messages.json / archive.js），
+          # 自动从本次提交移除并打 ::warning::，**不阻断流程**（推 KV 那一步照常跑）。
+          node scripts/git-size-guard.mjs --drop
           if git diff --cached --quiet; then
             echo "暂存区为空，不提交"
             exit 0
