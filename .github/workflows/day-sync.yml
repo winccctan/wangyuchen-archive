@@ -37,6 +37,13 @@ jobs:
         id: gen
         run: node scripts/gen-day.mjs
 
+      # 🔴 Cloudflare 只部署仓库里的 dist/（Git 构建不会跑 build-dist），
+      # 只提交 site/day 的话线上永远停在旧数据 —— 这里必须同步一份到 dist/day。
+      - name: 同步到 dist
+        run: |
+          mkdir -p dist/day
+          cp -R site/day/. dist/day/
+
       - name: 体积护栏（单文件 >10MB 直接甩掉，避免仓库被撑爆）
         run: node scripts/git-size-guard.mjs --drop
 
@@ -45,7 +52,7 @@ jobs:
         run: |
           git config user.name  'day-sync[bot]'
           git config user.email 'day-sync@users.noreply.github.com'
-          git add site/day
+          git add site/day dist/day
           if git diff --cached --quiet; then
             echo "没有变化，跳过提交"
             echo "changed=0" >> "$GITHUB_OUTPUT"
