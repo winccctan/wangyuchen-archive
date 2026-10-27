@@ -4250,11 +4250,10 @@ function closePlayer() {
 
 function renderCard(item, timeKey) {
   const cover = toUrl(item.coverPath || item.cover);
-  // 直播标题常为默认数字（如 "1"），回退到成员昵称；公演用 title + subTitle
+  // 标题原样显示：口袋上不少直播标题本来就叫「1」，那是她自己的取名，不能当占位符改掉
   const rawTitle = item.title || item.subTitle || '';
-  const isGeneric = /^\d+$/.test(rawTitle.trim());
   const fallback = item.userInfo?.nickname || item.teamList?.[0]?.teamName || '';
-  const title = !rawTitle || isGeneric ? (fallback || '未命名') : rawTitle;
+  const title = rawTitle || fallback || '未命名';
   const sub = item.subTitle && item.subTitle !== title ? item.subTitle : '';
   const time = fmtDate(item[timeKey]) + ' ' + fmtTime(item[timeKey]);
   const playNum = item.playNum || item.playCount || '';

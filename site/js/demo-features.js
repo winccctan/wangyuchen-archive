@@ -1171,7 +1171,7 @@
     if (firstPerf) push({ date: bjDate(firstPerf.stime || firstPerf.ctime), k: 'perf', d: bjDate(firstPerf.stime || firstPerf.ctime),
       t: '第一场公演', s: firstPerf.subTitle || firstPerf.title || '第一次站上剧场舞台', g: '公演' });
     if (firstLive) push({ date: bjDate(firstLive.ctime || firstLive.stime), k: 'live', u: liveUrlOf(firstLive),
-      t: '第一场直播', s: firstLive.title && !/^\d+$/.test(String(firstLive.title)) ? firstLive.title : '第一次开播', g: '直播' });
+      t: '第一场直播', s: firstLive.title || '第一次开播', g: '直播' });
     push({ date: '2023.01.15', k: 'day', d: '2023-01-15', t: '升格加入 Team NIII', s: '从预备生变成正常成员', g: '成长' });
 
     // —— 新人巡演（官微：2023 年度潜力新人 TOP16 巡演）——
