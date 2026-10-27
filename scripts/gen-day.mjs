@@ -96,11 +96,10 @@ live.forEach((l) => {
   const ts = Number(l.ctime);
   if (!ts) return;
   const dur = Number(l.duration) || 0;
-  // 🔴 口袋的直播标题大量是占位符（803 场里 646 场标题就是「1」），直接显示会变成一排「1」⇒ 回退成「直播」
-  const rawT = String(l.title || '').trim();
+  // 🔴 标题就是原文，别改写：口袋上很多场次标题本来就叫「1」（站长确认这是她自己的取名）
   put(bjDay(ts), 'live', {
     id: String(l.liveId),
-    t: !rawT || /^[\d\s.\-_]*$/.test(rawT) ? '直播' : rawT,
+    t: String(l.title || '').trim(),
     tm: bjTime(ts),
     dur: dur > 1000 ? Math.round(dur / 1000) : dur, // 有的记录是毫秒，有的是秒
     cov: l.coverPath ? 'https://source.48.cn' + l.coverPath : ''

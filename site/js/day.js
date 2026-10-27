@@ -274,7 +274,7 @@
   function liveHtml(list) {
     return list.slice().sort(function (a, b) { return (a.tm || '') < (b.tm || '') ? -1 : 1; })
       .map(function (l) {
-        var title = /^\d+$/.test(l.t) || !l.t ? '直播' : l.t;
+        var title = l.t || '直播';   // 标题原样显示（「1」就是她自己的标题），只有空标题才兜底
         var meta = [l.tm, dur(l.dur)].filter(Boolean).join(' · ');
         var body = (l.cov ? '<img class="dy-lv-cov" src="' + IMG + encodeURIComponent(l.cov) + '" alt="">' : '')
           + '<div class="dy-lv-b"><b>' + esc(title) + '</b>'
