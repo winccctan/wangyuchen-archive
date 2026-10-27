@@ -261,10 +261,23 @@ body.dy {
   border-radius: 999px; padding: 5px 12px;
 }
 
-/* 加载 */
+/* 加载：给个最小高度，切日期时不至于整页塌下来又弹回去（站长 2026-10-27：点击别随便位移） */
 .dy-loading { text-align: center; color: var(--dy-mut); font-size: 13px; padding: 40px 0; }
+#dyFeed { min-height: 62vh; }
 
+/* 公演 / 直播的「看回放」：整卡可点（有回放才加这个类） */
+.dy-hit { display: block; text-decoration: none; color: inherit; position: relative; -webkit-tap-highlight-color: transparent; }
+.dy-hit:active { transform: scale(.995); }
+.dy-play {
+  position: absolute; right: 10px; bottom: 9px;
+  font-size: 11.5px; line-height: 1; color: #c94a76;
+  background: #fff2f6; border: 1px solid #ffd3e0; border-radius: 999px;
+  padding: 4px 8px; white-space: nowrap;
+}
+.dy-pf .dy-songs { padding-right: 74px; }
+.dy-lv.dy-hit .dy-lv-cov { margin-right: 4px; }
 @media (max-width: 360px) {
   .dy-m time { flex-basis: 30px; }
   .dy-lv-cov { width: 54px; height: 54px; }
+  .dy-play { font-size: 11px; padding: 3px 7px; }
 }

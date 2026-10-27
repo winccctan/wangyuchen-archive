@@ -32,6 +32,7 @@
     return pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes());
   }
   function ymd(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function bjDay(ms) { return new Date(Number(ms) + 8 * 3600 * 1000).toISOString().slice(0, 10); }
   function dur(sec) {
     sec = Number(sec) || 0;
     if (sec <= 0) return '';
@@ -68,6 +69,52 @@
       monthCache[mk] = { d: {} };
       return monthCache[mk];
     });
+  }
+
+  // 「今天」的发言必须是最新的：静态文件由 CI 每 6 小时才重建一次，
+  // 所以当月额外向接口要一次（约 200~300KB），失败就退回静态文件。
+  var apiCache = {};
+  function loadApiMonth(mk) {
+    if (apiCache[mk] !== undefined) return Promise.resolve(apiCache[mk]);
+    return fetch('./api/month?m=' + mk, { cache: 'no-store' }).then(function (r) {
+      if (!r.ok) throw new Error('api ' + r.status);
+      return r.json();
+    }).then(function (res) {
+      var arr = Array.isArray(res) ? res : (res && res.messages) || [];
+      var map = {};
+      arr.forEach(function (m) {
+        var ts = Number(m.msgTime) || 0;
+        if (!ts) return;
+        var text = String(m.text || '').replace(/\s+/g, ' ').trim();
+        var nImg = (m.images || []).length;
+        var isVid = m.video ? 1 : 0;
+        if (!text && !nImg && !isVid) return;
+        var row = [ts, text];
+        if (nImg || isVid) row.push(nImg, isVid);
+        var d = bjDay(ts);
+        (map[d] = map[d] || []).push(row);
+      });
+      Object.keys(map).forEach(function (d) {
+        map[d].sort(function (a, b) { return a[0] - b[0]; });
+      });
+      apiCache[mk] = map;
+      return map;
+    }).catch(function () { apiCache[mk] = null; return null; });
+  }
+
+  // 把接口拿到的当月发言并进静态数据（发言以接口为准，其余类型仍用静态文件）
+  function applyApiMsg(mk, map) {
+    if (!map) return false;
+    var j = monthCache[mk] || (monthCache[mk] = { d: {} });
+    if (!j.d) j.d = {};
+    Object.keys(map).forEach(function (d) {
+      if (!j.d[d]) j.d[d] = { msg: [], perf: [], live: [], weibo: [], bili: [] };
+      j.d[d].msg = map[d];
+      if (!IDX.days[d]) IDX.days[d] = { msg: 0, perf: 0, live: 0, weibo: 0, bili: 0 };
+      IDX.days[d].msg = map[d].length;
+      if (DAYS.indexOf(d) < 0) { DAYS.push(d); DAYS.sort(); }
+    });
+    return true;
   }
 
   function nearest(dir) {
@@ -168,13 +215,17 @@
   function perfHtml(list) {
     return list.slice().sort(function (a, b) { return (a.tm || '') < (b.tm || '') ? -1 : 1; })
       .map(function (p) {
-        return '<article class="dy-c dy-pf">'
-          + '<div class="dy-pf-top"><b>' + esc(p.t || '公演') + '</b>'
+        var body = '<div class="dy-pf-top"><b>' + esc(p.t || '公演') + '</b>'
           + (p.tm ? '<time>' + esc(p.tm) + '</time>' : '') + '</div>'
           + (p.songs && p.songs.length
             ? '<div class="dy-songs">' + p.songs.map(function (s) { return '<span>' + esc(s) + '</span>'; }).join('') + '</div>'
-            : '<div class="dy-pf-empty">这场没有收录曲目</div>')
-          + '</article>';
+            : '<div class="dy-pf-empty">这场没有收录曲目</div>');
+        // 有回放就整卡可点（站长 2026-10-27：她的公演要能直接看回放）
+        if (p.rv) {
+          return '<a class="dy-c dy-pf dy-hit" href="' + esc(p.rv) + '" target="_blank" rel="noopener" data-play="pf">'
+            + body + '<span class="dy-play">▶ 看回放</span></a>';
+        }
+        return '<article class="dy-c dy-pf">' + body + '</article>';
       }).join('') + '</section>';
   }
 
@@ -183,12 +234,14 @@
       .map(function (l) {
         var title = /^\d+$/.test(l.t) || !l.t ? '直播' : l.t;
         var meta = [l.tm, dur(l.dur)].filter(Boolean).join(' · ');
-        return '<article class="dy-c dy-lv">'
-          // 封面走主站 /img 代理：48.cn 原图 900KB+，代理那头有 1 年边缘缓存，第二次秒开
-          + (l.cov ? '<img class="dy-lv-cov" src="' + IMG + encodeURIComponent(l.cov) + '" alt="">' : '')
+        var body = (l.cov ? '<img class="dy-lv-cov" src="' + IMG + encodeURIComponent(l.cov) + '" alt="">' : '')
           + '<div class="dy-lv-b"><b>' + esc(title) + '</b>'
-          + (meta ? '<div class="dy-meta">' + esc(meta) + '</div>' : '') + '</div>'
-          + '</article>';
+          + (meta ? '<div class="dy-meta">' + esc(meta) + '</div>' : '') + '</div>';
+        if (l.rv) {
+          return '<a class="dy-c dy-lv dy-hit" href="' + esc(l.rv) + '" target="_blank" rel="noopener" data-play="lv">'
+            + body + '<span class="dy-play">▶ 看回放</span></a>';
+        }
+        return '<article class="dy-c dy-lv">' + body + '</article>';
       }).join('') + '</section>';
   }
 
@@ -204,19 +257,15 @@
   }
 
   // B 站那批 UP 主是全团搬运号，一天能带进七八条别团的公演。
-  // 这一页问的是「她这一天干了什么」⇒ 标题点她名字的、或她所在的 NIII 队排前面，
-  // 别团（SNH48 / BEJ48 / CKG48 / GNZ 其他队）一律折在按钮后面，不占版面。
+  // 🔴 只收**她的号**（B站「Chzhnh」mid 358477444，站长指定）发的，或标题里有「王语晨」的；
+  //    别团、别的队，哪怕写着 GNZ48 / Team NIII 但没点她名字的，一律不出现（站长 2026-10-27 定死）。
+  var HER_MID = '358477444';
   function biliSplit(list) {
-    var mine = [], team = [], other = [];
-    list.forEach(function (v) {
-      var t = String(v.t || '');
-      if (/王语晨/.test(t)) mine.push(v);
-      else if (/NIII|NⅢ/i.test(t)) team.push(v);
-      else other.push(v);
+    var main = list.filter(function (v) {
+      return String(v.mid || '') === HER_MID || /王语晨/.test(String(v.t || ''));
     });
-    var byNew = function (a, b) { return (b.tm || '') < (a.tm || '') ? -1 : 1; };
-    return { mine: mine.sort(byNew), team: team.sort(byNew), other: other.sort(byNew),
-      main: mine.concat(team).sort(byNew) };
+    main.sort(function (a, b) { return (a.tm || '') < (b.tm || '') ? -1 : 1; });
+    return { main: main };
   }
 
   function biliRow(v, cls) {
@@ -237,26 +286,11 @@
   function biliHtml(list) {
     var g = biliSplit(list);
     var LIMIT = 6;
-    var rows, more = '';
-
-    if (g.main.length) {
-      // 有她的：相关全列，别团折叠
-      rows = g.main.map(function (v) { return biliRow(v, ''); }).join('')
-        + g.other.map(function (v) { return biliRow(v, ' dy-hidden'); }).join('');
-      if (g.other.length) {
-        more = '<button type="button" class="dy-more" data-expand="bv">另有 '
-          + g.other.length + ' 条其他团公演</button>';
-      }
-    } else {
-      // 这一天只有别团的公演（全团联排 / 其他队），列前 6 条，余下折叠
-      rows = g.other.slice(0, LIMIT).map(function (v) { return biliRow(v, ''); }).join('')
-        + g.other.slice(LIMIT).map(function (v) { return biliRow(v, ' dy-hidden'); }).join('');
-      if (g.other.length > LIMIT) {
-        more = '<button type="button" class="dy-more" data-expand="bv">展开全部 '
-          + g.other.length + ' 条（都是其他团）</button>';
-      }
-    }
-
+    if (!g.main.length) return '';          // 全是别团的 → 整块不出现
+    var rows = g.main.map(function (v, i) { return biliRow(v, i >= LIMIT ? ' dy-hidden' : ''); }).join('');
+    var more = g.main.length > LIMIT
+      ? '<button type="button" class="dy-more" data-expand="bv">展开全部 ' + g.main.length + ' 条</button>'
+      : '';
     return '<div class="dy-c dy-bvlist" data-box="bv">' + rows + '</div>' + more + '</section>';
   }
 
@@ -292,6 +326,8 @@
   function renderFeed(day) {
     var box = $('#dyFeed');
     var n = IDX.days[cur] || { msg: 0, perf: 0, live: 0, weibo: 0, bili: 0 };
+    // 投稿只算「她的」：数据里也过滤过，这里再兜一层（旧缓存/接口数据可能是全量的）
+    if (day && day.bili) n = { msg: n.msg, perf: n.perf, live: n.live, weibo: n.weibo, bili: biliSplit(day.bili).main.length };
     renderOv(n);
 
     if (!day) {
@@ -308,7 +344,10 @@
     if (day.perf && day.perf.length) html += secHead('pf', '公演', day.perf.length) + perfHtml(day.perf);
     if (day.live && day.live.length) html += secHead('lv', '直播', day.live.length) + liveHtml(day.live);
     if (day.weibo && day.weibo.length) html += secHead('wb', '微博', day.weibo.length) + weiboHtml(day.weibo);
-    if (day.bili && day.bili.length) html += secHead('bv', '投稿', day.bili.length) + biliHtml(day.bili);
+    if (day.bili && day.bili.length) {
+      var bh = biliHtml(day.bili);
+      if (bh) html += secHead('bv', '投稿', biliSplit(day.bili).main.length) + bh;
+    }
     if (day.msg && day.msg.length) html += secHead('ms', '发言', day.msg.length) + msgHtml(day.msg);
 
     box.innerHTML = html || '<div class="dy-empty"><b>这一天没有记录</b></div>';
@@ -327,9 +366,20 @@
     renderCal();
     var mk = monthKey(cur);
     $('#dyFeed').innerHTML = '<div class="dy-loading">读取中…</div>';
-    loadMonth(mk).then(function (j) {
+    var isCurMonth = mk === monthKey(ymd(new Date()));
+    loadMonth(mk).then(function () {
       if (monthKey(cur) !== mk) return;      // 期间又切走了
-      renderFeed((j.d || {})[cur]);
+      // 🔴 当月先把接口数据并进来再渲染（不是渲染两次）：站长 2026-10-27 要求「点击不要随便位移」，
+      //    先画静态再补接口会导致发言从 6 条突然变 45 条、下面的内容整体跳一下。
+      var step = isCurMonth
+        ? loadApiMonth(mk).then(function (map) {
+            if (map) { applyApiMsg(mk, map); renderCal(); }
+          })
+        : Promise.resolve();
+      step.then(function () {
+        if (monthKey(cur) !== mk) return;
+        renderFeed((monthCache[mk].d || {})[cur]);
+      });
     });
   }
 
@@ -343,6 +393,10 @@
     });
 
     document.addEventListener('click', function (e) {
+      // 点公演 / 直播回放（统计页里「这一天 · 点回放」）
+      var play = e.target.closest('[data-play]');
+      if (play) track('day:play');
+
       var calT = e.target.closest('[data-calopen]');
       if (calT) { calOpen = !calOpen; renderCal(); return; }
 
@@ -388,10 +442,30 @@
     });
   }
 
+  // ---------------- 埋点（与主站同一套 /track，带 ?notrack=1 的浏览器不上报） ----------------
+  function track(ev) {
+    try {
+      if (localStorage.getItem('wyc-notrack') === '1') return;
+      new Image().src = './track?e=' + encodeURIComponent(String(ev).slice(0, 40)) + '&t=' + Date.now();
+    } catch (_) { /* 忽略 */ }
+  }
+  // 打开页面报一条（一次浏览器会话一次，刷新不重复）——统计页里就是「这一天 · 打开」
+  function trackOpen() {
+    var first = true;
+    try {
+      var d = ymd(new Date(Date.now() + 8 * 3600e3)); // 北京时间当天
+      var k = 'wyc-day-open-' + d;
+      if (sessionStorage.getItem(k)) first = false;
+      else sessionStorage.setItem(k, '1');
+    } catch (_) { /* 无痕模式照报一次 */ }
+    if (first) track('day:open');
+  }
+
   // ---------------- 启动 ----------------
   function boot() {
     if (window.__DAY_BOOTED__) return;
     window.__DAY_BOOTED__ = true;
+    trackOpen();
 
     loadIndex().then(function (j) {
       IDX = j;
