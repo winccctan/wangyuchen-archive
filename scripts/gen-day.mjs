@@ -42,12 +42,15 @@ function addMsg(m) {
   const ts = Number(m.msgTime);
   if (!ts) return;
   const text = String(m.text || '').replace(/\s+/g, ' ').trim();
-  const nImg = (m.images || []).length;
+  const imgs = (m.images || []).filter(Boolean);
+  const nImg = imgs.length;
   const isVid = m.video ? 1 : 0;
   // 纯卡片/空消息既没字也没图，跳过，免得占位一堆空白行
   if (!text && !nImg && !isVid) return;
   const row = [ts, text];
   if (nImg || isVid) row.push(nImg, isVid);
+  // 第 5 位放图片地址（只有带图的才有），前端点开能看大图（站长 2026-10-27：图片出不来）
+  if (nImg) row.push(imgs);
   msgChars += text.length;
   put(bjDay(ts), 'msg', row);
 }
@@ -93,9 +96,11 @@ live.forEach((l) => {
   const ts = Number(l.ctime);
   if (!ts) return;
   const dur = Number(l.duration) || 0;
+  // 🔴 口袋的直播标题大量是占位符（803 场里 646 场标题就是「1」），直接显示会变成一排「1」⇒ 回退成「直播」
+  const rawT = String(l.title || '').trim();
   put(bjDay(ts), 'live', {
     id: String(l.liveId),
-    t: String(l.title || '').trim() || '直播',
+    t: !rawT || /^[\d\s.\-_]*$/.test(rawT) ? '直播' : rawT,
     tm: bjTime(ts),
     dur: dur > 1000 ? Math.round(dur / 1000) : dur, // 有的记录是毫秒，有的是秒
     cov: l.coverPath ? 'https://source.48.cn' + l.coverPath : ''

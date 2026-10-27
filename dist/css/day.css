@@ -21,7 +21,41 @@ body.dy {
   color: var(--dy-ink);
   font: 15px/1.5 -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
   -webkit-text-size-adjust: 100%;
+  /* 站长 2026-10-27：页面别被双指放大 / 双击缩放，翻页时也不要横向滑走 */
+  touch-action: manipulation;
+  overscroll-behavior-x: none;
+  overflow-anchor: none;
 }
+/* 发言里的图片：三列小图，点开看大图 */
+.dy-imgs {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;
+  margin-top: 6px; max-width: 300px;
+}
+.dy-imgs img {
+  width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 8px;
+  background: #f0f0f4; cursor: zoom-in; display: block;
+}
+/* 只有一 / 两张时别裁成小方块：放宽，按原比例显示（长边封顶 300px） */
+.dy-imgs.one { grid-template-columns: 1fr; max-width: 240px; }
+.dy-imgs.two { grid-template-columns: repeat(2, 1fr); max-width: 240px; }
+.dy-imgs.one img, .dy-imgs.two img {
+  aspect-ratio: auto; object-fit: contain; max-height: 300px; width: 100%; height: auto;
+}
+.dy-more-img {
+  display: flex; align-items: center; justify-content: center;
+  aspect-ratio: 1 / 1; border-radius: 8px; background: #f0f0f4;
+  color: #9c9ca6; font-size: 13px;
+}
+/* 大图浮层（点任意处关闭） */
+.dy-m-b p.blank:empty { display: none; }
+.dy-big {
+  position: fixed; inset: 0; z-index: 99; display: none;
+  background: rgba(12, 12, 16, .92);
+  align-items: center; justify-content: center; padding: 16px;
+  -webkit-tap-highlight-color: transparent;
+}
+.dy-big.on { display: flex; }
+.dy-big img { max-width: 100%; max-height: 100%; border-radius: 8px; object-fit: contain; }
 
 .dy-wrap {
   max-width: 720px;
@@ -137,6 +171,20 @@ body.dy {
 .dy-cell.on { background: linear-gradient(135deg, var(--dy-pk), var(--dy-pk2)); color: #fff; box-shadow: 0 2px 8px rgba(255, 122, 162, .35); }
 .dy-cell.on::after { display: none; }
 .dy-cell:disabled { cursor: default; color: #dcdce2; }
+
+/* 逐日翻页：‹ 上一天 | 回今天 | 下一天 › （只在日历展开时出现） */
+.dy-cal-j {
+  display: flex; align-items: center; gap: 6px;
+  margin-top: 7px; padding-top: 7px; border-top: 1px dashed var(--dy-line);
+}
+.dy-cal-j button {
+  flex: 1 1 0; min-height: 30px; border: 1px solid var(--dy-line); border-radius: 9px;
+  background: #fff; color: #7c7c86; font: inherit; font-size: 12px; cursor: pointer;
+  padding: 0 4px; transition: .12s; white-space: nowrap;
+}
+.dy-cal-j button:active { background: rgba(0, 0, 0, .04); }
+.dy-cal-j button:disabled { color: #d2d2da; cursor: default; background: #fbfbfd; }
+.dy-cal-j .dy-cal-today { flex: 0 0 auto; padding: 0 10px; color: var(--dy-pk); border-color: #ffd6e2; }
 
 /* ---------------- 分区 ---------------- */
 .dy-sec { margin-bottom: 16px; scroll-margin-top: 72px; }

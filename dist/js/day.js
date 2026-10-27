@@ -11,7 +11,7 @@
   var $all = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
 
   var WD = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-  var IMG = 'https://idol.wyc0518.cc/img?u=';
+  var IMG = './img?u=';
 
   var IDX = null;          // { range:[a,b], days:{ 'YYYY-MM-DD': {msg,perf,live,weibo,bili} } }
   var DAYS = [];           // 有记录的日期，升序
@@ -27,11 +27,44 @@
     });
   }
   function pad(n) { return n < 10 ? '0' + n : '' + n; }
+  // 口袋图床（kd48-nosdn / source.48.cn）直连有些网络会挂，统一走站内 /img 代理（边缘缓存一年）
+  function proxy(u) {
+    if (!u) return '';
+    if (/^\//.test(u)) return IMG + encodeURIComponent('https://source.48.cn' + u);
+    return IMG + encodeURIComponent(u);
+  }
+  // 点小图看大图：自己撑一个浮层，不依赖主页面的 lightbox
+  function openBig(src) {
+    var el = document.getElementById('dyBig');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'dyBig';
+      el.className = 'dy-big';
+      el.innerHTML = '<img alt="图片" referrerpolicy="no-referrer">';
+      el.addEventListener('click', function () { el.classList.remove('on'); });
+      document.body.appendChild(el);
+    }
+    el.querySelector('img').src = src;
+    el.classList.add('on');
+  }
   function hhmm(ts) {
     var d = new Date(Number(ts) + 8 * 3600 * 1000);
     return pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes());
   }
   function ymd(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  // 上一天 / 下一天：字面加减一天（不是「跳到下一个有记录的日子」）
+  // 站长 2026-10-27：「日历可以有上一天下一天这样吗 方便切换」⇒ 逐日步进，空档页会告诉你去哪有档。
+  function shiftDay(d, n) {
+    var t = new Date(d + 'T00:00:00');
+    t.setDate(t.getDate() + n);
+    return ymd(t);
+  }
+  function canShift(n) {
+    var d = shiftDay(cur, n);
+    if (n > 0) return d <= ymd(new Date());                 // 不翻到未来
+    var lo = (IDX && IDX.range && IDX.range[0]) || '';
+    return !lo || d >= lo;                                  // 不翻到补档起点之前
+  }
   function bjDay(ms) { return new Date(Number(ms) + 8 * 3600 * 1000).toISOString().slice(0, 10); }
   function dur(sec) {
     sec = Number(sec) || 0;
@@ -86,11 +119,13 @@
         var ts = Number(m.msgTime) || 0;
         if (!ts) return;
         var text = String(m.text || '').replace(/\s+/g, ' ').trim();
-        var nImg = (m.images || []).length;
+        var imgs = (m.images || []).filter(Boolean);
+        var nImg = imgs.length;
         var isVid = m.video ? 1 : 0;
         if (!text && !nImg && !isVid) return;
         var row = [ts, text];
         if (nImg || isVid) row.push(nImg, isVid);
+        if (nImg) row.push(imgs);          // 与静态文件同构：第 5 位是图片地址
         var d = bjDay(ts);
         (map[d] = map[d] || []).push(row);
       });
@@ -135,8 +170,8 @@
     $('#dyWd').textContent = WD[d.getDay()];
     var inp = $('#dyInput');
     if (inp) inp.value = cur;
-    $('#dyPrev').disabled = !nearest(-1);
-    $('#dyNext').disabled = !nearest(1);
+    $('#dyPrev').disabled = !canShift(-1);
+    $('#dyNext').disabled = !canShift(1);
   }
 
   // ---------------- 渲染：概览 ----------------
@@ -202,7 +237,14 @@
         + (key > today ? ' disabled' : '') + '>' + d + '</button>';
     }
 
-    $('#dyCal').innerHTML = head + '<div class="dy-cal-grid">' + cells + '</div>';
+    // 日历展开时，底部给「上一天 / 下一天」两个按钮：逐日翻，比在格子里找准。
+    var jumpRow = '<div class="dy-cal-j">'
+      + '<button type="button" data-shift="-1"' + (canShift(-1) ? '' : ' disabled') + '>‹ 上一天</button>'
+      + '<button type="button" class="dy-cal-today" data-calend="1">回今天</button>'
+      + '<button type="button" data-shift="1"' + (canShift(1) ? '' : ' disabled') + '>下一天 ›</button>'
+      + '</div>';
+
+    $('#dyCal').innerHTML = head + '<div class="dy-cal-grid">' + cells + '</div>' + jumpRow;
   }
 
   // ---------------- 渲染：主体 ----------------
@@ -298,18 +340,26 @@
     var LIMIT = 8;
     var lastT = '';
     var rows = list.map(function (m, i) {
-      var ts = m[0], text = m[1] || '', nImg = m[2] || 0, isVid = m[3] || 0;
+      var ts = m[0], text = m[1] || '', nImg = m[2] || 0, isVid = m[3] || 0, imgs = m[4] || null;
       var body;
       if (text) {
         var tags = '';
-        if (nImg) tags += '<span class="dy-tag">图片 ×' + nImg + '</span>';
+        // 有真实图片地址就直接出图，不再打「图片 ×N」这个占位标
+        if (nImg && !(imgs && imgs.length)) tags += '<span class="dy-tag">图片 ×' + nImg + '</span>';
         if (isVid) tags += '<span class="dy-tag">视频</span>';
         body = '<p>' + esc(text) + tags + '</p>';
       } else {
         var bits = [];
-        if (nImg) bits.push('图片 ×' + nImg);
+        if (nImg && !(imgs && imgs.length)) bits.push('图片 ×' + nImg);
         if (isVid) bits.push('视频');
-        body = '<p class="blank">' + (bits.join(' · ') || '语音 / 卡片') + '</p>';
+        body = '<p class="blank">' + (bits.join(' · ') || (imgs && imgs.length ? '' : '语音 / 卡片')) + '</p>';
+      }
+      if (imgs && imgs.length) {
+        var grid = 'dy-imgs' + (imgs.length === 1 ? ' one' : imgs.length === 2 ? ' two' : '');
+        body += '<div class="' + grid + '">' + imgs.slice(0, 9).map(function (u) {
+          var s = esc(proxy(u));
+          return '<img loading="lazy" decoding="async" referrerpolicy="no-referrer" src="' + s + '" alt="图片" data-big="' + s + '">';
+        }).join('') + (imgs.length > 9 ? '<span class="dy-more-img">+' + (imgs.length - 9) + '</span>' : '') + '</div>';
       }
       var t = hhmm(ts);
       var same = (t === lastT);            // 同一分钟的连发只标一次时间
@@ -364,6 +414,9 @@
     }
     renderBar();
     renderCal();
+    // 切天时回到页面顶部：内容长短差别很大，不归位的话旧滚动位置会把新内容顶到半截，
+    // 看着就像「页面自己滑了一下」（站长 2026-10-27 提的）。
+    try { window.scrollTo(0, 0); } catch (e) { /* 老浏览器忽略 */ }
     var mk = monthKey(cur);
     $('#dyFeed').innerHTML = '<div class="dy-loading">读取中…</div>';
     var isCurMonth = mk === monthKey(ymd(new Date()));
@@ -384,8 +437,8 @@
   }
 
   function bind() {
-    $('#dyPrev').addEventListener('click', function () { var d = nearest(-1); if (d) go(d); });
-    $('#dyNext').addEventListener('click', function () { var d = nearest(1); if (d) go(d); });
+    $('#dyPrev').addEventListener('click', function () { if (canShift(-1)) go(shiftDay(cur, -1)); });
+    $('#dyNext').addEventListener('click', function () { if (canShift(1)) go(shiftDay(cur, 1)); });
 
     $('#dyInput').addEventListener('change', function (e) {
       var v = e.target.value;
@@ -397,11 +450,24 @@
       var play = e.target.closest('[data-play]');
       if (play) track('day:play');
 
+      var big = e.target.closest('.dy-imgs img');
+      if (big) { openBig(big.getAttribute('data-big') || big.src); return; }
+
       var calT = e.target.closest('[data-calopen]');
       if (calT) { calOpen = !calOpen; renderCal(); return; }
 
       var cell = e.target.closest('[data-day]');
       if (cell) { e.preventDefault(); go(cell.getAttribute('data-day')); return; }
+
+      var sh = e.target.closest('[data-shift]');
+      if (sh) {
+        var n = Number(sh.getAttribute('data-shift')) || 0;
+        if (n && canShift(n)) go(shiftDay(cur, n));
+        return;
+      }
+
+      var ctd = e.target.closest('[data-calend]');
+      if (ctd) { go(ymd(new Date())); return; }
 
       var calBtn = e.target.closest('[data-cal]');
       if (calBtn) {
@@ -431,8 +497,8 @@
 
     document.addEventListener('keydown', function (e) {
       if (e.target.tagName === 'INPUT') return;
-      if (e.key === 'ArrowLeft') { var p = nearest(-1); if (p) go(p); }
-      if (e.key === 'ArrowRight') { var n = nearest(1); if (n) go(n); }
+      if (e.key === 'ArrowLeft') { if (canShift(-1)) go(shiftDay(cur, -1)); }
+      if (e.key === 'ArrowRight') { if (canShift(1)) go(shiftDay(cur, 1)); }
     });
 
     // 外部改 hash（分享链接 / 浏览器前进后退）也要跟着走
@@ -466,6 +532,10 @@
     if (window.__DAY_BOOTED__) return;
     window.__DAY_BOOTED__ = true;
     trackOpen();
+
+    // iOS Safari 不认 meta 里的 user-scalable=no，双指缩放只能这样拦
+    document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
+    document.addEventListener('dblclick', function (e) { e.preventDefault(); }, { passive: false });
 
     loadIndex().then(function (j) {
       IDX = j;
