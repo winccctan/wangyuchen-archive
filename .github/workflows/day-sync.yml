@@ -1,0 +1,59 @@
+# 「这一天」按天数据 · 定时重建
+#
+# 页面 day.html 读的是 site/day/ 里的静态数据（index.json + 按月文件），
+# 不是 KV —— 所以必须有人定期把新一天的发言 / 直播 / 公演 / 投稿切进去并提交。
+#
+# 为什么不用 scrape.yml：那个工作流是 contents: read（只推 KV，不写 git）。
+# 这里要提交 git，所以单独一条，且**只在真有变化时提交**（一次提交 = 一次全站构建）。
+name: 这一天 · 按天数据
+
+on:
+  schedule:
+    - cron: '23 */6 * * *'     # 每 6 小时；避开整点（GitHub 整点最挤）
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: day-sync
+  cancel-in-progress: false
+
+jobs:
+  gen:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: 生成按天数据
+        id: gen
+        run: node scripts/gen-day.mjs
+
+      - name: 体积护栏（单文件 >10MB 直接甩掉，避免仓库被撑爆）
+        run: node scripts/git-size-guard.mjs --drop
+
+      - name: 有变化才提交
+        id: commit
+        run: |
+          git config user.name  'day-sync[bot]'
+          git config user.email 'day-sync@users.noreply.github.com'
+          git add site/day
+          if git diff --cached --quiet; then
+            echo "没有变化，跳过提交"
+            echo "changed=0" >> "$GITHUB_OUTPUT"
+          else
+            git commit -m "auto: 这一天 按天数据 $(date -u '+%Y-%m-%d %H:%M')"
+            echo "changed=1" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 推送
+        if: steps.commit.outputs.changed == '1'
+        run: git push origin HEAD:main

@@ -87,14 +87,20 @@ const files = [
   'assets/icon-fish-180.png', // iOS 主屏幕图标（apple-touch-icon，🐟）
   'assets/icon-fish-192.png', // 安卓主屏幕图标
   'assets/icon-fish-512.png',
-  'assets/icon-fish-maskable-512.png'
+  'assets/icon-fish-maskable-512.png',
+  // —— 2026-10-27 新增：按天看「这一天」（首页工具栏 📆 按天看 → day.html）——
+  // 🔴 三个漏一个就是「按钮点了 404 / 页面样式裸奔 / 一直转圈读取中」。
+  'day.html',
+  'css/day.css',
+  'js/day.js'
 ];
 
 // 整目录复制：口袋表情图（105 张 gif，共 ~300KB），逐个列白名单不现实
 const dirs = [
   'assets/emoji',
   'cards/photos', // 生写小卡图鉴实物照（19 张 ~6.7MB，「生写小卡」子标签用）
-  'assets/sticker' // 饭制表情包微信版（51 张 240×240 / 单张 ≤500KB，「饭制表情包」子标签用）
+  'assets/sticker', // 饭制表情包微信版（51 张 240×240 / 单张 ≤500KB，「饭制表情包」子标签用）
+  'day' // 「这一天」按天数据：index.json（日期→各类条数）+ 49 个月文件（约 1.7MB），按月按需加载
 ];
 
 let total = 0;

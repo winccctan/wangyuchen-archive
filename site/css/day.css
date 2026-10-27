@@ -1,0 +1,270 @@
+/* =======================================================================
+   day.css —— 「这一天」跨源时间线（演示原型）
+   浅色、移动优先；只作用于 .dy-* 命名空间，不碰站点其它样式。
+   ======================================================================= */
+
+:root {
+  --dy-pk: #ff7aa2;
+  --dy-pk2: #ff9a62;
+  --dy-ink: #26262c;
+  --dy-mut: #8a8a92;
+  --dy-line: #ececf1;
+  --dy-bg: #f7f7f9;
+  --dy-card: #fff;
+}
+
+* { box-sizing: border-box; }
+
+body.dy {
+  margin: 0;
+  background: var(--dy-bg);
+  color: var(--dy-ink);
+  font: 15px/1.5 -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+
+.dy-wrap {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 12px 72px;
+}
+
+/* ---------------- 顶栏 ---------------- */
+.dy-bar {
+  position: sticky; top: 0; z-index: 20;
+  background: rgba(247, 247, 249, .93);
+  backdrop-filter: saturate(1.6) blur(12px);
+  -webkit-backdrop-filter: saturate(1.6) blur(12px);
+  border-bottom: 1px solid rgba(0, 0, 0, .05);
+  margin: 0 -12px 10px;
+  padding: 0 12px;
+}
+.dy-bar-in {
+  display: flex; align-items: center; gap: 4px;
+  height: 56px;
+}
+.dy-back {
+  flex: 0 0 auto; width: 34px; height: 34px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--dy-mut); text-decoration: none; font-size: 19px;
+}
+.dy-back:active { background: rgba(0, 0, 0, .05); }
+
+.dy-nav { flex: 1 1 auto; display: flex; align-items: center; justify-content: center; gap: 2px; }
+
+.dy-arw {
+  flex: 0 0 auto; width: 34px; height: 34px; border: 0; background: none;
+  border-radius: 10px; color: var(--dy-mut); font-size: 20px; line-height: 1;
+  cursor: pointer; transition: .15s;
+}
+.dy-arw:active { background: rgba(0, 0, 0, .06); }
+.dy-arw[disabled] { opacity: .25; cursor: default; }
+
+.dy-datebtn {
+  position: relative; border: 0; background: none; cursor: pointer;
+  padding: 4px 10px; border-radius: 10px; text-align: center; line-height: 1.15;
+  color: var(--dy-ink); font: inherit;
+}
+.dy-datebtn:active { background: rgba(0, 0, 0, .05); }
+.dy-num { display: block; font-size: 19px; font-weight: 700; letter-spacing: .3px; font-variant-numeric: tabular-nums; }
+.dy-num em { font-style: normal; color: var(--dy-pk); }
+.dy-wd { display: block; font-size: 11.5px; color: var(--dy-mut); margin-top: 1px; letter-spacing: .5px; }
+.dy-datebtn input[type="date"] {
+  position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%;
+  border: 0; padding: 0; cursor: pointer;
+}
+
+/* ---------------- 概览（一行轻量计数） ---------------- */
+.dy-ov {
+  display: flex; gap: 13px; flex-wrap: wrap;
+  padding: 0 3px 9px; align-items: center;
+}
+.dy-ovc {
+  display: inline-flex; align-items: center; gap: 5px;
+  border: 0; background: none; padding: 2px 0; cursor: pointer;
+  font: inherit; font-size: 12px; color: #83838d; line-height: 1.2;
+}
+.dy-ovc:active { opacity: .6; }
+.dy-ovc b { color: var(--dy-ink); font-weight: 700; font-variant-numeric: tabular-nums; }
+.dy-ovc i { width: 6px; height: 6px; border-radius: 50%; flex: 0 0 auto; }
+.dy-ovc.pf i { background: var(--dy-pk); }
+.dy-ovc.lv i { background: #ff8c42; }
+.dy-ovc.wb i { background: #ffb020; }
+.dy-ovc.bv i { background: #38b6e6; }
+.dy-ovc.ms i { background: #9b83f5; }
+
+/* ---------------- 月历条 ---------------- */
+.dy-cal {
+  background: var(--dy-card); border: 1px solid var(--dy-line);
+  border-radius: 14px; padding: 8px 8px 9px; margin-bottom: 12px;
+  box-shadow: 0 1px 2px rgba(20, 20, 40, .03);
+}
+.dy-cal-h {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 3px 6px;
+}
+.dy-cal.closed { padding-bottom: 4px; }
+.dy-cal.closed .dy-cal-h { padding-bottom: 0; }
+.dy-cal-t {
+  display: flex; align-items: baseline; gap: 8px; flex: 1 1 auto;
+  border: 0; background: none; padding: 5px 2px; cursor: pointer;
+  font: inherit; font-size: 12.5px; color: #7c7c86; text-align: left;
+}
+.dy-cal-t span { color: #b6b6be; font-size: 11.5px; }
+.dy-cal-t i { margin-left: auto; font-style: normal; color: #b6b6be; font-size: 11px; }
+.dy-cal-m { font-size: 12px; color: var(--dy-mut); letter-spacing: .4px; }
+.dy-cal-nav { display: flex; gap: 2px; }
+.dy-cal-nav button {
+  border: 0; background: none; color: var(--dy-mut); font-size: 15px;
+  width: 26px; height: 24px; border-radius: 7px; cursor: pointer; line-height: 1;
+}
+.dy-cal-nav button:active { background: rgba(0, 0, 0, .05); }
+.dy-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.dy-cal-wd {
+  text-align: center; font-size: 10.5px; color: #b6b6be; padding-bottom: 2px;
+}
+.dy-cell {
+  position: relative; height: 30px; border: 0; background: none; border-radius: 8px;
+  font-size: 12.5px; color: #9c9ca6; cursor: pointer; padding: 0;
+  font-variant-numeric: tabular-nums; transition: .12s;
+}
+.dy-cell.has { color: var(--dy-ink); font-weight: 600; }
+.dy-cell.has::after {
+  content: ""; position: absolute; left: 50%; bottom: 3px; transform: translateX(-50%);
+  width: 4px; height: 4px; border-radius: 50%; background: #ffc3d4;
+}
+.dy-cell.has.pf::after { background: var(--dy-pk); }
+.dy-cell.on { background: linear-gradient(135deg, var(--dy-pk), var(--dy-pk2)); color: #fff; box-shadow: 0 2px 8px rgba(255, 122, 162, .35); }
+.dy-cell.on::after { display: none; }
+.dy-cell:disabled { cursor: default; color: #dcdce2; }
+
+/* ---------------- 分区 ---------------- */
+.dy-sec { margin-bottom: 16px; scroll-margin-top: 72px; }
+.dy-sec-h {
+  display: flex; align-items: center; gap: 7px;
+  padding: 0 3px 7px; font-size: 13px; color: var(--dy-mut);
+}
+.dy-sec-h b { color: var(--dy-ink); font-size: 13.5px; font-weight: 600; }
+.dy-sec-h .dy-dot { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto; }
+.dy-sec-h .pf { background: var(--dy-pk); }
+.dy-sec-h .lv { background: #ff8c42; }
+.dy-sec-h .wb { background: #ffb020; }
+.dy-sec-h .bv { background: #38b6e6; }
+.dy-sec-h .ms { background: #9b83f5; }
+.dy-sec-h span.dy-n { margin-left: auto; font-variant-numeric: tabular-nums; }
+
+/* ---------------- 卡片 ---------------- */
+.dy-c {
+  background: var(--dy-card); border: 1px solid var(--dy-line);
+  border-radius: 14px; padding: 12px 13px; margin-bottom: 8px;
+  box-shadow: 0 1px 2px rgba(20, 20, 40, .03);
+}
+
+/* 公演 */
+.dy-pf {
+  border-left: 3px solid var(--dy-pk);
+}
+.dy-pf-top { display: flex; align-items: baseline; gap: 8px; }
+.dy-pf-top b { font-size: 14.5px; font-weight: 600; flex: 1 1 auto; line-height: 1.35; }
+.dy-pf-top time { font-size: 12px; color: var(--dy-mut); font-variant-numeric: tabular-nums; flex: 0 0 auto; }
+.dy-songs { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.dy-songs span {
+  font-size: 12px; background: #fff0f5; color: #d9557f;
+  border-radius: 6px; padding: 2px 7px; line-height: 1.5;
+}
+.dy-pf-empty { font-size: 12.5px; color: var(--dy-mut); margin-top: 6px; }
+
+/* 直播 */
+.dy-lv { display: flex; gap: 11px; align-items: center; border-left: 3px solid #ff8c42; }
+.dy-lv-cov {
+  flex: 0 0 auto; width: 62px; height: 62px; border-radius: 10px; object-fit: cover;
+  background: #f2f2f6; display: block;
+}
+.dy-lv-b { flex: 1 1 auto; min-width: 0; }
+.dy-lv-b b { display: block; font-size: 14px; font-weight: 600; line-height: 1.4; }
+.dy-meta { font-size: 12px; color: var(--dy-mut); margin-top: 3px; font-variant-numeric: tabular-nums; }
+
+/* 微博 */
+.dy-wb { border-left: 3px solid #ffb020; }
+.dy-wb p { margin: 0; font-size: 14px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+.dy-wb-img {
+  margin-top: 9px; width: 100%; max-height: 220px; object-fit: cover;
+  border-radius: 10px; background: #f2f2f6; display: block;
+}
+.dy-link {
+  display: inline-block; margin-top: 8px; font-size: 12px;
+  color: #d9557f; text-decoration: none;
+}
+
+/* B 站 */
+.dy-bvlist { display: flex; flex-direction: column; gap: 1px; }
+.dy-bv {
+  display: flex; align-items: baseline; gap: 9px; text-decoration: none;
+  color: var(--dy-ink); padding: 8px 3px; border-bottom: 1px solid #f4f4f7;
+  font-size: 13.5px; line-height: 1.45;
+}
+.dy-bv:last-child { border-bottom: 0; }
+.dy-bv:active { background: #fafafd; }
+.dy-bv b { flex: 1 1 auto; font-weight: 400; overflow: hidden; text-overflow: ellipsis;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.dy-bv i {
+  flex: 0 0 auto; font-style: normal; font-size: 11.5px; color: #38b6e6;
+  font-variant-numeric: tabular-nums;
+}
+/* 当天补传的旧档：别让人以为「2022 那场是今天演的」 */
+.dy-old {
+  flex: 0 0 auto; font-style: normal; font-size: 10.5px; line-height: 1.6;
+  color: #9a8fb0; background: #f4f1f9; border-radius: 4px; padding: 0 4px;
+}
+
+/* 发言 */
+.dy-msgs { display: flex; flex-direction: column; }
+.dy-m {
+  display: flex; gap: 10px; padding: 7px 0;
+  border-bottom: 1px solid #f5f5f8;
+}
+.dy-m:last-child { border-bottom: 0; }
+.dy-m time {
+  flex: 0 0 34px; font-size: 11px; color: #b0b0ba; padding-top: 3px;
+  font-variant-numeric: tabular-nums;
+}
+.dy-m-b { flex: 1 1 auto; min-width: 0; }
+.dy-m-b p { margin: 0; font-size: 14px; line-height: 1.55; word-break: break-word; }
+.dy-m-b p.blank { color: #c0c0c8; }
+.dy-m-img {
+  margin-top: 6px; width: 76px; height: 76px; border-radius: 9px; object-fit: cover;
+  background: #f2f2f6; display: inline-block; vertical-align: top; margin-right: 5px;
+}
+.dy-tag {
+  display: inline-block; font-size: 10.5px; color: #8b7cf0; background: #f2efff;
+  border-radius: 5px; padding: 1px 5px; margin-left: 5px; vertical-align: 1px;
+}
+
+/* 折叠按钮 */
+.dy-hidden { display: none !important; }
+.dy-more {
+  display: block; width: 100%; border: 1px dashed var(--dy-line); background: #fcfcfe;
+  color: var(--dy-mut); border-radius: 10px; padding: 9px; font-size: 12.5px;
+  cursor: pointer; margin-top: 8px; font-family: inherit;
+}
+.dy-more:active { background: #f5f5f9; }
+
+/* 空状态 */
+.dy-empty {
+  background: var(--dy-card); border: 1px solid var(--dy-line); border-radius: 14px;
+  padding: 34px 16px; text-align: center; color: var(--dy-mut); font-size: 13.5px;
+}
+.dy-empty b { display: block; font-size: 15px; color: var(--dy-ink); margin-bottom: 6px; }
+.dy-empty a {
+  display: inline-block; margin: 9px 5px 0; font-size: 12.5px; color: #d9557f;
+  text-decoration: none; border: 1px solid #ffd9e4; background: #fff6f9;
+  border-radius: 999px; padding: 5px 12px;
+}
+
+/* 加载 */
+.dy-loading { text-align: center; color: var(--dy-mut); font-size: 13px; padding: 40px 0; }
+
+@media (max-width: 360px) {
+  .dy-m time { flex-basis: 30px; }
+  .dy-lv-cov { width: 54px; height: 54px; }
+}

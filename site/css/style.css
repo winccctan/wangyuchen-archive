@@ -112,6 +112,18 @@ body {
   border-radius: 999px; padding: 7px 14px; font-size: 13px; cursor: pointer; white-space: nowrap;
 }
 .date-toggle-btn:hover { background: var(--primary); color: #fff; }
+/* 「按天看」：跳到 ./day.html —— 那天的发言 / 直播 / 公演 / 微博 / 投稿一次看完（2026-10-27）。
+   粉色系跟蓝绿色的「时间」区分开，免得两个日历图标挨着分不清谁是谁。 */
+.day-jump-btn {
+  flex: 0 0 auto; display: inline-flex; align-items: center; gap: 4px;
+  height: 34px; padding: 0 13px; border-radius: 999px;
+  border: 1px solid #ffc2d4; background: #fff6f9; color: #d9557f;
+  font-size: 13px; line-height: 1; text-decoration: none; white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+.day-jump-btn span { font-size: 12.5px; line-height: 1; }
+.day-jump-btn:hover { background: #ffe9f1; }
+.day-jump-btn:active { transform: scale(.97); }
 /* 右侧控件组：窄屏时整体换到下一行，内部仍是「更新于…」靠左、按钮靠右的整齐排列 */
 .toolbar-actions {
   flex: 1 1 auto; min-width: 0;
@@ -525,6 +537,9 @@ body {
   .toolbar { gap: 6px; }
   .toolbar-actions { gap: 6px; }
   .updated { flex: 1 1 100%; font-size: 11px; }
+  /* 极窄屏省掉日历图标，只留「按天看」三个字，否则「刷新」会被挤到第三行 */
+  .day-jump-btn span { display: none; }
+  .day-jump-btn { padding: 0 12px; }
   .subtabs { gap: 4px; }
   .subtab { padding: 7px 10px; font-size: 11px; }
 }
