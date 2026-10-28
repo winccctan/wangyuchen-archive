@@ -364,7 +364,7 @@
       var t = hhmm(ts);
       var same = (t === lastT);            // 同一分钟的连发只标一次时间
       lastT = t;
-      return '<div class="dy-m' + (i >= LIMIT ? ' dy-hidden' : '') + (same ? ' same' : '') + '">'
+      return '<div class="dy-m' + (i >= LIMIT ? ' dy-hidden' : '') + (same ? ' same' : '') + '" data-ts="' + ts + '">'
         + '<time>' + (same ? '' : t) + '</time><div class="dy-m-b">' + body + '</div></div>';
     }).join('');
     var more = list.length > LIMIT
@@ -404,7 +404,36 @@
   }
 
   // ---------------- 主流程 ----------------
-  function go(d, push) {
+  /** hash 解析：#2026-10-27 或 #2026-10-27/t:1761500000000（后者用来定位到某条发言） */
+  function parseHash(h) {
+    var parts = String(h || '').replace(/^#/, '').split('/');
+    var d = /^\d{4}-\d{2}-\d{2}$/.test(parts[0] || '') ? parts[0] : '';
+    var t = 0;
+    String(parts[1] || '').split('&').forEach(function (kv) {
+      var m = kv.match(/^t:(\d+)$/);
+      if (m) t = Number(m[1]);
+    });
+    return { d: d, t: t };
+  }
+
+  /** 定位到某条发言：先展开折叠，再滚过去闪一下（「我的收藏」跳转用） */
+  function focusMsg(ts) {
+    if (!ts) return;
+    var el = document.querySelector('#dyFeed .dy-m[data-ts="' + ts + '"]');
+    if (!el) return;
+    if (el.classList.contains('dy-hidden')) {
+      var box = el.closest('[data-box="ms"]');
+      if (box) $all('.dy-hidden', box).forEach(function (x) { x.classList.remove('dy-hidden'); });
+      var more = document.querySelector('[data-expand="ms"]');
+      if (more && more.parentNode) more.parentNode.removeChild(more);
+    }
+    el.classList.add('dy-hl');
+    setTimeout(function () {
+      try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { el.scrollIntoView(); }
+    }, 120);
+  }
+
+  function go(d, push, focusTs) {
     if (!d) return;
     cur = d;
     calY = Number(d.slice(0, 4));
@@ -432,6 +461,7 @@
       step.then(function () {
         if (monthKey(cur) !== mk) return;
         renderFeed((monthCache[mk].d || {})[cur]);
+        focusMsg(focusTs);
       });
     });
   }
@@ -503,8 +533,8 @@
 
     // 外部改 hash（分享链接 / 浏览器前进后退）也要跟着走
     window.addEventListener('hashchange', function () {
-      var h = (location.hash || '').replace('#', '');
-      if (h && h !== cur && /^\d{4}-\d{2}-\d{2}$/.test(h)) go(h, false);
+      var h = parseHash(location.hash);
+      if (h.d && h.d !== cur) go(h.d, false, h.t);
     });
   }
 
@@ -540,12 +570,12 @@
     loadIndex().then(function (j) {
       IDX = j;
       DAYS = Object.keys(j.days).sort();
-      var hash = (location.hash || '').replace('#', '');
+      var h = parseHash(location.hash);
       var latest = DAYS[DAYS.length - 1];
       // 🔴 空白日也要能停在原地（显示「这一天没有记录」），不能悄悄跳回最新一天
-      cur = /^\d{4}-\d{2}-\d{2}$/.test(hash) ? hash : latest;
+      cur = h.d || latest;
       bind();
-      go(cur, false);
+      go(cur, false, h.t);
     }).catch(function (e) {
       $('#dyFeed').innerHTML = '<div class="dy-empty"><b>数据读不到</b>' + esc(e.message) + '</div>';
     });

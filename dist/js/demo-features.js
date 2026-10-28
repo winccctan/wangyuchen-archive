@@ -546,10 +546,64 @@
   function toggleFav(item) {
     const i = F.favs.findIndex((x) => x.k === item.k);
     if (i >= 0) { F.favs.splice(i, 1); trk('fav:del'); toast('已取消收藏'); }
-    else { F.favs.unshift(item); trk('fav:add'); toast('⭐ 已加入收藏'); }
+    else {
+      // ts = 收藏时间：列表按它倒序（站长要求「最新收的在上面」）
+      F.favs.unshift(Object.assign({ ts: Date.now() }, item));
+      trk('fav:add'); toast('⭐ 已加入收藏');
+    }
     saveFavs();
     syncFavButtons();
     const c = $('#dmFavCount'); if (c) c.textContent = F.favs.length ? String(F.favs.length) : '';
+  }
+
+  /** 从 '2026-10-25 00:07:28' / 'perf:标题:2026-10-25 00:07:28' 里抠出日期 */
+  function dayOf(s) {
+    const m = String(s || '').match(/(\d{4}-\d{2}-\d{2})/);
+    return m ? m[1] : '';
+  }
+
+  /** 收藏时间 → 「10-27 23:40」（北京时间） */
+  function favTime(ts) {
+    if (!ts) return '';
+    const d = new Date(Number(ts) + 8 * 3600e3);
+    const p = (n) => (n < 10 ? '0' + n : String(n));
+    return p(d.getUTCMonth() + 1) + '-' + p(d.getUTCDate()) + ' ' + p(d.getUTCHours()) + ':' + p(d.getUTCMinutes());
+  }
+
+  /** 收藏项能去的地方：有外链就直开，否则跳「按天看」那一天 */
+  function favTo(x) {
+    if (x.u) return { href: x.u, ext: !/^\.?\//.test(x.u) };  // ./day.html 站内同 tab，http 外链新窗口
+    const d = x.d || dayOf(x.sub) || dayOf(x.k);              // 老收藏没存 d，从副标题/键里抠
+    return d ? { href: './day.html#' + d, ext: false } : null;
+  }
+
+  /** 收藏按钮 → 收藏项（把「怎么回去」一起存下来） */
+  function favFromBtn(fav) {
+    const k = fav.dataset.k || '';
+    const t = fav.dataset.t || 'msg';
+    let title = fav.dataset.title || '', sub = fav.dataset.time || '', d = '', u = '';
+    if (k.indexOf('msg:') === 0) {
+      const m = (typeof MSG_INDEX !== 'undefined') && MSG_INDEX.get(k.slice(4));
+      if (m) {
+        title = String(m.text || `［${TYPE_NAME[typeOfMsg(m)]}］`).slice(0, 60);
+        sub = bjDate(m.msgTime) + ' ' + bjTime(m.msgTime);
+        d = bjDate(m.msgTime);
+        u = './day.html#' + d + '/t:' + m.msgTime;   // 按天看里直接定位到这一条
+      }
+    } else if (k.indexOf('cut:') === 0) {
+      u = k.slice(4);                                 // 切片自带 B 站地址
+      d = dayOf(sub);
+    } else {
+      // 直播 / 公演卡片：有 B 站入口就用它；官方 m3u8 流手机点开只会「下载文件」，
+      // 所以不放进来 —— 没有 B 站就回按天看那一天，那里有「▶ 看回放」。
+      const card = fav.closest ? fav.closest('.card') : null;
+      if (card) {
+        const bili = card.querySelector('.bili-btn');
+        if (bili && bili.getAttribute('href')) u = bili.getAttribute('href');
+      }
+      d = dayOf(sub);
+    }
+    return { k, t, title, sub, d, u };
   }
 
   /** 把页面上的收藏按钮状态与数据对齐 */
@@ -564,16 +618,28 @@
 
   function openFavList() {
     trk('fav:open');
-    const items = F.favs;
+    // 按收藏时间倒序（老收藏没有 ts，排在最后）
+    const items = F.favs.slice().sort((a, b) => (Number(b.ts) || 0) - (Number(a.ts) || 0));
     const body = items.length
-      ? items.map((x) => `<div class="dm-favrow">
-          <span class="dm-favtag t-${esc(x.t)}">${x.t === 'msg' ? '发言' : x.t === 'live' ? '直播' : x.t === 'perf' ? '公演' : '切片'}</span>
-          <div class="dm-favmain">
-            <div class="dm-fav-t">${esc(x.title)}</div>
-            <div class="dm-fav-s">${esc(x.sub || '')}</div>
-          </div>
-          <button class="dm-fav-del" data-k="${esc(x.k)}" type="button">移除</button>
-        </div>`).join('')
+      ? items.map((x) => {
+          const tag = x.t === 'msg' ? '发言' : x.t === 'live' ? '直播' : x.t === 'perf' ? '公演' : '切片';
+          const to = favTo(x);
+          // 副标题一行放不下：内容时间省年份（2026-10-23 → 10-23），收藏时间用「收 10-28」，全文塞 title 属性
+          const full = String(x.sub || '').replace(/(\d{2}:\d{2}):\d{2}\b/, '$1');
+          const short = full.replace(/^\d{4}-(\d{2}-\d{2} \d{2}:\d{2})$/, '$1');
+          const subline = [short, x.ts ? '收 ' + favTime(x.ts).slice(0, 5) : ''].filter(Boolean).join(' · ');
+          const subTitle = [full, x.ts ? '收藏于 ' + favTime(x.ts) : ''].filter(Boolean).join(' · ');
+          const inner = `<span class="dm-favtag t-${esc(x.t)}">${tag}</span>
+            <div class="dm-favmain">
+              <div class="dm-fav-t">${esc(x.title)}</div>
+              <div class="dm-fav-s" title="${esc(subTitle)}">${esc(subline)}</div>
+            </div>
+            ${to ? '<span class="dm-fav-go">去看 ↗</span>' : ''}`;
+          const main = to
+            ? `<a class="dm-fav-link" href="${esc(to.href)}"${to.ext ? ' target="_blank" rel="noopener"' : ''}>${inner}</a>`
+            : `<div class="dm-fav-link">${inner}</div>`;
+          return `<div class="dm-favrow">${main}<button class="dm-fav-del" data-k="${esc(x.k)}" type="button">移除</button></div>`;
+        }).join('')
       : '<div class="dm-empty">还没有收藏。在发言、直播、公演或切片上点 ☆ 就能收藏。</div>';
 
     const recentH = F.recent.length
@@ -1042,15 +1108,8 @@
     const fav = e.target.closest('.dm-fav');
     if (fav) {
       e.preventDefault(); e.stopPropagation();
-      const k = fav.dataset.k;
-      const t = fav.dataset.t || 'msg';
-      let title = fav.dataset.title || '', sub = fav.dataset.time || '';
-      if (k && k.indexOf('msg:') === 0) {
-        const mid = k.slice(4);
-        const m = (typeof MSG_INDEX !== 'undefined') && MSG_INDEX.get(mid);
-        if (m) { title = String(m.text || `［${TYPE_NAME[typeOfMsg(m)]}］`).slice(0, 60); sub = bjDate(m.msgTime) + ' ' + bjTime(m.msgTime); }
-      }
-      toggleFav({ k, t, title, sub });
+      const it = favFromBtn(fav);
+      if (it.k) toggleFav(it);
       return;
     }
     const share = e.target.closest('.dm-share');
@@ -1128,7 +1187,13 @@
     const onMsg = (typeof state !== 'undefined') && state.tab === 'messages';
     const chips = $('#dmTypeChips'); if (chips) chips.hidden = !onMsg;
     const note = $('#dmTypeNote'); if (note) note.hidden = !onMsg || F.typeFilter === 'all';
-    const tools = $('.dm-tools'); if (tools) tools.hidden = !onMsg;
+    // 🔴 ★ 收藏入口在所有页都留着：直播 / 公演 / 切片页收藏完，也得能回来看到列表
+    //    （原来整个 .dm-tools 跟着发言页显隐 ⇒ 在别的页收藏等于石沉大海）。其余工具仍只在发言页。
+    const tools = $('.dm-tools');
+    if (tools) {
+      tools.hidden = false;
+      $$('.dm-tool', tools).forEach((b) => { if (b.id !== 'dmFavBtn') b.hidden = !onMsg; });
+    }
   }
 
   /* =====================================================================

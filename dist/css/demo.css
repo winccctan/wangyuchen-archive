@@ -153,6 +153,14 @@ mark.dm-mark {
   border-bottom: 1px solid #f5f5f8; text-decoration: none; color: inherit;
 }
 .dm-favrow.link:hover { background: #faf7f9; }
+/* 收藏行：左边整块是链接（能回到现场），右边单独「移除」，互不干扰 */
+.dm-fav-link {
+  flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 10px;
+  text-decoration: none; color: inherit;
+}
+a.dm-fav-link:hover .dm-fav-t { color: var(--primary, #ff7aa2); }
+a.dm-fav-link:active { opacity: .6; }
+.dm-tool[hidden] { display: none !important; }
 .dm-favrow:last-child { border-bottom: none; }
 .dm-favtag {
   flex: 0 0 auto; font-size: 11px; padding: 2px 8px; border-radius: 999px;
@@ -166,7 +174,10 @@ mark.dm-mark {
 .dm-fav-t {
   font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.dm-fav-s { font-size: 11.5px; color: var(--muted, #8a8a92); margin-top: 2px; }
+.dm-fav-s {
+  font-size: 11.5px; color: var(--muted, #8a8a92); margin-top: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 .dm-fav-del, .dm-fav-go {
   flex: 0 0 auto; background: none; border: none; font-size: 12px; cursor: pointer;
   color: var(--muted, #8a8a92);
