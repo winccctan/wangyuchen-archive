@@ -6,7 +6,7 @@
  * 字段：[日期, 标题, BV号, 封面URL]。日期为北京时间 YYYY-MM-DD（优先从标题 8 位日期解析，
  *       解析不到回退上传时间），与公演 stime 转北京时间一致，确保能挂到对应公演。
  * 注：本文件随站上线（静态资源，不进 KV）；改它并 bump index.html 的 ?v= 即生效。
- * 共 211 条，覆盖 2022-10-02 → 2026-10-24。
+ * 共 214 条，覆盖 2022-10-02 → 2026-10-24。
  */
 window.__BILI_CUTS__ = [
   ["2026-10-24","【王语晨】20261024 GNZ48 Team NIII《拾忆：TEAM NIII》公演cut","BV1V1HA6REvq",""],
@@ -177,6 +177,9 @@ window.__BILI_CUTS__ = [
   ["2024-05-04","GNZ48 team NIII《天枢之弈》首演第一场cut","BV1Wi421y723","https://i1.hdslb.com/bfs/archive/4d4f016954d6d3ea6851fd76fbdf678dc13a00e7.jpg"],
   ["2024-04-27","《启程:Team NIII》千秋乐公演cut","BV1gH4y1V72k","https://i2.hdslb.com/bfs/archive/74e0838adcc5c173299168fc9c5c75e8706c5dbd.jpg"],
   ["2024-04-19","最佳拍档公演cut","BV1uw4m1U7jr","https://i0.hdslb.com/bfs/archive/87f603c47358424d528a856aa4dcebabcedbaced.png"],
+  ["2023-09-16","【王语晨】20230916 GNZ48 Team NIII《启程：Team NIII》公演cut","BV1h2xj6KERK",""],
+  ["2023-09-15","【王语晨】20230915 GNZ48 Team NIII《启程：Team NIII》公演cut","BV1UXxj6wEbb",""],
+  ["2023-09-09","【王语晨】20230909 GNZ48 Team NIII《启程：Team NIII》公演cut","BV12Gx56DENL",""],
   ["2023-09-03","【王语晨】20230903 GNZ48 Team NIII《启程：Team NIII》公演cut","BV1aGxu6jES2",""],
   ["2023-09-02","【王语晨】20230902 GNZ48 Team NIII《启程：Team NIII》公演cut","BV1Yaxg6HEVH",""],
   ["2023-08-27","【王语晨】20230827 GNZ48 Team NIII《启程：Team NIII》公演cut","BV1fnxg6fEae",""],
