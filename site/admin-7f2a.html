@@ -335,7 +335,15 @@
     var box = $('curWrap');
     if (!cur.items || !cur.items.length) { box.innerHTML = '<p class="muted">存档还是空的</p>'; return; }
     box.innerHTML = '';
-    cur.items.forEach(function (it, i) {
+    // 🔴 只倒序「显示」：最近的日期排最上面（date 为空的「更远」排最后）。
+    //    编辑 / 删除 / 保存仍然用 cur.items 的原始下标 i，别把 order 当成下标去改数据。
+    var order = cur.items.map(function (_, i) { return i; }).sort(function (a, b) {
+      var da = cur.items[a].date || '', db = cur.items[b].date || '';
+      if (da !== db) { if (!da) return 1; if (!db) return -1; return da < db ? 1 : -1; }
+      return b - a;   // 同一天：后加的排前面
+    });
+    order.forEach(function (i) {
+      var it = cur.items[i];
       var d = document.createElement('div');
       d.className = 'item';
       if (curEd === i) {
