@@ -1,6 +1,6 @@
 {
-  "updatedAt": "2026-10-29T06:14:16.879Z",
-  "count": 1353,
+  "updatedAt": "2026-10-29T15:22:32.720Z",
+  "count": 1357,
   "targets": [
     {
       "mid": "2086351451",
@@ -26,10 +26,46 @@
     "358477444:season:7130625": 2,
     "358477444:season:6805043": 2,
     "358477444:season:2812669": 2,
-    "358477444:space": 1,
-    "2086351451:space": 2
+    "358477444:space": 2,
+    "2086351451:space": 1
   },
   "videos": [
+    {
+      "bvid": "BV1c5sf6NEzP",
+      "aid": 117524012207447,
+      "title": "【王语晨】20231029 GNZ48《Trick or Treat》万圣节特殊公演第二场cut",
+      "created": 1793274421,
+      "duration": 1516,
+      "play": 51,
+      "mid": "358477444"
+    },
+    {
+      "bvid": "BV1Dvsf6SEoQ",
+      "aid": 117523844434583,
+      "title": "【王语晨】20231028 GNZ48《Trick or Treat》万圣节特殊公演第一场cut",
+      "created": 1793271917,
+      "duration": 1722,
+      "play": 52,
+      "mid": "358477444"
+    },
+    {
+      "bvid": "BV19GxF6sEv1",
+      "aid": 117523710281643,
+      "title": "【王语晨】20231021 GNZ48 Team NIII《启程：Team NIII》公演cut",
+      "created": 1793269720,
+      "duration": 1666,
+      "play": 15,
+      "mid": "358477444"
+    },
+    {
+      "bvid": "BV1zFxF6YEoH",
+      "aid": 117523575996536,
+      "title": "【王语晨】20231014 GNZ48 Team NIII《启程：Team NIII》公演cut",
+      "created": 1793267629,
+      "duration": 2167,
+      "play": 9,
+      "mid": "358477444"
+    },
     {
       "bvid": "BV1K6x76FErN",
       "aid": 117518358282342,
