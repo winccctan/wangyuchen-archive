@@ -44,6 +44,15 @@
   .li input { margin:0; flex:1; }
   .li .mini { flex:none; }
   .ed input, .ed select { margin-bottom:6px; }
+  /* 当前存档的筛选条（只看未过期） */
+  .curbar { display:flex; align-items:center; gap:10px; margin:0 0 8px; flex-wrap:wrap; }
+  .curbar .chk { display:inline-flex; align-items:center; gap:6px; margin:0; font-size:13px;
+    color:var(--ink); background:#fff; border:1px solid var(--line); border-radius:999px;
+    padding:7px 13px; cursor:pointer; user-select:none; }
+  /* 🔴 全局 input 规则里带了 -webkit-appearance:none，复选框会被画成一个空圆角方块（勾上也没对勾）⇒ 这里必须显式恢复 */
+  .curbar .chk input { -webkit-appearance:auto; appearance:auto; width:16px; height:16px; margin:0; padding:0;
+    border:0; border-radius:0; background:none; accent-color:var(--brand); flex:none; }
+  .curbar .cnt { font-size:12.5px; color:var(--ink2); }
 </style>
 </head>
 <body>
@@ -104,6 +113,10 @@
   </div>
 
   <h2>4 · 当前存档</h2>
+  <div class="curbar">
+    <label class="chk" for="curFuture"><input type="checkbox" id="curFuture"> 只看未过期</label>
+    <span class="cnt" id="curCount"></span>
+  </div>
   <div class="card" id="curWrap"><p class="muted">读取中…</p></div>
 
   <h2>5 · 提交历史</h2>
@@ -314,6 +327,24 @@
 
   var loaded = false;                // 服务端数据是否已回填（回填后就别再覆盖站长正在改的内容）
 
+  // ---- 「只看未过期」筛选（记住上次选择）----
+  var onlyFuture = localStorage.getItem('wyc.admin.onlyFuture') === '1';
+  function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+  // 一律按北京时间切日，别用本机时区（和站内其他地方的 bj 口径保持一致）
+  function bjToday() {
+    var d = new Date(Date.now() + 8 * 3600 * 1000);
+    return d.getUTCFullYear() + '-' + pad2(d.getUTCMonth() + 1) + '-' + pad2(d.getUTCDate());
+  }
+  var fchk = $('curFuture');
+  if (fchk) {
+    fchk.checked = onlyFuture;
+    fchk.onchange = function () {
+      onlyFuture = fchk.checked;
+      localStorage.setItem('wyc.admin.onlyFuture', onlyFuture ? '1' : '0');
+      if (cur) renderCur();
+    };
+  }
+
   function renderMeta() {
     // 只在第一次回填。之后无论「删了一条行程」「发布了新行程」触发几次 loadCur，
     // 都不再动站长手上的券种 / 计分 —— 否则他改到一半会被服务端数据冲掉。
@@ -333,7 +364,12 @@
 
   function renderCur() {
     var box = $('curWrap');
-    if (!cur.items || !cur.items.length) { box.innerHTML = '<p class="muted">存档还是空的</p>'; return; }
+    if (!cur.items || !cur.items.length) {
+      box.innerHTML = '<p class="muted">存档还是空的</p>';
+      if ($('curCount')) $('curCount').textContent = '';
+      return;
+    }
+    var today = bjToday();
     box.innerHTML = '';
     // 🔴 只倒序「显示」：最近的日期排最上面（date 为空的「更远」排最后）。
     //    编辑 / 删除 / 保存仍然用 cur.items 的原始下标 i，别把 order 当成下标去改数据。
@@ -342,7 +378,22 @@
       if (da !== db) { if (!da) return 1; if (!db) return -1; return da < db ? 1 : -1; }
       return b - a;   // 同一天：后加的排前面
     });
-    order.forEach(function (i) {
+    // 「只看未过期」：日期 >= 今天（北京时间）算未过期；日期为空的「更远」也算未过期。
+    // 正在编辑的那条无论如何都留着，否则勾上筛选那一刻编辑框就消失了。
+    var shown = order.filter(function (i) {
+      if (curEd === i || !onlyFuture) return true;
+      var d = cur.items[i].date || '';
+      return !d || d >= today;
+    });
+    var cnt = $('curCount');
+    if (cnt) cnt.textContent = onlyFuture
+      ? '未过期 ' + shown.length + ' 条 / 共 ' + cur.items.length + ' 条'
+      : '共 ' + cur.items.length + ' 条';
+    if (!shown.length) {
+      box.innerHTML = '<p class="muted">没有未过期的行程（共 ' + cur.items.length + ' 条都已过期）</p>';
+      return;
+    }
+    shown.forEach(function (i) {
       var it = cur.items[i];
       var d = document.createElement('div');
       d.className = 'item';
