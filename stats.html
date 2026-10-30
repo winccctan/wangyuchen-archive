@@ -1,0 +1,621 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>站点数据</title>
+<style>
+ body{font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:#12131a;color:#e8eaf2;margin:0;padding:24px;max-width:640px}
+ h1{font-size:19px;margin:0 0 4px}
+ .dim{color:#8b90a0;font-size:13px;margin:0 0 18px;line-height:1.6}
+ .cards{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px}
+ .card{background:#1c1f2b;border-radius:12px;padding:14px 18px;min-width:120px;flex:1}
+ .card .k{font-size:12px;color:#8b90a0}
+ .card .v{font-size:24px;font-weight:700;margin-top:4px}
+ h2{font-size:15px;margin:18px 0 8px}
+ table{border-collapse:collapse;width:100%;background:#1c1f2b;border-radius:10px;overflow:hidden}
+ td{padding:8px 12px;border-bottom:1px solid #2a2e3d;font-size:14px}
+ tr:last-child td{border-bottom:none}
+ td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+ /* 功能表有 5 列，窄屏要收紧一点才不挤 */
+ .wide td{padding:7px 8px;font-size:13px}
+ .wide td:first-child{padding-left:10px}
+ .wide td:last-child{padding-right:10px}
+ @media (max-width:420px){ .wide td{padding:7px 5px;font-size:12px} }
+ .err{color:#ff9a9a;font-size:14px}
+ /* 房间明细：每天一个可折叠块，今天默认展开 */
+ details{margin:0 0 8px}
+ summary{cursor:pointer;font-size:13px;color:#8b90a0;padding:7px 2px;outline:none}
+ summary:hover{color:#e8eaf2}
+ details[open] summary{color:#c8cde0}
+ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;color:#9fd0ff;letter-spacing:.3px}
+ .dash{color:#5a5f70}
+ #gate{max-width:320px}
+ #gate input{width:100%;padding:10px 12px;font-size:15px;border-radius:8px;border:1px solid #2a2e3d;background:#1c1f2b;color:#e8eaf2;box-sizing:border-box}
+ #gate button{margin-top:10px;width:100%;padding:10px;font-size:15px;border:0;border-radius:8px;background:#4a7cf7;color:#fff;cursor:pointer}
+/* 分 tab（2026-10-25）：wyc 档案站 / 48 档案站 / 游戏 各一页，不再一屏堆到底 */
+.tabs{display:flex;gap:6px;position:sticky;top:0;z-index:5;background:#12131a;padding:6px 0 12px;margin:0 0 2px}
+.tab{flex:1;padding:9px 6px;font-size:13px;font-family:inherit;border:0;border-radius:9px;background:#1c1f2b;color:#8b90a0;cursor:pointer;white-space:nowrap;transition:background .15s,color .15s}
+.tab:hover{color:#c8cde0}
+.tab[aria-selected="true"]{background:#4a7cf7;color:#fff;font-weight:600}
+.pane{padding-top:4px}
+@media (max-width:420px){.tab{font-size:12px;padding:9px 4px}}
+/* 红蓝页统计的时间范围切换（2026-10-27 从 all48 站搬过来） */
+.chips{display:flex;gap:6px;margin:0 0 12px}
+.chip{flex:1;padding:8px 6px;font-size:13px;font-family:inherit;border:0;border-radius:9px;background:#1c1f2b;color:#8b90a0;cursor:pointer;transition:background .15s,color .15s}
+.chip[aria-pressed="true"]{background:#4a7cf7;color:#fff;font-weight:600}
+</style>
+
+<h1>站点数据</h1>
+
+<div id="gate">
+  <p class="dim">请输入查看密码：</p>
+  <input id="pw" type="password" placeholder="密码" autocomplete="current-password">
+  <button id="go" type="button">查看统计</button>
+  <p class="err" id="msg"></p>
+</div>
+
+<div id="body" hidden>
+  <div class="tabs" role="tablist">
+    <button class="tab" type="button" role="tab" data-tab="wyc">wyc 档案站</button>
+    <button class="tab" type="button" role="tab" data-tab="a48">48 档案站</button>
+    <button class="tab" type="button" role="tab" data-tab="game">游戏</button>
+    <button class="tab" type="button" role="tab" data-tab="health">体检</button>
+  </div>
+  <div id="loading" class="dim" hidden>读取中…</div>
+  <div id="err" hidden></div>
+  <div class="pane" id="pane-wyc" role="tabpanel" hidden></div>
+  <div class="pane" id="pane-a48" role="tabpanel" hidden></div>
+  <div class="pane" id="pane-game" role="tabpanel" hidden></div>
+  <div class="pane" id="pane-health" role="tabpanel" hidden></div>
+</div>
+
+<script>
+// 密码校验：只存口令的 SHA-256，页面源码里看不到明文
+const PASS_SHA = '8467bba9db22598f009c67ae66a21b1a6f39893779233f5d63c3e2274698babc';
+const API = 'https://idol.wyc0518.cc/stats?k=wyc-stats-2026&format=json';
+// 48 小游戏（どっぼーん / 斗地主 / 卡牌对战，跑在 snh48-dobon 这个 Worker 上）的埋点。
+// 它自己存自己的 DO SQLite，不占补档站的 KV 写入额度，所以单独取、单独渲染，读不到也不影响上面那堆。
+const GAME_API = 'https://snh48-dobon.yqz-tansy.workers.dev/api/gamestats?k=wyc-stats-2026';
+// 房间明细（房间号 + 谁开的）。昵称 2026-10-17 起才开始记，更早的房只留房间号。
+const ROOM_API = 'https://snh48-dobon.yqz-tansy.workers.dev/api/roomlist?k=wyc-stats-2026&days=7';
+// 站点体检（2026-10-26）：all48 那套抓取链路还活着没有。
+// 🔴 判据是「数据多久没进库」，**不是 GitHub 状态码** —— Actions 挂了、被限流、
+//    只是跑得慢，结果都一样：数据停了。所以只读时间戳。
+//    走 workers.dev 而不是 all48.wyc0518.cc：那个 zone 开了 Bot Fight，跨域偶发被挡。
+const HEALTH_API = 'https://all48-archive.yqz-tansy.workers.dev/api/status';
+
+// 昵称是用户自己输入的，拼 innerHTML 前必须转义
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+}
+
+async function sha256(s) {
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+  return Array.from(new Uint8Array(d)).map(x => x.toString(16).padStart(2, '0')).join('');
+}
+
+/* ---------- 分 tab：wyc 档案站 / 48 档案站 / 游戏 / 体检 ----------
+ * 只切显示，不重绘；地址栏带 #hash，刷新后停在同一个 tab。
+ * 「游戏」「体检」的数据都在别的 Worker 上，所以第一次切过去才拉，省一次跨域请求。
+ */
+const TABS = ['wyc', 'a48', 'game', 'health'];
+let curTab = 'wyc';
+let gameLoaded = false;
+let healthLoaded = false;
+// 刷新后停在上一次看的 tab
+try {
+  const h = String(location.hash || '').replace('#', '');
+  if (TABS.indexOf(h) >= 0) curTab = h;
+} catch (_) { /* 忽略 */ }
+
+function switchTab(name) {
+  if (TABS.indexOf(name) < 0) name = 'wyc';
+  curTab = name;
+  const btns = document.querySelectorAll('.tab');
+  for (const b of btns) b.setAttribute('aria-selected', String(b.dataset.tab === name));
+  for (const k of TABS) {
+    const p = document.getElementById('pane-' + k);
+    if (p) p.hidden = (k !== name);
+  }
+  if (name === 'game' && !gameLoaded) { gameLoaded = true; loadGame(); }
+  if (name === 'health' && !healthLoaded) { healthLoaded = true; loadHealth(); }
+  try { history.replaceState(null, '', '#' + name); } catch (_) { /* file:// 等场景忽略 */ }
+}
+
+function render(d) {
+  const p = d.push || { subs: 0, msg: 0, live: 0, perf: 0 };
+  const cards =
+    '<div class="cards">' +
+      '<div class="card"><div class="k">累计翻译次数</div><div class="v">' + d.total + '</div></div>' +
+      '<div class="card"><div class="k">今日次数</div><div class="v">' + d.today.count + '</div></div>' +
+      '<div class="card"><div class="k">今日独立访客</div><div class="v">' + d.today.visitors + '</div></div>' +
+      '<div class="card"><div class="k">通知订阅人数</div><div class="v">' + p.subs + '</div>' +
+        '<div class="k" style="margin-top:6px">发言 ' + p.msg + ' · 开播 ' + p.live + ' · 公演 ' + p.perf + '</div></div>' +
+    '</div>';
+  const ctryRows = (d.countries && d.countries.length)
+    ? d.countries.map(c => '<tr><td>' + c.name + '</td><td class="n">' + c.today + '</td><td class="n">' + c.d7 + '</td></tr>').join('')
+    : '<tr><td colspan="3" class="dim">暂无记录（从启用当天开始累计）</td></tr>';
+  const langRows = (d.langs && d.langs.length)
+    ? d.langs.map(l => '<tr><td>' + l.name + '</td><td class="n">' + l.count + '</td></tr>').join('')
+    : '<tr><td colspan="2" class="dim">暂无记录</td></tr>';
+  // 到访人数＝站点级独立访客（stat:u:<day>:），比翻译 UV 更能反映今天来了多少人
+  const dayRows = (d.days || [])
+    .map(x => '<tr><td>' + x.day + '</td><td class="n">' + (x.siteUv == null ? '-' : x.siteUv) + '</td>'
+      + '<td class="n">' + x.count + '</td><td class="n">' + x.visitors + '</td></tr>').join('');
+  const evRow = e => '<tr><td>' + e.name + '</td><td class="n">' + e.total + '</td><td class="n">' + e.today + '</td>'
+    + '<td class="n">' + (e.uniqTotal == null ? '-' : e.uniqTotal) + '</td>'
+    + '<td class="n">' + (e.uniqToday == null ? '-' : e.uniqToday) + '</td></tr>';
+  const evRows = (d.events && d.events.length)
+    ? d.events.map(evRow).join('')
+    : '<tr><td colspan="5" class="dim">暂无记录</td></tr>';
+  // 姊妹站 all48.wyc0518.cc 的访问量：服务端已单独分组，这里单独成一栏（2026-10-14）
+  // 分页面（2026-10-25）：事件名 `all48:p:<page>` 自动抽成一张表 —— 那个站以后加页面，
+  // 只要照这个前缀上报，报表这边不用改。
+  const ev48All = d.events48 || [];
+  const pages48 = ev48All.filter(e => e.key && e.key.indexOf('all48:p:') === 0)
+    .sort((a, b) => (b.today - a.today) || (b.total - a.total));
+  const pvToday48 = pages48.reduce((a, e) => a + (e.today || 0), 0);
+  const pageRows48 = pages48.length
+    ? pages48.map(e => {
+        const pct = pvToday48 > 0 ? Math.round((e.today || 0) / pvToday48 * 100) : null;
+        return '<tr><td>' + e.name + '</td><td class="n">' + e.total + '</td><td class="n">' + e.today + '</td>'
+          + '<td class="n">' + (e.uniqTotal == null ? '-' : e.uniqTotal) + '</td>'
+          + '<td class="n">' + (e.uniqToday == null ? '-' : e.uniqToday) + '</td>'
+          + '<td class="n">' + (pct == null ? '-' : pct + '%') + '</td></tr>';
+      }).join('')
+    : '<tr><td colspan="6" class="dim">暂无记录（2026-10-25 起启用分页面统计）</td></tr>';
+  const others48 = ev48All.filter(e => !(e.key && e.key.indexOf('all48:p:') === 0));
+  const evRows48 = others48.length
+    ? others48.map(evRow).join('')
+    : '<tr><td colspan="5" class="dim">暂无记录</td></tr>';
+  // 姊妹站「关注名单」（2026-10-15 起统计；2026-10-25 站长要「红蓝关注的名单」→ 由前 20 改成全量）
+  const folList48 = (d.follows48 || []);
+  const folRows48 = folList48.length
+    ? folList48.map((f, i) => '<tr><td class="n">' + (i + 1) + '</td><td>' + (f.name || ('uid ' + f.uid))
+        + '</td><td class="n">' + f.n + '</td></tr>').join('')
+    : '<tr><td colspan="3" class="dim">暂无记录</td></tr>';
+  // 姊妹站 all48 的访客国家分布（独立键，不进主站）
+  const ctryRows48 = (d.country48 && d.country48.length)
+    ? d.country48.map(c => '<tr><td>' + c.name + '</td><td class="n">' + c.today + '</td><td class="n">' + c.d7 + '</td></tr>').join('')
+    : '<tr><td colspan="3" class="dim">暂无记录（姊妹站国家分布 2026-10-15 起启用）</td></tr>';
+  // 各页面的访客来自哪里（2026-10-25）：一行一个「页面 × 国家」，页面列用 rowspan 合并
+  const PG_NAME = { members: '成员档案 /', gift: '红蓝歌会 /gift', mvp: 'MVP /mvp' };
+  let pageCtryRows48 = '';
+  (d.pageCountries48 || []).forEach((p) => {
+    const nm = PG_NAME[p.page] || p.page;
+    const rows = p.countries || [];
+    if (!rows.length) return;
+    rows.forEach((c, i) => {
+      pageCtryRows48 += '<tr>'
+        + (i === 0 ? '<td rowspan="' + rows.length + '">' + nm + '<br><span class="dim">今日 ' + p.today + ' 人</span></td>' : '')
+        + '<td>' + c.name + '</td><td class="n">' + c.today + '</td><td class="n">' + c.d7 + '</td></tr>';
+    });
+  });
+  if (!pageCtryRows48) pageCtryRows48 = '<tr><td colspan="4" class="dim">暂无记录（2026-10-25 起按页面统计）</td></tr>';
+
+  // 分 tab 渲染（2026-10-25）：三块各写各的容器，切 tab 只切显示、不重绘。
+  // 游戏数据在另一台 Worker 上，所以只在第一次切到「游戏」时才去拉。
+  document.getElementById('loading').hidden = true;
+  document.getElementById('err').hidden = true;
+
+  document.getElementById('pane-wyc').innerHTML =
+    '<p class="dim">「独立访客」按 IP 短哈希去重估算（不保存明文 IP），同一 WiFi 下多人会算作 1 人，实际人数只会更多。功能表里的「独立累计 / 独立今日」＝该功能一共有多少人 / 今天有多少人用过（不是次数）。「通知订阅人数」＝在手机上开了提醒的人，发言 / 开播 / 公演是各人自己勾的。数据约 1 分钟同步延迟。<b>2026-10-25 起补上了「打开页面」上报</b>：以前只有点了东西（切 tab / 搜索 / 播放…）的人才计入到访人数，只浏览的访客一条都不记 —— 所以这天的到访人数会比过去几天明显变多，属正常，不是数据出错。</p>' +
+    cards +
+    '<h2>访客来自哪里（今日 / 近 7 天）</h2><table><tr><td>国家·地区</td><td class="n">今日</td><td class="n">近 7 天</td></tr>' + ctryRows + '</table>' +
+    '<p class="dim">按 Cloudflare 给出的国家统计独立访客，不记 IP 明文。近 7 天＝每天独立访客相加，同一个人多天都来会重复计；数据从启用当天开始累计。</p>' +
+    '<h2>功能使用（次数 / 独立访客）</h2><table class="wide"><tr><td>动作</td><td class="n">累计</td><td class="n">今日</td><td class="n">独立累计</td><td class="n">独立今日</td></tr>' + evRows + '</table>' +
+    '<h2>各语言翻译次数</h2><table>' + langRows + '</table>' +
+    '<h2>最近 7 天（到访人数 / 翻译）</h2><table><tr><td>日期</td><td class="n">到访人数</td><td class="n">翻译次数</td><td class="n">翻译访客</td></tr>' + dayRows + '</table>';
+
+  document.getElementById('pane-a48').innerHTML =
+    '<h2>各页面访问（all48.wyc0518.cc）</h2><table class="wide"><tr><td>页面</td><td class="n">累计</td><td class="n">今日</td><td class="n">独立累计</td><td class="n">独立今日</td><td class="n">今日占比</td></tr>' + pageRows48 + '</table>' +
+    '<p class="dim">「累计 / 今日」＝该页面被打开的次数（PV），「独立」＝按 IP 去重后的人（UV），同一 WiFi 下多人算 1 人。「今日占比」＝该页今日打开次数 / 三页合计。三个页面从 <b>2026-10-25</b> 起分开统计，之前的数字只覆盖首页。</p>' +
+    '<h2>全站合计</h2><table class="wide"><tr><td>动作</td><td class="n">累计</td><td class="n">今日</td><td class="n">独立累计</td><td class="n">独立今日</td></tr>' + evRows48 + '</table>' +
+    '<p class="dim">这一行＝那个站打开的<b>总次数</b>（三个页面相加）。2026-10-25 之前 /gift、/mvp 两个页面还没有埋点，所以那之前的累计只算了首页，偏少。</p>' +
+    '<h2>访客来自哪里（今日 / 近 7 天）</h2><table><tr><td>国家·地区</td><td class="n">今日</td><td class="n">近 7 天</td></tr>' + ctryRows48 + '</table>' +
+    '<p class="dim">姊妹站的访问量：那个站自己没有统计，页面一打开就往这里打一条。独立访客按 IP 去重（不保存明文 IP）。它的人<b>不进 wyc 档案站的「到访人数 / 国家分布」</b>，这张是它自己的独立国家分布，两站分开看。2026-10-15 起启用国家分布。</p>' +
+    '<h2>各页面 · 访客来自哪里（今日 / 近 7 天）</h2><table class="wide"><tr><td>页面</td><td>国家·地区</td><td class="n">今日</td><td class="n">近 7 天</td></tr>' + pageCtryRows48 + '</table>' +
+    '<p class="dim">按 Cloudflare 给出的国家统计独立访客，<b>不保存明文 IP</b>（只存 8 字节短哈希 + 国家码）。一人一页一天只算 1 人，同一 WiFi 下多人算 1 人。「今日 N 人」＝这一页今天各国家去重访客之和。<b>2026-10-25 起才有分页面数据</b>，之前的页面访问补不出国家。</p>' +
+    '<h2>关注名单（谁被关注得最多）</h2><table class="wide"><tr><td class="n">#</td><td>成员</td><td class="n">被关注（设备数）</td></tr>' + folRows48 + '</table>' +
+    '<p class="dim">口径：一台设备（浏览器）对同一成员只算 1 人，取消关注会减回去；不记 IP、不记身份，匿名 id 是前端随机生成的。<b>数字只在站长报表里看得到，姊妹站站内不展示</b>。2026-10-15 起启用；<b>2026-10-25 起列全量</b>（以前只列前 20），王语晨（她本人）永远置顶，其余按被关注数从高到低。</p>' +
+    '<h2>红蓝歌会页 · 他们在看什么</h2><div id="rb"><p class="dim">读取中…</p></div>';
+
+  document.getElementById('pane-game').innerHTML =
+    '<div id="game"><p class="dim">读取中…</p></div><div id="rooms"></div>';
+  gameLoaded = false;
+
+  document.getElementById('body').hidden = false;
+  switchTab(curTab);
+  loadRb();   // 红蓝页统计在另一台 Worker 上，不挡主报表，异步补进来
+}
+
+/* ---------- 48 小游戏（どっぼーん / 斗地主 / 卡牌对战）----------
+ * 数据来自 snh48-dobon 那个 Worker 的 /api/gamestats（存它自己的 DO SQLite）。
+ * 口径：
+ *   局数 = 真的开了一局（单机点「开始」/ 联机发牌成功，一局只记一次）
+ *   人数 = 按浏览器去重的匿名 id，同一个浏览器玩多少局都算 1 人
+ *   房间 = 当天有过人的房间号个数（同一个房间号只算一间）
+ * 只记动作，不记 IP、不记身份、不带任何牌局内容。
+ */
+const GAME_NAME = {
+  dobon: 'どっぼーん', ddz: '成员斗地主', ccg: '成员卡牌对战',
+  turtle: '成员抓乌龟', showdown: '大乱斗', overcooked: '胡闹厨房'
+};
+const GAME_KIND = { solo: '单机 局数', on: '联机 局数', room: '联机 房间' };
+
+// 国家/地区代码 → 中文名（只用于展示，不涉及任何 IP）
+const CC_FIX = { HK: '中国香港', MO: '中国澳门', TW: '中国台湾' };
+function ccName(cc) {
+  if (CC_FIX[cc]) return CC_FIX[cc];
+  try {
+    const n = new Intl.DisplayNames(['zh-Hans'], { type: 'region' }).of(cc);
+    return n || cc;
+  } catch (e) { return cc; }
+}
+
+function gameHtml(g) {
+  const rows = (g && g.rows) || [];
+  const d0 = (g && g.days && g.days[0]) || { rounds: 0, players: 0, rooms: 0 };
+  const sum = (f) => rows.reduce((a, x) => a + (x[f] || 0), 0);
+  const cards =
+    '<div class="cards">' +
+      '<div class="card"><div class="k">今日局数</div><div class="v">' + d0.rounds + '</div></div>' +
+      '<div class="card"><div class="k">今日玩过的人</div><div class="v">' + d0.players + '</div></div>' +
+      '<div class="card"><div class="k">今日房间数</div><div class="v">' + d0.rooms + '</div></div>' +
+      '<div class="card"><div class="k">累计局数</div><div class="v">' + sum('total') + '</div></div>' +
+    '</div>';
+  const body = rows.length
+    ? rows.map(x => '<tr><td>' + (GAME_NAME[x.g] || x.g) + ' · ' + (GAME_KIND[x.k] || x.k) + '</td>'
+        + '<td class="n">' + x.today + '</td><td class="n">' + x.total + '</td>'
+        + '<td class="n">' + x.uvToday + '</td><td class="n">' + x.uvTotal + '</td></tr>').join('')
+    : '<tr><td colspan="5" class="dim">还没有人玩（2026-10-16 起开始记）</td></tr>';
+  const days = ((g && g.days) || []).map(x => '<tr><td>' + x.day + '</td>'
+    + '<td class="n">' + x.rounds + '</td><td class="n">' + x.players + '</td><td class="n">' + x.rooms + '</td></tr>').join('');
+  // 玩的人来自哪里（只按国家/地区，服务器只存两位代码，不存 IP）
+  const ccToday = {};
+  ((g && g.countries) || []).forEach(x => { ccToday[x.cc] = x.n; });
+  const ccAll = (g && g.countriesAll) || [];
+  const ccRows = ccAll.length
+    ? ccAll.map(x => '<tr><td>' + ccName(x.cc) + ' <span class="dash">' + x.cc + '</span></td>'
+        + '<td class="n">' + (ccToday[x.cc] || 0) + '</td><td class="n">' + x.n + '</td></tr>').join('')
+    : '<tr><td colspan="3" class="dim">今天还没有带地区的数据（2026-10-17 起才开始记，之前的补不回来）</td></tr>';
+  return cards +
+    '<table class="wide"><tr><td>玩法 · 口径</td><td class="n">今日</td><td class="n">累计</td><td class="n">今日人数</td><td class="n">累计人数</td></tr>' + body + '</table>' +
+    '<p class="dim">「人数」按浏览器去重（同一台设备开几次都算 1 人，清掉浏览器数据会重新计），比真实人数偏少；只记动作，不记 IP、不记身份。联机的局数由服务端记，一局只算一次。</p>' +
+    '<h2>48 小游戏 · 玩的人来自哪里</h2><table><tr><td>国家·地区</td><td class="n">今日</td><td class="n">累计</td></tr>' + ccRows + '</table>' +
+    '<p class="dim">口径 = 访问时 Cloudflare 判定的出口国家/地区，<b>只存两位代码，不存 IP、不存城市</b>，一个人（同一浏览器）在同一国家只算 1 次。' +
+    '它统计的是 IP 出口地不是籍贯，用梯子会显示梯子的地区；同一 WiFi 下多人也只算 1 人。2026-10-17 起启用，之前的补不回来。</p>' +
+    '<h2>最近 7 天（局数 / 玩过的人 / 房间）</h2><table><tr><td>日期</td><td class="n">局数</td><td class="n">玩过的人</td><td class="n">房间</td></tr>' + days + '</table>';
+}
+
+async function loadGame() {
+  const box = document.getElementById('game');
+  if (!box) return;
+  loadRooms();   // 房间明细单独拉，互不影响
+  try {
+    const r = await fetch(GAME_API, { cache: 'no-store' });
+    if (!r.ok) throw new Error('接口返回 HTTP ' + r.status);
+    const g = await r.json();
+    if (g && g.error) throw new Error(g.error);
+    box.innerHTML = gameHtml(g);
+  } catch (e) {
+    // 小游戏那台 Worker 万一挂了 / 被限流，只影响这一栏，上面的统计照常看
+    box.innerHTML = '<p class="dim">小游戏数据暂时读不到（' + (e && e.message ? e.message : '未知错误') + '），上面其它统计不受影响。</p>';
+  }
+}
+
+/* ---------- 房间明细：哪一天、哪个游戏、房间号、谁开的 ---------- */
+function roomHtml(d) {
+  const rows = (d && d.rows) || [];
+  if (!rows.length) return '<h2>48 小游戏 · 开的房间</h2><p class="dim">最近 7 天没有联机房间记录。</p>';
+  const byDay = {};
+  rows.forEach(r => { (byDay[r.day] = byDay[r.day] || []).push(r); });
+  const days = Object.keys(byDay).sort().reverse();
+  const blocks = days.map((day, i) => {
+    const list = byDay[day];
+    const trs = list.map(r =>
+      '<tr><td>' + esc(GAME_NAME[r.g] || r.g) + '</td>' +
+      '<td><code>' + esc(r.r) + '</code></td>' +
+      '<td>' + (r.name ? esc(r.name) : '<span class="dash">—</span>') + '</td></tr>'
+    ).join('');
+    return '<details' + (i === 0 ? ' open' : '') + '><summary>' + esc(day) + ' · ' + list.length + ' 间</summary>' +
+      '<table class="wide"><tr><td>游戏</td><td>房间号</td><td>谁开的</td></tr>' + trs + '</table></details>';
+  }).join('');
+  return '<h2>48 小游戏 · 开的房间</h2>' + blocks +
+    '<p class="dim">口径：一个房间号只算一间，记的是<b>第一个进房的人</b>（一般是房主）。' +
+    '「谁开的」这列 <b>2026-10-17 起才开始记</b>，更早的房间只有房间号（当时没存昵称，补不回来）。' +
+    '昵称是玩家自己输入的，只存到统计库、不对外展示；自动化测试开的房间整间不入库。</p>';
+}
+
+async function loadRooms() {
+  const box = document.getElementById('rooms');
+  if (!box) return;
+  try {
+    const r = await fetch(ROOM_API, { cache: 'no-store' });
+    if (!r.ok) throw new Error('接口返回 HTTP ' + r.status);
+    const d = await r.json();
+    if (d && d.error) throw new Error(d.error);
+    box.innerHTML = roomHtml(d);
+  } catch (e) {
+    box.innerHTML = '<h2>48 小游戏 · 开的房间</h2><p class="dim">房间明细暂时读不到（' +
+      esc(e && e.message ? e.message : '未知错误') + '）。</p>';
+  }
+}
+
+/* ---------- 站点体检（2026-10-26）----------
+ * 数据来自 all48 worker 的 /api/status，每项是 { k, name, level, ageSec, main, sub }。
+ * 这个 tab 只看「新鲜度和条数」，接口里没有任何成员或送礼人明细。
+ */
+const LV_NAME = { ok: '正常', warn: '注意', bad: '异常' };
+const LV_COLOR = { ok: '#4ade80', warn: '#fbbf24', bad: '#f87171' };
+
+function agoText(s) {
+  if (s == null || s < 0) return '—';
+  if (s < 60) return s + ' 秒前';
+  if (s < 3600) return Math.round(s / 60) + ' 分钟前';
+  if (s < 86400) return (s / 3600).toFixed(1).replace(/\.0$/, '') + ' 小时前';
+  return (s / 86400).toFixed(1).replace(/\.0$/, '') + ' 天前';
+}
+
+function healthHtml(j) {
+  const items = (j && j.items) || [];
+  const v = (j && j.verdict) || 'bad';
+  const dot = l => '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'
+    + (LV_COLOR[l] || '#8b90a0') + ';margin-right:7px;vertical-align:1px"></span>';
+  const rows = items.length
+    ? items.map(i => '<tr><td>' + dot(i.level) + esc(i.name) + '</td>'
+        + '<td class="n" style="color:' + (LV_COLOR[i.level] || '#e8eaf2') + '">' + (LV_NAME[i.level] || i.level) + '</td>'
+        + '<td class="n">' + agoText(i.ageSec) + '</td>'
+        + '<td class="n">' + esc(i.main) + '</td></tr>').join('')
+    : '<tr><td colspan="4" class="dim">没有读到任何数据源</td></tr>';
+  return '<div class="cards">'
+      + '<div class="card"><div class="k">总体</div><div class="v" style="color:' + (LV_COLOR[v] || '#e8eaf2') + '">'
+      + (LV_NAME[v] || v) + '</div><div class="k" style="margin-top:6px">' + esc((j && j.day) || '') + '</div></div>'
+      + '<div class="card"><div class="k">检查项</div><div class="v">' + items.length + '</div>'
+      + '<div class="k" style="margin-top:6px">每 60 秒自动刷新</div></div>'
+    + '</div>'
+    + '<h2>各条链路</h2><table class="wide"><tr><td>数据源</td><td class="n">状态</td><td class="n">多久前</td><td class="n">情况</td></tr>'
+    + rows + '</table>'
+    + '<p class="dim">判据是<b>数据多久没进库</b>，不是 GitHub 的状态 —— Actions 挂了、被限流、只是跑得慢，结果都一样：数据停了。'
+    + '「直播热窗」由 sync.yml 每 15 分钟上报一次，<b>没有在播场次时本来就不一定写</b>，所以阈值放到 25 分钟 / 1 小时；'
+    + '「红蓝歌会礼物」每 2 分钟一轮，5 分钟不进库就不正常。'
+    + '这个页只有新鲜度和条数，<b>不含任何成员或送礼人明细</b>。</p>';
+}
+
+async function loadHealth() {
+  const box = document.getElementById('pane-health');
+  if (!box) return;
+  // 已经有内容就别闪成「读取中」，后台刷完再换
+  if (box.innerHTML.indexOf('各条链路') < 0) box.innerHTML = '<p class="dim">读取中…</p>';
+  try {
+    const r = await fetch(HEALTH_API, { cache: 'no-store' });
+    if (!r.ok) throw new Error('接口返回 HTTP ' + r.status);
+    const j = await r.json();
+    if (j && j.error) throw new Error(j.error);
+    box.innerHTML = healthHtml(j);
+  } catch (e) {
+    box.innerHTML = '<p class="dim">体检数据暂时读不到（' + esc(e && e.message ? e.message : '未知错误')
+      + '）。<button id="hretry" type="button" style="flex:0 0 auto;padding:4px 10px;margin-left:8px;border:0;border-radius:7px;background:#1c1f2b;color:#8b90a0;cursor:pointer;font-family:inherit">重试</button></p>';
+    const b = document.getElementById('hretry');
+    if (b) b.addEventListener('click', loadHealth);
+  }
+}
+
+/* ---------- 红蓝歌会页（all48 的 /gift · /gift-contrib · /gift-rush）----------
+ * 2026-10-27 从 all48 站的 /gift-stats 搬到这里（那个页已下线），数据还在原 Worker 上，
+ * 所以这里是跨域读 https://all48-archive.yqz-tansy.workers.dev/api/stats。
+ * 口径：
+ *   pv  = 打开次数 ≈ 会话数（一次会话关页面 / 切后台时上报一条）
+ *   sd  = 停留秒数合计（单次封顶 1 小时，避免挂夜标签页毁掉平均值）
+ *   q   = 用过搜索的会话数
+ *   p / tb / fm = 从哪页进来、切过哪些 tab、tab 之间的先后顺序
+ *   mb  = 成员被点开的次数（只记计数，不记谁点的）
+ * 全部是计数，不含 IP、不含身份、不含 uid。
+ */
+const RB_API = 'https://all48-archive.yqz-tansy.workers.dev/api/stats?k=wyc-stats-2026';
+const RB_PAGE = {
+  '/gift': '红蓝歌会 /gift',
+  '/gift-contrib': '贡献分析 /gift-contrib',
+  '/gift-rush': '冲刺预测 /gift-rush',
+};
+const RB_TAB = { member: '成员榜', contrib: '贡献分析', rush: '冲刺预测' };
+const RB_RANGE = { 1: '今天', 3: '近 3 天', 7: '近 7 天' };
+let rbRange = 7, rbDays = [], rbLoaded = false, rbBusy = false;
+
+// 北京时间往回推 n 天，返回 YYYYMMDD（服务端 to 默认今天，所以只传 from）
+function bjDayBack(back) {
+  const d = new Date(Date.now() + 8 * 3600e3 - Math.max(0, back) * 86400e3);
+  return '' + d.getUTCFullYear() + String(d.getUTCMonth() + 1).padStart(2, '0')
+    + String(d.getUTCDate()).padStart(2, '0');
+}
+
+function rbAgg(days) {
+  const a = { pv: 0, sd: 0, q: 0, p: {}, r: {}, dv: {}, tb: {}, fm: {}, mb: {}, fl: {} };
+  const add = (t, m) => {
+    if (!m || typeof m !== 'object') return;
+    for (const k in m) t[k] = (t[k] || 0) + (Number(m[k]) || 0);
+  };
+  (days || []).forEach((d) => {
+    a.pv += Number(d.pv) || 0;
+    a.sd += Number(d.sd) || 0;
+    a.q += Number(d.q) || 0;
+    add(a.p, d.p); add(a.r, d.r); add(a.dv, d.dv); add(a.tb, d.tb);
+    add(a.fm, d.fm); add(a.mb, d.mb); add(a.fl, d.fl);
+  });
+  return a;
+}
+
+function durText(s) {
+  s = Math.max(0, Math.round(s || 0));
+  if (s < 60) return s + ' 秒';
+  const m = Math.floor(s / 60), r = s % 60;
+  return m + ' 分' + (r ? ' ' + r + ' 秒' : '');
+}
+
+// 通用「计数表」：nameFn 负责把 key 变成人话，pct 有 total 时才算占比
+function rbRows(map, nameFn, total, top) {
+  let arr = Object.keys(map || {}).map((k) => [k, map[k]]).sort((x, y) => y[1] - x[1]);
+  if (top && arr.length > top) arr = arr.slice(0, top);
+  if (!arr.length) return '<tr><td colspan="3" class="dim">暂无记录</td></tr>';
+  return arr.map(([k, v]) => '<tr><td>' + nameFn(k) + '</td><td class="n">' + v + '</td><td class="n">'
+    + (total ? Math.round((v / total) * 100) + '%' : '-') + '</td></tr>').join('');
+}
+
+function rbChips() {
+  return '<div class="chips">' + Object.keys(RB_RANGE).map((n) =>
+    '<button class="chip" type="button" data-r="' + n + '" aria-pressed="'
+    + (Number(n) === rbRange) + '">' + RB_RANGE[n] + '</button>').join('') + '</div>';
+}
+
+function rbHtml() {
+  const a = rbAgg(rbDays);
+  const pv = a.pv;
+  const avg = pv ? a.sd / pv : 0;
+  const qr = pv ? Math.round((a.q / pv) * 100) : 0;
+  const dvAll = (a.dv.phone || 0) + (a.dv.pad || 0) + (a.dv.pc || 0);
+  const phonePct = dvAll ? Math.round(((a.dv.phone || 0) / dvAll) * 100) : 0;
+
+  const cards = '<div class="cards">'
+    + '<div class="card"><div class="k">打开次数</div><div class="v">' + pv + '</div>'
+      + '<div class="k" style="margin-top:6px">' + (rbDays.length ? rbDays.length + ' 天有数据' : '暂无') + '</div></div>'
+    + '<div class="card"><div class="k">平均停留</div><div class="v">' + (pv ? durText(avg) : '—') + '</div></div>'
+    + '<div class="card"><div class="k">搜索率</div><div class="v">' + (pv ? qr + '%' : '—') + '</div>'
+      + '<div class="k" style="margin-top:6px">' + a.q + ' 次搜索</div></div>'
+    + '<div class="card"><div class="k">手机</div><div class="v">' + (dvAll ? phonePct + '%' : '—') + '</div></div>'
+    + '</div>';
+
+  const tabName = (k) => (RB_TAB[k] || esc(k));
+  const flowName = (k) => String(k).split('>').map((x) => RB_TAB[x] || esc(x)).join(' → ');
+
+  return cards
+    + '<h3 style="font-size:14px;margin:16px 0 8px">从哪个页面进来</h3>'
+    + '<table class="wide"><tr><td>页面</td><td class="n">次数</td><td class="n">占比</td></tr>'
+    + rbRows(a.p, (k) => RB_PAGE[k] || esc(k), pv) + '</table>'
+    + '<h3 style="font-size:14px;margin:16px 0 8px">切过哪些 tab（含先后顺序）</h3>'
+    + '<table class="wide"><tr><td>标签</td><td class="n">次数</td><td class="n">占比</td></tr>'
+    + rbRows(a.tb, tabName, 0) + '</table>'
+    + '<table class="wide" style="margin-top:8px"><tr><td>浏览路径</td><td class="n">次数</td><td class="n"></td></tr>'
+    + rbRows(a.fm, flowName, 0) + '</table>'
+    + '<h3 style="font-size:14px;margin:16px 0 8px">筛选习惯</h3>'
+    + '<table class="wide"><tr><td>筛选项</td><td class="n">次数</td><td class="n"></td></tr>'
+    + rbRows(a.fl, (k) => esc(k), 0) + '</table>'
+    + '<h3 style="font-size:14px;margin:16px 0 8px">被点开最多的成员（前 20）</h3>'
+    + '<table class="wide"><tr><td>成员</td><td class="n">被点开</td><td class="n"></td></tr>'
+    + rbRows(a.mb, (k) => esc(k), 0, 20) + '</table>'
+    + '<h3 style="font-size:14px;margin:16px 0 8px">人从哪来</h3>'
+    + '<table class="wide"><tr><td>来源</td><td class="n">次数</td><td class="n">占比</td></tr>'
+    + rbRows(a.r, (k) => (k === 'direct' ? '直接打开 / 书签' : esc(k)), pv) + '</table>'
+    + '<h3 style="font-size:14px;margin:16px 0 8px">逐日</h3>'
+    + '<table><tr><td>日期</td><td class="n">打开</td><td class="n">平均停留</td><td class="n">搜索率</td></tr>'
+    + (rbDays.length
+        ? rbDays.map((d) => '<tr><td>' + d.d + '</td><td class="n">' + (d.pv || 0) + '</td>'
+            + '<td class="n">' + (d.pv ? durText((d.sd || 0) / d.pv) : '—') + '</td>'
+            + '<td class="n">' + (d.pv ? Math.round(((d.q || 0) / d.pv) * 100) + '%' : '—') + '</td></tr>').join('')
+        : '<tr><td colspan="4" class="dim">这段时间还没有数据</td></tr>')
+    + '</table>'
+    + '<p class="dim">这个口径是<b>按会话计数，不是按人</b>：同一个人开两次页面算两次。「打开次数」＝上报条数（'
+    + '一次会话关页面 / 切后台时报一条），所以和别的站的 UV 不一样，别和上面那张表直接对。「平均停留」'
+    + '单次封顶 1 小时。成员榜是<b>被点开的次数</b>，不记谁点的，全站只存计数、不存 IP、不存 uid。</p>';
+}
+
+async function loadRb() {
+  const box = document.getElementById('rb');
+  if (!box || rbBusy) return;
+  rbBusy = true;
+  if (!rbLoaded) box.innerHTML = '<p class="dim">读取中…</p>';
+  try {
+    const r = await fetch(RB_API + '&from=' + bjDayBack(rbRange - 1), { cache: 'no-store' });
+    if (!r.ok) throw new Error('接口返回 HTTP ' + r.status + (r.status === 403 ? '（口令不对）' : ''));
+    const j = await r.json();
+    if (j && j.error) throw new Error(j.error);
+    rbDays = (j && j.days) || [];
+    rbLoaded = true;
+    box.innerHTML = rbChips() + rbHtml();
+    box.querySelectorAll('.chip').forEach((b) => {
+      b.addEventListener('click', () => {
+        const n = Number(b.dataset.r) || 7;
+        if (n === rbRange) return;
+        rbRange = n;
+        loadRb();
+      });
+    });
+  } catch (e) {
+    box.innerHTML = '<p class="dim">红蓝页的数据暂时读不到（'
+      + esc(e && e.message ? e.message : '未知错误') + '），上面其它统计不受影响。</p>';
+  } finally {
+    rbBusy = false;
+  }
+}
+
+function showErr(msg) {
+  const ld = document.getElementById('loading');
+  if (ld) ld.hidden = true;
+  const el = document.getElementById('err');
+  el.hidden = false;
+  el.innerHTML = '<p class="err">' + msg + ' <button id="retry" type="button">重试</button></p>';
+  const b = document.getElementById('retry');
+  if (b) b.addEventListener('click', () => { el.hidden = true; load(2); });
+  document.getElementById('body').hidden = false;
+}
+
+// 带超时 + 自动重试（网络抖动 / 边缘节点偶发挂起时不会一直空白）
+// 超时给 20 秒：服务端要并发读上百个 KV 键，冷启动偶尔要好几秒
+async function load(retry = 2) {
+  const ld = document.getElementById('loading');
+  if (ld) ld.hidden = false;
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort('20 秒没响应'), 20000);
+  try {
+    const r = await fetch(API, { signal: ctl.signal, cache: 'no-store' });
+    clearTimeout(timer);
+    if (!r.ok) throw new Error('接口返回 HTTP ' + r.status);
+    const j = await r.json();
+    if (j && j.error) throw new Error(j.error === 'stats-timeout' ? '服务端算统计超时' : j.error);
+    render(j);
+  } catch (e) {
+    clearTimeout(timer);
+    if (retry > 0) { setTimeout(() => load(retry - 1), 1200); return; }
+    showErr('读取失败（' + (e && e.message ? e.message : '未知错误') + '）。');
+  }
+}
+
+async function submit() {
+  const v = document.getElementById('pw').value || '';
+  let hash = '';
+  try { hash = await sha256(v); } catch (_) { hash = ''; }
+  if (hash && hash === PASS_SHA) {
+    try { localStorage.setItem('statsPw', '1'); } catch (_) { /* 隐私模式忽略 */ }
+    document.getElementById('gate').hidden = true;
+    load();
+  } else {
+    document.getElementById('msg').textContent = '密码不对';
+  }
+}
+
+document.getElementById('go').addEventListener('click', submit);
+document.getElementById('pw').addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
+document.querySelectorAll('.tab').forEach(b => {
+  b.addEventListener('click', () => switchTab(b.dataset.tab));
+});
+
+// 体检每 60 秒自己刷一次（只在这个 tab 正显示时才拉，切走就不打扰）
+setInterval(() => {
+  const b = document.getElementById('body');
+  if (curTab === 'health' && b && !b.hidden) loadHealth();
+}, 60000);
+
+// 启动：本机已输过密码就免输（只记在本机浏览器里）
+function boot() {
+  let seen = false;
+  try { seen = localStorage.getItem('statsPw') === '1'; } catch (_) { /* 隐私模式 */ }
+  if (seen) {
+    document.getElementById('gate').hidden = true;
+    load();
+  } else {
+    try { document.getElementById('pw').focus(); } catch (_) { /* 忽略 */ }
+  }
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+else boot();
+</script>
