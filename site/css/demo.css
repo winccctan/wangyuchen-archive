@@ -1626,3 +1626,66 @@ body[data-skin] .site-header {
 .calbox-ul li { margin: 0 0 6px; line-height: 1.65; font-size: 12.5px; }
 .calbox-ul b { color: #2b3d46; }
 .calbox-note { margin: 10px 0 0; font-size: 11.5px; color: #8a97a4; line-height: 1.65; }
+
+/* =====================================================================
+   ⑱ 里程碑倒计时条（2026.11.28 首场定制公演）
+   站长 2026-10-30：要「细窄、不占版面」 → 单行 34px，无阴影、无大色块
+   配色跟票根（深墨青 + 金）一套：米金底 + 墨青徽标，别做成蓝色通知条
+   ===================================================================== */
+.ms-bar {
+  display: flex; align-items: center; gap: 8px;
+  /* 宽度跟 .tabs 的内容区严格对齐：tabs 是 max-width 960 + padding 0 16px，
+     所以这里 max-width 928（960-32）、左右各 16px ⇒ 左边缘与 tab 文字同一条竖线 */
+  width: calc(100% - 32px); max-width: 928px; margin: 14px auto 0;
+  padding: 6px 11px; border-radius: 10px;
+  background: #fbf5e8; border: 1px solid #e7dac0;
+  font-family: inherit; font-size: 13px; line-height: 1.35; color: #26343c;
+  text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transition: border-color .15s, background .15s;
+}
+/* 条压在 tabs 之上时，把 tabs 原本的 16px 上边距收窄：
+   条属于头部信息，和导航贴紧一点，别在两者之间留一道空 */
+.ms-bar + .tabs { margin-top: 8px; }
+.ms-bar:hover { background: #f8f0dd; border-color: #dccaa6; }
+.ms-bar:active { background: #f4ecd6; }
+.ms-badge {
+  flex: 0 0 auto; font-size: 11.5px; font-weight: 700; letter-spacing: .3px;
+  color: #f0dfb8; background: linear-gradient(135deg, #14343f, #0f2e37);
+  padding: 2px 7px; border-radius: 6px;
+}
+.ms-t {
+  flex: 0 1 auto; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* 撑开中间，把倒计时推到最右（左聚右散，桌面不留一团空） */
+.ms-sp { flex: 1 1 auto; }
+.ms-n { flex: 0 0 auto; font-size: 12.5px; font-weight: 700; color: #8a6a32; }
+.ms-a { flex: 0 0 auto; margin-left: -2px; font-size: 15px; line-height: 1; color: #c9b182; }
+
+/* 票根浮层 */
+.ms-modal {
+  position: fixed; inset: 0; z-index: 320; padding: 18px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(12, 26, 30, .58);
+}
+/* 🔴 作者样式里的 display:flex 会盖掉浏览器默认的 [hidden]{display:none}，必须显式声明 */
+.ms-modal[hidden] { display: none; }
+.ms-sheet {
+  width: 100%; max-width: 520px; padding: 12px;
+  background: #fff; border-radius: 16px; box-shadow: 0 20px 50px rgba(8, 26, 30, .34);
+}
+.ms-pic { display: block; width: 100%; border-radius: 10px; }
+/* 2026-10-30：浮层里那句说明删了（站长：「这场，是她自己排的 去掉」）
+   → 票根图下直接跟按钮，间距单独给足，别贴着 */
+.ms-acts { display: flex; gap: 8px; margin-top: 12px; }
+.ms-btn {
+  flex: 1 1 auto; padding: 10px 8px; border-radius: 10px;
+  border: 1px solid #e7dac0; background: #fff; color: #26343c;
+  font-family: inherit; font-size: 14px; line-height: 1.2; cursor: pointer;
+}
+.ms-btn:hover { background: #fbf5e8; }
+.ms-btn.primary {
+  background: linear-gradient(135deg, #14343f, #0f2e37); color: #f0dfb8;
+  border-color: transparent; font-weight: 600;
+}
+.ms-btn.primary:hover { filter: brightness(1.15); }
