@@ -1,9 +1,9 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-10-30T15:08:37.847Z",
-  "count": 759,
-  "matched": 526,
+  "updatedAt": "2026-10-30T20:51:58.945Z",
+  "count": 761,
+  "matched": 528,
   "replays": 267,
-  "clips": 492,
+  "clips": 494,
   "targets": [
     {
       "mid": "1805448354",
@@ -28,6 +28,36 @@ window.LIVE_CUTS = {
     "358477444:space": 4
   },
   "cuts": [
+    {
+      "bvid": "BV1M7xz6sE7k",
+      "title": "cc现场沉浸式re珺珺做平板支撑【王语晨&王珺】",
+      "created": 1793378759,
+      "date": "2026-10-31",
+      "titleDate": "",
+      "kind": "cut",
+      "cover": "http://i2.hdslb.com/bfs/archive/05b1c25d4545e0c336377e8715b852a86eb95224.jpg",
+      "url": "https://www.bilibili.com/video/BV1M7xz6sE7k",
+      "up": "忘记自己是猪",
+      "mid": "1805448354",
+      "collection": "",
+      "liveId": "1323032975660355584",
+      "liveDate": "2026-10-30"
+    },
+    {
+      "bvid": "BV1Ubxi6JEaL",
+      "title": "【王语晨】感觉每次运动会广芭的衣服都是最丑的，今天王珺穿了之后像餐厅打饭的阿姨",
+      "created": 1793375240,
+      "date": "2026-10-30",
+      "titleDate": "",
+      "kind": "cut",
+      "cover": "http://i2.hdslb.com/bfs/archive/d0d90445475a1a566cad381b7c9fa44977988230.jpg",
+      "url": "https://www.bilibili.com/video/BV1Ubxi6JEaL",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨直播cut",
+      "liveId": "1323032975660355584",
+      "liveDate": "2026-10-30"
+    },
     {
       "bvid": "BV1prxi63E3g",
       "title": "【王语晨】20261030 直播回放",
