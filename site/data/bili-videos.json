@@ -1,6 +1,6 @@
 {
-  "updatedAt": "2026-10-29T21:15:54.263Z",
-  "count": 1358,
+  "updatedAt": "2026-10-30T05:57:45.616Z",
+  "count": 1359,
   "targets": [
     {
       "mid": "2086351451",
@@ -30,6 +30,15 @@
     "2086351451:space": 2
   },
   "videos": [
+    {
+      "bvid": "BV1yXxY6KEEA",
+      "aid": 117527971627224,
+      "title": "【王语晨】20231103 GNZ48 Team NIII《启程：Team NIII》公演cut",
+      "created": 1793334803,
+      "duration": 1698,
+      "play": 8,
+      "mid": "358477444"
+    },
     {
       "bvid": "BV1NVxc6CEY2",
       "aid": 117524918179386,
