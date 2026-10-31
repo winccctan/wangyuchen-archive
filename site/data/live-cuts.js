@@ -1,9 +1,9 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-10-31T06:03:09.646Z",
-  "count": 766,
-  "matched": 532,
-  "replays": 267,
-  "clips": 499,
+  "updatedAt": "2026-10-31T14:35:42.753Z",
+  "count": 768,
+  "matched": 534,
+  "replays": 268,
+  "clips": 500,
   "targets": [
     {
       "mid": "1805448354",
@@ -28,6 +28,36 @@ window.LIVE_CUTS = {
     "358477444:space": 4
   },
   "cuts": [
+    {
+      "bvid": "BV1jTx16xEtx",
+      "title": "【王语晨】20261031 直播回放",
+      "created": 1793447561,
+      "date": "2026-10-31",
+      "titleDate": "2026-10-31",
+      "kind": "replay",
+      "cover": "http://i2.hdslb.com/bfs/archive/76f7e3dbeb63220fc24734c6494da7a0ae0679c7.jpg",
+      "url": "https://www.bilibili.com/video/BV1jTx16xEtx",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨直播回放",
+      "liveId": "1323302663833325568",
+      "liveDate": "2026-10-31"
+    },
+    {
+      "bvid": "BV1smxk6hELV",
+      "title": "【王语晨 徐钰涵】圣:你敢爬吗？cc:不敢。圣:如果给你十万鸡腿呢？cc:爬，给我一万我也爬，爬不爬的过去另说。",
+      "created": 1793437769,
+      "date": "2026-10-31",
+      "titleDate": "",
+      "kind": "cut",
+      "cover": "http://i1.hdslb.com/bfs/archive/5427aca75e07a7a870583d767a95986788042d5f.jpg",
+      "url": "https://www.bilibili.com/video/BV1smxk6hELV",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨直播cut",
+      "liveId": "1323302663833325568",
+      "liveDate": "2026-10-31"
+    },
     {
       "bvid": "BV1M7xz6sE7k",
       "title": "cc现场沉浸式re珺珺做平板支撑【王语晨&王珺】",
