@@ -1,9 +1,9 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-10-31T20:02:58.050Z",
-  "count": 768,
+  "updatedAt": "2026-11-01T15:20:34.027Z",
+  "count": 770,
   "matched": 534,
-  "replays": 268,
-  "clips": 500,
+  "replays": 269,
+  "clips": 501,
   "targets": [
     {
       "mid": "1805448354",
@@ -28,6 +28,32 @@ window.LIVE_CUTS = {
     "358477444:space": 4
   },
   "cuts": [
+    {
+      "bvid": "BV1o7xb6yEbj",
+      "title": "【王语晨】20261101 直播回放",
+      "created": 1793540522,
+      "date": "2026-11-01",
+      "titleDate": "2026-11-01",
+      "kind": "replay",
+      "cover": "http://i1.hdslb.com/bfs/archive/58a4238312c0dcb5d4ae9e018d0b4f8191e841ac.jpg",
+      "url": "https://www.bilibili.com/video/BV1o7xb6yEbj",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨公演cut"
+    },
+    {
+      "bvid": "BV1grxW6XEf4",
+      "title": "【王语晨】20261101《Red 30》联合公演cut",
+      "created": 1793521668,
+      "date": "2026-11-01",
+      "titleDate": "2026-11-01",
+      "kind": "cut",
+      "cover": "http://i2.hdslb.com/bfs/archive/337912ee283c5503c4bd5d1e3344cb28a84c73e0.jpg",
+      "url": "https://www.bilibili.com/video/BV1grxW6XEf4",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨公演cut"
+    },
     {
       "bvid": "BV1jTx16xEtx",
       "title": "【王语晨】20261031 直播回放",
