@@ -2547,5 +2547,23 @@
   "song": "再见制服",
   "type": "unit",
   "src": "Chzhnh"
+ },
+ {
+  "bvid": "BV1grxW6XEf4",
+  "p": 1,
+  "d": "2026-11-01",
+  "occ": "",
+  "song": "全场瞩目",
+  "type": "unit",
+  "src": "Chzhnh"
+ },
+ {
+  "bvid": "BV1grxW6XEf4",
+  "p": 3,
+  "d": "2026-11-01",
+  "occ": "",
+  "song": "辛德瑞拉",
+  "type": "unit",
+  "src": "Chzhnh"
  }
 ]
