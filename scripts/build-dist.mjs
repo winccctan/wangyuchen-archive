@@ -95,7 +95,17 @@ const files = [
   'js/day.js',
   // —— 2026-10-30 新增：⑱ 11.28 首场定制公演倒计时条 + 票根（摆在 tabs 之上）——
   // 🔴 漏了就是「首页顶部什么都没有」，而且不会报错（脚本 404 静默失败）。
-  'js/milestone.js'
+  'js/milestone.js',
+  // —— 2026-11-02 新增：抽票根 B 套「微博美图」8 款的底图（本机 canvas 合成，必须同源）——
+  // 🔴 漏一张就是「抽到那款是一张没有照片的空票」，也不报错。
+  'assets/wb-night.jpg',
+  'assets/wb-red.jpg',
+  'assets/wb-spot.jpg',
+  'assets/wb-warm.jpg',
+  'assets/wb-film.jpg',
+  'assets/wb-city.jpg',
+  'assets/wb-ink.jpg',
+  'assets/wb-silver.jpg'
 ];
 
 // 整目录复制：口袋表情图（105 张 gif，共 ~300KB），逐个列白名单不现实

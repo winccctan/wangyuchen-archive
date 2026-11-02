@@ -1671,13 +1671,16 @@ body[data-skin] .site-header {
 /* 🔴 作者样式里的 display:flex 会盖掉浏览器默认的 [hidden]{display:none}，必须显式声明 */
 .ms-modal[hidden] { display: none; }
 .ms-sheet {
-  width: 100%; max-width: 520px; padding: 12px;
+  /* 🔴 2026-11-02 站长：「这个图片能不能不要有白色边」
+     票根铺满卡片宽度、四角直角 → 四周不再露白 sheet 底/白三角 */
+  width: 100%; max-width: 520px; padding: 0 0 12px;
   background: #fff; border-radius: 16px; box-shadow: 0 20px 50px rgba(8, 26, 30, .34);
+  overflow: hidden;
 }
-.ms-pic { display: block; width: 100%; border-radius: 10px; }
+.ms-pic { display: block; width: 100%; border-radius: 0; }
 /* 2026-10-30：浮层里那句说明删了（站长：「这场，是她自己排的 去掉」）
    → 票根图下直接跟按钮，间距单独给足，别贴着 */
-.ms-acts { display: flex; gap: 8px; margin-top: 12px; }
+.ms-acts { display: flex; gap: 8px; margin-top: 12px; padding: 0 12px; }
 .ms-btn {
   flex: 1 1 auto; padding: 10px 8px; border-radius: 10px;
   border: 1px solid #e7dac0; background: #fff; color: #26343c;
@@ -1689,3 +1692,44 @@ body[data-skin] .site-header {
   border-color: transparent; font-weight: 600;
 }
 .ms-btn.primary:hover { filter: brightness(1.15); }
+
+/* ---------------- 抽票根（2026-11-02 上线） ---------------- */
+.ms-stage {
+  position: relative; border-radius: 0; overflow: hidden;
+  background: #0f2e37; min-height: 140px;
+  display: flex; align-items: center; justify-content: center;
+}
+.ms-stage.is-drawing { animation: msShake .45s ease-in-out; }
+@keyframes msShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px) rotate(-.6deg); }
+  75% { transform: translateX(5px) rotate(.6deg); }
+}
+.ms-stage .ms-pic { opacity: 0; transition: opacity .18s; }
+.ms-stage.has-ticket .ms-pic { opacity: 1; }
+.ms-empty { color: #e0c08a; font-size: 34px; font-weight: 600; letter-spacing: 2px; }
+.ms-stage.has-ticket .ms-empty { display: none; }
+
+.ms-head { display: flex; align-items: center; gap: 8px; margin: 10px 0 9px; padding: 0 12px; flex-wrap: wrap; }
+.ms-name { font-size: 14px; font-weight: 600; color: #26343c; }
+/* 两套票根（生写 / 微博）切换，两个词，不放说明文字 */
+.ms-sets { display: flex; gap: 4px; flex: 0 0 auto; }
+.ms-set {
+  padding: 4px 9px; border-radius: 999px; cursor: pointer;
+  border: 1px solid #e7dac0; background: #fff; color: #7a6a4a;
+  font-family: inherit; font-size: 12px; line-height: 1.15;
+}
+.ms-set:hover { background: #fbf5e8; }
+.ms-set.is-on { background: #14343f; border-color: transparent; color: #f0dfb8; font-weight: 600; }
+.ms-rare {
+  font-size: 11px; line-height: 1; padding: 3px 6px; border-radius: 5px;
+  border: 1px solid #e7dac0; color: #8a6a32; background: #fbf5e8;
+}
+.ms-rare[hidden] { display: none; }
+.ms-rare.is-r { color: #8a5a1a; border-color: #dcc08a; background: #fbf1dc; }
+.ms-rare.is-h { color: #4a4f36; border-color: #b9b19a; background: #f3f2ec; }
+.ms-prog { margin-left: auto; font-size: 12px; color: #7a8a90; }
+.ms-prog.is-full { color: #8a6a32; font-weight: 600; }
+
+.ms-acts .ms-btn { flex: 1 1 0; }
+.ms-btn:disabled { opacity: .55; cursor: default; }
