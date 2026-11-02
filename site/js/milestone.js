@@ -2,13 +2,15 @@
    milestone.js —— ⑱ 里程碑：2026.11.28 首场定制公演（她自己排的整场）
    -----------------------------------------------------------------------
    ① 首页一条细窄倒计时（不占版面，一行 34px，压在 .tabs 之上）
-   ② 点开 = 抽票根（两套各 8 款，本机 Canvas 合成）
+   ② 点开 = 抽票根（16 款混着一个池子，本机 Canvas 合成）
    ③ 跨过 11-28 自动换状态，不用改代码
    ④ 记录只存 localStorage（wyc-ms-draw-v2）：不绑 uid、不上传服务器
 
-   抽票根规则（站长 2026-11-02 定）：
-   · 两套各 8 款：A 生写（公式照） / B 微博美图
-     每款 = 她的一张照片 + 一套配色（6 常见 + 2 稀有：墨黑金 / 银白冷调）
+   抽票根规则（站长 2026-11-02 定，同日修订）：
+   · 🔴 不分「生写 / 微博」两套，浮层里也不写款名（站长：「不分微博和生写
+     也不要写什么城市夜色」）—— 16 款进同一个池子混着抽：8 套配色 × 2 张照片
+   · 款名（深夜剧场/城市夜色…）只留在代码里当 id 和排查用，绝不出现在界面上
+   · 只有稀有款露一个小标签「稀有 / 隐藏」；常见款什么都不显示
    · 副券印收藏编号 NO.xxxx（0001-1128，首次抽到该款时定下，之后不变）
    · 座位不抽（真实座位由购票决定）→ 票面不写座位
    · 不限次抽；未集齐时优先出「未拥有」的款，集齐后才随机 → 保证能集齐
@@ -46,9 +48,9 @@
   };
 
   var FONT = '-apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif';
-  var LS = 'wyc-ms-draw-v2';   // v2：加套系，key 带 a:/b: 前缀
+  var LS = 'wyc-ms-draw-v2';   // 键沿用 a:xxx / b:xxx（只当内部 id），旧记录直接兼容
 
-  /* 八款配色（两套共用）。zoom 越大人物越大；fx 0=取左 1=取右；fy 0=取上 1=取下。 */
+  /* 八套配色（两套照片共用）。zoom 越大人物越大；fx 0=取左 1=取右；fy 0=取上 1=取下。 */
   var LOOK = [
     { id: 'night',  name: '深夜剧场', rare: 0, bg: '#0f2e37', cream: '#f7ecd8', gold: '#e0c08a', muted: '#b8cbcf' },
     { id: 'red',    name: '首演朱红', rare: 0, bg: '#3a1114', cream: '#fbeedd', gold: '#e8b873', muted: '#c9a49a' },
@@ -85,10 +87,10 @@
     }
   };
 
-  var SETS = [
-    { id: 'a', name: '生写' },
-    { id: 'b', name: '微博' }
-  ];
+  /* 一套池子：8 套配色 × 2 张照片（a=生写 / b=微博）= 16 款，混在一起抽。
+     🔴 站长 2026-11-02：不分「生写/微博」、不显示款名 —— 照片来源对抽的人没意义，
+     款名（深夜剧场/城市夜色…）只当内部 id，绝不渲染到界面。 */
+  var SETS = ['a', 'b'];
 
   function themesOf(setId) {
     return LOOK.map(function (l) {
@@ -96,22 +98,21 @@
       var t = {};
       for (var k in l) t[k] = l[k];
       for (var j in s) t[j] = s[j];
+      t.key = setId + ':' + l.id;
       return t;
     });
   }
-  var POOL = { a: themesOf('a'), b: themesOf('b') };
-  var TOTAL = LOOK.length;
+  var POOL = [];
+  SETS.forEach(function (sid) { POOL = POOL.concat(themesOf(sid)); });
+  var TOTAL = POOL.length;   // 16
 
-  /* 预载所有图（两套共 16 张，本地文件，canvas 不会跨域污染） */
+  /* 预载所有图（16 张，本地文件，canvas 不会跨域污染） */
   var IMGS = {};
-  ['a', 'b'].forEach(function (sid) {
-    POOL[sid].forEach(function (t) {
-      var key = sid + ':' + t.id;
-      var im = new Image();
-      im.addEventListener('load', function () { im._ok = true; });
-      im.src = t.photo;
-      IMGS[key] = im;
-    });
+  POOL.forEach(function (t) {
+    var im = new Image();
+    im.addEventListener('load', function () { im._ok = true; });
+    im.src = t.photo;
+    IMGS[t.key] = im;
   });
 
   /* ---------------------------- 日期 ---------------------------- */
@@ -132,17 +133,12 @@
   }
 
   /* ------------------------ 抽卡状态（本地） ------------------------ */
-  var state = { cur: 'a', owned: [], nums: {}, count: 0, last: null, lastOf: {} };
+  var state = { owned: [], nums: {}, count: 0, last: null };
 
-  function keyOf(setId, id) { return setId + ':' + id; }
   function themeOfKey(key) {
-    var p = String(key || '').split(':');
-    var sid = p[0], id = p[1];
-    if (!POOL[sid]) return null;
-    for (var i = 0; i < POOL[sid].length; i++) if (POOL[sid][i].id === id) return POOL[sid][i];
+    for (var i = 0; i < POOL.length; i++) if (POOL[i].key === key) return POOL[i];
     return null;
   }
-  function setOfKey(key) { return String(key || '').split(':')[0]; }
 
   function loadState() {
     try {
@@ -150,46 +146,36 @@
       if (!raw) return;
       var s = JSON.parse(raw);
       if (!s) return;
-      var owned = (s.owned || []).map(function (id) { return id.indexOf(':') >= 0 ? id : 'a:' + id; })
-        .filter(function (k) { return !!themeOfKey(k); });
+      var owned = [];
+      (s.owned || []).forEach(function (id) {
+        // v1 的键只有款 id、没有套系前缀 → 当时只有生写套，补 a:
+        var k = String(id).indexOf(':') >= 0 ? id : 'a:' + id;
+        if (themeOfKey(k) && owned.indexOf(k) < 0) owned.push(k);
+      });
       var nums = {};
-      for (var k in (s.nums || {})) nums[k.indexOf(':') >= 0 ? k : 'a:' + k] = s.nums[k];
+      for (var k2 in (s.nums || {})) {
+        var nk = k2.indexOf(':') >= 0 ? k2 : 'a:' + k2;
+        if (themeOfKey(nk)) nums[nk] = s.nums[k2];
+      }
       var last = s.last ? (String(s.last).indexOf(':') >= 0 ? s.last : 'a:' + s.last) : null;
       state = {
-        cur: (s.set === 'b' || s.cur === 'b') ? 'b' : (last && setOfKey(last) === 'b' ? 'b' : 'a'),
         owned: owned,
         nums: nums,
         count: s.count || 0,
-        last: last && themeOfKey(last) ? last : null,
-        lastOf: {}
+        // 合并成一池后不再分套系：上次那张不存在就退回最近拥有的一张
+        last: (last && themeOfKey(last)) ? last : (owned.length ? owned[owned.length - 1] : null)
       };
-      // 每套各自记住「上次抽到的那款」，切套系回来还能看到自己的票
-      ['a', 'b'].forEach(function (sid) {
-        var k = (s.lastOf && s.lastOf[sid]) || null;
-        if (!k || !themeOfKey(k) || setOfKey(k) !== sid) {
-          k = null;
-          for (var i = owned.length - 1; i >= 0; i--) {
-            if (setOfKey(owned[i]) === sid) { k = owned[i]; break; }
-          }
-        }
-        if (k) state.lastOf[sid] = k;
-      });
     } catch (_) {}
   }
   function saveState() {
     try { localStorage.setItem(LS, JSON.stringify(state)); } catch (_) {}
   }
   function isOwned(key) { return state.owned.indexOf(key) >= 0; }
-  function ownedCount(setId) {
-    return POOL[setId].filter(function (t) { return isOwned(keyOf(setId, t.id)); }).length;
-  }
 
   // 未集齐时优先出未拥有款；集齐后随机。稀有款权重低，但池子缩小到只剩它时必出 → 保证集齐。
   function pickTheme() {
-    var sid = state.cur;
-    var all = POOL[sid];
-    var pool = all.filter(function (t) { return !isOwned(keyOf(sid, t.id)); });
-    if (!pool.length) pool = all.slice();
+    var pool = POOL.filter(function (t) { return !isOwned(t.key); });
+    if (!pool.length) pool = POOL.slice();
     var w = pool.map(function (t) { return t.rare === 0 ? 10 : (t.rare === 1 ? 3 : 2); });
     var sum = w.reduce(function (a, b) { return a + b; }, 0);
     var r = Math.random() * sum;
@@ -202,12 +188,10 @@
 
   function drawOnce() {
     var t = pickTheme();
-    var key = keyOf(state.cur, t.id);
-    if (!isOwned(key)) state.owned.push(key);
-    if (!state.nums[key]) state.nums[key] = 1 + Math.floor(Math.random() * 1128);
+    if (!isOwned(t.key)) state.owned.push(t.key);
+    if (!state.nums[t.key]) state.nums[t.key] = 1 + Math.floor(Math.random() * 1128);
     state.count += 1;
-    state.last = key;
-    state.lastOf[state.cur] = key;
+    state.last = t.key;
     saveState();
     return t;
   }
@@ -273,7 +257,7 @@
     x.textBaseline = 'middle';
 
     var CREAM = t.cream, GOLD = t.gold, MUTED = t.muted;
-    var im = IMGS[keyOf(state.cur, t.id)];
+    var im = IMGS[t.key];
     if (!im || !im._ok) im = null;
 
     /* 🔴 满幅直角：不 clip 圆角。圆角只由 CSS 做，导出的 PNG 四角是照片不是透明，
@@ -432,8 +416,8 @@
   }
 
   /* --------------------------- 浮层 --------------------------- */
-  var modal = null, pic = null, stage = null, nameEl = null, rareEl = null, progEl = null;
-  var setsEl = null, saveBtn = null, drawBtn = null, url = '', drawing = false;
+  var modal = null, pic = null, stage = null, rareEl = null, progEl = null;
+  var saveBtn = null, drawBtn = null, url = '', drawing = false;
 
   function ensureModal() {
     if (modal) return;
@@ -447,12 +431,6 @@
           '<img class="ms-pic" id="msPic" alt="2026.11.28 首场定制公演 票根">' +
         '</div>' +
         '<div class="ms-head">' +
-          '<div class="ms-sets" id="msSets">' +
-            SETS.map(function (s) {
-              return '<button type="button" class="ms-set" data-set="' + s.id + '">' + s.name + '</button>';
-            }).join('') +
-          '</div>' +
-          '<span class="ms-name" id="msName">抽一张票根</span>' +
           '<span class="ms-rare" id="msRare" hidden></span>' +
           '<span class="ms-prog" id="msProg"></span>' +
         '</div>' +
@@ -466,10 +444,8 @@
 
     pic = modal.querySelector('#msPic');
     stage = modal.querySelector('#msStage');
-    nameEl = modal.querySelector('#msName');
     rareEl = modal.querySelector('#msRare');
     progEl = modal.querySelector('#msProg');
-    setsEl = modal.querySelector('#msSets');
     saveBtn = modal.querySelector('#msSave');
     drawBtn = modal.querySelector('#msDraw');
 
@@ -477,60 +453,47 @@
     modal.querySelector('#msClose').addEventListener('click', close);
     saveBtn.addEventListener('click', save);
     drawBtn.addEventListener('click', doDraw);
-    setsEl.addEventListener('click', function (e) {
-      var b = e.target.closest ? e.target.closest('.ms-set') : null;
-      if (!b) return;
-      var sid = b.getAttribute('data-set');
-      if (!sid || sid === state.cur) return;
-      state.cur = sid;
-      saveState();
-      paintSets();
-      var k = state.lastOf[sid] || null;
-      var lastT = k ? themeOfKey(k) : null;
-      if (lastT) renderTicket(lastT); else showEmpty();
-    });
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape' && !modal.hidden) close();
     });
   }
 
-  function paintSets() {
-    if (!setsEl) return;
-    var bs = setsEl.querySelectorAll('.ms-set');
-    for (var i = 0; i < bs.length; i++) {
-      var on = bs[i].getAttribute('data-set') === state.cur;
-      bs[i].className = 'ms-set' + (on ? ' is-on' : '');
-      bs[i].setAttribute('aria-pressed', on ? 'true' : 'false');
+  // 只给稀有款贴一个小标签；常见款什么都不显示（站长：不写款名）
+  function paintRare(t) {
+    if (t.rare > 0) {
+      rareEl.hidden = false;
+      rareEl.textContent = t.rare === 2 ? '隐藏' : '稀有';
+      rareEl.className = 'ms-rare' + (t.rare === 2 ? ' is-h' : ' is-r');
+    } else {
+      rareEl.hidden = true;
+      rareEl.className = 'ms-rare';
     }
   }
 
   function updateProg() {
-    var n = ownedCount(state.cur);
-    progEl.textContent = '集齐 ' + n + ' / ' + TOTAL + (n >= TOTAL ? ' · 已集齐' : '');
+    var n = state.owned.length;
+    progEl.textContent = n >= TOTAL
+      ? '集齐 ' + TOTAL + ' / ' + TOTAL + ' · 已集齐'
+      : (n ? '集齐 ' + n + ' / ' + TOTAL : '共 ' + TOTAL + ' 款');
     progEl.className = 'ms-prog' + (n >= TOTAL ? ' is-full' : '');
   }
 
   function renderTicket(t) {
-    var key = keyOf(state.cur, t.id);
-    var serial = state.nums[key] || 1;
+    var serial = state.nums[t.key] || 1;
     url = drawTicket(t, serial);
     pic.src = url || '';
     stage.classList.add('has-ticket');
 
-    nameEl.textContent = t.name;
-    rareEl.hidden = false;
-    rareEl.textContent = t.rare === 2 ? '隐藏' : (t.rare === 1 ? '稀有' : '常见');
-    rareEl.className = 'ms-rare' + (t.rare === 2 ? ' is-h' : (t.rare === 1 ? ' is-r' : ''));
-    paintSets();
+    paintRare(t);
     updateProg();
     saveBtn.disabled = !url;
 
     // 照片还没加载完 → 加载后重画这一款（避免抽出无照片的空票）
-    var im = IMGS[key];
+    var im = IMGS[t.key];
     if (im && !im._ok) {
       var on = function () {
         im.removeEventListener('load', on);
-        if (state.last === key && !modal.hidden) renderTicket(t);
+        if (state.last === t.key && !modal.hidden) renderTicket(t);
       };
       im.addEventListener('load', on);
     }
@@ -540,23 +503,15 @@
     url = '';
     pic.removeAttribute('src');
     stage.classList.remove('has-ticket');
-    nameEl.textContent = '抽一张票根';
     rareEl.hidden = true;
-    paintSets();
     updateProg();
     saveBtn.disabled = true;
   }
 
   function openTicket() {
     ensureModal();
-    var k = state.lastOf[state.cur] || state.last || null;
-    var t = k ? themeOfKey(k) : null;
-    if (t) {
-      state.cur = setOfKey(k);
-      renderTicket(t);
-    } else {
-      showEmpty();
-    }
+    var t = state.last ? themeOfKey(state.last) : null;
+    if (t) renderTicket(t); else showEmpty();
     modal.hidden = false;
     document.body.style.overflow = 'hidden';
     trk('ms:open');

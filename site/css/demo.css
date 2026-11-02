@@ -1707,20 +1707,14 @@ body[data-skin] .site-header {
 }
 .ms-stage .ms-pic { opacity: 0; transition: opacity .18s; }
 .ms-stage.has-ticket .ms-pic { opacity: 1; }
+/* 还没抽过时 img 没有 src，仍会占位把「?」挤到左边 → 没票时直接不显示 */
+.ms-stage:not(.has-ticket) .ms-pic { display: none; }
 .ms-empty { color: #e0c08a; font-size: 34px; font-weight: 600; letter-spacing: 2px; }
 .ms-stage.has-ticket .ms-empty { display: none; }
 
-.ms-head { display: flex; align-items: center; gap: 8px; margin: 10px 0 9px; padding: 0 12px; flex-wrap: wrap; }
-.ms-name { font-size: 14px; font-weight: 600; color: #26343c; }
-/* 两套票根（生写 / 微博）切换，两个词，不放说明文字 */
-.ms-sets { display: flex; gap: 4px; flex: 0 0 auto; }
-.ms-set {
-  padding: 4px 9px; border-radius: 999px; cursor: pointer;
-  border: 1px solid #e7dac0; background: #fff; color: #7a6a4a;
-  font-family: inherit; font-size: 12px; line-height: 1.15;
-}
-.ms-set:hover { background: #fbf5e8; }
-.ms-set.is-on { background: #14343f; border-color: transparent; color: #f0dfb8; font-weight: 600; }
+/* 2026-11-02：不再分「生写/微博」两套、也不写款名（站长）→ 这一行只剩
+   稀有标签 + 集齐进度，居中排；常见款连标签也没有，就一个进度 */
+.ms-head { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 10px 0 9px; padding: 0 12px; flex-wrap: wrap; }
 .ms-rare {
   font-size: 11px; line-height: 1; padding: 3px 6px; border-radius: 5px;
   border: 1px solid #e7dac0; color: #8a6a32; background: #fbf5e8;
@@ -1728,7 +1722,7 @@ body[data-skin] .site-header {
 .ms-rare[hidden] { display: none; }
 .ms-rare.is-r { color: #8a5a1a; border-color: #dcc08a; background: #fbf1dc; }
 .ms-rare.is-h { color: #4a4f36; border-color: #b9b19a; background: #f3f2ec; }
-.ms-prog { margin-left: auto; font-size: 12px; color: #7a8a90; }
+.ms-prog { font-size: 12px; color: #7a8a90; }
 .ms-prog.is-full { color: #8a6a32; font-weight: 600; }
 
 .ms-acts .ms-btn { flex: 1 1 0; }
