@@ -272,16 +272,21 @@
 
   function save() {
     if (!url) return;
+    // 🔴 2026-11-02 修：改用站内统一的「保存到相册」弹层（app.js 的 showAlbumLayer），
+    // 跟站里其它「保存图片」行为一致 —— 手机端走系统分享面板 / 长按，直接进相册；
+    // 绝不用 <a download>，那在手机上只会落进「文件」App 的下载文件夹、进不了相册
+    // （站长 2026-09-23 定：凡是「保存到相册」按钮，点了就必须进相册）。
+    // demo 站没有 showAlbumLayer 时降级回 download，避免按钮失灵。
+    if (typeof window.showAlbumLayer === 'function') {
+      window.showAlbumLayer(url, MS.date.replace(/-/g, ''), '王语晨-1128-票根');
+      return;
+    }
     var a = document.createElement('a');
     a.href = url;
     a.download = '王语晨-1128-票根.png';
     document.body.appendChild(a);
     a.click();
     a.remove();
-    // iOS Safari 不认 download 属性，只能长按保存 → 按钮上直接告诉用户
-    var b = modal.querySelector('#msSave');
-    b.textContent = '已存 / 长按图片也能存';
-    setTimeout(function () { b.textContent = '保存图片'; }, 2400);
   }
 
   /* --------------------------- 启动 --------------------------- */
