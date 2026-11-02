@@ -105,7 +105,22 @@ const files = [
   'assets/wb-film.jpg',
   'assets/wb-city.jpg',
   'assets/wb-ink.jpg',
-  'assets/wb-silver.jpg'
+  'assets/wb-silver.jpg',
+  // —— 2026-11-02 新增：抽票根「动态款」4 段视频（该站 B 站/微博 focus 直拍，
+  //    720×316 循环 10 秒）+ 4 张封面（视频播不出来时兜底）+ 4 段全屏 16 秒版。
+  // 🔴 漏一个就是「票根只有文字层、或者点看点全屏黑屏」，而且不报错。
+  'assets/mv-red30.mp4',
+  'assets/mv-red30-full.mp4',
+  'assets/mv-red30.jpg',
+  'assets/mv-choco.mp4',
+  'assets/mv-choco-full.mp4',
+  'assets/mv-choco.jpg',
+  'assets/mv-shirt.mp4',
+  'assets/mv-shirt-full.mp4',
+  'assets/mv-shirt.jpg',
+  'assets/mv-next18.mp4',
+  'assets/mv-next18-full.mp4',
+  'assets/mv-next18.jpg'
 ];
 
 // 整目录复制：口袋表情图（105 张 gif，共 ~300KB），逐个列白名单不现实

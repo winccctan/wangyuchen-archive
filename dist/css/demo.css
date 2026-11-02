@@ -1712,6 +1712,67 @@ body[data-skin] .site-header {
 .ms-empty { color: #e0c08a; font-size: 34px; font-weight: 600; letter-spacing: 2px; }
 .ms-stage.has-ticket .ms-empty { display: none; }
 
+/* —— 动态款（2026-11-02）：视频铺满票面，上面盖一层透明 canvas 画文字/边角/副券 —— */
+.ms-vid, .ms-layer {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  display: none; object-fit: cover;
+}
+.ms-stage.is-dyn .ms-vid, .ms-stage.is-dyn .ms-layer { display: block; }
+.ms-stage.is-dyn .ms-pic { display: none; }
+/* 视频是绝对定位的，舞台自己得撑出票根的比例（360×158），否则会塌成一条 */
+.ms-stage.is-dyn { aspect-ratio: 360 / 158; min-height: 0; }
+/* 视频加载失败 / 被系统拒绝自动播放 → 退回封面图，票依旧是完整的 */
+.ms-stage.is-dyn.no-vid .ms-vid { display: none; }
+.ms-stage.is-dyn.no-vid .ms-pic { display: block; opacity: 1; }
+.ms-layer { pointer-events: none; }
+/* 票根上的小播放角标（只有动态款才有） */
+.ms-badge-play {
+  position: absolute; right: 8px; bottom: 8px; z-index: 2;
+  display: none; align-items: center; gap: 4px;
+  padding: 3px 7px; border-radius: 999px;
+  background: rgba(12,20,24,.55); color: #f0dfb8;
+  font-size: 10px; line-height: 1; letter-spacing: .5px;
+  backdrop-filter: blur(4px);
+}
+.ms-stage.is-dyn .ms-badge-play { display: flex; }
+
+/* 点「看点」→ 全屏看 16 秒竖版（黑底，点空白或 × 关掉） */
+.ms-play {
+  position: fixed; inset: 0; z-index: 90;
+  display: flex; align-items: center; justify-content: center;
+  background: #05080a;
+}
+.ms-play[hidden] { display: none; }
+.ms-play-v { width: 100%; max-height: 100%; background: #000; }
+.ms-play-x {
+  position: absolute; top: 14px; right: 14px;
+  width: 34px; height: 34px; border-radius: 50%; cursor: pointer;
+  border: 1px solid rgba(255,255,255,.28); background: rgba(0,0,0,.4);
+  color: #fff; font-size: 20px; line-height: 1;
+}
+
+/* 动态款点「保存视频」→ 先把录好的票根放这儿看一遍，再存相册 */
+.ms-vsave {
+  position: fixed; inset: 0; z-index: 95;
+  display: flex; align-items: center; justify-content: center;
+  padding: 18px; background: rgba(6, 10, 12, .86);
+}
+.ms-vsave[hidden] { display: none; }
+.ms-vsave-box {
+  width: 100%; max-width: 430px;
+  background: #12181b; border-radius: 16px; padding: 12px 12px 14px;
+  box-shadow: 0 18px 50px rgba(0,0,0,.55);
+}
+.ms-vsave-v {
+  width: 100%; display: block; border-radius: 10px; background: #000;
+}
+.ms-vsave-tip {
+  margin: 9px 2px 12px; font-size: 12px; line-height: 1.5;
+  color: #9fb0b6; text-align: center;
+}
+.ms-vsave-acts { display: flex; gap: 8px; }
+.ms-vsave-acts .ms-btn { flex: 1 1 0; }
+
 /* 2026-11-02：不再分「生写/微博」两套、也不写款名（站长）→ 这一行只剩
    稀有标签 + 集齐进度，居中排；常见款连标签也没有，就一个进度 */
 .ms-head { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 10px 0 9px; padding: 0 12px; flex-wrap: wrap; }

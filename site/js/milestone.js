@@ -92,6 +92,22 @@
      款名（深夜剧场/城市夜色…）只当内部 id，绝不渲染到界面。 */
   var SETS = ['a', 'b'];
 
+  /* 动态款（2026-11-02 站长：「在原来的基础上加上动态的，原来 16 张静的保留」）
+     —— 静态 16 款一张不动，另加 4 款会动的：票面循环播 10 秒无声视频，
+     文字/边角/副券盖在视频上面。full = 点开票根后放的 16 秒竖版。
+     🔴 素材必须是她本人：全部取自微博 focus 站「爱在黎明前_王语晨」(uid 7730075207)
+     的直拍，单人跟拍镜头；公演全场 cut 里会拍到别的成员，别再用（2026-11-02 踩过）。 */
+  var DYN = [
+    { id: 'mvred30', video: './assets/mv-red30.mp4', full: './assets/mv-red30-full.mp4',
+      poster: './assets/mv-red30.jpg', rare: 1, bg: '#1a0c10', cream: '#f8eae4', gold: '#e0644f', muted: '#b08a84' },
+    { id: 'mvchoco', video: './assets/mv-choco.mp4', full: './assets/mv-choco-full.mp4',
+      poster: './assets/mv-choco.jpg', rare: 1, bg: '#2a1230', cream: '#ffedf6', gold: '#f08cc0', muted: '#b98fb4' },
+    { id: 'mvshirt', video: './assets/mv-shirt.mp4', full: './assets/mv-shirt-full.mp4',
+      poster: './assets/mv-shirt.jpg', rare: 1, bg: '#141d2e', cream: '#eef3fb', gold: '#8fb6e8', muted: '#8fa0bb' },
+    { id: 'mvnext',  video: './assets/mv-next18.mp4', full: './assets/mv-next18-full.mp4',
+      poster: './assets/mv-next18.jpg', rare: 1, bg: '#1b1430', cream: '#f6effc', gold: '#c9a6e8', muted: '#9d8fc0' }
+  ];
+
   function themesOf(setId) {
     return LOOK.map(function (l) {
       var s = SHOTS[setId][l.id];
@@ -104,14 +120,20 @@
   }
   var POOL = [];
   SETS.forEach(function (sid) { POOL = POOL.concat(themesOf(sid)); });
-  var TOTAL = POOL.length;   // 16
+  DYN.forEach(function (d) {
+    var t = {};
+    for (var k in d) t[k] = d[k];
+    t.key = 'm:' + d.id;      // m: = 动态（motion），跟静态的 a:/b: 区分
+    POOL.push(t);
+  });
+  var TOTAL = POOL.length;   // 20 = 16 静 + 4 动
 
-  /* 预载所有图（16 张，本地文件，canvas 不会跨域污染） */
+  /* 预载图（静态 16 张照片 + 动态 4 张封面。封面是视频播不出来时的兜底） */
   var IMGS = {};
   POOL.forEach(function (t) {
     var im = new Image();
     im.addEventListener('load', function () { im._ok = true; });
-    im.src = t.photo;
+    im.src = t.photo || t.poster;
     IMGS[t.key] = im;
   });
 
@@ -262,10 +284,15 @@
 
     /* 🔴 满幅直角：不 clip 圆角。圆角只由 CSS 做，导出的 PNG 四角是照片不是透明，
        否则存进相册/拼图时四角会变白，看起来像有白边。 */
-    x.fillStyle = t.bg;
-    x.fillRect(0, 0, W, H);
+    /* 动态款不铺底、不画照片：这层 canvas 会盖在 <video> 上面，
+       底色必须留透明，否则视频被整块盖住。 */
+    var dyn = !!t.video;
+    if (!dyn) {
+      x.fillStyle = t.bg;
+      x.fillRect(0, 0, W, H);
 
-    if (im) coverPhoto(x, im, 0, 0, W, H, t.zoom, t.fx, t.fy, t.crop);
+      if (im) coverPhoto(x, im, 0, 0, W, H, t.zoom, t.fx, t.fy, t.crop);
+    }
 
     if (t.light) {
       /* —— 珠光银（2026-11-02 重做：原来是「白蒙蒙一片」，站长说太朴素）——
@@ -331,15 +358,16 @@
       x.fillRect(0, 0, W, H);
     } else {
       // 深色款：整张压主题色 → 左侧深渐变 → 副券再压一层
-      x.fillStyle = hexA(t.bg, 0.55);
+      // 动态款压在视频上，整张那层要更薄，否则视频糊成一块色板
+      x.fillStyle = hexA(t.bg, dyn ? 0.10 : 0.55);
       x.fillRect(0, 0, W, H);
       var g = x.createLinearGradient(0, 0, 268, 0);
-      g.addColorStop(0, hexA(t.bg, 0.94));
-      g.addColorStop(0.55, hexA(t.bg, 0.50));
+      g.addColorStop(0, hexA(t.bg, dyn ? 0.80 : 0.94));
+      g.addColorStop(0.55, hexA(t.bg, dyn ? 0.42 : 0.50));
       g.addColorStop(1, hexA(t.bg, 0));
       x.fillStyle = g;
       x.fillRect(0, 0, 268, H);
-      x.fillStyle = hexA(t.bg, 0.40);
+      x.fillStyle = hexA(t.bg, dyn ? 0.58 : 0.40);
       x.fillRect(STUB, 0, W - STUB, H);
     }
 
@@ -417,7 +445,8 @@
 
   /* --------------------------- 浮层 --------------------------- */
   var modal = null, pic = null, stage = null, rareEl = null, progEl = null;
-  var saveBtn = null, drawBtn = null, url = '', drawing = false;
+  var vidEl = null, layerEl = null, playEl = null, saveBtn = null, drawBtn = null;
+  var url = '', drawing = false;
 
   function ensureModal() {
     if (modal) return;
@@ -429,6 +458,11 @@
         '<div class="ms-stage" id="msStage">' +
           '<span class="ms-empty" aria-hidden="true">?</span>' +
           '<img class="ms-pic" id="msPic" alt="2026.11.28 首场定制公演 票根">' +
+          '<video class="ms-vid" id="msVid" muted loop playsinline webkit-playsinline preload="none"></video>' +
+          '<img class="ms-layer" id="msLayer" alt="">' +
+          '<span class="ms-badge-play" id="msPlay" role="button" tabindex="0">' +
+            '<svg viewBox="0 0 10 10" width="7" height="7" aria-hidden="true"><path d="M1 0l8 5-8 5z" fill="currentColor"/></svg>看点' +
+          '</span>' +
         '</div>' +
         '<div class="ms-head">' +
           '<span class="ms-rare" id="msRare" hidden></span>' +
@@ -439,23 +473,85 @@
           '<button type="button" class="ms-btn" id="msSave" disabled>保存图片</button>' +
           '<button type="button" class="ms-btn" id="msClose">关掉</button>' +
         '</div>' +
+      '</div>' +
+      /* 点「看点」→ 全屏放 12 秒版本（黑底、无控件，点一下关掉） */
+      '<div class="ms-play" id="msPlayer" hidden>' +
+        '<video class="ms-play-v" id="msPlayerV" playsinline webkit-playsinline controls></video>' +
+        '<button type="button" class="ms-play-x" id="msPlayerX" aria-label="关掉">\u00d7</button>' +
+      '</div>' +
+      /* 动态款「保存」→ 录一段视频，这里预览 + 存相册 */
+      '<div class="ms-vsave" id="msVsave" hidden>' +
+        '<div class="ms-vsave-box">' +
+          '<video class="ms-vsave-v" id="msVsaveV" playsinline webkit-playsinline loop controls></video>' +
+          '<p class="ms-vsave-tip" id="msVsaveTip">长按视频也能存进相册</p>' +
+          '<div class="ms-vsave-acts">' +
+            '<button type="button" class="ms-btn primary" id="msVsaveSave">保存到相册</button>' +
+            '<button type="button" class="ms-btn" id="msVsaveX">关掉</button>' +
+          '</div>' +
+        '</div>' +
       '</div>';
     document.body.appendChild(modal);
 
     pic = modal.querySelector('#msPic');
     stage = modal.querySelector('#msStage');
+    vidEl = modal.querySelector('#msVid');
+    layerEl = modal.querySelector('#msLayer');
+    playEl = modal.querySelector('#msPlay');
     rareEl = modal.querySelector('#msRare');
     progEl = modal.querySelector('#msProg');
     saveBtn = modal.querySelector('#msSave');
     drawBtn = modal.querySelector('#msDraw');
 
+    // 视频放不出来（低电量模式 / 老浏览器）→ 退回封面图，票面照样完整
+    vidEl.addEventListener('error', function () { stage.classList.add('no-vid'); });
+    vidEl.addEventListener('playing', function () { stage.classList.remove('no-vid'); });
+
     modal.addEventListener('click', function (e) { if (e.target === modal) close(); });
     modal.querySelector('#msClose').addEventListener('click', close);
+    modal.querySelector('#msPlayerX').addEventListener('click', closePlayer);
+    modal.querySelector('#msPlayer').addEventListener('click', function (e) {
+      if (e.target.id === 'msPlayer') closePlayer();
+    });
     saveBtn.addEventListener('click', save);
     drawBtn.addEventListener('click', doDraw);
-    document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape' && !modal.hidden) close();
+    playEl.addEventListener('click', openPlayer);
+    playEl.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openPlayer(); }
     });
+    modal.querySelector('#msVsaveX').addEventListener('click', closeVsave);
+    modal.querySelector('#msVsave').addEventListener('click', function (e) {
+      if (e.target.id === 'msVsave') closeVsave();
+    });
+    modal.querySelector('#msVsaveSave').addEventListener('click', function () {
+      if (vsaveBlob) persistVideo(vsaveBlob, vsaveName);
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !modal.hidden) { closePlayer(); close(); }
+    });
+  }
+
+  /* 动态款：视频铺底 + 透明叠层。cur 记住当前款，保存/播放都要用。 */
+  var curTheme = null;
+
+  function openPlayer() {
+    if (!curTheme || !curTheme.full) return;
+    var pl = modal.querySelector('#msPlayer');
+    var pv = modal.querySelector('#msPlayerV');
+    pv.src = curTheme.full;
+    pl.hidden = false;
+    var pr = pv.play();
+    if (pr && pr.catch) pr.catch(function () {});
+    trk('ms:play');
+  }
+  function closePlayer() {
+    if (!modal) return;
+    var pl = modal.querySelector('#msPlayer');
+    var pv = modal.querySelector('#msPlayerV');
+    if (!pl || pl.hidden) return;
+    pv.pause();
+    pv.removeAttribute('src');
+    pv.load();
+    pl.hidden = true;
   }
 
   // 只给稀有款贴一个小标签；常见款什么都不显示（站长：不写款名）
@@ -479,14 +575,37 @@
   }
 
   function renderTicket(t) {
+    curTheme = t;
     var serial = state.nums[t.key] || 1;
     url = drawTicket(t, serial);
-    pic.src = url || '';
     stage.classList.add('has-ticket');
+
+    if (t.video) {
+      // 动态款：视频铺满，canvas 结果当成透明叠层（文字/边角/副券）
+      pic.src = t.poster || '';
+      layerEl.src = url || '';
+      stage.classList.add('is-dyn');
+      if (vidEl.getAttribute('src') !== t.video) {
+        stage.classList.remove('no-vid');
+        vidEl.src = t.video;
+      }
+      var pr = vidEl.play();
+      if (pr && pr.catch) pr.catch(function () { stage.classList.add('no-vid'); });
+    } else {
+      // 静态款：跟原来一模一样（canvas 整张画好当图片用）
+      pic.src = url || '';
+      stage.classList.remove('is-dyn', 'no-vid');
+      vidEl.pause();
+      vidEl.removeAttribute('src');
+      vidEl.load();
+      layerEl.removeAttribute('src');
+    }
 
     paintRare(t);
     updateProg();
     saveBtn.disabled = !url;
+    // 动态款保存的是会动的视频，不是一张图 → 按钮说清楚
+    saveBtn.textContent = (t && t.video) ? '保存视频' : '保存图片';
 
     // 照片还没加载完 → 加载后重画这一款（避免抽出无照片的空票）
     var im = IMGS[t.key];
@@ -501,11 +620,16 @@
 
   function showEmpty() {
     url = '';
+    curTheme = null;
     pic.removeAttribute('src');
-    stage.classList.remove('has-ticket');
+    layerEl.removeAttribute('src');
+    stage.classList.remove('has-ticket', 'is-dyn', 'no-vid');
+    vidEl.pause();
+    vidEl.removeAttribute('src');
     rareEl.hidden = true;
     updateProg();
     saveBtn.disabled = true;
+    saveBtn.textContent = '保存图片';
   }
 
   function openTicket() {
@@ -538,27 +662,193 @@
 
   function close() {
     if (!modal) return;
+    closePlayer();
+    vidEl.pause();
     modal.hidden = true;
     document.body.style.overflow = '';
   }
 
+  /* 动态款的保存：视频当前帧 + 透明叠层合成一张 PNG（导出的是这一瞬间）。
+     视频没播起来（no-vid）就用封面图打底，保证按钮不失效。 */
+  function compositeDyn() {
+    var W = 1080, H = 474;     // 360×158 × 3，跟 drawTicket 的超采样一致
+    var c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    var x = c.getContext('2d');
+    x.fillStyle = (curTheme && curTheme.bg) || '#111';
+    x.fillRect(0, 0, W, H);
+    try {
+      if (!stage.classList.contains('no-vid') && vidEl.videoWidth) {
+        x.drawImage(vidEl, 0, 0, W, H);
+      } else if (pic.complete && pic.naturalWidth) {
+        x.drawImage(pic, 0, 0, W, H);
+      }
+    } catch (_) {}
+    if (layerEl.complete && layerEl.naturalWidth) x.drawImage(layerEl, 0, 0, W, H);
+    try { return c.toDataURL('image/png'); } catch (_) { return ''; }
+  }
+
   function save() {
     if (!url) return;
-    // 🔴 2026-11-02 修：改用站内统一的「保存到相册」弹层（app.js 的 showAlbumLayer），
-    // 跟站里其它「保存图片」行为一致 —— 手机端走系统分享面板 / 长按，直接进相册；
-    // 绝不用 <a download>，那在手机上只会落进「文件」App 的下载文件夹、进不了相册
-    // （站长 2026-09-23 定：凡是「保存到相册」按钮，点了就必须进相册）。
-    // 没有 showAlbumLayer 时降级回 download，避免按钮失灵。
+    if (curTheme && curTheme.video) { saveVideo(); return; }
+    saveImage();
+  }
+
+  /* 🔴 2026-11-02 修：改用站内统一的「保存到相册」弹层（app.js 的 showAlbumLayer），
+     跟站里其它「保存图片」行为一致 —— 手机端走系统分享面板 / 长按，直接进相册；
+     绝不用 <a download>，那在手机上只会落进「文件」App 的下载文件夹、进不了相册
+     （站长 2026-09-23 定：凡是「保存到相册」按钮，点了就必须进相册）。
+     没有 showAlbumLayer 时降级回 download，避免按钮失灵。 */
+  function saveImage() {
+    var out = curTheme && curTheme.video ? compositeDyn() : url;
+    if (!out) return;
     if (typeof window.showAlbumLayer === 'function') {
-      window.showAlbumLayer(url, MS.date.replace(/-/g, ''), '王语晨-1128-票根');
+      window.showAlbumLayer(out, MS.date.replace(/-/g, ''), '王语晨-1128-票根');
       return;
     }
     var a = document.createElement('a');
-    a.href = url;
+    a.href = out;
     a.download = '王语晨-1128-票根.png';
     document.body.appendChild(a);
     a.click();
     a.remove();
+  }
+
+  /* --------------------- 动态款：把票根录成一段视频 ---------------------
+     站长 2026-11-02：「动态的保存下来是一个 gif 或者一个视频也想」。
+     做法：离屏 canvas 每帧把「视频帧 + 透明文字层」合一次 → captureStream →
+     MediaRecorder 录 6 秒 → Blob。格式优先 mp4(H.264)：手机上只有 mp4 能直接
+     进相册，webm 是兜底（桌面浏览器 / 少数安卓）。
+     🔴 不引第三方编码库：站内没有 worker、也不想为一个按钮加 30KB 依赖。 */
+  var vsaveBlob = null, vsaveName = '', vsaveUrl = '', recBusy = false;
+
+  function pickMime() {
+    if (!window.MediaRecorder) return '';
+    var list = [
+      'video/mp4;codecs=avc1.42E01E',
+      'video/mp4',
+      'video/webm;codecs=vp9',
+      'video/webm;codecs=vp8',
+      'video/webm'
+    ];
+    for (var i = 0; i < list.length; i++) {
+      try { if (MediaRecorder.isTypeSupported(list[i])) return list[i]; } catch (_) {}
+    }
+    return '';
+  }
+
+  function closeVsave() {
+    var vs = modal && modal.querySelector('#msVsave');
+    var vv = modal && modal.querySelector('#msVsaveV');
+    if (vv) { try { vv.pause(); } catch (_) {} vv.removeAttribute('src'); vv.load(); }
+    if (vs) vs.hidden = true;
+  }
+
+  function saveVideo() {
+    if (recBusy) return;
+    // 视频没播起来 / 浏览器不支持录制 → 退回存一张静图，别让按钮失灵
+    var mime = pickMime();
+    if (!vidEl.videoWidth || stage.classList.contains('no-vid') || !mime ||
+        !HTMLCanvasElement.prototype.captureStream) {
+      saveImage();
+      return;
+    }
+
+    var W = 720, H = 316;          // 票根比例 2.278:1；手机相册看 720p 足够
+    var c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    var x = c.getContext('2d');
+    var bg = (curTheme && curTheme.bg) || '#111';
+    var raf = 0, last = 0, chunks = [], rec = null, stream = null;
+
+    function paint() {
+      x.fillStyle = bg;
+      x.fillRect(0, 0, W, H);
+      try { x.drawImage(vidEl, 0, 0, W, H); } catch (_) {}
+      if (layerEl.complete && layerEl.naturalWidth) x.drawImage(layerEl, 0, 0, W, H);
+    }
+    function loop(ts) {
+      raf = requestAnimationFrame(loop);
+      if (ts - last < 45) return;   // 限到 ~20fps，体积小一半，肉眼没差
+      last = ts;
+      paint();
+    }
+
+    recBusy = true;
+    var oldTxt = saveBtn.textContent;
+    saveBtn.disabled = true;
+    saveBtn.textContent = '生成中…';
+    // 录 6 秒有点久，给个 1/6…6/6 的进度，别让人以为卡住
+    var t0 = Date.now();
+    var tick = setInterval(function () {
+      var s = Math.min(6, Math.floor((Date.now() - t0) / 1000));
+      saveBtn.textContent = '生成中 ' + s + '/6';
+    }, 300);
+
+    function finish() {
+      recBusy = false;
+      clearInterval(tick);
+      saveBtn.disabled = false;
+      saveBtn.textContent = oldTxt;
+      cancelAnimationFrame(raf);
+      try { if (stream) stream.getTracks().forEach(function (t) { t.stop(); }); } catch (_) {}
+    }
+
+    paint();
+    try {
+      stream = c.captureStream(20);
+      rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 2500000 });
+    } catch (e) {
+      finish();
+      saveImage();
+      return;
+    }
+
+    rec.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
+    rec.onstop = function () {
+      finish();
+      var blob = new Blob(chunks, { type: mime.split(';')[0] });
+      if (!blob.size) { saveImage(); return; }
+      var ext = /mp4/.test(mime) ? 'mp4' : 'webm';
+      vsaveBlob = blob;
+      vsaveName = '王语晨-1128-票根.' + ext;
+      if (vsaveUrl) { try { URL.revokeObjectURL(vsaveUrl); } catch (_) {} }
+      vsaveUrl = URL.createObjectURL(blob);
+      var vs = modal.querySelector('#msVsave');
+      var vv = modal.querySelector('#msVsaveV');
+      var tip = modal.querySelector('#msVsaveTip');
+      vv.src = vsaveUrl;
+      tip.textContent = ext === 'webm'
+        ? '这段是 webm，相册可能不认 —— 点下面按钮存成文件，或长按视频'
+        : '长按视频也能存进相册';
+      vs.hidden = false;
+      try { vv.play(); } catch (_) {}
+      trk('ms:savevid');
+    };
+
+    if (vidEl.paused) { var pr = vidEl.play(); if (pr && pr.catch) pr.catch(function () {}); }
+    raf = requestAnimationFrame(loop);
+    try { rec.start(120); } catch (e) { finish(); saveImage(); return; }
+    setTimeout(function () { try { if (rec.state !== 'inactive') rec.stop(); } catch (_) {} }, 6000);
+  }
+
+  /* 保存视频文件：能分享就调系统面板（iOS 上「存储视频」直接进相册），
+     否则退回下载（桌面浏览器没问题；手机浏览器会落到文件 App）。 */
+  function persistVideo(blob, name) {
+    var file = null;
+    try { file = new File([blob], name, { type: blob.type }); } catch (_) {}
+    if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file] }).catch(function () {});
+      return;
+    }
+    var u = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = u;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { try { URL.revokeObjectURL(u); } catch (_) {} }, 15000);
   }
 
   /* ------------------------ 细窄倒计时条 ------------------------ */
