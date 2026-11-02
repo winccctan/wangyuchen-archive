@@ -1,9 +1,9 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-11-01T15:20:34.027Z",
-  "count": 770,
-  "matched": 534,
+  "updatedAt": "2026-11-02T18:28:46.817Z",
+  "count": 771,
+  "matched": 535,
   "replays": 269,
-  "clips": 501,
+  "clips": 502,
   "targets": [
     {
       "mid": "1805448354",
@@ -28,6 +28,21 @@ window.LIVE_CUTS = {
     "358477444:space": 4
   },
   "cuts": [
+    {
+      "bvid": "BV1tj4w6WE7M",
+      "title": "【王语晨】沉浸式睡眠过程",
+      "created": 1793617336,
+      "date": "2026-11-02",
+      "titleDate": "",
+      "kind": "cut",
+      "cover": "http://i0.hdslb.com/bfs/archive/9181f681e4364e6c5c22e198352f84f7514daa52.jpg",
+      "url": "https://www.bilibili.com/video/BV1tj4w6WE7M",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨直播cut",
+      "liveId": "1323728101940465664",
+      "liveDate": "2026-11-01"
+    },
     {
       "bvid": "BV1o7xb6yEbj",
       "title": "【王语晨】20261101 直播回放",
