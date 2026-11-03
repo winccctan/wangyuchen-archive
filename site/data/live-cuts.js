@@ -1,9 +1,9 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-11-02T18:28:46.817Z",
-  "count": 771,
+  "updatedAt": "2026-11-03T12:00:20.557Z",
+  "count": 774,
   "matched": 535,
   "replays": 269,
-  "clips": 502,
+  "clips": 505,
   "targets": [
     {
       "mid": "1805448354",
@@ -28,6 +28,45 @@ window.LIVE_CUTS = {
     "358477444:space": 4
   },
   "cuts": [
+    {
+      "bvid": "BV1sk4G6jEFP",
+      "title": "【王语晨】20231125 GNZ48 Team NIII《启程：Team NIII》公演cut",
+      "created": 1793705315,
+      "date": "2026-11-03",
+      "titleDate": "2023-11-25",
+      "kind": "cut",
+      "cover": "http://i1.hdslb.com/bfs/archive/7f2a8b502befd8e6dd5301e76268cb3c9337b2cd.jpg",
+      "url": "https://www.bilibili.com/video/BV1sk4G6jEFP",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨公演cut"
+    },
+    {
+      "bvid": "BV1HU4G6GEez",
+      "title": "【王语晨】20231119 GNZ48 Team NIII《启程：Team NIII》公演cut",
+      "created": 1793704293,
+      "date": "2026-11-03",
+      "titleDate": "2023-11-19",
+      "kind": "cut",
+      "cover": "http://i0.hdslb.com/bfs/archive/89b8865fe8f033b2903d2fa824d31507def36736.jpg",
+      "url": "https://www.bilibili.com/video/BV1HU4G6GEez",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨公演cut"
+    },
+    {
+      "bvid": "BV1q34g6fEni",
+      "title": "【王语晨】20231105 GNZ48 Team NIII《启程：Team NIII》公演cut",
+      "created": 1793702790,
+      "date": "2026-11-03",
+      "titleDate": "2023-11-05",
+      "kind": "cut",
+      "cover": "http://i2.hdslb.com/bfs/archive/47800a0cf958eaebd29c11d219a1042305f1c08e.jpg",
+      "url": "https://www.bilibili.com/video/BV1q34g6fEni",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨公演cut"
+    },
     {
       "bvid": "BV1tj4w6WE7M",
       "title": "【王语晨】沉浸式睡眠过程",
