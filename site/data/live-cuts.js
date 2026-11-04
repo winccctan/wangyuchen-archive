@@ -1,9 +1,9 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-11-03T19:33:20.718Z",
-  "count": 777,
-  "matched": 535,
+  "updatedAt": "2026-11-04T12:15:01.348Z",
+  "count": 779,
+  "matched": 536,
   "replays": 269,
-  "clips": 508,
+  "clips": 510,
   "targets": [
     {
       "mid": "1805448354",
@@ -28,6 +28,19 @@ window.LIVE_CUTS = {
     "358477444:space": 4
   },
   "cuts": [
+    {
+      "bvid": "BV17wxR6DEJm",
+      "title": "【王语晨】20231209 GNZ48 Team NIII《启程：Team NIII》公演cut",
+      "created": 1793788027,
+      "date": "2026-11-04",
+      "titleDate": "2023-12-09",
+      "kind": "cut",
+      "cover": "http://i0.hdslb.com/bfs/archive/6834999632e8fa7994d79e532fdd56e79f6d485b.jpg",
+      "url": "https://www.bilibili.com/video/BV17wxR6DEJm",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨公演cut"
+    },
     {
       "bvid": "BV1j74G6eEAu",
       "title": "【王语晨】20231203 GNZ48 Team NIII《启程：Team NIII》公演cut",
@@ -133,6 +146,21 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨公演cut"
+    },
+    {
+      "bvid": "BV1Rrxx6hEJd",
+      "title": "【王语晨】对粉丝占有欲很强的一个小女孩٩( 'ω' )و",
+      "created": 1793538659,
+      "date": "2026-11-01",
+      "titleDate": "",
+      "kind": "cut",
+      "cover": "http://i2.hdslb.com/bfs/archive/308bb85d682e272078ac737eb5e9927bbdf377c4.jpg",
+      "url": "https://www.bilibili.com/video/BV1Rrxx6hEJd",
+      "up": "忘记自己是猪",
+      "mid": "1805448354",
+      "collection": "",
+      "liveId": "1323728101940465664",
+      "liveDate": "2026-11-01"
     },
     {
       "bvid": "BV1grxW6XEf4",
