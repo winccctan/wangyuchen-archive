@@ -1,9 +1,9 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-11-04T12:15:01.348Z",
-  "count": 779,
+  "updatedAt": "2026-11-04T19:53:33.535Z",
+  "count": 781,
   "matched": 536,
   "replays": 269,
-  "clips": 510,
+  "clips": 512,
   "targets": [
     {
       "mid": "1805448354",
@@ -28,6 +28,32 @@ window.LIVE_CUTS = {
     "358477444:space": 4
   },
   "cuts": [
+    {
+      "bvid": "BV1xKx96FE3p",
+      "title": "【王语晨】20231210 GNZ48 Team NIII《启程：Team NIII》公演cut",
+      "created": 1793797520,
+      "date": "2026-11-04",
+      "titleDate": "2023-12-10",
+      "kind": "cut",
+      "cover": "http://i2.hdslb.com/bfs/archive/3d20c927991af2bbc0886b637f60e96437dc5cfd.jpg",
+      "url": "https://www.bilibili.com/video/BV1xKx96FE3p",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨公演cut"
+    },
+    {
+      "bvid": "BV1Znx96UEMK",
+      "title": "【王语晨】20231209 GNZ48《我睡着啦》方琪2022年度MVP主题公演cut",
+      "created": 1793791924,
+      "date": "2026-11-04",
+      "titleDate": "2023-12-09",
+      "kind": "cut",
+      "cover": "http://i1.hdslb.com/bfs/archive/61f3685ae994a792e6f09fae77ac4ab7c355e3d5.jpg",
+      "url": "https://www.bilibili.com/video/BV1Znx96UEMK",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨公演cut"
+    },
     {
       "bvid": "BV17wxR6DEJm",
       "title": "【王语晨】20231209 GNZ48 Team NIII《启程：Team NIII》公演cut",

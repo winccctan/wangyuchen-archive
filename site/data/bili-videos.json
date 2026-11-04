@@ -1,6 +1,6 @@
 {
-  "updatedAt": "2026-11-04T12:16:15.527Z",
-  "count": 1383,
+  "updatedAt": "2026-11-04T19:55:50.602Z",
+  "count": 1389,
   "targets": [
     {
       "mid": "2086351451",
@@ -26,10 +26,64 @@
     "358477444:season:7130625": 2,
     "358477444:season:6805043": 2,
     "358477444:season:2812669": 2,
-    "358477444:space": 1,
+    "358477444:space": 2,
     "2086351451:space": 2
   },
   "videos": [
+    {
+      "bvid": "BV1Dwxd6zE3u",
+      "aid": 117558908884256,
+      "title": "【SNH48】20261104 《专属派对》新生公演",
+      "created": 1793807052,
+      "duration": 9699,
+      "play": 625,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1xKx96FE3p",
+      "aid": 117558305032547,
+      "title": "【王语晨】20231210 GNZ48 Team NIII《启程：Team NIII》公演cut",
+      "created": 1793797520,
+      "duration": 743,
+      "play": 30,
+      "mid": "358477444"
+    },
+    {
+      "bvid": "BV1Znx96UEMK",
+      "aid": 117557935869013,
+      "title": "【王语晨】20231209 GNZ48《我睡着啦》方琪2022年度MVP主题公演cut",
+      "created": 1793791924,
+      "duration": 540,
+      "play": 92,
+      "mid": "358477444"
+    },
+    {
+      "bvid": "BV17wxR6DEJm",
+      "aid": 117557684145491,
+      "title": "【王语晨】20231209 GNZ48 Team NIII《启程：Team NIII》公演cut",
+      "created": 1793788027,
+      "duration": 2752,
+      "play": 59,
+      "mid": "358477444"
+    },
+    {
+      "bvid": "BV1j74G6eEAu",
+      "aid": 117552533605748,
+      "title": "【王语晨】20231203 GNZ48 Team NIII《启程：Team NIII》公演cut",
+      "created": 1793709499,
+      "duration": 3301,
+      "play": 30,
+      "mid": "358477444"
+    },
+    {
+      "bvid": "BV1fR4G6MEM2",
+      "aid": 117552399387338,
+      "title": "【王语晨】20231202 GNZ48 Team NIII《启程：Team NIII》2.0首演cut",
+      "created": 1793707515,
+      "duration": 2755,
+      "play": 150,
+      "mid": "358477444"
+    },
     {
       "bvid": "BV15w4V6YEaw",
       "aid": 117552315369883,
