@@ -1,9 +1,9 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-11-05T12:30:25.353Z",
-  "count": 785,
-  "matched": 537,
+  "updatedAt": "2026-11-05T22:06:08.327Z",
+  "count": 786,
+  "matched": 538,
   "replays": 269,
-  "clips": 516,
+  "clips": 517,
   "targets": [
     {
       "mid": "1805448354",
@@ -25,7 +25,7 @@ window.LIVE_CUTS = {
     "358477444:season:6805043": 2,
     "358477444:season:2812669": 2,
     "1805448354:space": 3,
-    "358477444:space": 5
+    "358477444:space": 6
   },
   "cuts": [
     {
@@ -4258,6 +4258,21 @@ window.LIVE_CUTS = {
       "collection": "合集·王语晨直播回放",
       "liveId": "1273765463311847424",
       "liveDate": "2026-06-16"
+    },
+    {
+      "bvid": "BV1ZUJM6gEyy",
+      "title": "【王语晨 黄孟浠】cici:我已经严肃成为晨晨前辈的粉丝了",
+      "created": 1781496210,
+      "date": "2026-06-15",
+      "titleDate": "",
+      "kind": "cut",
+      "cover": "http://i1.hdslb.com/bfs/archive/e3c2a9df1f8b3f79de79e71207ec044545509a3a.jpg",
+      "url": "https://www.bilibili.com/video/BV1ZUJM6gEyy",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "",
+      "liveId": "1272696218817728512",
+      "liveDate": "2026-06-13"
     },
     {
       "bvid": "BV1xpJs6AErM",
