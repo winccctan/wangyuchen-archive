@@ -1,9 +1,9 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-11-04T19:53:33.535Z",
-  "count": 781,
-  "matched": 536,
+  "updatedAt": "2026-11-05T12:30:25.353Z",
+  "count": 785,
+  "matched": 537,
   "replays": 269,
-  "clips": 512,
+  "clips": 516,
   "targets": [
     {
       "mid": "1805448354",
@@ -25,9 +25,63 @@ window.LIVE_CUTS = {
     "358477444:season:6805043": 2,
     "358477444:season:2812669": 2,
     "1805448354:space": 3,
-    "358477444:space": 4
+    "358477444:space": 5
   },
   "cuts": [
+    {
+      "bvid": "BV1Up4b6PE11",
+      "title": "【王语晨】20240106 GNZ48XCKG48XCGT48 偶像研究计划周年纪念版 特殊公演cut",
+      "created": 1793876166,
+      "date": "2026-11-05",
+      "titleDate": "2024-01-06",
+      "kind": "cut",
+      "cover": "http://i1.hdslb.com/bfs/archive/7251ac1d5dab51fcc08294905be74c7ec73fc50a.jpg",
+      "url": "https://www.bilibili.com/video/BV1Up4b6PE11",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨公演cut"
+    },
+    {
+      "bvid": "BV1zk4b6nEy5",
+      "title": "【王语晨】20231230 GNZ48 Team NIII《启程：Team NIII》公演cut",
+      "created": 1793873844,
+      "date": "2026-11-05",
+      "titleDate": "2023-12-30",
+      "kind": "cut",
+      "cover": "http://i2.hdslb.com/bfs/archive/1f67590cd5a257804183fcda34273308efacaa93.jpg",
+      "url": "https://www.bilibili.com/video/BV1zk4b6nEy5",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨公演cut"
+    },
+    {
+      "bvid": "BV1br4t6AEQ4",
+      "title": "【王语晨】20231223 GNZ48 Team NIII《启程：Team NIII》公演cut",
+      "created": 1793855578,
+      "date": "2026-11-05",
+      "titleDate": "2023-12-23",
+      "kind": "cut",
+      "cover": "http://i1.hdslb.com/bfs/archive/cd2daca54183a612bd91063c0417a41cf3f35a07.jpg",
+      "url": "https://www.bilibili.com/video/BV1br4t6AEQ4",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "",
+      "liveId": "945448758821064704",
+      "liveDate": "2023-12-23"
+    },
+    {
+      "bvid": "BV1L44t6kEzn",
+      "title": "【王语晨】20231217 GNZ48 Team NIII《启程：Team NIII》公演cut",
+      "created": 1793852563,
+      "date": "2026-11-05",
+      "titleDate": "2023-12-17",
+      "kind": "cut",
+      "cover": "http://i0.hdslb.com/bfs/archive/99c623f9e8d53248677bc7ba1323b6950895947c.jpg",
+      "url": "https://www.bilibili.com/video/BV1L44t6kEzn",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨公演cut"
+    },
     {
       "bvid": "BV1xKx96FE3p",
       "title": "【王语晨】20231210 GNZ48 Team NIII《启程：Team NIII》公演cut",
