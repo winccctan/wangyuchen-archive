@@ -165,7 +165,23 @@ function render(d) {
           + '<td class="n">' + (pct == null ? '-' : pct + '%') + '</td></tr>';
       }).join('')
     : '<tr><td colspan="6" class="dim">暂无记录（2026-10-25 起启用分页面统计）</td></tr>';
-  const others48 = ev48All.filter(e => !(e.key && e.key.indexOf('all48:p:') === 0));
+  const others48 = ev48All.filter(e => !(e.key && (e.key.indexOf('all48:p:') === 0 || e.key.indexOf('lv:p:') === 0)));
+  // lv 站（lv.wyc0518.cc，2026-11-06 起接统计）：鸡腿榜 / 公演榜 / 每周鸡腿榜。
+  // 它以前一条埋点都没有，所以「统计数据里没有礼物榜鸡腿榜」—— 现在三页各报一条。
+  const LV_PAGE = { gift: '鸡腿榜（/）', perf: '公演榜（/perf）', week: '每周鸡腿榜（/week）' };
+  const pagesLv = ev48All.filter(e => e.key && e.key.indexOf('lv:p:') === 0)
+    .sort((a, b) => (b.today - a.today) || (b.total - a.total));
+  const pvTodayLv = pagesLv.reduce((a, e) => a + (e.today || 0), 0);
+  const pageRowsLv = pagesLv.length
+    ? pagesLv.map(e => {
+        const pct = pvTodayLv > 0 ? Math.round((e.today || 0) / pvTodayLv * 100) : null;
+        return '<tr><td>' + (LV_PAGE[e.key.slice(5)] || e.name || e.key) + '</td>'
+          + '<td class="n">' + e.total + '</td><td class="n">' + e.today + '</td>'
+          + '<td class="n">' + (e.uniqTotal == null ? '-' : e.uniqTotal) + '</td>'
+          + '<td class="n">' + (e.uniqToday == null ? '-' : e.uniqToday) + '</td>'
+          + '<td class="n">' + (pct == null ? '-' : pct + '%') + '</td></tr>';
+      }).join('')
+    : '<tr><td colspan="6" class="dim">暂无记录（2026-11-06 起启用）</td></tr>';
   const evRows48 = others48.length
     ? others48.map(evRow).join('')
     : '<tr><td colspan="5" class="dim">暂无记录</td></tr>';
@@ -211,6 +227,8 @@ function render(d) {
   document.getElementById('pane-a48').innerHTML =
     '<h2>各页面访问（all48.wyc0518.cc）</h2><table class="wide"><tr><td>页面</td><td class="n">累计</td><td class="n">今日</td><td class="n">独立累计</td><td class="n">独立今日</td><td class="n">今日占比</td></tr>' + pageRows48 + '</table>' +
     '<p class="dim">「累计 / 今日」＝该页面被打开的次数（PV），「独立」＝按 IP 去重后的人（UV），同一 WiFi 下多人算 1 人。「今日占比」＝该页今日打开次数 / 三页合计。三个页面从 <b>2026-10-25</b> 起分开统计，之前的数字只覆盖首页。</p>' +
+    '<h2>各页面访问（lv.wyc0518.cc · 礼物榜 / 鸡腿榜）</h2><table class="wide"><tr><td>页面</td><td class="n">累计</td><td class="n">今日</td><td class="n">独立累计</td><td class="n">独立今日</td><td class="n">今日占比</td></tr>' + pageRowsLv + '</table>' +
+    '<p class="dim">lv 站（口袋48 鸡腿榜 / 公演榜 / 每周鸡腿榜）以前<b>一条埋点都没有</b>，所以这张表从 <b>2026-11-06</b> 才开始有数据。口径和上面一样：打开一次算一次，独立访客按 IP 去重、不存明文 IP。</p>' +
     '<h2>全站合计</h2><table class="wide"><tr><td>动作</td><td class="n">累计</td><td class="n">今日</td><td class="n">独立累计</td><td class="n">独立今日</td></tr>' + evRows48 + '</table>' +
     '<p class="dim">这一行＝那个站打开的<b>总次数</b>（三个页面相加）。2026-10-25 之前 /gift、/mvp 两个页面还没有埋点，所以那之前的累计只算了首页，偏少。</p>' +
     '<h2>访客来自哪里（今日 / 近 7 天）</h2><table><tr><td>国家·地区</td><td class="n">今日</td><td class="n">近 7 天</td></tr>' + ctryRows48 + '</table>' +
@@ -240,9 +258,14 @@ function render(d) {
  */
 const GAME_NAME = {
   dobon: 'どっぼーん', ddz: '成员斗地主', ccg: '成员卡牌对战',
-  turtle: '成员抓乌龟', showdown: '大乱斗', overcooked: '胡闹厨房'
+  turtle: '成员抓乌龟', showdown: '大乱斗', overcooked: '胡闹厨房',
+  // 2026-11-06 补齐：这三个之前没登记，报表里一直显示原始 key（bowl / idol / theater）
+  bowl: '星梦保龄球馆', idol: '谁是你偶像', theater: '星梦剧院'
 };
 const GAME_KIND = { solo: '单机 局数', on: '联机 局数', room: '联机 房间' };
+// 星梦剧院没有「一局」：on = 一次进场，room = 当天开过的剧场房间数
+const GAME_KIND_OV = { theater: { on: '进场次数', room: '剧场房间' } };
+const kindName = (x) => (GAME_KIND_OV[x.g] && GAME_KIND_OV[x.g][x.k]) || GAME_KIND[x.k] || x.k;
 
 // 国家/地区代码 → 中文名（只用于展示，不涉及任何 IP）
 const CC_FIX = { HK: '中国香港', MO: '中国澳门', TW: '中国台湾' };
@@ -266,7 +289,7 @@ function gameHtml(g) {
       '<div class="card"><div class="k">累计局数</div><div class="v">' + sum('total') + '</div></div>' +
     '</div>';
   const body = rows.length
-    ? rows.map(x => '<tr><td>' + (GAME_NAME[x.g] || x.g) + ' · ' + (GAME_KIND[x.k] || x.k) + '</td>'
+    ? rows.map(x => '<tr><td>' + (GAME_NAME[x.g] || x.g) + ' · ' + kindName(x) + '</td>'
         + '<td class="n">' + x.today + '</td><td class="n">' + x.total + '</td>'
         + '<td class="n">' + x.uvToday + '</td><td class="n">' + x.uvTotal + '</td></tr>').join('')
     : '<tr><td colspan="5" class="dim">还没有人玩（2026-10-16 起开始记）</td></tr>';
@@ -282,7 +305,8 @@ function gameHtml(g) {
     : '<tr><td colspan="3" class="dim">今天还没有带地区的数据（2026-10-17 起才开始记，之前的补不回来）</td></tr>';
   return cards +
     '<table class="wide"><tr><td>玩法 · 口径</td><td class="n">今日</td><td class="n">累计</td><td class="n">今日人数</td><td class="n">累计人数</td></tr>' + body + '</table>' +
-    '<p class="dim">「人数」按浏览器去重（同一台设备开几次都算 1 人，清掉浏览器数据会重新计），比真实人数偏少；只记动作，不记 IP、不记身份。联机的局数由服务端记，一局只算一次。</p>' +
+    '<p class="dim">「人数」按浏览器去重（同一台设备开几次都算 1 人，清掉浏览器数据会重新计），比真实人数偏少；只记动作，不记 IP、不记身份。联机的局数由服务端记，一局只算一次。' +
+    '<b>星梦剧院</b>没有「一局」的概念：它的数字是「进场次数」（刷新 / 重连也会 +1）和「剧场房间数」，房间明细里那个名字是第一个进屋的人。</p>' +
     '<h2>48 小游戏 · 玩的人来自哪里</h2><table><tr><td>国家·地区</td><td class="n">今日</td><td class="n">累计</td></tr>' + ccRows + '</table>' +
     '<p class="dim">口径 = 访问时 Cloudflare 判定的出口国家/地区，<b>只存两位代码，不存 IP、不存城市</b>，一个人（同一浏览器）在同一国家只算 1 次。' +
     '它统计的是 IP 出口地不是籍贯，用梯子会显示梯子的地区；同一 WiFi 下多人也只算 1 人。2026-10-17 起启用，之前的补不回来。</p>' +
