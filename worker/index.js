@@ -280,7 +280,9 @@ function forbiddenNotSameSite() {
  * 但图片上报不一定带得齐，这里显式再认一次 Origin/Referer，避免边缘节点差异导致漏记。
  * 🔴 只放行 /track：翻译、手动抓取这些重接口仍然只能本站调用（isSameSite 管着）。
  */
-const TRACK_HOSTS = new Set(['all48.wyc0518.cc']);
+// 允许跨域上报 /track 的姊妹站（Origin/Referer 命中其一就放行）。
+// 2026-11-06 加 lv：鸡腿榜/公演榜三页各报一条页面事件。
+const TRACK_HOSTS = new Set(['all48.wyc0518.cc', 'lv.wyc0518.cc', 'all48-lv.yqz-tansy.workers.dev']);
 function isTrackHost(request) {
   const origin = request.headers.get('Origin');
   const referer = request.headers.get('Referer');
@@ -463,6 +465,12 @@ const EVENTS = [
   ['all48:p:members', '48 站 · 成员档案（/）'],
   ['all48:p:gift', '48 站 · 红蓝歌会计分（/gift）'],
   ['all48:p:mvp', '48 站 · MVP 排名（/mvp）'],
+  // lv 站（lv.wyc0518.cc = 口袋48 鸡腿榜 / 公演榜 / 每周鸡腿榜，2026-11-06 接统计）。
+  // 站长原话：「统计数据没有加上礼物榜鸡腿榜」—— 这个站以前完全没有埋点。
+  // 走 `lv:` 前缀（和 all48: 一样单独一组、单独一条写入闸），报表里单列一张表。
+  ['lv:p:gift', 'lv 站 · 鸡腿榜（/）'],
+  ['lv:p:perf', 'lv 站 · 公演榜（/perf）'],
+  ['lv:p:week', 'lv 站 · 每周鸡腿榜（/week）'],
   // 站点打开（2026-10-25）：**这条补的是一个统计漏洞**。
   // 本站的「到访人数」（stat:u:<day>:<hash>）只在 /track 被调用时才写，而前端以前
   // 只在「点 tab / 搜索 / 播放 / 抽盲盒…」这些动作上打点 ⇒ **只浏览、什么都不点的人完全不计**。
@@ -751,7 +759,9 @@ async function handleTrack(url, request, env, ctx) {
         // 姊妹站 all48 的上报**单独走一条闸**（2026-10-14）：那个站面向全体 48 粉丝，
         // 访问量可能比补档站还大；共用一条的话它一冲上来，本站的动作就全不计数了
         // （页面照常，只是统计停摆，不盯着根本发现不了）。
-        const is48 = ev.startsWith('all48:');
+        // 姊妹站 = all48（48 成员档案）与 lv（鸡腿榜/公演榜）。两个站都和本站分开记账：
+        // 各自的访问量不该挤占补档站自己的动作额度，也不该混进本站的到访人数/国家表。
+        const is48 = ev.startsWith('all48:') || ev.startsWith('lv:');
         const gateKey = (is48 ? 'stat:gate48:' : 'stat:gate:') + day;
         const gateMax = is48 ? STAT_WRITE_CAP48 : STAT_WRITE_CAP;
         let used = 0;
@@ -800,7 +810,9 @@ async function handleTrack(url, request, env, ctx) {
           // 仍然只有「8 字节短哈希 + CF 给的国家码」，**不存明文 IP**。
           // 🔴 必须先用 startsWith 卡前缀：直接 slice(8) 会把 all48:visit 截成 "sit"，
           //    上线当天真的这么错过一次（报表里冒出一个 "sit" 页面），别再犯。
-          const pg = ev.startsWith('all48:p:') ? ev.slice(8) : '';
+          //    lv 站的页面键加 `lv` 前缀（lvgift/lvperf/lvweek），免得和 all48 的 gift 撞名。
+          const pg = ev.startsWith('all48:p:') ? ev.slice(8)
+            : ev.startsWith('lv:p:') ? 'lv' + ev.slice(5) : '';
           if (cc && /^[a-z]{1,12}$/.test(pg)) {
             const upKey = `stat:u48p:${day}:${pg}:${hash}`;
             if (!(await kv.get(upKey))) {
@@ -1180,7 +1192,7 @@ async function handleStatsBody(url, env, kv, wantJson) {
     const d = Number(evDayVals[i] || 0);
     if (t <= 0 && d <= 0) return;
     const row = { key: key, name: name, total: t, today: d, uniqTotal: evUniqT[i] || 0, uniqToday: evUniqD[i] || 0 };
-    if (key.startsWith('all48:')) evList48.push(row); else evList.push(row);
+    if (key.startsWith('all48:') || key.startsWith('lv:')) evList48.push(row); else evList.push(row);
   });
   evList.sort((a, b) => b.total - a.total);
   evList48.sort((a, b) => b.total - a.total);
