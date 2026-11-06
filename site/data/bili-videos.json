@@ -1,6 +1,6 @@
 {
-  "updatedAt": "2026-11-05T22:07:23.240Z",
-  "count": 1390,
+  "updatedAt": "2026-11-06T16:04:55.022Z",
+  "count": 1392,
   "targets": [
     {
       "mid": "2086351451",
@@ -30,6 +30,24 @@
     "2086351451:space": 2
   },
   "videos": [
+    {
+      "bvid": "BV1EC4B6rEKF",
+      "aid": 117570266995263,
+      "title": "【SNH48】20261106 Team X 《Fire X》2.0公演",
+      "created": 1793980325,
+      "duration": 11936,
+      "play": 59,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1wL4z6SEf7",
+      "aid": 117570116000424,
+      "title": "【GNZ48】20261106 Team NIII 《拾忆：TEAM NIII》公演",
+      "created": 1793978028,
+      "duration": 11094,
+      "play": 474,
+      "mid": "2086351451"
+    },
     {
       "bvid": "BV1oG4h6UEbw",
       "aid": 117564663403829,

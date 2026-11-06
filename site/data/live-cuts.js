@@ -1,9 +1,9 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-11-05T22:06:08.327Z",
-  "count": 786,
+  "updatedAt": "2026-11-06T16:02:39.411Z",
+  "count": 787,
   "matched": 538,
   "replays": 269,
-  "clips": 517,
+  "clips": 518,
   "targets": [
     {
       "mid": "1805448354",
@@ -28,6 +28,19 @@ window.LIVE_CUTS = {
     "358477444:space": 6
   },
   "cuts": [
+    {
+      "bvid": "BV1Qq4z6vEYS",
+      "title": "【王语晨】20261106 GNZ48 Team NIII《拾忆：TEAM NIII》公演cut",
+      "created": 1793971005,
+      "date": "2026-11-06",
+      "titleDate": "2026-11-06",
+      "kind": "cut",
+      "cover": "http://i1.hdslb.com/bfs/archive/851bafafadbe1ab66444245e0ba02831e39d60b1.jpg",
+      "url": "https://www.bilibili.com/video/BV1Qq4z6vEYS",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨公演cut"
+    },
     {
       "bvid": "BV1Up4b6PE11",
       "title": "【王语晨】20240106 GNZ48XCKG48XCGT48 偶像研究计划周年纪念版 特殊公演cut",
