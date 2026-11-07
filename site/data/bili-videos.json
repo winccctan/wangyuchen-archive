@@ -1,6 +1,6 @@
 {
-  "updatedAt": "2026-11-06T21:36:36.183Z",
-  "count": 1392,
+  "updatedAt": "2026-11-07T06:19:23.588Z",
+  "count": 1398,
   "targets": [
     {
       "mid": "2086351451",
@@ -26,10 +26,19 @@
     "358477444:season:7130625": 2,
     "358477444:season:6805043": 2,
     "358477444:season:2812669": 2,
-    "358477444:space": 1,
-    "2086351451:space": 1
+    "358477444:space": 2,
+    "2086351451:space": 2
   },
   "videos": [
+    {
+      "bvid": "BV1hh456aEZx",
+      "aid": 117570468317858,
+      "title": "【王语晨】20261107 直播回放",
+      "created": 1793983203,
+      "duration": 3788,
+      "play": 87,
+      "mid": "358477444"
+    },
     {
       "bvid": "BV1EC4B6rEKF",
       "aid": 117570266995263,
@@ -49,6 +58,15 @@
       "mid": "2086351451"
     },
     {
+      "bvid": "BV1Qq4z6vEYS",
+      "aid": 117569679984403,
+      "title": "【王语晨】20261106 GNZ48 Team NIII《拾忆：TEAM NIII》公演cut",
+      "created": 1793971005,
+      "duration": 2812,
+      "play": 184,
+      "mid": "358477444"
+    },
+    {
       "bvid": "BV1oG4h6UEbw",
       "aid": 117564663403829,
       "title": "【SNH48】20261105 Team NII《肆·时墟》公演",
@@ -56,6 +74,42 @@
       "duration": 11698,
       "play": 521,
       "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1Up4b6PE11",
+      "aid": 117563455441819,
+      "title": "【王语晨】20240106 GNZ48XCKG48XCGT48 偶像研究计划周年纪念版 特殊公演cut",
+      "created": 1793876166,
+      "duration": 281,
+      "play": 124,
+      "mid": "358477444"
+    },
+    {
+      "bvid": "BV1zk4b6nEy5",
+      "aid": 117563304445839,
+      "title": "【王语晨】20231230 GNZ48 Team NIII《启程：Team NIII》公演cut",
+      "created": 1793873844,
+      "duration": 2570,
+      "play": 155,
+      "mid": "358477444"
+    },
+    {
+      "bvid": "BV1br4t6AEQ4",
+      "aid": 117562096551661,
+      "title": "【王语晨】20231223 GNZ48 Team NIII《启程：Team NIII》公演cut",
+      "created": 1793855578,
+      "duration": 2970,
+      "play": 81,
+      "mid": "358477444"
+    },
+    {
+      "bvid": "BV1L44t6kEzn",
+      "aid": 117561911937903,
+      "title": "【王语晨】20231217 GNZ48 Team NIII《启程：Team NIII》公演cut",
+      "created": 1793852563,
+      "duration": 2512,
+      "play": 190,
+      "mid": "358477444"
     },
     {
       "bvid": "BV1Dwxd6zE3u",

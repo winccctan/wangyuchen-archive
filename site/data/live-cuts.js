@@ -1,9 +1,9 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-11-06T21:34:22.811Z",
-  "count": 788,
-  "matched": 539,
-  "replays": 270,
-  "clips": 518,
+  "updatedAt": "2026-11-07T06:19:07.839Z",
+  "count": 794,
+  "matched": 545,
+  "replays": 271,
+  "clips": 523,
   "targets": [
     {
       "mid": "1805448354",
@@ -25,9 +25,24 @@ window.LIVE_CUTS = {
     "358477444:season:6805043": 2,
     "358477444:season:2812669": 2,
     "1805448354:space": 3,
-    "358477444:space": 6
+    "358477444:space": 8
   },
   "cuts": [
+    {
+      "bvid": "BV1r5456VEsW",
+      "title": "【王语晨】集后台之力化了个拼好妆只有脸是自己的ԅ(¯ㅂ¯ԅ)",
+      "created": 1793988900,
+      "date": "2026-11-07",
+      "titleDate": "",
+      "kind": "cut",
+      "cover": "http://i2.hdslb.com/bfs/archive/69d2a3355d8a852b35b8fb92bf3beb133a41f217.jpg",
+      "url": "https://www.bilibili.com/video/BV1r5456VEsW",
+      "up": "忘记自己是猪",
+      "mid": "1805448354",
+      "collection": "",
+      "liveId": "1325619309738528768",
+      "liveDate": "2026-11-07"
+    },
     {
       "bvid": "BV1hh456aEZx",
       "title": "【王语晨】20261107 直播回放",
@@ -4417,6 +4432,21 @@ window.LIVE_CUTS = {
       "liveDate": "2026-06-11"
     },
     {
+      "bvid": "BV1C2EQ6qESR",
+      "title": "【王语晨】抖音刷到有些女生，嘴上说girls help girls的同时，还在批判女生的各种行为，觉得好无语",
+      "created": 1781066910,
+      "date": "2026-06-10",
+      "titleDate": "",
+      "kind": "cut",
+      "cover": "http://i1.hdslb.com/bfs/archive/6d3804962cd7e998ba31494b8344007ecbea43ca.jpg",
+      "url": "https://www.bilibili.com/video/BV1C2EQ6qESR",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "",
+      "liveId": "1271232345468112896",
+      "liveDate": "2026-06-09"
+    },
+    {
       "bvid": "BV17bE26yE9x",
       "title": "【王语晨】20260609 直播回放",
       "created": 1781022658,
@@ -4560,6 +4590,21 @@ window.LIVE_CUTS = {
       "titleDate": "",
       "up": "忘记自己是猪",
       "url": "https://www.bilibili.com/video/BV195Vd67EUe",
+      "liveDate": "2026-05-31"
+    },
+    {
+      "bvid": "BV1KoVS6sEBr",
+      "title": "【王语晨】20260531 直播回放",
+      "created": 1780250118,
+      "date": "2026-06-01",
+      "titleDate": "2026-05-31",
+      "kind": "replay",
+      "cover": "http://i1.hdslb.com/bfs/archive/c133469f8f3cca85e12d9402b28e7657d93afcca.jpg",
+      "url": "https://www.bilibili.com/video/BV1KoVS6sEBr",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "",
+      "liveId": "1267901115980910592",
       "liveDate": "2026-05-31"
     },
     {
@@ -4707,6 +4752,21 @@ window.LIVE_CUTS = {
       "collection": "合集·王语晨直播回放",
       "liveId": "1265097381831839744",
       "liveDate": "2026-05-24"
+    },
+    {
+      "bvid": "BV1WgGq65EBC",
+      "title": "【王语晨】面包，你为什么要尿在外面！！",
+      "created": 1779522159,
+      "date": "2026-05-23",
+      "titleDate": "",
+      "kind": "cut",
+      "cover": "http://i1.hdslb.com/bfs/archive/282c582db4116ffb015d7c05da943f0e542ad67d.jpg",
+      "url": "https://www.bilibili.com/video/BV1WgGq65EBC",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "",
+      "liveId": "1264703746988642304",
+      "liveDate": "2026-05-22"
     },
     {
       "bvid": "BV1khGe6AEyS",
@@ -5094,6 +5154,21 @@ window.LIVE_CUTS = {
       "liveDate": "2026-04-19"
     },
     {
+      "bvid": "BV1f2oFBgEui",
+      "title": "【王语晨】20260419 GNZ48 Team NIII 《没有我的世界(uN_v3rse)》公演cut",
+      "created": 1776601394,
+      "date": "2026-04-19",
+      "titleDate": "2026-04-19",
+      "kind": "cut",
+      "cover": "http://i2.hdslb.com/bfs/archive/4e9862a749bafb55ca5a0ad318c664a50a678ec9.jpg",
+      "url": "https://www.bilibili.com/video/BV1f2oFBgEui",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "",
+      "liveId": "1252415600938782720",
+      "liveDate": "2026-04-19"
+    },
+    {
       "bvid": "BV1cQdRBaE7S",
       "title": "【王语晨】20260419 直播回放",
       "created": 1776552599,
@@ -5264,6 +5339,21 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
+      "liveId": "1247566947514388480",
+      "liveDate": "2026-04-05"
+    },
+    {
+      "bvid": "BV1SdSDBDEzu",
+      "title": "【王语晨】20260405 GNZ48 《POP“拾”陆》公演cut",
+      "created": 1775387030,
+      "date": "2026-04-05",
+      "titleDate": "2026-04-05",
+      "kind": "cut",
+      "cover": "http://i0.hdslb.com/bfs/archive/4088c534d6c896e09d649d496fd0a37e1810f484.jpg",
+      "url": "https://www.bilibili.com/video/BV1SdSDBDEzu",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "",
       "liveId": "1247566947514388480",
       "liveDate": "2026-04-05"
     },
