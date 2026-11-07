@@ -1,9 +1,9 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-11-07T06:19:07.839Z",
-  "count": 794,
+  "updatedAt": "2026-11-07T14:57:25.210Z",
+  "count": 796,
   "matched": 545,
   "replays": 271,
-  "clips": 523,
+  "clips": 525,
   "targets": [
     {
       "mid": "1805448354",
@@ -28,6 +28,32 @@ window.LIVE_CUTS = {
     "358477444:space": 8
   },
   "cuts": [
+    {
+      "bvid": "BV1a64n6SE92",
+      "title": "【王语晨】20261107 GNZ48 Team NIII《拾忆：TEAM NIII》公演cut",
+      "created": 1794055469,
+      "date": "2026-11-07",
+      "titleDate": "2026-11-07",
+      "kind": "cut",
+      "cover": "http://i1.hdslb.com/bfs/archive/deb87863432c6999d30fa04182030b07b3510147.jpg",
+      "url": "https://www.bilibili.com/video/BV1a64n6SE92",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨公演cut"
+    },
+    {
+      "bvid": "BV1Jw4J6oEox",
+      "title": "【王语晨】20261107 GNZ48 Team Z《Zenith ·穹顶之上》公演cut",
+      "created": 1794039714,
+      "date": "2026-11-07",
+      "titleDate": "2026-11-07",
+      "kind": "cut",
+      "cover": "http://i1.hdslb.com/bfs/archive/92faff21117b31638c3fcfdbbb7cb4de9b630528.jpg",
+      "url": "https://www.bilibili.com/video/BV1Jw4J6oEox",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨公演cut"
+    },
     {
       "bvid": "BV1r5456VEsW",
       "title": "【王语晨】集后台之力化了个拼好妆只有脸是自己的ԅ(¯ㅂ¯ԅ)",

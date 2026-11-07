@@ -1,6 +1,6 @@
 {
-  "updatedAt": "2026-11-07T06:19:23.588Z",
-  "count": 1398,
+  "updatedAt": "2026-11-07T14:57:41.552Z",
+  "count": 1404,
   "targets": [
     {
       "mid": "2086351451",
@@ -30,6 +30,60 @@
     "2086351451:space": 2
   },
   "videos": [
+    {
+      "bvid": "BV1kW4n6hEjb",
+      "aid": 117575400822523,
+      "title": "【GNZ48】20261107 Team Z《Zenith ·穹顶之上》陈珊玲生日公演",
+      "created": 1794058967,
+      "duration": 13215,
+      "play": 816,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1a64n6SE92",
+      "aid": 117575216269850,
+      "title": "【王语晨】20261107 GNZ48 Team NIII《拾忆：TEAM NIII》公演cut",
+      "created": 1794055469,
+      "duration": 2394,
+      "play": 28,
+      "mid": "358477444"
+    },
+    {
+      "bvid": "BV1HT4H6wE4F",
+      "aid": 117574931059043,
+      "title": "【SNH48】20261107 Team SII 田姝丽《斯嘉丽的行李箱》毕业公演",
+      "created": 1794051446,
+      "duration": 16202,
+      "play": 1003,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV11G4E6cEmp",
+      "aid": 117574494853633,
+      "title": "【CGT48】20261107 《偶像进阶计划》追光组公演",
+      "created": 1794044715,
+      "duration": 9286,
+      "play": 568,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1Bb4E6JEHw",
+      "aid": 117574310301739,
+      "title": "【GNZ48】20261107 Team Z 陈珊玲生日冷餐会",
+      "created": 1794041921,
+      "duration": 3223,
+      "play": 480,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1Jw4J6oEox",
+      "aid": 117574142528264,
+      "title": "【王语晨】20261107 GNZ48 Team Z《Zenith ·穹顶之上》公演cut",
+      "created": 1794039714,
+      "duration": 1524,
+      "play": 101,
+      "mid": "358477444"
+    },
     {
       "bvid": "BV1hh456aEZx",
       "aid": 117570468317858,
