@@ -1,7 +1,7 @@
 window.PERF_CUTS = {
  "uid": 7794095795,
  "account": "GNZ48王语晨的甜橙小铺",
- "updatedAt": "2026-11-07T12:33:24.106Z",
+ "updatedAt": "2026-11-07T15:51:16.017Z",
  "cuts": [
   {
    "date": "2026-11-07",
@@ -37,6 +37,30 @@ window.PERF_CUTS = {
    "h5": "https://video.weibo.com/show?fid=1034:5362711652139081",
    "cover": "https://wx1.sinaimg.cn/orj1080/008vtemvly1iitw89240aj31hc0u040p.jpg",
    "text": "#王语晨[超话]#\n【GNZ48王语晨 | 公演cut】20261107\nTEAM NIII·第三十五场《 拾忆：TEAM NIII 》\n\nmc1“有没有初印象现印象完全不一样的成员”\n\n王语晨cut http://t.cn/AXYIM1fs ​​​",
+   "liveId": "1324046763717103616"
+  },
+  {
+   "date": "2026-11-07",
+   "perf": "TEAM NIII·第三十五场《 拾忆：TEAM NIII 》",
+   "song": "星辰花火",
+   "mblogid": "Rqkf7b2Is",
+   "uid": 7794095795,
+   "url": "https://weibo.com/7794095795/Rqkf7b2Is",
+   "h5": "https://video.weibo.com/show?fid=1034:5362742157049906",
+   "cover": "https://wx1.sinaimg.cn/orj1080/008vtemvly1iitzl91f58j31hc0u0q4f.jpg",
+   "text": "#王语晨[超话]#王语晨超话 \n【GNZ48王语晨 | 公演cut】20261107\nTEAM NIII·第三十五场《 拾忆：TEAM NIII 》\n\n今日之星《 星辰花火 》\n\n王语晨cut http://t.cn/AXYMq7ay ​​​",
+   "liveId": "1324046763717103616"
+  },
+  {
+   "date": "2026-11-07",
+   "perf": "TEAM NIII·第三十五场《 拾忆：TEAM NIII 》",
+   "song": "Love Me Love Me",
+   "mblogid": "RqjRa2xQV",
+   "uid": 7794095795,
+   "url": "https://weibo.com/7794095795/RqjRa2xQV",
+   "h5": "https://video.weibo.com/show?fid=1034:5362717348003943",
+   "cover": "https://wx1.sinaimg.cn/orj1080/008vtemvly1iitxx8xt6pj31hc0u0adj.jpg",
+   "text": "#王语晨[超话]# \n【GNZ48王语晨 | 公演cut】20261107\nTEAM NIII·第三十五场《 拾忆：TEAM NIII 》\n\n《 Love Me Love Me》\n\n王语晨cut http://t.cn/AXYIBNQb ​​​",
    "liveId": "1324046763717103616"
   },
   {
