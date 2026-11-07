@@ -1,6 +1,6 @@
 {
-  "updatedAt": "2026-11-07T14:57:41.552Z",
-  "count": 1404,
+  "updatedAt": "2026-11-07T20:17:18.645Z",
+  "count": 1409,
   "targets": [
     {
       "mid": "2086351451",
@@ -30,6 +30,51 @@
     "2086351451:space": 2
   },
   "videos": [
+    {
+      "bvid": "BV1fS4H6aEh6",
+      "aid": 117576340343092,
+      "title": "【王语晨】20261107 直播回放",
+      "created": 1794072794,
+      "duration": 3338,
+      "play": 71,
+      "mid": "358477444"
+    },
+    {
+      "bvid": "BV1k44p6TERV",
+      "aid": 117576206129040,
+      "title": "【CKG48】20261107 Team K《我的太阳》公演",
+      "created": 1794070981,
+      "duration": 10944,
+      "play": 389,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1GM4p6nEPH",
+      "aid": 117576139083990,
+      "title": "【CGT48】20261107 《偶像进阶计划》逐梦组公演",
+      "created": 1794070116,
+      "duration": 9331,
+      "play": 161,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1Bi4p6cE7Z",
+      "aid": 117575904140165,
+      "title": "【SNH48】20261107 Team HII 《赫兹共振》2.0公演",
+      "created": 1794067338,
+      "duration": 12005,
+      "play": 365,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV1Bq4p68EAA",
+      "aid": 117575820251574,
+      "title": "【GNZ48】20261107 Team NIII 《拾忆：TEAM NIII》公演",
+      "created": 1794065212,
+      "duration": 11585,
+      "play": 971,
+      "mid": "2086351451"
+    },
     {
       "bvid": "BV1kW4n6hEjb",
       "aid": 117575400822523,
