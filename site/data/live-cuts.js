@@ -1,8 +1,8 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-11-07T20:17:02.236Z",
-  "count": 796,
-  "matched": 545,
-  "replays": 271,
+  "updatedAt": "2026-11-07T23:42:41.099Z",
+  "count": 797,
+  "matched": 546,
+  "replays": 272,
   "clips": 525,
   "targets": [
     {
@@ -28,6 +28,21 @@ window.LIVE_CUTS = {
     "358477444:space": 8
   },
   "cuts": [
+    {
+      "bvid": "BV1fS4H6aEh6",
+      "title": "【王语晨】20261107 直播回放",
+      "created": 1794072794,
+      "date": "2026-11-08",
+      "titleDate": "2026-11-07",
+      "kind": "replay",
+      "cover": "http://i2.hdslb.com/bfs/archive/2b09c79fe43b838bc240724577738fd76cd41713.jpg",
+      "url": "https://www.bilibili.com/video/BV1fS4H6aEh6",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "",
+      "liveId": "1325617764858925056",
+      "liveDate": "2026-11-07"
+    },
     {
       "bvid": "BV1a64n6SE92",
       "title": "【王语晨】20261107 GNZ48 Team NIII《拾忆：TEAM NIII》公演cut",
