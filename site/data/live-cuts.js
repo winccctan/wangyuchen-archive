@@ -1,9 +1,9 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-11-07T23:42:41.099Z",
-  "count": 797,
-  "matched": 546,
+  "updatedAt": "2026-11-08T15:22:52.958Z",
+  "count": 798,
+  "matched": 547,
   "replays": 272,
-  "clips": 525,
+  "clips": 526,
   "targets": [
     {
       "mid": "1805448354",
@@ -28,6 +28,21 @@ window.LIVE_CUTS = {
     "358477444:space": 8
   },
   "cuts": [
+    {
+      "bvid": "BV1tEW764Ewg",
+      "title": "【王语晨】沉浸式记录拉面王师傅在海底捞打工的一天",
+      "created": 1794128106,
+      "date": "2026-11-08",
+      "titleDate": "",
+      "kind": "cut",
+      "cover": "http://i0.hdslb.com/bfs/archive/35655d22ba78a4b00603053ac8f546dbad73f30d.jpg",
+      "url": "https://www.bilibili.com/video/BV1tEW764Ewg",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨直播cut",
+      "liveId": "1325971271201918976",
+      "liveDate": "2026-11-07"
+    },
     {
       "bvid": "BV1fS4H6aEh6",
       "title": "【王语晨】20261107 直播回放",
