@@ -1,7 +1,7 @@
 window.PERF_CUTS = {
  "uid": 7794095795,
  "account": "GNZ48王语晨的甜橙小铺",
- "updatedAt": "2026-11-08T00:49:08.440Z",
+ "updatedAt": "2026-11-08T16:09:32.354Z",
  "cuts": [
   {
    "date": "2026-11-07",
@@ -62,6 +62,30 @@ window.PERF_CUTS = {
    "cover": "https://wx1.sinaimg.cn/orj1080/008vtemvly1iitxx8xt6pj31hc0u0adj.jpg",
    "text": "#王语晨[超话]# \n【GNZ48王语晨 | 公演cut】20261107\nTEAM NIII·第三十五场《 拾忆：TEAM NIII 》\n\n《 Love Me Love Me》\n\n王语晨cut http://t.cn/AXYIBNQb ​​​",
    "liveId": "1324046763717103616"
+  },
+  {
+   "date": "2026-11-07",
+   "perf": "TEAM Z·《Zenith·穹顶之上》第二十五场",
+   "song": "Neon",
+   "mblogid": "RqsGMv6S3",
+   "uid": 7794095795,
+   "url": "https://weibo.com/7794095795/RqsGMv6S3",
+   "h5": "https://video.weibo.com/show?fid=1034:5363067224260648",
+   "cover": "https://wx2.sinaimg.cn/orj1080/008vtemvly1iiv0wk54gqj31hc0u0q5u.jpg",
+   "text": "#王语晨[超话]# \n【GNZ48王语晨 | 公演cut】20261107\nTEAM Z·《Zenith·穹顶之上》第二十五场\n\n《Neon》\n\n王语晨cut http://t.cn/AXYiDguS ​​​",
+   "liveId": "1324046477896257536"
+  },
+  {
+   "date": "2026-11-07",
+   "perf": "TEAM Z·《Zenith·穹顶之上》第二十五场",
+   "song": "MC1",
+   "mblogid": "RqsFzj2s5",
+   "uid": 7794095795,
+   "url": "https://weibo.com/7794095795/RqsFzj2s5",
+   "h5": "https://video.weibo.com/show?fid=1034:5363066091798627",
+   "cover": "https://wx1.sinaimg.cn/orj1080/008vtemvly1iiv0qyw5epj31hc0u0n2g.jpg",
+   "text": "#王语晨[超话]# \n【GNZ48王语晨 | 公演cut】20261107\nTEAM Z·《Zenith·穹顶之上》第二十五场\n\nmc1“一句话祝福陈珊玲”\n\n王语晨cut http://t.cn/AXYieauX ​​​",
+   "liveId": "1324046477896257536"
   },
   {
    "date": "2026-11-06",
