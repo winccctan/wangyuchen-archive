@@ -1,6 +1,6 @@
 {
-  "updatedAt": "2026-11-08T20:36:57.927Z",
-  "count": 1415,
+  "updatedAt": "2026-11-10T02:48:14.929Z",
+  "count": 1422,
   "targets": [
     {
       "mid": "2086351451",
@@ -26,10 +26,73 @@
     "358477444:season:7130625": 2,
     "358477444:season:6805043": 2,
     "358477444:season:2812669": 2,
-    "358477444:space": 1,
+    "358477444:space": 2,
     "2086351451:space": 2
   },
   "videos": [
+    {
+      "bvid": "BV1HXW86QEiS",
+      "aid": 117586742217897,
+      "title": "【王语晨】20240310 SNH48 GROUP 2023年度潜力新人TOP16答谢公演上海站cut",
+      "created": 1794231536,
+      "duration": 2553,
+      "play": 38,
+      "mid": "358477444"
+    },
+    {
+      "bvid": "BV1TCW86fEEz",
+      "aid": 117586641685189,
+      "title": "【王语晨】20240224 GNZ48《My龘令》元宵情人节特殊公演cut",
+      "created": 1794230083,
+      "duration": 996,
+      "play": 30,
+      "mid": "358477444"
+    },
+    {
+      "bvid": "BV12CW86ZEDz",
+      "aid": 117586641619599,
+      "title": "【王语晨】20240303 GNZ48 Team NIII《启程：Team NIII》公演cut",
+      "created": 1794230056,
+      "duration": 2220,
+      "play": 40,
+      "mid": "358477444"
+    },
+    {
+      "bvid": "BV1VtWt6wEp5",
+      "aid": 117586255809317,
+      "title": "【王语晨】20240203 GNZ48《2024行运一条龙》全团联合公演cut",
+      "created": 1794223972,
+      "duration": 1500,
+      "play": 59,
+      "mid": "358477444"
+    },
+    {
+      "bvid": "BV1bvWt6xEEH",
+      "aid": 117586171792794,
+      "title": "【王语晨】20240127 GNZ48《我这暴风雪，那你呢？》朱怡欣主题生日公演cut",
+      "created": 1794222785,
+      "duration": 638,
+      "play": 68,
+      "mid": "358477444"
+    },
+    {
+      "bvid": "BV16VWt6rEvE",
+      "aid": 117586071324585,
+      "title": "【王语晨】20240126 GNZ48 Team NIII《启程：Team NIII》公演cut",
+      "created": 1794221272,
+      "duration": 2668,
+      "play": 111,
+      "mid": "358477444"
+    },
+    {
+      "bvid": "BV1iJWt6iEZG",
+      "aid": 117586004020139,
+      "title": "【王语晨】20240121 GNZ48 Team NIII《启程：Team NIII》公演cut",
+      "created": 1794220271,
+      "duration": 2335,
+      "play": 146,
+      "mid": "358477444"
+    },
     {
       "bvid": "BV16wWH69EBX",
       "aid": 117581876828266,

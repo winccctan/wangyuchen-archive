@@ -6,7 +6,7 @@
  * 字段：[日期, 标题, BV号, 封面URL]。日期为北京时间 YYYY-MM-DD（优先从标题 8 位日期解析，
  *       解析不到回退上传时间），与公演 stime 转北京时间一致，确保能挂到对应公演。
  * 注：本文件随站上线（静态资源，不进 KV）；改它并 bump index.html 的 ?v= 即生效。
- * 共 238 条，覆盖 2022-10-02 → 2026-11-07。
+ * 共 244 条，覆盖 2022-10-02 → 2026-11-07。
  */
 window.__BILI_CUTS__ = [
   ["2026-11-07","【王语晨】20261107 GNZ48 Team NIII《拾忆：TEAM NIII》公演cut","BV1a64n6SE92",""],
@@ -181,6 +181,12 @@ window.__BILI_CUTS__ = [
   ["2024-05-04","GNZ48 team NIII《天枢之弈》首演第一场cut","BV1Wi421y723","https://i1.hdslb.com/bfs/archive/4d4f016954d6d3ea6851fd76fbdf678dc13a00e7.jpg"],
   ["2024-04-27","《启程:Team NIII》千秋乐公演cut","BV1gH4y1V72k","https://i2.hdslb.com/bfs/archive/74e0838adcc5c173299168fc9c5c75e8706c5dbd.jpg"],
   ["2024-04-19","最佳拍档公演cut","BV1uw4m1U7jr","https://i0.hdslb.com/bfs/archive/87f603c47358424d528a856aa4dcebabcedbaced.png"],
+  ["2024-03-03","【王语晨】20240303 GNZ48 Team NIII《启程：Team NIII》公演cut","BV12CW86ZEDz",""],
+  ["2024-02-24","【王语晨】20240224 GNZ48《My龘令》元宵情人节特殊公演cut","BV1TCW86fEEz",""],
+  ["2024-02-03","【王语晨】20240203 GNZ48《2024行运一条龙》全团联合公演cut","BV1VtWt6wEp5",""],
+  ["2024-01-27","【王语晨】20240127 GNZ48《我这暴风雪，那你呢？》朱怡欣主题生日公演cut","BV1bvWt6xEEH",""],
+  ["2024-01-26","【王语晨】20240126 GNZ48 Team NIII《启程：Team NIII》公演cut","BV16VWt6rEvE",""],
+  ["2024-01-21","【王语晨】20240121 GNZ48 Team NIII《启程：Team NIII》公演cut","BV1iJWt6iEZG",""],
   ["2024-01-06","【王语晨】20240106 GNZ48XCKG48XCGT48 偶像研究计划周年纪念版 特殊公演cut","BV1Up4b6PE11",""],
   ["2023-12-30","【王语晨】20231230 GNZ48 Team NIII《启程：Team NIII》公演cut","BV1zk4b6nEy5",""],
   ["2023-12-23","【王语晨】20231223 GNZ48 Team NIII《启程：Team NIII》公演cut","BV1br4t6AEQ4",""],
