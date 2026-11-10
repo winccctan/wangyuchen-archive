@@ -1,6 +1,6 @@
 {
-  "updatedAt": "2026-11-10T02:48:14.929Z",
-  "count": 1422,
+  "updatedAt": "2026-11-10T12:45:34.877Z",
+  "count": 1424,
   "targets": [
     {
       "mid": "2086351451",
@@ -27,9 +27,27 @@
     "358477444:season:6805043": 2,
     "358477444:season:2812669": 2,
     "358477444:space": 2,
-    "2086351451:space": 2
+    "2086351451:space": 1
   },
   "videos": [
+    {
+      "bvid": "BV1N9W36uEqm",
+      "aid": 117592110926089,
+      "title": "【王语晨】20240317 GNZ48 Team NIII《启程：Team NIII》公演cut",
+      "created": 1794313259,
+      "duration": 289,
+      "play": 0,
+      "mid": "358477444"
+    },
+    {
+      "bvid": "BV1RSWM65ELW",
+      "aid": 117591708338618,
+      "title": "【王语晨】20240315 GNZ48 Team NIII《启程：Team NIII》公演cut",
+      "created": 1794307295,
+      "duration": 2491,
+      "play": 51,
+      "mid": "358477444"
+    },
     {
       "bvid": "BV1HXW86QEiS",
       "aid": 117586742217897,
