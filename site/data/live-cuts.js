@@ -1,9 +1,9 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-11-10T12:44:19.953Z",
-  "count": 807,
-  "matched": 556,
+  "updatedAt": "2026-11-10T21:50:50.523Z",
+  "count": 808,
+  "matched": 557,
   "replays": 272,
-  "clips": 535,
+  "clips": 536,
   "targets": [
     {
       "mid": "1805448354",
@@ -17,7 +17,7 @@ window.LIVE_CUTS = {
   "progress": {
     "358477444:season:2812583": 7,
     "358477444:season:2812580": 10,
-    "358477444:season:4752040": 10,
+    "358477444:season:4752040": 11,
     "358477444:season:2812573": 2,
     "358477444:season:2840164": 2,
     "358477444:season:5834827": 2,
@@ -28,6 +28,21 @@ window.LIVE_CUTS = {
     "358477444:space": 8
   },
   "cuts": [
+    {
+      "bvid": "BV1aBW36JEfs",
+      "title": "【王语晨】20240316 Team G《启程：Team G》公演cut",
+      "created": 1794316885,
+      "date": "2026-11-10",
+      "titleDate": "2024-03-16",
+      "kind": "cut",
+      "cover": "http://i1.hdslb.com/bfs/archive/46e870c754bf3682918802abb061f58c9709bf7b.jpg",
+      "url": "https://www.bilibili.com/video/BV1aBW36JEfs",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "",
+      "liveId": "975558048864866304",
+      "liveDate": "2024-03-16"
+    },
     {
       "bvid": "BV1N9W36uEqm",
       "title": "【王语晨】20240317 GNZ48 Team NIII《启程：Team NIII》公演cut",
