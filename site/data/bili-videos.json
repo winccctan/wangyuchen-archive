@@ -1,6 +1,6 @@
 {
-  "updatedAt": "2026-11-11T06:37:08.551Z",
-  "count": 1427,
+  "updatedAt": "2026-11-11T16:17:57.796Z",
+  "count": 1429,
   "targets": [
     {
       "mid": "2086351451",
@@ -30,6 +30,24 @@
     "2086351451:space": 1
   },
   "videos": [
+    {
+      "bvid": "BV1YsWU69E2i",
+      "aid": 117598654169294,
+      "title": "【王语晨】20261111 直播回放",
+      "created": 1794413600,
+      "duration": 3755,
+      "play": 0,
+      "mid": "358477444"
+    },
+    {
+      "bvid": "BV1WnWm6qEPE",
+      "aid": 117597412527309,
+      "title": "【王语晨】GNZ48 4班《4 Future》首演vlog‖cut",
+      "created": 1794394370,
+      "duration": 62,
+      "play": 32,
+      "mid": "358477444"
+    },
     {
       "bvid": "BV1JhWL66E6o",
       "aid": 117595969686154,

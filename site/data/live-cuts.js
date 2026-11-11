@@ -1,9 +1,9 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-11-11T06:35:54.203Z",
-  "count": 808,
-  "matched": 557,
-  "replays": 272,
-  "clips": 536,
+  "updatedAt": "2026-11-11T16:15:41.800Z",
+  "count": 814,
+  "matched": 561,
+  "replays": 274,
+  "clips": 540,
   "targets": [
     {
       "mid": "1805448354",
@@ -25,9 +25,65 @@ window.LIVE_CUTS = {
     "358477444:season:6805043": 2,
     "358477444:season:2812669": 2,
     "1805448354:space": 3,
-    "358477444:space": 8
+    "358477444:space": 10
   },
   "cuts": [
+    {
+      "bvid": "BV1YsWU69E2i",
+      "title": "【王语晨】20261111 直播回放",
+      "created": 1794413600,
+      "date": "2026-11-12",
+      "titleDate": "2026-11-11",
+      "kind": "replay",
+      "cover": "http://i2.hdslb.com/bfs/archive/66710c7e82c172acb5666e47ba92a10ff89c0c23.jpg",
+      "url": "https://www.bilibili.com/video/BV1YsWU69E2i",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨直播cut",
+      "liveId": "1327402639832190976",
+      "liveDate": "2026-11-11"
+    },
+    {
+      "bvid": "BV1WnWm6qEPE",
+      "title": "【王语晨】GNZ48 4班《4 Future》首演vlog‖cut",
+      "created": 1794394370,
+      "date": "2026-11-11",
+      "titleDate": "",
+      "kind": "cut",
+      "cover": "http://i2.hdslb.com/bfs/archive/0a2f43178c4ae38f920948a7402186ccd7f342d8.jpg",
+      "url": "https://www.bilibili.com/video/BV1WnWm6qEPE",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨官方视频cut"
+    },
+    {
+      "bvid": "BV1JhWL66E6o",
+      "title": "【王语晨】20240406 GNZ48 Team NIII《启程：Team NIII》生日公演cut",
+      "created": 1794372287,
+      "date": "2026-11-11",
+      "titleDate": "2024-04-06",
+      "kind": "cut",
+      "cover": "http://i1.hdslb.com/bfs/archive/d3ac17d738db87046ce9b60d47ac9bbf15f76699.jpg",
+      "url": "https://www.bilibili.com/video/BV1JhWL66E6o",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "",
+      "liveId": "1115765759178248192",
+      "liveDate": "2025-04-06"
+    },
+    {
+      "bvid": "BV12FWj6DEtn",
+      "title": "【王语晨】20240405 GNZ48 Team NIII《启程：Team NIII》公演cut",
+      "created": 1794371554,
+      "date": "2026-11-11",
+      "titleDate": "2024-04-05",
+      "kind": "cut",
+      "cover": "http://i0.hdslb.com/bfs/archive/8a85b18459ddce9b31deba7c6f182ede0e44242f.jpg",
+      "url": "https://www.bilibili.com/video/BV12FWj6DEtn",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": ""
+    },
     {
       "bvid": "BV1aBW36JEfs",
       "title": "【王语晨】20240316 Team G《启程：Team G》公演cut",
@@ -6026,6 +6082,21 @@ window.LIVE_CUTS = {
       "liveDate": "2026-02-16"
     },
     {
+      "bvid": "BV1quZJBcE9L",
+      "title": "【王语晨】20250214 直播回放",
+      "created": 1771085178,
+      "date": "2026-02-15",
+      "titleDate": "2025-02-14",
+      "kind": "replay",
+      "cover": "http://i0.hdslb.com/bfs/archive/11191075fcc7c249d9dadf1b5ab559691bb4c304.jpg",
+      "url": "https://www.bilibili.com/video/BV1quZJBcE9L",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "",
+      "liveId": "964315536477196288",
+      "liveDate": "2024-02-14"
+    },
+    {
       "bvid": "BV1yTcWzfEBb",
       "title": "【王语晨】20260213 直播回放",
       "created": 1771040552,
@@ -6037,6 +6108,21 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
+      "liveId": "1229206026815606784",
+      "liveDate": "2026-02-13"
+    },
+    {
+      "bvid": "BV1xNcWzcEjH",
+      "title": "【王语晨】我们放假因为公演没跳满，还要扣钱",
+      "created": 1771040273,
+      "date": "2026-02-14",
+      "titleDate": "",
+      "kind": "cut",
+      "cover": "http://i1.hdslb.com/bfs/archive/69ea4b68e9d54f75d088b61a0dd9d2af1ab5a1f5.jpg",
+      "url": "https://www.bilibili.com/video/BV1xNcWzcEjH",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "",
       "liveId": "1229206026815606784",
       "liveDate": "2026-02-13"
     },
