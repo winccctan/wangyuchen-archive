@@ -79,6 +79,11 @@
 .ctl .unlock{display:flex;gap:8px;margin-top:10px}
 .ctl .unlock input{flex:1;min-width:0;padding:10px 12px;font-size:15px;border-radius:9px;border:1px solid #2a2e3d;background:#12131a;color:#e8eaf2;font-family:inherit;box-sizing:border-box}
 .ctl .unlock button{flex:0 0 auto;padding:10px 16px}
+/* 设备访问：每日条形 + 各页累计小标签（2026-11-13 从 Worker 看板页搬过来） */
+.dbar{height:4px;background:#4a7cf7;border-radius:2px;display:inline-block;vertical-align:middle;margin-left:6px;opacity:.35}
+.pgs{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 0}
+.pgchip{background:#1c1f2b;border:1px solid #2a2e3d;border-radius:9px;padding:6px 10px;font-size:12px;color:#8b90a0}
+.pgchip b{color:#e8eaf2;font-weight:600}
 </style>
 
 <h1>站点数据</h1>
@@ -481,7 +486,10 @@ async function loadHealth() {
  *       它以后改版这个 tab 自动跟着变。只在本机浏览器渲染，不写补档站 KV。
  */
 const API_BASE = 'https://all48-archive.yqz-tansy.workers.dev/api';
-const DEV_URL = 'https://all48-archive.yqz-tansy.workers.dev/devstats?k=wyc-stats-2026&days=7';
+/* 🔴 2026-11-13 站长：「devstats?k=… 这个访问入口也不对外展示吧，这样不安全。
+   所有数据统计内部 stats.html#dev」。⇒ 不再 iframe 嵌 Worker 那个独立看板页（它的口令写在 URL 上，
+   转发链接就能看全站设备数据），改成在这里直接读 JSON、自己渲染；Worker 的 /devstats 页面已下线。 */
+const DEV_API = API_BASE + '/devstats?k=wyc-stats-2026';
 const CTL_API = API_BASE + '/ctl';
 
 let ctlSlug = '';
@@ -742,6 +750,81 @@ function ctlBoot() {
   ctlRefresh();
 }
 
+/* ---------- 设备级访问（自己渲染，不再嵌 Worker 那个看板页）---------- */
+const DEV_PAGE_NAMES = { members: '档案', gift: '计分', mvp: 'MVP', rush: '冲刺', contrib: '贡献', other: '其他' };
+const DEV_PAGE_ORDER = ['members', 'gift', 'mvp', 'rush', 'contrib', 'other'];
+let devDays = 7, devBusy = false;
+
+function devChips() {
+  return '<div class="chips">' + [7, 14, 30].map((n) =>
+    '<button class="chip" type="button" data-d="' + n + '" aria-pressed="' + (n === devDays) + '">'
+    + n + ' 天</button>').join('') + '</div>';
+}
+
+function devHtml(j) {
+  const ds = (j && j.days) || [];
+  const maxN = Math.max(1, ...ds.map((x) => x.n || 0));
+  const md = (d) => String(d || '').slice(4, 6) + '-' + String(d || '').slice(6, 8);
+  const dayRows = ds.length
+    ? ds.slice().reverse().map((x) => '<tr><td>' + md(x.d) + '</td>'
+        + '<td class="n"><b>' + (x.n || 0) + '</b><i class="dbar" style="width:'
+        + Math.round((x.n || 0) / maxN * 46) + 'px"></i></td>'
+        + '<td class="n">' + (x.fresh || 0) + '</td><td class="n">' + (x.ret || 0) + '</td></tr>').join('')
+    : '<tr><td colspan="4" class="dim">还没有数据</td></tr>';
+  const pgRows = ds.length
+    ? ds.slice().reverse().map((x) => '<tr><td>' + md(x.d) + '</td>'
+        + DEV_PAGE_ORDER.map((q) => '<td class="n">' + ((x.pages && x.pages[q]) || 0) + '</td>').join('')
+        + '</tr>').join('')
+    : '<tr><td colspan="7" class="dim">还没有数据</td></tr>';
+  const chips = DEV_PAGE_ORDER.filter((q) => (j.pages || {})[q])
+    .map((q) => '<span class="pgchip">' + DEV_PAGE_NAMES[q] + ' <b>' + j.pages[q] + '</b></span>').join('')
+    || '<span class="pgchip">—</span>';
+  return '<div class="cards">'
+      + '<div class="card"><div class="k">累计设备</div><div class="v">' + ((j && j.total) || 0) + '</div>'
+        + '<div class="k" style="margin-top:6px">指纹 ' + ((j && j.fps) || 0) + ' 枚</div></div>'
+      + '<div class="card"><div class="k">今日设备</div><div class="v">' + ((j && j.today) || 0) + '</div></div>'
+      + '<div class="card"><div class="k">' + devDays + ' 天设备</div><div class="v">' + ((j && j.rangeUv) || 0) + '</div></div>'
+      + '<div class="card"><div class="k">今日新设备</div><div class="v">' + ((j && j.todayFresh) || 0) + '</div></div>'
+    + '</div>'
+    + devChips()
+    + '<h2>每日</h2><table><tr><td>日期</td><td class="n">设备</td><td class="n">新</td><td class="n">回访</td></tr>'
+    + dayRows + '</table>'
+    + '<h2>各页设备</h2><table class="wide"><tr><td>日期</td>'
+    + DEV_PAGE_ORDER.map((q) => '<td class="n">' + DEV_PAGE_NAMES[q] + '</td>').join('') + '</tr>'
+    + pgRows + '</table>'
+    + '<h2>各页累计</h2><div class="pgs">' + chips + '</div>'
+    + '<p class="dim">两层去重：① 浏览器指纹（清缓存、重装都不变）；② cookie 标签（把同型号的手机分开）。'
+    + '两台同型号手机只要在同一天都用过，就算两台；清缓存属于「标签接替」，仍是一台；'
+    + '从未在同一天都用过的两台同型号机，会被并成一台 —— 所以这个数是下限。'
+    + '这块数据只在补档站这个带密码的页面上渲染，Worker 那边的独立看板入口已经下线。</p>';
+}
+
+async function loadDevData() {
+  const box = document.getElementById('devbox');
+  if (!box || devBusy) return;
+  devBusy = true;
+  try {
+    const r = await fetch(DEV_API + '&days=' + devDays, { cache: 'no-store' });
+    if (!r.ok) throw new Error('接口返回 HTTP ' + r.status);
+    const j = await r.json();
+    if (j && j.error) throw new Error(j.error);
+    box.innerHTML = devHtml(j);
+    box.querySelectorAll('.chip').forEach((b) => {
+      b.addEventListener('click', () => {
+        const n = Number(b.dataset.d) || 7;
+        if (n === devDays) return;
+        devDays = n;
+        loadDevData();
+      });
+    });
+  } catch (e) {
+    box.innerHTML = '<p class="dim">设备数据暂时读不到（'
+      + esc(e && e.message ? e.message : '未知错误') + '）。</p>';
+  } finally {
+    devBusy = false;
+  }
+}
+
 function loadDev() {
   const box = document.getElementById('pane-dev');
   if (!box) return;
@@ -749,15 +832,9 @@ function loadDev() {
     '<h2>机器人（小48 微信桥）</h2>'
     + '<div id="ctl"><p class="dim">读取中…</p></div>'
     + '<h2>设备访问</h2>'
-    + '<p class="dim">按浏览器指纹去重的独立设备数，和上面「到访人数」不是同一口径：这里是设备、上面是按 IP 估算的人。'
-    + '数据来自 all48 统计 Worker。'
-    + ' <a href="' + DEV_URL + '" target="_blank" rel="noopener" style="color:#9fd0ff">在新窗口打开 ↗</a></p>'
-    + '<div style="border-radius:12px;overflow:hidden;background:#fff">'
-    + '<iframe src="' + DEV_URL + '" loading="lazy" referrerpolicy="no-referrer" '
-    + 'style="width:100%;height:900px;border:0;display:block"></iframe>'
-    + '</div>'
-    + '<p class="dim">框内的「7 / 14 / 30 天」可切换时间范围。这个块只在本机浏览器渲染、不写补档站 KV。</p>';
+    + '<div id="devbox"><p class="dim">读取中…</p></div>';
   ctlBoot();
+  loadDevData();
 }
 
 // 控制台每 8 秒自己刷一次（只在「设备访问」tab 正显示时才拉，切走就不打扰）
