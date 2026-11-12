@@ -1,9 +1,9 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-11-11T16:15:41.800Z",
-  "count": 814,
-  "matched": 561,
+  "updatedAt": "2026-11-12T16:54:38.423Z",
+  "count": 815,
+  "matched": 562,
   "replays": 274,
-  "clips": 540,
+  "clips": 541,
   "targets": [
     {
       "mid": "1805448354",
@@ -25,9 +25,24 @@ window.LIVE_CUTS = {
     "358477444:season:6805043": 2,
     "358477444:season:2812669": 2,
     "1805448354:space": 3,
-    "358477444:space": 10
+    "358477444:space": 12
   },
   "cuts": [
+    {
+      "bvid": "BV1dxWX6BEQP",
+      "title": "【王语晨】好困呐，能不能让面包帮我洗头洗澡😭",
+      "created": 1794470353,
+      "date": "2026-11-12",
+      "titleDate": "",
+      "kind": "cut",
+      "cover": "http://i2.hdslb.com/bfs/archive/6a797ca5231d67b7ee452c5c0f8748c151b9713a.jpg",
+      "url": "https://www.bilibili.com/video/BV1dxWX6BEQP",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨直播cut",
+      "liveId": "1327402639832190976",
+      "liveDate": "2026-11-11"
+    },
     {
       "bvid": "BV1YsWU69E2i",
       "title": "【王语晨】20261111 直播回放",
