@@ -42,6 +42,43 @@
 .chips{display:flex;gap:6px;margin:0 0 12px}
 .chip{flex:1;padding:8px 6px;font-size:13px;font-family:inherit;border:0;border-radius:9px;background:#1c1f2b;color:#8b90a0;cursor:pointer;transition:background .15s,color .15s}
 .chip[aria-pressed="true"]{background:#4a7cf7;color:#fff;font-weight:600}
+/* ---------- 机器人控制台（2026-11-13 从 worker 的 /admin 搬过来） ---------- */
+.ctl .cardc{background:#1c1f2b;border:1px solid #22262f;border-radius:12px;padding:14px 16px;margin-bottom:12px}
+.ctl .cardc.bad{border-color:#f87171}
+.ctl .row{display:flex;justify-content:space-between;gap:10px;font-size:13.5px;padding:3px 0}
+.ctl .row b{font-weight:600}
+.ctl .row b span{color:inherit}
+.ctl .row span{color:#8b90a0;flex:none}
+.ctl .row b.stline{display:inline-flex;align-items:center;gap:7px}
+.ctl .dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#8b90a0;flex:none}
+.ctl .dot.on{background:#4ade80;box-shadow:0 0 0 4px rgba(74,222,128,.14)}
+.ctl .dot.wn{background:#fbbf24}
+.ctl .dot.off{background:#f87171;box-shadow:0 0 0 4px rgba(248,113,113,.12)}
+.ctl .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.ctl button{font:inherit;font-size:13.5px;padding:10px 8px;border-radius:11px;border:1px solid #2a2e3d;background:#12131a;color:#e8eaf2;cursor:pointer;min-height:42px}
+.ctl button:active{transform:scale(.98)}
+.ctl button:disabled{opacity:.45}
+.ctl button.pri{border-color:#4a7cf7;color:#9fd0ff}
+.ctl button.dan{border-color:#f87171;color:#ff9a9a}
+.ctl .hint{font-size:12px;color:#8b90a0;margin:8px 0 0;line-height:1.7}
+.ctl .qr{text-align:center}
+.ctl .qr img{width:min(240px,64vw);height:auto;background:#fff;padding:10px;border-radius:12px}
+.ctl .res{font-size:12.5px;border-top:1px solid #2a2e3d;padding:9px 0}
+.ctl .res:first-child{border-top:0}
+.ctl .res .t{color:#8b90a0;font-size:11.5px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.ctl .res pre{margin:4px 0 0;white-space:pre-wrap;word-break:break-word;font:12px/1.55 ui-monospace,Menlo,monospace;color:#e8eaf2;opacity:.9}
+.ctl .tag{font-size:10.5px;padding:1px 6px;border-radius:99px;border:1px solid #2a2e3d;color:#8b90a0}
+.ctl .tag.ok{color:#4ade80;border-color:currentColor}
+.ctl .tag.bad{color:#f87171;border-color:currentColor}
+.ctl .glist{max-height:260px;overflow:auto;font-size:12.5px}
+.ctl .glist div{padding:5px 0;border-top:1px solid #2a2e3d;display:flex;gap:8px;justify-content:space-between}
+.ctl .glist div:first-child{border-top:0}
+.ctl .glist em{color:#8b90a0;font-style:normal;font-size:11.5px;flex:none}
+.ctl .glist button.mini{min-height:0;padding:3px 9px;font-size:11.5px;border-radius:99px;flex:none;border-color:#4a7cf7;color:#9fd0ff}
+.ctl .glist button.mini.on{border-color:#4ade80;color:#4ade80}
+.ctl .unlock{display:flex;gap:8px;margin-top:10px}
+.ctl .unlock input{flex:1;min-width:0;padding:10px 12px;font-size:15px;border-radius:9px;border:1px solid #2a2e3d;background:#12131a;color:#e8eaf2;font-family:inherit;box-sizing:border-box}
+.ctl .unlock button{flex:0 0 auto;padding:10px 16px}
 </style>
 
 <h1>站点数据</h1>
@@ -430,26 +467,303 @@ async function loadHealth() {
   }
 }
 
-/* ---------- 设备访问（devstats，2026-11-11 加进来的新 tab）----------
- * 数据源是 all48 统计 Worker 的 /devstats（和红蓝页统计同源，key 都是 wyc-stats-2026）。
- * 它是「设备级」访问：按浏览器去重的独立设备数，和上面「到访人数」（按 IP 估算的人）不是同一口径——
- * 这里更贴近「有多少台设备来过」。整页是现成的、自带 7/14/30 天切换，直接 iframe 嵌进来最省事也不易坏，
- * 而且它自己以后改版这个 tab 自动跟着变。只在本机浏览器渲染，不写补档站 KV、不带任何身份。
+/* ---------- 设备访问（devstats）+ 小48 机器人控制台（2026-11-13 合并到这里）----------
+ * 上半：机器人控制台。原来在 worker 上有个 /admin 页面，站长 2026-11-13 要求下线、
+ *       「放在 stats.html#dev」—— 于是页面删掉，控制逻辑搬进这个 tab。
+ *       原理没变：云端 CtlDO 排队 → 那台 Mac 上的桥每 10 秒来取件 → 执行 → 回传结果。
+ *       所以不需要公网 IP、不需要内网穿透，人不在那台电脑前也能重启 / 扫码 / 更新。
+ *       🔴 跨域调用带 x-adm-token 头（口令＝服务端 ADM_SLUG），✅ 必须由人在页面输一次、
+ *          只存本机 localStorage。❌ 绝不能写进源码：这个页是 gh-pages 公开仓库，
+ *          写进去等于把「重启机器人、拿登录二维码」的权限对全世界公开。
+ *       云端只放行 STATS_ORIGINS 白名单（本页 + wyc 两站），不放 *。
+ * 下半：设备级访问。按浏览器指纹去重的独立设备数，和上面「到访人数」（按 IP 估算的人）
+ *       不是同一口径。整页是现成的、自带 7/14/30 天切换，iframe 嵌进来最省事，
+ *       它以后改版这个 tab 自动跟着变。只在本机浏览器渲染，不写补档站 KV。
  */
+const API_BASE = 'https://all48-archive.yqz-tansy.workers.dev/api';
 const DEV_URL = 'https://all48-archive.yqz-tansy.workers.dev/devstats?k=wyc-stats-2026&days=7';
+const CTL_API = API_BASE + '/ctl';
+
+let ctlSlug = '';
+try { ctlSlug = localStorage.getItem('admSlug') || ''; } catch (_) { /* 隐私模式 */ }
+let ctlBusy = false;
+
+const CTL_OP = {
+  status: '刷新状态', qr: '生成二维码', groups: '拉群列表',
+  logs: '看日志', restart: '重启', update: '更新到最新版'
+};
+
+function ctlSet(id, v) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = v;
+}
+
+function ctlAgo(t) {
+  if (!t) return '—';
+  const s = Math.round((Date.now() - t) / 1000);
+  if (s < 60) return s + ' 秒前';
+  if (s < 3600) return Math.round(s / 60) + ' 分钟前';
+  if (s < 86400) return Math.round(s / 3600) + ' 小时前';
+  return Math.round(s / 86400) + ' 天前';
+}
+
+function ctlSpan(v) {
+  const s = Math.max(0, Math.round(v || 0));
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+  if (h) return h + ' 小时 ' + m + ' 分';
+  if (m) return m + ' 分 ' + (s % 60) + ' 秒';
+  return s + ' 秒';
+}
+
+function ctlSkeleton() {
+  return '<div class="ctl" id="ctlBox">'
+    + '<div class="cardc" id="ctlStat">'
+      + '<div class="row"><span>连接</span><b class="stline"><i class="dot" id="ctlDot"></i><span id="ctlSt">读取中…</span></b></div>'
+      + '<div class="row"><span>微信账号</span><b id="ctlAcc">—</b></div>'
+      + '<div class="row"><span>登录态</span><b id="ctlAuth">—</b></div>'
+      + '<div class="row"><span>群数</span><b id="ctlGrp">—</b></div>'
+      + '<div class="row"><span>版本 / 运行</span><b id="ctlVer">—</b></div>'
+      + '<div class="row"><span>上次心跳</span><b id="ctlBeat">—</b></div>'
+    + '</div>'
+    + '<div class="cardc"><div class="grid">'
+      + '<button class="pri" type="button" data-op="status">刷新状态</button>'
+      + '<button class="pri" type="button" data-op="qr">重新扫码登录</button>'
+      + '<button type="button" data-op="groups">拉群列表</button>'
+      + '<button type="button" data-op="logs">看最近日志</button>'
+      + '<button type="button" data-op="restart">重启机器人</button>'
+      + '<button class="dan" type="button" data-op="update">更新到最新版</button>'
+    + '</div><p class="hint">指令先排到云端，那台 Mac 上的机器人 10 秒内来取并执行，结果自动出现在下面。'
+      + '这台电脑关机 / 机器人没跑的时候，指令会一直排着，等它上线再执行。</p></div>'
+    + '<div class="cardc qr" id="ctlQrCard" style="display:none">'
+      + '<div class="row" style="justify-content:center;margin-bottom:8px"><b style="font-weight:600">用手机微信扫码登录</b></div>'
+      + '<img id="ctlQrImg" alt="登录二维码">'
+      + '<p class="hint" id="ctlQrHint"></p></div>'
+    + '<div class="cardc" id="ctlGCard" style="display:none">'
+      + '<div class="row" style="margin-bottom:4px"><span>群列表（小号当前所在的群）</span><b id="ctlGN"></b></div>'
+      + '<div class="glist" id="ctlGList"></div>'
+      + '<p class="hint" id="ctlWlHint"></p></div>'
+    + '<div class="cardc"><div class="row" style="margin-bottom:6px"><span>最近结果</span>'
+      + '<a id="ctlClr" style="cursor:pointer;color:#8b90a0;font-size:12px;text-decoration:none">清空</a></div>'
+      + '<div id="ctlRes"><p class="hint" style="margin:0">还没有记录</p></div></div>'
+    + '</div>';
+}
+
+function ctlLocked(msg) {
+  return '<div class="ctl"><div class="cardc">'
+    + '<div class="row"><span>管理口令</span><b>未填写</b></div>'
+    + '<p class="hint">' + (msg ? esc(msg) + '。' : '')
+    + '就是以前 <code>/admin?k=</code> 后面那串（<code>adm-</code> 开头），填一次就记在这台设备上，'
+    + '以后打开这个页直接用，换设备才需要再填。</p>'
+    + '<div class="unlock"><input id="ctlPw" type="password" placeholder="管理口令" autocomplete="off">'
+    + '<button class="pri" type="button" id="ctlGo">解锁</button></div>'
+    + '</div></div>';
+}
+
+function ctlBindLock() {
+  const inp = document.getElementById('ctlPw');
+  const go = () => {
+    const v = String((inp && inp.value) || '').trim();
+    if (!v) return;
+    ctlSlug = v;
+    try { localStorage.setItem('admSlug', v); } catch (_) { /* 隐私模式 */ }
+    ctlBoot();
+  };
+  const b = document.getElementById('ctlGo');
+  if (b) b.addEventListener('click', go);
+  if (inp) {
+    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
+    try { inp.focus(); } catch (_) { /* 忽略 */ }
+  }
+}
+
+async function ctlFetch(path, opt) {
+  const o = Object.assign({ cache: 'no-store' }, opt || {});
+  o.headers = Object.assign({}, o.headers || {}, { 'x-adm-token': ctlSlug });
+  const url = path.indexOf('/adm/') === 0 ? API_BASE + path : CTL_API + path;
+  const r = await fetch(url, o);
+  if (r.status === 403) throw new Error('管理口令不对');
+  if (!r.ok) throw new Error('接口返回 HTTP ' + r.status);
+  const j = await r.json().catch(() => null);
+  if (!j) throw new Error('返回的不是 JSON');
+  return j;
+}
+
+/* 群白名单（2026-11-13）：站长问「拉群列表是不是就相当于有群的能力了，不用再配白名单了吧」——
+ * 不是。列表＝小号现在在哪些群（只读）；白名单＝哪几个群允许它响应指令（策略）。
+ * 微信个人号没有主动加群接口，所以这里只能把**已经在的群**一键加进白名单，不能凭空进新群。 */
+let ctlWl = [];
+
+function ctlWlHint() {
+  const el = document.getElementById('ctlWlHint');
+  if (!el) return;
+  el.innerHTML = ctlWl.length
+    ? '白名单里有 <b>' + ctlWl.length + '</b> 个群，机器人只在其中响应指令（别的群它看得见但不会说话）。'
+      + '改完约 5 分钟内生效。'
+    : '<b>白名单是空的</b> ⇒ 机器人对「小号所在的所有群」都响应指令。'
+      + '想只留常用的那几个，就点群后面的「+ 白名单」。改完约 5 分钟内生效。';
+}
+
+function ctlGroups(list, at) {
+  const c = document.getElementById('ctlGCard');
+  if (!c) return;
+  c.style.display = '';
+  ctlSet('ctlGN', '共 ' + list.length + ' 个 · ' + ctlAgo(at));
+  ctlWlHint();
+  const box = document.getElementById('ctlGList');
+  if (!box) return;
+  box.innerHTML = list.map((g) => {
+    const n = String(g.n || '');
+    const on = ctlWl.indexOf(n) >= 0;
+    return '<div><span>' + esc(n || '(无名)') + '</span><em>' + esc(g.m || '') + '</em>'
+      + (n ? '<button class="mini' + (on ? ' on' : '') + '" type="button" data-wl="' + esc(n)
+        + '" data-on="' + (on ? 1 : 0) + '">' + (on ? '已加白名单' : '+ 白名单') + '</button>' : '')
+      + '</div>';
+  }).join('');
+  box.querySelectorAll('button[data-wl]').forEach((b) => {
+    b.addEventListener('click', () => ctlWlToggle(b.dataset.wl, b.dataset.on === '1'));
+  });
+}
+
+async function ctlWlToggle(name, on) {
+  if (!ctlSlug || !name) return;
+  if (on && !confirm('把「' + name + '」移出白名单？移出后机器人在这个群不再响应指令。')) return;
+  try {
+    const r = await ctlFetch('/adm/wl', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(on ? { del: name } : { add: name }),
+    });
+    if (r && r.groups) ctlWl = r.groups;
+    ctlRefresh();
+  } catch (e) {
+    alert('改白名单失败：' + ((e && e.message) ? e.message : '网络错误'));
+  }
+}
+
+function ctlResults(list) {
+  const h = document.getElementById('ctlRes');
+  if (!h) return;
+  if (!list.length) { h.innerHTML = '<p class="hint" style="margin:0">还没有记录</p>'; return; }
+  h.innerHTML = list.map((r) => '<div class="res"><div class="t">'
+    + '<b style="font-weight:600;color:inherit">' + esc(CTL_OP[r.op] || r.op) + '</b>'
+    + '<span class="tag ' + (r.ok ? 'ok' : 'bad') + '">' + (r.ok ? '成功' : '失败') + '</span>'
+    + '<span>' + ctlAgo(r.t) + (r.ms ? ' · ' + r.ms + 'ms' : '') + '</span></div>'
+    + '<pre>' + esc(r.out || '（没有输出）') + '</pre></div>').join('');
+}
+
+async function ctlRefresh() {
+  if (!ctlSlug || ctlBusy) return;
+  if (!document.getElementById('ctlSt')) return;
+  ctlBusy = true;
+  try {
+    const [d, w] = await Promise.all([
+      ctlFetch('/state'),
+      ctlFetch('/adm/wl').catch(() => null),
+    ]);
+    if (w && w.groups) ctlWl = w.groups;
+    if (!d || !d.ok) throw new Error('接口异常');
+    const age = d.beat ? Date.now() - d.beat : 1e12;
+    const on = age < 30000, wk = age < 120000;
+    const dot = document.getElementById('ctlDot');
+    if (dot) dot.className = 'dot ' + (on ? 'on' : (wk ? 'wn' : 'off'));
+    ctlSet('ctlSt', on ? '在线' : (wk ? '可能掉线' : '离线'));
+    const sc = document.getElementById('ctlStat');
+    if (sc) sc.className = 'cardc' + (on ? '' : ' bad');
+    const i = d.info || {};
+    ctlSet('ctlAcc', i.account || '—');
+    ctlSet('ctlAuth', i.online ? '已登录' : '未登录 / 断开');
+    ctlSet('ctlGrp', i.groups || '—');
+    ctlSet('ctlVer', (i.ver || '—') + (i.up ? ' / ' + ctlSpan(i.up) : ''));
+    ctlSet('ctlBeat', d.beat ? ctlAgo(d.beat) : '从没连上');
+    if (d.qr && d.qr.img) {
+      const qc = document.getElementById('ctlQrCard');
+      const qi = document.getElementById('ctlQrImg');
+      if (qc) qc.style.display = '';
+      if (qi) qi.src = d.qr.img;
+      ctlSet('ctlQrHint', '生成于 ' + ctlAgo(d.qr.at) + '，二维码约 2 分钟有效，过期再点一次「重新扫码登录」');
+    }
+    if (d.groups && d.groups.list) ctlGroups(d.groups.list, d.groups.at);
+    ctlResults(d.res || []);
+  } catch (e) {
+    const msg = (e && e.message) ? e.message : '未知错误';
+    if (msg.indexOf('口令') >= 0) {
+      ctlSlug = '';
+      try { localStorage.removeItem('admSlug'); } catch (_) { /* 忽略 */ }
+      const box = document.getElementById('pane-dev');
+      if (box) {
+        const holder = document.getElementById('ctl');
+        if (holder) { holder.innerHTML = ctlLocked('云端说这个口令不对，重新输一次'); ctlBindLock(); }
+      }
+      return;
+    }
+    ctlSet('ctlSt', '连不上云端（' + msg + '）');
+    const dot = document.getElementById('ctlDot');
+    if (dot) dot.className = 'dot off';
+  } finally {
+    ctlBusy = false;
+  }
+}
+
+async function ctlSend(op) {
+  if (!ctlSlug) return;
+  if (op === 'restart' || op === 'update') {
+    const t = op === 'restart' ? '重启' : '更新到最新版并重启';
+    if (!confirm(t + '机器人？重启后可能需要重新扫码登录。')) return;
+  }
+  const bs = document.querySelectorAll('#ctlBox button[data-op]');
+  bs.forEach((b) => { b.disabled = true; });
+  try {
+    await ctlFetch('', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ op }),
+    });
+    await new Promise((r) => setTimeout(r, 2500));
+  } catch (e) {
+    alert('下发失败：' + ((e && e.message) ? e.message : '网络错误'));
+  } finally {
+    bs.forEach((b) => { b.disabled = false; });
+    ctlRefresh();
+  }
+}
+
+function ctlBoot() {
+  const box = document.getElementById('ctl');
+  if (!box) return;
+  if (!ctlSlug) { box.innerHTML = ctlLocked(''); ctlBindLock(); return; }
+  box.innerHTML = ctlSkeleton();
+  document.querySelectorAll('#ctlBox button[data-op]').forEach((b) => {
+    b.addEventListener('click', () => ctlSend(b.dataset.op));
+  });
+  const clr = document.getElementById('ctlClr');
+  if (clr) clr.addEventListener('click', () => {
+    ctlFetch('/clear', { method: 'POST' }).then(() => ctlRefresh()).catch(() => { /* 忽略 */ });
+  });
+  ctlRefresh();
+}
+
 function loadDev() {
   const box = document.getElementById('pane-dev');
   if (!box) return;
   box.innerHTML =
-    '<p class="dim">设备级访问（按浏览器去重的独立设备数，和上面「到访人数」不是同一口径：这里是设备、上面是按 IP 估算的人）。'
-    + '数据来自 all48 统计 Worker，与红蓝页统计同源。'
+    '<h2>机器人（小48 微信桥）</h2>'
+    + '<div id="ctl"><p class="dim">读取中…</p></div>'
+    + '<h2>设备访问</h2>'
+    + '<p class="dim">按浏览器指纹去重的独立设备数，和上面「到访人数」不是同一口径：这里是设备、上面是按 IP 估算的人。'
+    + '数据来自 all48 统计 Worker。'
     + ' <a href="' + DEV_URL + '" target="_blank" rel="noopener" style="color:#9fd0ff">在新窗口打开 ↗</a></p>'
     + '<div style="border-radius:12px;overflow:hidden;background:#fff">'
     + '<iframe src="' + DEV_URL + '" loading="lazy" referrerpolicy="no-referrer" '
     + 'style="width:100%;height:900px;border:0;display:block"></iframe>'
     + '</div>'
     + '<p class="dim">框内的「7 / 14 / 30 天」可切换时间范围。这个块只在本机浏览器渲染、不写补档站 KV。</p>';
+  ctlBoot();
 }
+
+// 控制台每 8 秒自己刷一次（只在「设备访问」tab 正显示时才拉，切走就不打扰）
+setInterval(() => {
+  if (curTab === 'dev' && ctlSlug && !document.hidden) ctlRefresh();
+}, 8000);
 
 /* ---------- 红蓝歌会页（all48 的 /gift · /gift-contrib · /gift-rush）----------
  * 2026-10-27 从 all48 站的 /gift-stats 搬到这里（那个页已下线），数据还在原 Worker 上，
