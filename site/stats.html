@@ -32,8 +32,9 @@
  #gate input{width:100%;padding:10px 12px;font-size:15px;border-radius:8px;border:1px solid #2a2e3d;background:#1c1f2b;color:#e8eaf2;box-sizing:border-box}
  #gate button{margin-top:10px;width:100%;padding:10px;font-size:15px;border:0;border-radius:8px;background:#4a7cf7;color:#fff;cursor:pointer}
 /* 分 tab（2026-10-25）：wyc 档案站 / 48 档案站 / 游戏 各一页，不再一屏堆到底 */
-.tabs{display:flex;gap:6px;position:sticky;top:0;z-index:5;background:#12131a;padding:6px 0 12px;margin:0 0 2px}
-.tab{flex:1;padding:9px 6px;font-size:13px;font-family:inherit;border:0;border-radius:9px;background:#1c1f2b;color:#8b90a0;cursor:pointer;white-space:nowrap;transition:background .15s,color .15s}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;position:sticky;top:0;z-index:5;background:#12131a;padding:6px 0 12px;margin:0 0 2px}
+.tab{flex:1 1 calc(33.333% - 4px);min-width:0;padding:9px 6px;font-size:13px;font-family:inherit;border:0;border-radius:9px;background:#1c1f2b;color:#8b90a0;cursor:pointer;white-space:nowrap;transition:background .15s,color .15s}
+@media (min-width:520px){.tab{flex:1 1 0}}
 .tab:hover{color:#c8cde0}
 .tab[aria-selected="true"]{background:#4a7cf7;color:#fff;font-weight:600}
 .pane{padding-top:4px}
@@ -105,6 +106,7 @@
     <button class="tab" type="button" role="tab" data-tab="a48">48 档案站</button>
     <button class="tab" type="button" role="tab" data-tab="game">游戏</button>
     <button class="tab" type="button" role="tab" data-tab="health">体检</button>
+    <button class="tab" type="button" role="tab" data-tab="bot">机器人</button>
     <button class="tab" type="button" role="tab" data-tab="dev">设备访问</button>
   </div>
   <div id="loading" class="dim" hidden>读取中…</div>
@@ -113,6 +115,7 @@
   <div class="pane" id="pane-a48" role="tabpanel" hidden></div>
   <div class="pane" id="pane-game" role="tabpanel" hidden></div>
   <div class="pane" id="pane-health" role="tabpanel" hidden></div>
+  <div class="pane" id="pane-bot" role="tabpanel" hidden></div>
   <div class="pane" id="pane-dev" role="tabpanel" hidden></div>
 </div>
 
@@ -147,10 +150,11 @@ async function sha256(s) {
  * 只切显示，不重绘；地址栏带 #hash，刷新后停在同一个 tab。
  * 「游戏」「体检」的数据都在别的 Worker 上，所以第一次切过去才拉，省一次跨域请求。
  */
-const TABS = ['wyc', 'a48', 'game', 'health', 'dev'];
+const TABS = ['wyc', 'a48', 'game', 'health', 'bot', 'dev'];
 let curTab = 'wyc';
 let gameLoaded = false;
 let healthLoaded = false;
+let botLoaded = false;
 let devLoaded = false;
 // 刷新后停在上一次看的 tab
 try {
@@ -169,6 +173,7 @@ function switchTab(name) {
   }
   if (name === 'game' && !gameLoaded) { gameLoaded = true; loadGame(); }
   if (name === 'health' && !healthLoaded) { healthLoaded = true; loadHealth(); }
+  if (name === 'bot' && !botLoaded) { botLoaded = true; loadBot(); }
   if (name === 'dev' && !devLoaded) { devLoaded = true; loadDev(); }
   try { history.replaceState(null, '', '#' + name); } catch (_) { /* file:// 等场景忽略 */ }
 }
@@ -701,7 +706,7 @@ async function ctlRefresh() {
     if (msg.indexOf('口令') >= 0) {
       ctlSlug = '';
       try { localStorage.removeItem('admSlug'); } catch (_) { /* 忽略 */ }
-      const box = document.getElementById('pane-dev');
+      const box = document.getElementById('pane-bot');
       if (box) {
         const holder = document.getElementById('ctl');
         if (holder) { holder.innerHTML = ctlLocked('云端说这个口令不对，重新输一次'); ctlBindLock(); }
@@ -829,27 +834,33 @@ async function loadDevData() {
   }
 }
 
+/* 「机器人」单独一个 tab（2026-11-13 站长：「设备访问和机器人分成两个入口，别挤一页」） */
+function loadBot() {
+  const box = document.getElementById('pane-bot');
+  if (!box) return;
+  box.innerHTML =
+    '<div class="ctllink">'
+    + '<a href="https://all48.wyc0518.cc/admin" target="_blank" rel="noopener">在独立页打开控制台 ↗</a>'
+    + '</div>'
+    + '<p class="dim" style="margin:-2px 0 14px">独立页也能用，口令一样；手机上把那页「添加到主屏幕」，以后一点就进。</p>'
+    + '<div id="ctl"><p class="dim">读取中…</p></div>';
+  ctlBoot();
+}
+
 function loadDev() {
   const box = document.getElementById('pane-dev');
   if (!box) return;
   box.innerHTML =
     '<div class="ctllink">'
-    + '<a href="https://all48.wyc0518.cc/admin" target="_blank" rel="noopener">打开机器人控制台 ↗</a>'
-    + '<a href="https://all48.wyc0518.cc/devstats" target="_blank" rel="noopener">打开设备访问 ↗</a>'
+    + '<a href="https://all48.wyc0518.cc/devstats" target="_blank" rel="noopener">在独立页打开设备访问 ↗</a>'
     + '</div>'
-    + '<p class="dim" style="margin:-2px 0 14px">这两个是 Worker 上的独立页，都要口令（上面第一次填过的那串就行）。'
-    + '下面这一页里的内容也一样能看，链接只是方便把它存成手机主屏图标。</p>'
-    + '<h2>机器人（小48 微信桥）</h2>'
-    + '<div id="ctl"><p class="dim">读取中…</p></div>'
-    + '<h2>设备访问</h2>'
     + '<div id="devbox"><p class="dim">读取中…</p></div>';
-  ctlBoot();
   loadDevData();
 }
 
-// 控制台每 8 秒自己刷一次（只在「设备访问」tab 正显示时才拉，切走就不打扰）
+// 控制台每 8 秒自己刷一次（只在「机器人」tab 正显示时才拉，切走就不打扰）
 setInterval(() => {
-  if (curTab === 'dev' && ctlSlug && !document.hidden) ctlRefresh();
+  if (curTab === 'bot' && ctlSlug && !document.hidden) ctlRefresh();
 }, 8000);
 
 /* ---------- 红蓝歌会页（all48 的 /gift · /gift-contrib · /gift-rush）----------
