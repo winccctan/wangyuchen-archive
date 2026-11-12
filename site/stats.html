@@ -84,6 +84,10 @@
 .pgs{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 0}
 .pgchip{background:#1c1f2b;border:1px solid #2a2e3d;border-radius:9px;padding:6px 10px;font-size:12px;color:#8b90a0}
 .pgchip b{color:#e8eaf2;font-weight:600}
+/* Worker 上那两个独立页的入口（2026-11-13） */
+.ctllink{display:flex;flex-direction:column;gap:8px;margin:0 0 12px}
+.ctllink a{display:block;padding:13px 14px;border-radius:12px;background:#141821;border:1px solid #2a3040;color:#9fd0ff;text-decoration:none;font-size:14px;font-weight:600;text-align:center}
+.ctllink a:active{transform:scale(.99)}
 </style>
 
 <h1>站点数据</h1>
@@ -829,7 +833,13 @@ function loadDev() {
   const box = document.getElementById('pane-dev');
   if (!box) return;
   box.innerHTML =
-    '<h2>机器人（小48 微信桥）</h2>'
+    '<div class="ctllink">'
+    + '<a href="https://all48.wyc0518.cc/admin" target="_blank" rel="noopener">打开机器人控制台 ↗</a>'
+    + '<a href="https://all48.wyc0518.cc/devstats" target="_blank" rel="noopener">打开设备访问 ↗</a>'
+    + '</div>'
+    + '<p class="dim" style="margin:-2px 0 14px">这两个是 Worker 上的独立页，都要口令（上面第一次填过的那串就行）。'
+    + '下面这一页里的内容也一样能看，链接只是方便把它存成手机主屏图标。</p>'
+    + '<h2>机器人（小48 微信桥）</h2>'
     + '<div id="ctl"><p class="dim">读取中…</p></div>'
     + '<h2>设备访问</h2>'
     + '<div id="devbox"><p class="dim">读取中…</p></div>';
