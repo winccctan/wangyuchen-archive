@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>这一天 · 王语晨补档站</title>
+<meta name="description" content="按天看王语晨：这一天的口袋发言、直播、公演（唱了哪几首）、微博与 B 站投稿，一次看完。">
+<link rel="stylesheet" href="./css/day.css?v=20261028a58">
+<link rel="icon" type="image/png" href="./assets/avatar-round.png">
+</head>
+<body class="dy">
+
+<div class="dy-wrap">
+
+  <div class="dy-bar">
+    <div class="dy-bar-in">
+      <a class="dy-back" href="./index.html" title="回站点">←</a>
+      <div class="dy-nav">
+        <button class="dy-arw" id="dyPrev" type="button" aria-label="上一天">‹</button>
+        <button class="dy-datebtn" type="button">
+          <span class="dy-num" id="dyNum">—</span>
+          <span class="dy-wd" id="dyWd"></span>
+          <input type="date" id="dyInput" aria-label="选择日期">
+        </button>
+        <button class="dy-arw" id="dyNext" type="button" aria-label="下一天">›</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="dy-ov" id="dyOv"></div>
+  <div class="dy-cal" id="dyCal"></div>
+  <main id="dyFeed"><div class="dy-loading">读取中…</div></main>
+
+</div>
+
+<script src="./js/day.js?v=20261028a58"></script>
+</body>
+</html>
