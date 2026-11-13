@@ -1,9 +1,9 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-11-12T16:54:38.423Z",
-  "count": 815,
-  "matched": 562,
-  "replays": 274,
-  "clips": 541,
+  "updatedAt": "2026-11-13T01:10:05.155Z",
+  "count": 817,
+  "matched": 564,
+  "replays": 275,
+  "clips": 542,
   "targets": [
     {
       "mid": "1805448354",
@@ -29,6 +29,21 @@ window.LIVE_CUTS = {
   },
   "cuts": [
     {
+      "bvid": "BV1eZWd65EVN",
+      "title": "【王语晨】20261112 直播回放",
+      "created": 1794505814,
+      "date": "2026-11-13",
+      "titleDate": "2026-11-12",
+      "kind": "replay",
+      "cover": "http://i1.hdslb.com/bfs/archive/8832f9a6dac46414ed6d8d53f8f741ee811a3683.jpg",
+      "url": "https://www.bilibili.com/video/BV1eZWd65EVN",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨直播回放",
+      "liveId": "1327773721021976576",
+      "liveDate": "2026-11-12"
+    },
+    {
       "bvid": "BV1dxWX6BEQP",
       "title": "【王语晨】好困呐，能不能让面包帮我洗头洗澡😭",
       "created": 1794470353,
@@ -40,6 +55,21 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播cut",
+      "liveId": "1327402639832190976",
+      "liveDate": "2026-11-11"
+    },
+    {
+      "bvid": "BV1eXWQ6wEBd",
+      "title": "不办一场定制你都不知道公司能有多没用自己能有多牛马【王语晨】",
+      "created": 1794448418,
+      "date": "2026-11-12",
+      "titleDate": "",
+      "kind": "cut",
+      "cover": "http://i1.hdslb.com/bfs/archive/f94ec7e07fa4ccb16ec4f8ec892bcc12ec95c413.jpg",
+      "url": "https://www.bilibili.com/video/BV1eXWQ6wEBd",
+      "up": "忘记自己是猪",
+      "mid": "1805448354",
+      "collection": "",
       "liveId": "1327402639832190976",
       "liveDate": "2026-11-11"
     },
