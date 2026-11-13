@@ -1,8 +1,8 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-11-13T01:10:05.155Z",
-  "count": 817,
-  "matched": 564,
-  "replays": 275,
+  "updatedAt": "2026-11-13T22:01:15.772Z",
+  "count": 818,
+  "matched": 565,
+  "replays": 276,
   "clips": 542,
   "targets": [
     {
@@ -28,6 +28,21 @@ window.LIVE_CUTS = {
     "358477444:space": 12
   },
   "cuts": [
+    {
+      "bvid": "BV1P2Wz6mEKt",
+      "title": "【王语晨】20261114 直播回放",
+      "created": 1794597303,
+      "date": "2026-11-14",
+      "titleDate": "2026-11-14",
+      "kind": "replay",
+      "cover": "http://i0.hdslb.com/bfs/archive/1c92a485302715689894eb92182a78355f60b93c.jpg",
+      "url": "https://www.bilibili.com/video/BV1P2Wz6mEKt",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨直播回放",
+      "liveId": "1328155802185043968",
+      "liveDate": "2026-11-14"
+    },
     {
       "bvid": "BV1eZWd65EVN",
       "title": "【王语晨】20261112 直播回放",

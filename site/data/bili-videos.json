@@ -1,6 +1,6 @@
 {
-  "updatedAt": "2026-11-13T01:11:22.163Z",
-  "count": 1432,
+  "updatedAt": "2026-11-13T22:01:32.490Z",
+  "count": 1436,
   "targets": [
     {
       "mid": "2086351451",
@@ -30,6 +30,42 @@
     "2086351451:space": 2
   },
   "videos": [
+    {
+      "bvid": "BV1P2Wz6mEKt",
+      "aid": 117610700081884,
+      "title": "【王语晨】20261114 直播回放",
+      "created": 1794597303,
+      "duration": 7602,
+      "play": 6,
+      "mid": "358477444"
+    },
+    {
+      "bvid": "BV11tW66UEcC",
+      "aid": 117610247101415,
+      "title": "【GNZ48】20261113 Team NIII 《拾忆：TEAM NIII》公演",
+      "created": 1794590391,
+      "duration": 11017,
+      "play": 443,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV17ZWq6aEbu",
+      "aid": 117610079395078,
+      "title": "【GNZ48】20261113 Team Z《Zenith ·穹顶之上》重庆巡演",
+      "created": 1794587603,
+      "duration": 11622,
+      "play": 685,
+      "mid": "2086351451"
+    },
+    {
+      "bvid": "BV168WB6zEix",
+      "aid": 117609458568312,
+      "title": "【王语晨】20261113 GNZ48 Team NIII《拾忆：TEAM NIII》公演cut",
+      "created": 1794578117,
+      "duration": 2108,
+      "play": 87,
+      "mid": "358477444"
+    },
     {
       "bvid": "BV1eZWd65EVN",
       "aid": 117604710679952,
