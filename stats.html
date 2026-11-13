@@ -83,7 +83,7 @@
 .ctl .glist span.gn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ctl .unlock{display:flex;gap:8px;margin-top:10px}
 .ctl .unlock input{flex:1;min-width:0;padding:10px 12px;font-size:15px;border-radius:9px;border:1px solid #2a2e3d;background:#12131a;color:#e8eaf2;font-family:inherit;box-sizing:border-box}
-.ctl .unlock select{flex:none;max-width:38%;padding:10px 8px;font-size:13px;border-radius:9px;border:1px solid #2a2e3d;background:#12131a;color:#e8eaf2;font-family:inherit;box-sizing:border-box}
+.ctl .unlock select{width:100%;padding:10px;font-size:13.5px;border-radius:9px;border:1px solid #2a2e3d;background:#12131a;color:#e8eaf2;font-family:inherit;box-sizing:border-box}
 .ctl .unlock button{flex:0 0 auto;padding:10px 16px}
 .ctl .glist .wsec{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:10px 0 3px;font-size:13px;color:#9fd0ff;border-top:1px solid #2a2e3d;margin-top:2px}
 .ctl .glist .wsec:first-child{border-top:0;margin-top:0;padding-top:2px}
@@ -571,8 +571,8 @@ function ctlSkeleton() {
     + '<div class="cardc" id="ctlWCard" style="display:none">'
       + '<div class="row" style="margin-bottom:4px"><span>播报成员（每群一份名单）</span><b id="ctlWN"></b></div>'
       + '<div class="glist" id="ctlWList"></div>'
+      + '<div class="unlock" style="margin-top:8px"><select id="ctlWGrp" aria-label="选择群"></select></div>'
       + '<div class="unlock" style="margin-top:8px">'
-        + '<select id="ctlWGrp" aria-label="选择群"></select>'
         + '<input id="ctlWNick" type="text" placeholder="成员名字，如 王语晨" autocomplete="off" maxlength="20">'
         + '<button class="pri" type="button" id="ctlWAdd">+ 加</button>'
       + '</div>'
@@ -690,7 +690,7 @@ async function ctlWlAdd(id, btn) {
  * 🔴 2026-11-13 站长：「每个群只能查询自己群里的关注」「关注和取关也是这个群的」
  *   ⇒ 名单按群分开（云端 pushMap: 群 id → 昵称数组），这里按群分组显示，加人前先选群。
  *   和群里发「关注？ 名字 / 取关？ 名字」用的是同一份数据、同一套服务端逻辑，不会两个真源。 */
-let ctlWMap = {}, ctlWMax = 12, ctlGrps = [], ctlGrpAsked = 0;
+let ctlWMap = {}, ctlWMax = 12, ctlGrps = [], ctlGrpAsked = 0, ctlGrpTouched = 0;
 
 function wname(id) {
   const g = ctlGrps.filter((x) => String(x.id) === String(id))[0];
@@ -702,10 +702,13 @@ function wname(id) {
 function ctlGrpFill() {
   const sel = document.getElementById('ctlWGrp');
   if (!sel || !ctlGrps.length) return;
-  const cur = sel.value;
-  sel.innerHTML = ctlGrps.map((g) => '<option value="' + esc(String(g.id))
+  const cur = ctlGrpTouched ? sel.value : '';   /* 没手动选过就别记住上次的 */
+  /* 有人的群排前面，下拉默认落在「常用的那个群」上 */
+  const gs = ctlGrps.slice().sort((a, b) => (ctlWMap[String(b.id)] || []).length - (ctlWMap[String(a.id)] || []).length);
+  sel.innerHTML = gs.map((g) => '<option value="' + esc(String(g.id))
     + '">' + esc(wname(g.id)) + '</option>').join('');
-  if (cur && ctlGrps.some((g) => String(g.id) === cur)) sel.value = cur;
+  if (cur && gs.some((g) => String(g.id) === cur)) sel.value = cur;
+  else sel.value = String(gs[0].id);
 }
 
 function ctlWatchHint() {
@@ -728,6 +731,8 @@ function ctlWatch(map, max) {
   let gs = ctlGrps.map((g) => ({ id: String(g.id), n: g.n }));
   const ids = Object.keys(ctlWMap);
   if (!gs.length) gs = ids.map((id) => ({ id: id, n: '' }));
+  /* 有人的群排前面（空群一堆时别把有用信息挤到下面） */
+  gs.sort((a, b) => (ctlWMap[b.id] || []).length - (ctlWMap[a.id] || []).length);
   if (!gs.length) {
     box.innerHTML = '<p class="hint" style="margin:6px 0 0">还没有群信息 · 先在上面点「拉群列表」。</p>';
     ctlSet('ctlWN', '—');
@@ -901,6 +906,7 @@ function ctlBoot() {
     if (!v) { if (wnick) wnick.focus(); return; }
     ctlWatchOp({ add: v, g: gid }, wadd).then((ok) => { if (ok && wnick) wnick.value = ''; });
   };
+  if (wgrp) wgrp.addEventListener('change', () => { ctlGrpTouched = 1; });
   if (wadd) wadd.addEventListener('click', doWatchAdd);
   if (wnick) wnick.addEventListener('keydown', (e) => { if (e.key === 'Enter') doWatchAdd(); });
   ctlRefresh();
