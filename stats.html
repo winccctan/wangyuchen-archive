@@ -77,6 +77,8 @@
 .ctl .glist em{color:#8b90a0;font-style:normal;font-size:11.5px;flex:none}
 .ctl .glist button.mini{min-height:0;padding:3px 9px;font-size:11.5px;border-radius:99px;flex:none;border-color:#4a7cf7;color:#9fd0ff}
 .ctl .glist button.mini.on{border-color:#4ade80;color:#4ade80}
+.ctl .glist b.wlon{color:#4ade80;font-weight:600;font-size:11.5px;flex:none;white-space:nowrap}
+.ctl .glist span.gn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ctl .unlock{display:flex;gap:8px;margin-top:10px}
 .ctl .unlock input{flex:1;min-width:0;padding:10px 12px;font-size:15px;border-radius:9px;border:1px solid #2a2e3d;background:#12131a;color:#e8eaf2;font-family:inherit;box-sizing:border-box}
 .ctl .unlock button{flex:0 0 auto;padding:10px 16px}
@@ -614,46 +616,54 @@ function ctlWlHint() {
   const el = document.getElementById('ctlWlHint');
   if (!el) return;
   el.innerHTML = ctlWl.length
-    ? '白名单里有 <b>' + ctlWl.length + '</b> 个群，机器人只在其中响应指令（别的群它看得见但不会说话）。'
-      + '改完约 5 分钟内生效。'
-    : '<b>白名单是空的</b> ⇒ 机器人对「小号所在的所有群」都响应指令。'
-      + '想只留常用的那几个，就点群后面的「+ 白名单」。改完约 5 分钟内生效。';
+    ? '白名单里有 <b>' + ctlWl.length + '</b> 个群 · 只有这些群会响应指令（别的群它看得见但不说话）。'
+    : '<b>白名单是空的</b> · 现在任何群都不会响应，点右边的「+ 白名单」加进来。';
 }
 
 function ctlGroups(list, at) {
   const c = document.getElementById('ctlGCard');
   if (!c) return;
   c.style.display = '';
-  ctlSet('ctlGN', '共 ' + list.length + ' 个 · ' + ctlAgo(at));
+  ctlSet('ctlGN', list.length + ' 个 · ' + ctlAgo(at));
   ctlWlHint();
   const box = document.getElementById('ctlGList');
   if (!box) return;
+  /* 🔴 白名单存的是 **chatroom id**（xxx@chatroom），不是群名！
+   * 桥收到群消息时拿 d.threadId 去 GROUPS.includes(chat) 比对，存名字一条都对不上，
+   * 群消息会被静默丢弃（表现：机器人活着、推送正常，但问它一句都不回，踩过一次）。
+   * ⇒ 这里的「是否已加」和提交的 data-wl 都必须用 g.id。 */
   box.innerHTML = list.map((g) => {
-    const n = String(g.n || '');
-    const on = ctlWl.indexOf(n) >= 0;
-    return '<div><span>' + esc(n || '(无名)') + '</span><em>' + esc(g.m || '') + '</em>'
-      + (n ? '<button class="mini' + (on ? ' on' : '') + '" type="button" data-wl="' + esc(n)
-        + '" data-on="' + (on ? 1 : 0) + '">' + (on ? '已加白名单' : '+ 白名单') + '</button>' : '')
+    const n = String(g.n || '(无名)');
+    const id = String(g.id || '');
+    const inwl = ctlWl.indexOf(id) >= 0;
+    const ok = id.indexOf('@chatroom') > 0;
+    return '<div><span class="gn">' + esc(n) + '</span><em>' + esc(g.m || '') + '</em>'
+      + (ok
+        ? (inwl
+          ? '<b class="wlon">✓ 已在白名单</b>'
+          : '<button class="mini" type="button" data-wl="' + esc(id) + '">+ 白名单</button>')
+        : '<em>没解析到 id</em>')
       + '</div>';
   }).join('');
   box.querySelectorAll('button[data-wl]').forEach((b) => {
-    b.addEventListener('click', () => ctlWlToggle(b.dataset.wl, b.dataset.on === '1'));
+    b.addEventListener('click', () => ctlWlAdd(b.dataset.wl, b));
   });
 }
 
-async function ctlWlToggle(name, on) {
-  if (!ctlSlug || !name) return;
-  if (on && !confirm('把「' + name + '」移出白名单？移出后机器人在这个群不再响应指令。')) return;
+async function ctlWlAdd(id, btn) {
+  if (!ctlSlug || !id) return;
+  if (btn) { btn.disabled = true; btn.textContent = '提交中…'; }
   try {
     const r = await ctlFetch('/adm/wl', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(on ? { del: name } : { add: name }),
+      body: JSON.stringify({ add: id }),
     });
     if (r && r.groups) ctlWl = r.groups;
     ctlRefresh();
   } catch (e) {
-    alert('改白名单失败：' + ((e && e.message) ? e.message : '网络错误'));
+    if (btn) { btn.disabled = false; btn.textContent = '+ 白名单'; }
+    alert('加白名单失败：' + ((e && e.message) ? e.message : '网络错误'));
   }
 }
 
