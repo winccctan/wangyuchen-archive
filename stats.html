@@ -83,7 +83,12 @@
 .ctl .glist span.gn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ctl .unlock{display:flex;gap:8px;margin-top:10px}
 .ctl .unlock input{flex:1;min-width:0;padding:10px 12px;font-size:15px;border-radius:9px;border:1px solid #2a2e3d;background:#12131a;color:#e8eaf2;font-family:inherit;box-sizing:border-box}
+.ctl .unlock select{flex:none;max-width:38%;padding:10px 8px;font-size:13px;border-radius:9px;border:1px solid #2a2e3d;background:#12131a;color:#e8eaf2;font-family:inherit;box-sizing:border-box}
 .ctl .unlock button{flex:0 0 auto;padding:10px 16px}
+.ctl .glist .wsec{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:10px 0 3px;font-size:13px;color:#9fd0ff;border-top:1px solid #2a2e3d;margin-top:2px}
+.ctl .glist .wsec:first-child{border-top:0;margin-top:0;padding-top:2px}
+.ctl .glist .wsec em{font-style:normal;font-size:11.5px;color:#8b90a0;flex:none}
+.ctl .glist .wmem{padding:5px 0;font-size:12.5px;color:#8b90a0}
 /* 设备访问：每日条形 + 各页累计小标签（2026-11-13 从 Worker 看板页搬过来） */
 .dbar{height:4px;background:#4a7cf7;border-radius:2px;display:inline-block;vertical-align:middle;margin-left:6px;opacity:.35}
 .pgs{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 0}
@@ -564,9 +569,10 @@ function ctlSkeleton() {
       + '<div class="glist" id="ctlGList"></div>'
       + '<p class="hint" id="ctlWlHint"></p></div>'
     + '<div class="cardc" id="ctlWCard" style="display:none">'
-      + '<div class="row" style="margin-bottom:4px"><span>播报成员（开播 / 下播 / 房间发言推群）</span><b id="ctlWN"></b></div>'
+      + '<div class="row" style="margin-bottom:4px"><span>播报成员（每群一份名单）</span><b id="ctlWN"></b></div>'
       + '<div class="glist" id="ctlWList"></div>'
       + '<div class="unlock" style="margin-top:8px">'
+        + '<select id="ctlWGrp" aria-label="选择群"></select>'
         + '<input id="ctlWNick" type="text" placeholder="成员名字，如 王语晨" autocomplete="off" maxlength="20">'
         + '<button class="pri" type="button" id="ctlWAdd">+ 加</button>'
       + '</div>'
@@ -634,6 +640,7 @@ function ctlGroups(list, at) {
   const c = document.getElementById('ctlGCard');
   if (!c) return;
   c.style.display = '';
+  ctlGrps = (list || []).filter((g) => g && g.id).map((g) => ({ id: String(g.id), n: String(g.n || '') }));
   ctlSet('ctlGN', list.length + ' 个 · ' + ctlAgo(at));
   ctlWlHint();
   const box = document.getElementById('ctlGList');
@@ -658,6 +665,8 @@ function ctlGroups(list, at) {
   box.querySelectorAll('button[data-wl]').forEach((b) => {
     b.addEventListener('click', () => ctlWlAdd(b.dataset.wl, b));
   });
+  /* 群名到了要重画播报卡片（按群分组，靠 wname() 取名字） */
+  if (document.getElementById('ctlWCard')) ctlWatch();
 }
 
 async function ctlWlAdd(id, btn) {
@@ -678,34 +687,71 @@ async function ctlWlAdd(id, btn) {
 }
 
 /* 播报成员（谁开播 / 谁下播 / 谁在房间说话，往群里推）：
- * 和群里发「关注 名字 / 取关 名字」写的是同一份云端 KV（wxwatch:main），
- * 服务端也是同一套逻辑，所以这里只是第二个入口，不会出现两个真源。 */
-let ctlWatchList = [], ctlWatchMax = 12;
+ * 🔴 2026-11-13 站长：「每个群只能查询自己群里的关注」「关注和取关也是这个群的」
+ *   ⇒ 名单按群分开（云端 pushMap: 群 id → 昵称数组），这里按群分组显示，加人前先选群。
+ *   和群里发「关注？ 名字 / 取关？ 名字」用的是同一份数据、同一套服务端逻辑，不会两个真源。 */
+let ctlWMap = {}, ctlWMax = 12, ctlGrps = [], ctlGrpAsked = 0;
+
+function wname(id) {
+  const g = ctlGrps.filter((x) => String(x.id) === String(id))[0];
+  if (g && g.n) return g.n;
+  const s = String(id || '');
+  return s.indexOf('@chatroom') > 0 ? ('群 ' + s.replace('@chatroom', '').slice(-6)) : (s || '未命名群');
+}
+
+function ctlGrpFill() {
+  const sel = document.getElementById('ctlWGrp');
+  if (!sel || !ctlGrps.length) return;
+  const cur = sel.value;
+  sel.innerHTML = ctlGrps.map((g) => '<option value="' + esc(String(g.id))
+    + '">' + esc(wname(g.id)) + '</option>').join('');
+  if (cur && ctlGrps.some((g) => String(g.id) === cur)) sel.value = cur;
+}
 
 function ctlWatchHint() {
   const el = document.getElementById('ctlWHint');
   if (!el) return;
-  el.innerHTML = ctlWatchList.length
-    ? '和群里发 <code>关注 名字</code> 是同一份名单，改完约 5 分钟内生效（下一轮抓取读取）。'
-    : '名单是空的 · 现在谁开播都不会播报。群里发 <code>关注 名字</code> 也能加。';
+  el.innerHTML = '加进来 = 她开播 / 下播 / 房间发言推到<b>这一个群</b>，别的群不受影响。'
+    + '改完约 5 分钟内生效。也能直接在群里发 <code>关注？ 王语晨</code>。';
 }
 
-function ctlWatch(list, max) {
-  if (list) ctlWatchList = list;
-  if (max) ctlWatchMax = max;
+function ctlWatch(map, max) {
+  if (map) ctlWMap = map;
+  if (max) ctlWMax = max;
   const c = document.getElementById('ctlWCard');
   if (!c) return;
   c.style.display = '';
-  ctlSet('ctlWN', ctlWatchList.length + ' / ' + ctlWatchMax + ' 人');
+  ctlGrpFill();
   ctlWatchHint();
   const box = document.getElementById('ctlWList');
   if (!box) return;
-  box.innerHTML = ctlWatchList.length
-    ? ctlWatchList.map((x) => '<div><span class="gn">' + esc(String(x.nick || x.uid || '')) + '</span>'
-        + '<button class="wdel" type="button" data-wdel="' + esc(String(x.uid || '')) + '">移除</button></div>').join('')
-    : '<p class="hint" style="margin:6px 0 0">还没加人 · 现在不会播报任何成员。</p>';
+  let gs = ctlGrps.map((g) => ({ id: String(g.id), n: g.n }));
+  const ids = Object.keys(ctlWMap);
+  if (!gs.length) gs = ids.map((id) => ({ id: id, n: '' }));
+  if (!gs.length) {
+    box.innerHTML = '<p class="hint" style="margin:6px 0 0">还没有群信息 · 先在上面点「拉群列表」。</p>';
+    ctlSet('ctlWN', '—');
+    return;
+  }
+  let total = 0, html = '';
+  gs.forEach((g) => {
+    const arr = ctlWMap[g.id] || [];
+    const all = arr.indexOf('*') >= 0;
+    html += '<div class="wsec"><b>' + esc(wname(g.id)) + '</b><em>'
+      + (all ? '全部' : arr.length + ' 人') + '</em></div>';
+    if (all) { html += '<div class="wmem">（这个群收所有人的播报）</div>'; return; }
+    if (!arr.length) { html += '<div class="wmem">（空 · 这个群不播任何人）</div>'; return; }
+    total += arr.length;
+    arr.forEach((n) => {
+      html += '<div><span class="gn">' + esc(n) + '</span>'
+        + '<button class="wdel" type="button" data-wdel="' + esc(n) + '" data-wg="'
+        + esc(g.id) + '">移除</button></div>';
+    });
+  });
+  box.innerHTML = html;
+  ctlSet('ctlWN', total + ' 人 / ' + ids.length + ' 个群');
   box.querySelectorAll('button[data-wdel]').forEach((b) => {
-    b.addEventListener('click', () => ctlWatchOp({ del: b.dataset.wdel }, b));
+    b.addEventListener('click', () => ctlWatchOp({ del: b.dataset.wdel, g: b.dataset.wg }, b));
   });
 }
 
@@ -714,7 +760,7 @@ async function ctlWatchOp(body, btn) {
   const back = btn ? btn.textContent : '';
   if (btn) { btn.disabled = true; btn.textContent = '…'; }
   try {
-    /* 🔴 不走 ctlFetch：加人失败（名册里查无此人 / 重名）是 400 且带一句人话 msg，
+    /* 🔴 不走 ctlFetch：加人失败（名册里查无此人 / 重名 / 这个群满了）是 400 且带一句人话 msg，
        ctlFetch 会把它折成「接口返回 HTTP 400」，站长就不知道为什么没加成。 */
     const r = await fetch(API_BASE + '/adm/watch', {
       method: 'POST',
@@ -725,7 +771,7 @@ async function ctlWatchOp(body, btn) {
     if (r.status === 403) throw new Error('管理口令不对');
     const j = await r.json().catch(() => null);
     if (!j) throw new Error('返回的不是 JSON');
-    if (j.list) ctlWatch(j.list, j.max);
+    if (j.map) ctlWatch(j.map, j.max);
     if (!j.ok) { if (btn) { btn.disabled = false; btn.textContent = back; } alert(j.msg || '没改成'); return 0; }
     return 1;
   } catch (e) {
@@ -757,7 +803,7 @@ async function ctlRefresh() {
       ctlFetch('/adm/watch').catch(() => null),
     ]);
     if (w && w.groups) ctlWl = w.groups;
-    if (wa && wa.list) ctlWatch(wa.list, wa.max);
+    if (wa && wa.map) ctlWatch(wa.map, wa.max);
     if (!d || !d.ok) throw new Error('接口异常');
     const age = d.beat ? Date.now() - d.beat : 1e12;
     const on = age < 30000, wk = age < 120000;
@@ -781,6 +827,15 @@ async function ctlRefresh() {
     }
     if (d.groups && d.groups.list) ctlGroups(d.groups.list, d.groups.at);
     ctlResults(d.res || []);
+    /* 播报卡片按群分组，没有群列表就没有群名 / 下拉可选项 ⇒ 第一次打开自动拉一次 */
+    if (!ctlGrps.length && !ctlGrpAsked) {
+      ctlGrpAsked = 1;
+      ctlFetch('', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ op: 'groups' }),
+      }).catch(() => { /* 忽略 */ });
+    }
   } catch (e) {
     const msg = (e && e.message) ? e.message : '未知错误';
     if (msg.indexOf('口令') >= 0) {
@@ -838,10 +893,13 @@ function ctlBoot() {
   });
   const wadd = document.getElementById('ctlWAdd');
   const wnick = document.getElementById('ctlWNick');
+  const wgrp = document.getElementById('ctlWGrp');
   const doWatchAdd = () => {
+    const gid = wgrp ? String(wgrp.value || '') : '';
     const v = String((wnick && wnick.value) || '').trim();
-    if (!v) return;
-    ctlWatchOp({ add: v }, wadd).then((ok) => { if (ok && wnick) wnick.value = ''; });
+    if (!gid) { alert('还没有群信息 · 先在上面点「拉群列表」'); return; }
+    if (!v) { if (wnick) wnick.focus(); return; }
+    ctlWatchOp({ add: v, g: gid }, wadd).then((ok) => { if (ok && wnick) wnick.value = ''; });
   };
   if (wadd) wadd.addEventListener('click', doWatchAdd);
   if (wnick) wnick.addEventListener('keydown', (e) => { if (e.key === 'Enter') doWatchAdd(); });
