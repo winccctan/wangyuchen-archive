@@ -1,9 +1,9 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-11-13T22:01:15.772Z",
-  "count": 818,
-  "matched": 565,
+  "updatedAt": "2026-11-14T06:42:43.894Z",
+  "count": 821,
+  "matched": 568,
   "replays": 276,
-  "clips": 542,
+  "clips": 545,
   "targets": [
     {
       "mid": "1805448354",
@@ -29,6 +29,21 @@ window.LIVE_CUTS = {
   },
   "cuts": [
     {
+      "bvid": "BV1imWk6CEfA",
+      "title": "【王语晨】以后你们出去宣传我就宣传：音色流氓，绝世舞担，全能Ace，超酷rap",
+      "created": 1794637597,
+      "date": "2026-11-14",
+      "titleDate": "",
+      "kind": "cut",
+      "cover": "http://i0.hdslb.com/bfs/archive/1319c2e05887eb9c021428fedb8a15ce38940121.jpg",
+      "url": "https://www.bilibili.com/video/BV1imWk6CEfA",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨直播cut",
+      "liveId": "1328155802185043968",
+      "liveDate": "2026-11-14"
+    },
+    {
       "bvid": "BV1P2Wz6mEKt",
       "title": "【王语晨】20261114 直播回放",
       "created": 1794597303,
@@ -42,6 +57,36 @@ window.LIVE_CUTS = {
       "collection": "合集·王语晨直播回放",
       "liveId": "1328155802185043968",
       "liveDate": "2026-11-14"
+    },
+    {
+      "bvid": "BV168WB6zEix",
+      "title": "【王语晨】20261113 GNZ48 Team NIII《拾忆：TEAM NIII》公演cut",
+      "created": 1794578117,
+      "date": "2026-11-13",
+      "titleDate": "2026-11-13",
+      "kind": "cut",
+      "cover": "http://i0.hdslb.com/bfs/archive/b4292e9cfe27fa98fd7a807fe7d8e70d5a2d0b1f.jpg",
+      "url": "https://www.bilibili.com/video/BV168WB6zEix",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "",
+      "liveId": "1327773721021976576",
+      "liveDate": "2026-11-12"
+    },
+    {
+      "bvid": "BV1j3WY67EkP",
+      "title": "【王语晨】高燃演唱《奇迹再现》突现许飞厉娜还有马天宇？nonono其实“我是王子璇”",
+      "created": 1794533131,
+      "date": "2026-11-13",
+      "titleDate": "",
+      "kind": "cut",
+      "cover": "http://i1.hdslb.com/bfs/archive/79e50fe63e3190d412345aaef3b1efe9e62d2902.jpg",
+      "url": "https://www.bilibili.com/video/BV1j3WY67EkP",
+      "up": "忘记自己是猪",
+      "mid": "1805448354",
+      "collection": "",
+      "liveId": "1327773721021976576",
+      "liveDate": "2026-11-12"
     },
     {
       "bvid": "BV1eZWd65EVN",
