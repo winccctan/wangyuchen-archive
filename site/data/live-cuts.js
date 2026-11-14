@@ -1,9 +1,9 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-11-14T06:42:43.894Z",
-  "count": 821,
-  "matched": 568,
+  "updatedAt": "2026-11-14T20:51:39.811Z",
+  "count": 822,
+  "matched": 569,
   "replays": 276,
-  "clips": 545,
+  "clips": 546,
   "targets": [
     {
       "mid": "1805448354",
@@ -28,6 +28,21 @@ window.LIVE_CUTS = {
     "358477444:space": 12
   },
   "cuts": [
+    {
+      "bvid": "BV1aXsG6QEDU",
+      "title": "【王语晨】唱歌途中由凤丝引发的一场闹剧（x",
+      "created": 1794640020,
+      "date": "2026-11-14",
+      "titleDate": "",
+      "kind": "cut",
+      "cover": "http://i0.hdslb.com/bfs/archive/3f6631ebe283872c962a0f494745aa88b29926d0.jpg",
+      "url": "https://www.bilibili.com/video/BV1aXsG6QEDU",
+      "up": "忘记自己是猪",
+      "mid": "1805448354",
+      "collection": "",
+      "liveId": "1328155802185043968",
+      "liveDate": "2026-11-14"
+    },
     {
       "bvid": "BV1imWk6CEfA",
       "title": "【王语晨】以后你们出去宣传我就宣传：音色流氓，绝世舞担，全能Ace，超酷rap",
