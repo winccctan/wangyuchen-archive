@@ -1,8 +1,8 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-11-14T20:51:39.811Z",
-  "count": 822,
-  "matched": 569,
-  "replays": 276,
+  "updatedAt": "2026-11-15T21:05:19.536Z",
+  "count": 823,
+  "matched": 570,
+  "replays": 277,
   "clips": 546,
   "targets": [
     {
@@ -28,6 +28,21 @@ window.LIVE_CUTS = {
     "358477444:space": 12
   },
   "cuts": [
+    {
+      "bvid": "BV1p8sW6TEVW",
+      "title": "【王语晨】20261115 直播回放",
+      "created": 1794763332,
+      "date": "2026-11-16",
+      "titleDate": "2026-11-15",
+      "kind": "replay",
+      "cover": "http://i0.hdslb.com/bfs/archive/9ac92dca7a77a8d94378d68fdc135aec49aea638.jpg",
+      "url": "https://www.bilibili.com/video/BV1p8sW6TEVW",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨直播回放",
+      "liveId": "1328845084428144640",
+      "liveDate": "2026-11-15"
+    },
     {
       "bvid": "BV1aXsG6QEDU",
       "title": "【王语晨】唱歌途中由凤丝引发的一场闹剧（x",
