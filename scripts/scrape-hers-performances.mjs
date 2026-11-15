@@ -51,6 +51,14 @@ while (pages < MAX_PAGES) {
     let ex = {}; try { ex = JSON.parse(m.extInfo || '{}'); } catch { /* ignore */ }
     const id = String(m.msgidClient || ex.id || '');
     if (!id) continue;
+    // 🔴 2026-11-15：这个 OPEN_LIVE 流偶尔会混入「剧场全团公演预告」——实测
+    //    2026-11-15 18:45「拾忆：TEAM G·第三十五场」被抓进来，但她并未参演，
+    //    而同一天的 13:45「拾忆：TEAM NIII·第三十七场」才是她的。
+    //    口袋 App 成员个人页「公演」标签只展示 extInfo.user 是她本人的记录：
+    //    名单里有就显示、没有就不显示（站长口径）。这里按同一口径过滤，
+    //    ⚠️ 不要用队伍名/标题正则去猜——Z 队、4班、跨队特殊公演她确实参加过，按标题删会误删。
+    const ownerId = String((ex.user && ex.user.userId) || '');
+    if (ownerId && ownerId !== String(MEMBER.userId)) continue;
     recs.set(id, {
       liveId: id,
       startTime: Number(ex.startTime || m.msgTime) || 0,
