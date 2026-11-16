@@ -101,11 +101,6 @@ window.__SCHEDULE__ = {
     }
   ],
   "future": [
-    {
-      "date": "2026-11-28",
-      "title": "个人年V全场定制公演",
-      "kind": "预告"
-    }
   ],
   "score": {
     "period": "9.11 – 10.11",
