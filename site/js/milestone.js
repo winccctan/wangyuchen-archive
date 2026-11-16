@@ -1,5 +1,5 @@
 /* =======================================================================
-   milestone.js —— ⑱ 里程碑：2026.11.28 首场定制公演（她自己排的整场）
+   milestone.js —— ⑱ 里程碑：2026.11.28 王语晨《在人间凑数的日子》2025年度MVP定制公演（她自己排的整场）
    -----------------------------------------------------------------------
    ① 首页一条细窄倒计时（不占版面，一行 34px，压在 .tabs 之上）
    ② 点开 = 抽票根（16 款混着一个池子，本机 Canvas 合成）
@@ -43,7 +43,7 @@
   var MS = {
     date: '2026-11-28',
     badge: '11.28',
-    title: '首场定制公演',
+    title: '王语晨《在人间凑数的日子》2025年度MVP定制公演',
     who: '王语晨 · GNZ48 TEAM NIII'
   };
 
@@ -409,8 +409,15 @@
     x.fillText('2026.11.28', 24, 62);
 
     x.fillStyle = GOLD;
-    x.font = '400 10.5px ' + FONT;
-    x.fillText('星期六 · 首场定制公演', 24, 86);
+    // 标题较长：票根主区仅 262px，按可用宽度自适应缩小字号，避免溢出到副券
+    var msTitle = '星期六 · ' + MS.title;
+    var msFs = 10.5;
+    x.font = '400 ' + msFs + 'px ' + FONT;
+    while (msFs > 7 && x.measureText(msTitle).width > (STUB - 34)) {
+      msFs -= 0.5;
+      x.font = '400 ' + msFs + 'px ' + FONT;
+    }
+    x.fillText(msTitle, 24, 86);
 
     x.fillStyle = GOLD;
     roundRect(x, 24, 116, 2.4, 18, 1.2);
@@ -457,7 +464,7 @@
       '<div class="ms-sheet" role="dialog" aria-modal="true" aria-label="11.28 抽票根">' +
         '<div class="ms-stage" id="msStage">' +
           '<span class="ms-empty" aria-hidden="true">?</span>' +
-          '<img class="ms-pic" id="msPic" alt="2026.11.28 首场定制公演 票根">' +
+          '<img class="ms-pic" id="msPic" alt="2026.11.28 王语晨《在人间凑数的日子》2025年度MVP定制公演 票根">' +
           '<video class="ms-vid" id="msVid" muted loop playsinline webkit-playsinline preload="none"></video>' +
           '<img class="ms-layer" id="msLayer" alt="">' +
           '<span class="ms-badge-play" id="msPlay" role="button" tabindex="0">' +
