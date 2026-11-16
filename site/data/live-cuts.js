@@ -1,9 +1,9 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-11-15T21:05:19.536Z",
-  "count": 823,
-  "matched": 570,
+  "updatedAt": "2026-11-16T06:40:25.368Z",
+  "count": 824,
+  "matched": 571,
   "replays": 277,
-  "clips": 546,
+  "clips": 547,
   "targets": [
     {
       "mid": "1805448354",
@@ -28,6 +28,21 @@ window.LIVE_CUTS = {
     "358477444:space": 12
   },
   "cuts": [
+    {
+      "bvid": "BV1s4sW6uErh",
+      "title": "取名鬼才王语晨定制名“在人间凑数的日子”？小名“臭臭”？",
+      "created": 1794764740,
+      "date": "2026-11-16",
+      "titleDate": "",
+      "kind": "cut",
+      "cover": "http://i2.hdslb.com/bfs/archive/961f3e1d9c7813fc86b38b28812c8cb2a09feec4.jpg",
+      "url": "https://www.bilibili.com/video/BV1s4sW6uErh",
+      "up": "忘记自己是猪",
+      "mid": "1805448354",
+      "collection": "",
+      "liveId": "1328845084428144640",
+      "liveDate": "2026-11-15"
+    },
     {
       "bvid": "BV1p8sW6TEVW",
       "title": "【王语晨】20261115 直播回放",

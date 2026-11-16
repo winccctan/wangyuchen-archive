@@ -1,6 +1,6 @@
 {
-  "updatedAt": "2026-11-15T21:06:33.918Z",
-  "count": 1439,
+  "updatedAt": "2026-11-16T06:41:42.538Z",
+  "count": 1441,
   "targets": [
     {
       "mid": "2086351451",
@@ -26,10 +26,19 @@
     "358477444:season:7130625": 2,
     "358477444:season:6805043": 2,
     "358477444:season:2812669": 2,
-    "358477444:space": 1,
+    "358477444:space": 2,
     "2086351451:space": 2
   },
   "videos": [
+    {
+      "bvid": "BV1p8sW6TEVW",
+      "aid": 117621588493362,
+      "title": "【王语晨】20261115 直播回放",
+      "created": 1794763332,
+      "duration": 8381,
+      "play": 51,
+      "mid": "358477444"
+    },
     {
       "bvid": "BV1sMss63Em9",
       "aid": 0,
@@ -38,6 +47,15 @@
       "duration": 8823,
       "play": 11477,
       "mid": "27363163"
+    },
+    {
+      "bvid": "BV1Awsn6fE7z",
+      "aid": 117619290015407,
+      "title": "【王语晨】20261115 GNZ48 Team NIII《拾忆：TEAM NIII》公演cut",
+      "created": 1794728158,
+      "duration": 1993,
+      "play": 189,
+      "mid": "358477444"
     },
     {
       "bvid": "BV1imWk6CEfA",
