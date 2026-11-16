@@ -1,8 +1,92 @@
 window.PERF_CUTS = {
  "uid": 7794095795,
  "account": "GNZ48王语晨的甜橙小铺",
- "updatedAt": "2026-11-08T16:09:32.354Z",
+ "updatedAt": "2026-11-16T07:00:24.402Z",
  "cuts": [
+  {
+   "date": "2026-11-15",
+   "perf": "TEAM NIII·第三十七场《 拾忆：TEAM NIII 》",
+   "song": "续集",
+   "mblogid": "Rrv01af4D",
+   "uid": 7794095795,
+   "url": "https://weibo.com/7794095795/Rrv01af4D",
+   "h5": "https://video.weibo.com/show?fid=1034:5365538927607814",
+   "cover": "https://wx4.sinaimg.cn/orj1080/008vtemvly1ij2wt32e0bj31hc0u00w3.jpg",
+   "text": "#王语晨[超话]# \n【GNZ48王语晨 | 公演cut】20261115\nTEAM NIII·第三十七场《 拾忆：TEAM NIII 》\n\n《 续集 》\n\n王语晨cut http://t.cn/AXYe9nct ​​​",
+   "liveId": "1326584329922220032"
+  },
+  {
+   "date": "2026-11-15",
+   "perf": "TEAM NIII·第三十七场《 拾忆：TEAM NIII 》",
+   "song": "High Light",
+   "mblogid": "RruUc4O6v",
+   "uid": 7794095795,
+   "url": "https://weibo.com/7794095795/RruUc4O6v",
+   "h5": "https://video.weibo.com/show?fid=1034:5365535009865749",
+   "cover": "https://wx4.sinaimg.cn/orj1080/008vtemvly1ij2we16z9lj31hc0u0din.jpg",
+   "text": "#王语晨[超话]# \n【GNZ48王语晨 | 公演cut】20261115\nTEAM NIII·第三十七场《 拾忆：TEAM NIII 》\n\n《 High Light 》\n\n王语晨cut http://t.cn/AXYeKqzb ​​​",
+   "liveId": "1326584329922220032"
+  },
+  {
+   "date": "2026-11-15",
+   "perf": "TEAM NIII·第三十七场《 拾忆：TEAM NIII 》",
+   "song": "非正式告别",
+   "mblogid": "RruOfr4yw",
+   "uid": 7794095795,
+   "url": "https://weibo.com/7794095795/RruOfr4yw",
+   "h5": "https://video.weibo.com/show?fid=1034:5365531797291021",
+   "cover": "https://wx4.sinaimg.cn/orj1080/008vtemvly1ij2vzfp3tpj31hg0u0jtr.jpg",
+   "text": "#王语晨[超话]#\n【GNZ48王语晨 | 公演cut】20261115\nTEAM NIII·第三十七场《 拾忆：TEAM NIII 》\n\n《 非正式告别 》\n\n王语晨cut http://t.cn/AXYeSOFo ​​​",
+   "liveId": "1326584329922220032"
+  },
+  {
+   "date": "2026-11-15",
+   "perf": "TEAM NIII·第三十七场《 拾忆：TEAM NIII 》",
+   "song": "MC1",
+   "mblogid": "RruLtjFIr",
+   "uid": 7794095795,
+   "url": "https://weibo.com/7794095795/RruLtjFIr",
+   "h5": "https://video.weibo.com/show?fid=1034:5365529444024375",
+   "cover": "https://wx4.sinaimg.cn/orj1080/008vtemvly1ij2vth7qmmj31ha0u0acl.jpg",
+   "text": "#王语晨[超话]# \n【GNZ48王语晨 | 公演cut】20261115\nTEAM NIII·第三十七场《 拾忆：TEAM NIII 》\n\nmc1“有什么古早的东西到现在家里还留着”\n\n王语晨cut http://t.cn/AXYeaR8v ​​​",
+   "liveId": "1326584329922220032"
+  },
+  {
+   "date": "2026-11-13",
+   "perf": "TEAM NIII·第三十六场《 拾忆：TEAM NIII 》",
+   "song": "High Light",
+   "mblogid": "RregZBu9A",
+   "uid": 7794095795,
+   "url": "https://weibo.com/7794095795/RregZBu9A",
+   "h5": "https://video.weibo.com/show?fid=1034:5364893600120891",
+   "cover": "https://wx4.sinaimg.cn/orj1080/008vtemvly1ij0uoyjdo3j31hc0u0762.jpg",
+   "text": "#王语晨[超话]# \n【GNZ48王语晨 | 公演cut】20261113\nTEAM NIII·第三十六场《 拾忆：TEAM NIII 》\n\n《 High Light 》\n\n王语晨cut http://t.cn/AXYmOS3E ​​​",
+   "liveId": "1325601389331419136"
+  },
+  {
+   "date": "2026-11-13",
+   "perf": "TEAM NIII·第三十六场《 拾忆：TEAM NIII 》",
+   "song": "非正式告别",
+   "mblogid": "Rre75hW72",
+   "uid": 7794095795,
+   "url": "https://weibo.com/7794095795/Rre75hW72",
+   "h5": "https://video.weibo.com/show?fid=1034:5364889703612486",
+   "cover": "https://wx2.sinaimg.cn/orj1080/008vtemvly1ij0u8o2n1kj31hc0u00v7.jpg",
+   "text": "#王语晨[超话]# \n【GNZ48王语晨 | 公演cut】20261113\nTEAM NIII·第三十六场《 拾忆：TEAM NIII 》\n\n《 非正式告别 》\n\n王语晨cut http://t.cn/AXYmiryT ​​​",
+   "liveId": "1325601389331419136"
+  },
+  {
+   "date": "2026-11-13",
+   "perf": "TEAM NIII·第三十六场《 拾忆：TEAM NIII 》",
+   "song": "MC1",
+   "mblogid": "RrdULsaGd",
+   "uid": 7794095795,
+   "url": "https://weibo.com/7794095795/RrdULsaGd",
+   "h5": "https://video.weibo.com/show?fid=1034:5364882888130564",
+   "cover": "https://wx4.sinaimg.cn/orj1080/008vtemvly1ij0tgeoxn7j31hc0u0q59.jpg",
+   "text": "#王语晨[超话]# \n【GNZ48王语晨 | 公演cut】20261113\nTEAM NIII·第三十六场《 拾忆：TEAM NIII 》\n\nmc1“你觉得身边有没有冷幽默的人”\n\n王语晨cut http://t.cn/AXYmUVpY ​​​",
+   "liveId": "1325601389331419136"
+  },
   {
    "date": "2026-11-07",
    "perf": "TEAM NIII·第三十五场《 拾忆：TEAM NIII 》",
