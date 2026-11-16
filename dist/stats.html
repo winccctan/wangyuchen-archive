@@ -809,7 +809,7 @@ function devHtml(j) {
   // 「最后活跃」后的国家：设备维度今晚才接入、可能为空；空了就别显示「未知」，
   // 改给今日访客最多的来源（口径不同，前缀写清楚，不冒充这台设备的国家）。
   let lastWhere = '';
-  if (j && j.lastCcName) lastWhere = ' · ' + esc(j.lastCcName);
+  if (j && j.lastCcName && j.lastCcName !== '未知') lastWhere = ' · ' + esc(j.lastCcName);
   else {
     const top = (window.__C48 || []).slice().sort((a, b) => (b.today || 0) - (a.today || 0))[0];
     if (top && top.today > 0) lastWhere = ' · 今日访客多来自' + esc(top.name);
