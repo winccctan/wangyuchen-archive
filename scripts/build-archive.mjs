@@ -102,6 +102,19 @@ function attachBiliAndPruneDead(list) {
     }
     // 2) 按「日期 + 队伍」匹配 B 站录像
     if (!p.biliUrl && p.stime) {
+      // 🔴 手工/历史映射优先于自动打分（2026-11-16 修）：
+      //    个人 cut 标题「【王语晨】…《拾忆：TEAM NIII》…cut」剧目名全中(+2)+王语晨(+0.5)=4.5，
+      //    压过官方完整回放「…《拾忆 TEAM NIII》公演…」的 3 分 ⇒ 自动打分会错选 cut，
+      //    使 ✂️B站cut 按钮因「主回放 BV == cut BV」被前端隐藏，且错误 BV 被写回 linkMap。
+      //    旧逻辑里 linkMap 只在自动打分没命中时才回退（第 3 步），永远救不了场；这里提到最前。
+      const prevBv = prevMap[String(p.liveId)];
+      if (prevBv && biliBvSet.has(prevBv)) {
+        const v = biliByBv.get(prevBv);
+        p.biliUrl = `https://www.bilibili.com/video/${prevBv}`;
+        p.biliTitle = v ? v.title : '';
+        preserved++;
+        continue;
+      }
       const key = shDate(p.stime).replace(/-/g, '');
       const cands = biliByDate.get(key) || [];
       const teams = (p.teamList || []).map((t) => t.teamName).filter(Boolean);
