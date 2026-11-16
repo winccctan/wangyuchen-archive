@@ -760,8 +760,8 @@ function ctlBoot() {
 }
 
 /* ---------- 设备级访问（自己渲染，不再嵌 Worker 那个看板页）---------- */
-const DEV_PAGE_NAMES = { members: '档案', gift: '计分', mvp: 'MVP', rush: '冲刺', contrib: '贡献', other: '其他' };
-const DEV_PAGE_ORDER = ['members', 'gift', 'mvp', 'rush', 'contrib', 'other'];
+const DEV_PAGE_NAMES = { members: '档案', gift: '计分', mvp: 'MVP', rush: '冲刺', contrib: '贡献', pai: '竞价', other: '其他' };
+const DEV_PAGE_ORDER = ['members', 'gift', 'mvp', 'rush', 'contrib', 'pai', 'other'];
 let devDays = 7, devBusy = false;
 
 function devChips() {
@@ -784,16 +784,22 @@ function devHtml(j) {
     ? ds.slice().reverse().map((x) => '<tr><td>' + md(x.d) + '</td>'
         + DEV_PAGE_ORDER.map((q) => '<td class="n">' + ((x.pages && x.pages[q]) || 0) + '</td>').join('')
         + '</tr>').join('')
-    : '<tr><td colspan="7" class="dim">还没有数据</td></tr>';
+    : '<tr><td colspan="8" class="dim">还没有数据</td></tr>';
   const chips = DEV_PAGE_ORDER.filter((q) => (j.pages || {})[q])
     .map((q) => '<span class="pgchip">' + DEV_PAGE_NAMES[q] + ' <b>' + j.pages[q] + '</b></span>').join('')
+    || '<span class="pgchip">—</span>';
+  // 今日设备来自哪些国家（2026-11-16）：按设备记一个国家码，不存 IP 明文
+  const ctryChips = ((j && j.todayCtry) || [])
+    .map((x) => '<span class="pgchip">' + esc(x.name) + ' <b>' + x.n + '</b></span>').join('')
     || '<span class="pgchip">—</span>';
   return '<div class="cards">'
       + '<div class="card"><div class="k">累计设备</div><div class="v">' + ((j && j.total) || 0) + '</div>'
         + '<div class="k" style="margin-top:6px">指纹 ' + ((j && j.fps) || 0) + ' 枚</div></div>'
       + '<div class="card"><div class="k">今日设备</div><div class="v">' + ((j && j.today) || 0) + '</div>'
         + '<div class="k" style="margin-top:6px">'
-        + ((j && j.lastHit) ? '最后活跃 ' + ctlAgo(j.lastHit) : '今天还没人来')
+        + ((j && j.lastHit)
+            ? '最后活跃 ' + ctlAgo(j.lastHit) + ' · ' + esc(j.lastCcName || '未知')
+            : '今天还没人来')
         + '</div></div>'
       + '<div class="card"><div class="k">' + devDays + ' 天设备</div><div class="v">' + ((j && j.rangeUv) || 0) + '</div></div>'
       + '<div class="card"><div class="k">今日新设备</div><div class="v">' + ((j && j.todayFresh) || 0) + '</div></div>'
@@ -805,9 +811,11 @@ function devHtml(j) {
     + DEV_PAGE_ORDER.map((q) => '<td class="n">' + DEV_PAGE_NAMES[q] + '</td>').join('') + '</tr>'
     + pgRows + '</table>'
     + '<h2>各页累计</h2><div class="pgs">' + chips + '</div>'
+    + '<h2>今日设备来自</h2><div class="pgs">' + ctryChips + '</div>'
     + '<p class="dim">两层去重：① 浏览器指纹（清缓存、重装都不变）；② cookie 标签（把同型号的手机分开）。'
     + '两台同型号手机只要在同一天都用过，就算两台；清缓存属于「标签接替」，仍是一台；'
     + '从未在同一天都用过的两台同型号机，会被并成一台 —— 所以这个数是下限。'
+    + '国家＝Cloudflare 给的两字母码，一台设备只留「最近一次来自哪」，不存 IP 明文。'
     + '这块数据只在补档站这个带密码的页面上渲染，Worker 那边的独立看板入口已经下线。</p>';
 }
 
