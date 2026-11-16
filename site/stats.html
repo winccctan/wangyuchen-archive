@@ -251,7 +251,7 @@ function render(d) {
     ? d.country48.map(c => '<tr><td>' + c.name + '</td><td class="n">' + c.today + '</td><td class="n">' + c.d7 + '</td></tr>').join('')
     : '<tr><td colspan="3" class="dim">暂无记录（姊妹站国家分布 2026-10-15 起启用）</td></tr>';
   // 各页面的访客来自哪里（2026-10-25）：一行一个「页面 × 国家」，页面列用 rowspan 合并
-  const PG_NAME = { members: '成员档案 /', gift: '红蓝歌会 /gift', mvp: 'MVP /mvp' };
+  const PG_NAME = { members: '成员档案 /', gift: '红蓝歌会 /gift', mvp: 'MVP /mvp', pai: '竞价明细 pai.wyc0518.cc' };
   let pageCtryRows48 = '';
   (d.pageCountries48 || []).forEach((p) => {
     const nm = PG_NAME[p.page] || p.page;
@@ -791,7 +791,10 @@ function devHtml(j) {
   return '<div class="cards">'
       + '<div class="card"><div class="k">累计设备</div><div class="v">' + ((j && j.total) || 0) + '</div>'
         + '<div class="k" style="margin-top:6px">指纹 ' + ((j && j.fps) || 0) + ' 枚</div></div>'
-      + '<div class="card"><div class="k">今日设备</div><div class="v">' + ((j && j.today) || 0) + '</div></div>'
+      + '<div class="card"><div class="k">今日设备</div><div class="v">' + ((j && j.today) || 0) + '</div>'
+        + '<div class="k" style="margin-top:6px">'
+        + ((j && j.lastHit) ? '最后活跃 ' + ctlAgo(j.lastHit) : '今天还没人来')
+        + '</div></div>'
       + '<div class="card"><div class="k">' + devDays + ' 天设备</div><div class="v">' + ((j && j.rangeUv) || 0) + '</div></div>'
       + '<div class="card"><div class="k">今日新设备</div><div class="v">' + ((j && j.todayFresh) || 0) + '</div></div>'
     + '</div>'

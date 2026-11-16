@@ -282,7 +282,11 @@ function forbiddenNotSameSite() {
  */
 // 允许跨域上报 /track 的姊妹站（Origin/Referer 命中其一就放行）。
 // 2026-11-06 加 lv：鸡腿榜/公演榜三页各报一条页面事件。
-const TRACK_HOSTS = new Set(['all48.wyc0518.cc', 'lv.wyc0518.cc', 'all48-lv.yqz-tansy.workers.dev']);
+// 2026-11-16 加 pai：竞价明细站（pai.wyc0518.cc）接同一套 /track。
+const TRACK_HOSTS = new Set([
+  'all48.wyc0518.cc', 'lv.wyc0518.cc', 'all48-lv.yqz-tansy.workers.dev',
+  'pai.wyc0518.cc', 'all48-pai.yqz-tansy.workers.dev',
+]);
 function isTrackHost(request) {
   const origin = request.headers.get('Origin');
   const referer = request.headers.get('Referer');
@@ -465,6 +469,9 @@ const EVENTS = [
   ['all48:p:members', '48 站 · 成员档案（/）'],
   ['all48:p:gift', '48 站 · 红蓝歌会计分（/gift）'],
   ['all48:p:mvp', '48 站 · MVP 排名（/mvp）'],
+  // 竞价明细站（pai.wyc0518.cc，2026-11-16 接统计）：挂在工具页的那张卡跳过去。
+  // 同样用 `all48:p:` 前缀 ⇒ 报表的「各页面访问 / 各页面国家分布」自动多一行，不用改报表结构。
+  ['all48:p:pai', '48 站 · 竞价明细（pai）'],
   // /gift 上的「暗票预估」面板（2026-11-09，站长：「暗票按钮加上埋点吧 站点统计可以看」）：
   // 只记两条 —— 打开面板 / 真的把长图生成出来。都是「一次会话一次」，不按点击次数刷。
   // 🔴 前缀必须 `all48:`，这样自动进报表的「姊妹站」那张表，不跟补档站自己的动作混。
