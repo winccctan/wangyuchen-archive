@@ -180,6 +180,9 @@ function switchTab(name) {
 
 function render(d) {
   const p = d.push || { subs: 0, msg: 0, live: 0, perf: 0 };
+  // 设备面板「今日来自」兜底用：设备维度的国家 2026-11-16 深夜才接入，
+  // 当天已有设备没这个字段、又没新访客 ⇒ 全「未知」时改按访客请求统计显示真实国家。
+  window.__C48 = (d && d.country48) || [];
   const cards =
     '<div class="cards">' +
       '<div class="card"><div class="k">累计翻译次数</div><div class="v">' + d.total + '</div></div>' +
@@ -788,17 +791,36 @@ function devHtml(j) {
   const chips = DEV_PAGE_ORDER.filter((q) => (j.pages || {})[q])
     .map((q) => '<span class="pgchip">' + DEV_PAGE_NAMES[q] + ' <b>' + j.pages[q] + '</b></span>').join('')
     || '<span class="pgchip">—</span>';
-  // 今日设备来自哪些国家（2026-11-16）：按设备记一个国家码，不存 IP 明文
-  const ctryChips = ((j && j.todayCtry) || [])
-    .map((x) => '<span class="pgchip">' + esc(x.name) + ' <b>' + x.n + '</b></span>').join('')
-    || '<span class="pgchip">—</span>';
+  // 今日设备来自哪些国家（2026-11-16）：按设备记一个国家码，不存 IP 明文。
+  // 设备维度今晚才接入，当天老设备都没这个字段 ⇒ 若全是「未知」，改用页面访问的真实国家分布兜底，
+  // 免得面板一片「未知」看起来像坏了。两者口径不同：设备＝去重台数，访客＝请求去重人数。
+  const devC = ((j && j.todayCtry) || []).filter((x) => x && x.cc && x.cc !== '??' && x.n > 0);
+  let ctryChips, ctryNote;
+  if (devC.length) {
+    ctryChips = devC.map((x) => '<span class="pgchip">' + esc(x.name) + ' <b>' + x.n + '</b></span>').join('');
+    ctryNote = '按设备';
+  } else {
+    const fallback = (window.__C48 || []).filter((x) => x && x.today > 0);
+    ctryChips = fallback.length
+      ? fallback.map((x) => '<span class="pgchip">' + esc(x.name) + ' <b>' + x.today + '</b></span>').join('')
+      : '<span class="pgchip">—</span>';
+    ctryNote = '按访客请求';
+  }
+  // 「最后活跃」后的国家：设备维度今晚才接入、可能为空；空了就别显示「未知」，
+  // 改给今日访客最多的来源（口径不同，前缀写清楚，不冒充这台设备的国家）。
+  let lastWhere = '';
+  if (j && j.lastCcName) lastWhere = ' · ' + esc(j.lastCcName);
+  else {
+    const top = (window.__C48 || []).slice().sort((a, b) => (b.today || 0) - (a.today || 0))[0];
+    if (top && top.today > 0) lastWhere = ' · 今日访客多来自' + esc(top.name);
+  }
   return '<div class="cards">'
       + '<div class="card"><div class="k">累计设备</div><div class="v">' + ((j && j.total) || 0) + '</div>'
         + '<div class="k" style="margin-top:6px">指纹 ' + ((j && j.fps) || 0) + ' 枚</div></div>'
       + '<div class="card"><div class="k">今日设备</div><div class="v">' + ((j && j.today) || 0) + '</div>'
         + '<div class="k" style="margin-top:6px">'
         + ((j && j.lastHit)
-            ? '最后活跃 ' + ctlAgo(j.lastHit) + ' · ' + esc(j.lastCcName || '未知')
+            ? '最后活跃 ' + ctlAgo(j.lastHit) + lastWhere
             : '今天还没人来')
         + '</div></div>'
       + '<div class="card"><div class="k">' + devDays + ' 天设备</div><div class="v">' + ((j && j.rangeUv) || 0) + '</div></div>'
@@ -811,11 +833,13 @@ function devHtml(j) {
     + DEV_PAGE_ORDER.map((q) => '<td class="n">' + DEV_PAGE_NAMES[q] + '</td>').join('') + '</tr>'
     + pgRows + '</table>'
     + '<h2>各页累计</h2><div class="pgs">' + chips + '</div>'
-    + '<h2>今日设备来自</h2><div class="pgs">' + ctryChips + '</div>'
+    + '<h2>今日设备来自 <span style="font-size:12px;font-weight:400;opacity:.6">· ' + ctryNote + '</span></h2><div class="pgs">' + ctryChips + '</div>'
     + '<p class="dim">两层去重：① 浏览器指纹（清缓存、重装都不变）；② cookie 标签（把同型号的手机分开）。'
     + '两台同型号手机只要在同一天都用过，就算两台；清缓存属于「标签接替」，仍是一台；'
     + '从未在同一天都用过的两台同型号机，会被并成一台 —— 所以这个数是下限。'
-    + '国家＝Cloudflare 给的两字母码，一台设备只留「最近一次来自哪」，不存 IP 明文。'
+    + '「今日设备来自」：设备维度 2026-11-16 深夜才接入国家码，当天老设备没这个字段时，'
+    + '自动改用页面访问的访客国家分布兜底（标题会标「按访客请求」）。'
+    + '两种口径不同：设备＝去重台数，访客＝请求去重人数。国家＝Cloudflare 给的两字母码，不存 IP 明文。'
     + '这块数据只在补档站这个带密码的页面上渲染，Worker 那边的独立看板入口已经下线。</p>';
 }
 
