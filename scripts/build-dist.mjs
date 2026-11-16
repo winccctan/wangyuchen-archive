@@ -120,7 +120,8 @@ const files = [
   'assets/mv-shirt.jpg',
   'assets/mv-next18.mp4',
   'assets/mv-next18-full.mp4',
-  'assets/mv-next18.jpg'
+  'assets/mv-next18.jpg',
+  'assets/skin-mvp.jpg'       // 2025年度MVP定制公演海报（照片皮肤默认背景图）
 ];
 
 // 整目录复制：口袋表情图（105 张 gif，共 ~300KB），逐个列白名单不现实

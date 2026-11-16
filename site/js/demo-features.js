@@ -3859,6 +3859,9 @@
   }
 
   /* 功能 ⑳ 照片皮肤（毛玻璃叠加 + 可切换；候选图从微博美图 DATA.social 取） */
+  const SKIN_DEFAULT = './assets/skin-mvp.jpg';   // 2025年度MVP定制公演海报（本地图，首次访问默认选中）
+  const isLocalSkin = (u) => /^\.?\//.test(String(u)) && !String(u).startsWith('//');
+  const skinUrl = (u) => isLocalSkin(u) ? u : proxyImg(u);   // 本地图直连，远程图床才走 /img 代理
   function injectSkin() {
     if (!document.getElementById('skinLayer')) {
       const layer = document.createElement('div'); layer.id = 'skinLayer';
@@ -3876,7 +3879,8 @@
       document.body.appendChild(p);
     }
     const saved = LS.get('wyc-skin');
-    if (saved) applySkin(saved);
+    // 从未设置过 → 默认选中 MVP 海报；用户主动选过「纯色」('') 则尊重其选择
+    applySkin(saved === undefined || saved === null ? SKIN_DEFAULT : saved);
     document.addEventListener('click', (e) => {
       const p = document.getElementById('skinPanel');
       if (p && p.classList.contains('on') && !p.contains(e.target) && e.target.id !== 'skinBtn') p.classList.remove('on');
@@ -3884,7 +3888,7 @@
   }
   function applySkin(url) {
     const layer = document.getElementById('skinLayer');
-    if (url) { layer.style.backgroundImage = 'url("' + proxyImg(url) + '")'; document.body.setAttribute('data-skin', '1'); }
+    if (url) { layer.style.backgroundImage = 'url("' + skinUrl(url) + '")'; document.body.setAttribute('data-skin', '1'); }
     else { layer.style.backgroundImage = 'none'; document.body.removeAttribute('data-skin'); }
     LS.set('wyc-skin', url || '');
     document.querySelectorAll('.skin-thumb').forEach((t) => t.classList.toggle('active', t.dataset.url === (url || '')));
@@ -3897,11 +3901,12 @@
     social.forEach((it) => {
       if (it.k === 'photo' && it.p && it.p[0] && !seen[it.p[0]]) { seen[it.p[0]] = 1; picks.push(it.p[0]); }
     });
-    const list = picks.slice(0, 9);
+    // 本地 MVP 海报作为候选之一排首位，其余从微博美图取（去重）
+    const list = [SKIN_DEFAULT, ...picks.filter((u) => u !== SKIN_DEFAULT)].slice(0, 9);
     let html = '<div class="skin-grid">';
     html += '<div class="skin-thumb skin-none" data-url="" style="background:linear-gradient(135deg,#eaf6fb,#fdeef4)"><span>纯色</span></div>';
     list.forEach((u) => {
-      html += '<div class="skin-thumb" data-url="' + esc(u) + '" style="background-image:url(\'' + proxyImg(u) + '\')"></div>';
+      html += '<div class="skin-thumb" data-url="' + esc(u) + '" style="background-image:url(\'' + skinUrl(u) + '\')"></div>';
     });
     html += '</div><button class="skin-reset">恢复默认纯色</button>';
     p.innerHTML = html;
