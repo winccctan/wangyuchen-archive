@@ -1202,7 +1202,10 @@ async function handleStatsBody(url, env, kv, wantJson) {
   evDefs.forEach(([key, name], i) => {
     const t = Number(evTotalsMap.get(key) || 0);
     const d = Number(evDayVals[i] || 0);
-    if (t <= 0 && d <= 0) return;
+    // 页面事件（all48:p: / lv:p:）即使 0 也列：报表的「各页面访问」是一张**固定的页面清单**，
+    // 新页面刚接上统计还没人点时，行直接消失会让人以为没接上（2026-11-16 接 pai 时踩到）。
+    const isPage = key.startsWith('all48:p:') || key.startsWith('lv:p:');
+    if (t <= 0 && d <= 0 && !isPage) return;
     const row = { key: key, name: name, total: t, today: d, uniqTotal: evUniqT[i] || 0, uniqToday: evUniqD[i] || 0 };
     if (key.startsWith('all48:') || key.startsWith('lv:')) evList48.push(row); else evList.push(row);
   });
