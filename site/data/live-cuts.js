@@ -1,9 +1,9 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-11-16T06:40:25.368Z",
-  "count": 824,
-  "matched": 571,
+  "updatedAt": "2026-11-17T13:33:15.194Z",
+  "count": 826,
+  "matched": 573,
   "replays": 277,
-  "clips": 547,
+  "clips": 549,
   "targets": [
     {
       "mid": "1805448354",
@@ -28,6 +28,21 @@ window.LIVE_CUTS = {
     "358477444:space": 12
   },
   "cuts": [
+    {
+      "bvid": "BV1cfsB6yE7o",
+      "title": "【王语晨】20240412 GNZ48 Team NIII《启程：Team NIII》公演",
+      "created": 1794909942,
+      "date": "2026-11-17",
+      "titleDate": "2024-04-12",
+      "kind": "cut",
+      "cover": "http://i1.hdslb.com/bfs/archive/570f056e42fb6c9b6fc0a93f9ed501b3aca50968.jpg",
+      "url": "https://www.bilibili.com/video/BV1cfsB6yE7o",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "",
+      "liveId": "1117953857739886592",
+      "liveDate": "2025-04-12"
+    },
     {
       "bvid": "BV1s4sW6uErh",
       "title": "取名鬼才王语晨定制名“在人间凑数的日子”？小名“臭臭”？",
@@ -55,6 +70,21 @@ window.LIVE_CUTS = {
       "up": "Chzhnh",
       "mid": "358477444",
       "collection": "合集·王语晨直播回放",
+      "liveId": "1328845084428144640",
+      "liveDate": "2026-11-15"
+    },
+    {
+      "bvid": "BV1Awsn6fE7z",
+      "title": "【王语晨】20261115 GNZ48 Team NIII《拾忆：TEAM NIII》公演cut",
+      "created": 1794728158,
+      "date": "2026-11-15",
+      "titleDate": "2026-11-15",
+      "kind": "cut",
+      "cover": "http://i0.hdslb.com/bfs/archive/9eb4dddbfcdb4b3db49c043e7c0e8f5db615ebe9.jpg",
+      "url": "https://www.bilibili.com/video/BV1Awsn6fE7z",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "",
       "liveId": "1328845084428144640",
       "liveDate": "2026-11-15"
     },
