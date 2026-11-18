@@ -1,6 +1,6 @@
 {
-  "updatedAt": "2026-11-18T07:38:30.157Z",
-  "count": 1443,
+  "updatedAt": "2026-11-18T17:20:56.282Z",
+  "count": 1444,
   "targets": [
     {
       "mid": "2086351451",
@@ -30,6 +30,15 @@
     "2086351451:space": 2
   },
   "videos": [
+    {
+      "bvid": "BV1GqsS6tEj2",
+      "aid": 117637107418542,
+      "title": "【王语晨】20240518 GNZ48 Team NIII《天枢之弈》公演cut",
+      "created": 1795000032,
+      "duration": 2855,
+      "play": 28,
+      "mid": "358477444"
+    },
     {
       "bvid": "BV1V4s16UEy5",
       "aid": 117635480027715,

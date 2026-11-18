@@ -6,7 +6,7 @@
  * 字段：[日期, 标题, BV号, 封面URL]。日期为北京时间 YYYY-MM-DD（优先从标题 8 位日期解析，
  *       解析不到回退上传时间），与公演 stime 转北京时间一致，确保能挂到对应公演。
  * 注：本文件随站上线（静态资源，不进 KV）；改它并 bump index.html 的 ?v= 即生效。
- * 共 252 条，覆盖 2022-10-02 → 2026-11-15。
+ * 共 253 条，覆盖 2022-10-02 → 2026-11-15。
  */
 window.__BILI_CUTS__ = [
   ["2026-11-15","【王语晨】20261115 GNZ48 Team NIII《拾忆：TEAM NIII》公演cut","BV1Awsn6fE7z",""],
@@ -178,6 +178,7 @@ window.__BILI_CUTS__ = [
   ["2024-06-21","GNZ48 Team NIII《天枢之弈》 公演cut","BV1Gi421v7En","https://i1.hdslb.com/bfs/archive/c286386ae888f9238aa6f7d604f82ec189aa9f3a.jpg"],
   ["2024-06-01","《女   子》曾艾佳生日主题公演cut","BV1Br421c79T","https://i1.hdslb.com/bfs/archive/5ef5ab264a30abc152dae40c2f11820657bab57d.jpg"],
   ["2024-05-31","GNZ48 team NIII 《天枢之弈》公演cut","BV1fZ421W7SK","https://i0.hdslb.com/bfs/archive/6e630c78ac047544f8ab33ce6cc1326942d6459a.jpg"],
+  ["2024-05-18","【王语晨】20240518 GNZ48 Team NIII《天枢之弈》公演cut","BV1GqsS6tEj2",""],
   ["2024-05-12","Team NIII《天枢之弈》公演cut","BV16b421b7GF","https://i0.hdslb.com/bfs/archive/04a017765961575a2e1f474e0124af3585fa8bbb.jpg"],
   ["2024-05-05","GNZ48 team NIII《天枢之弈》首演第二场cut","BV1QZ42177gz","https://i1.hdslb.com/bfs/archive/eb105c017fe8d54424c78278ec578db38d79e240.jpg"],
   ["2024-05-04","GNZ48 team NIII《天枢之弈》首演第一场cut","BV1Wi421y723","https://i1.hdslb.com/bfs/archive/4d4f016954d6d3ea6851fd76fbdf678dc13a00e7.jpg"],
