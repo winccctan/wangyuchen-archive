@@ -1,6 +1,6 @@
 {
-  "updatedAt": "2026-11-18T17:20:56.282Z",
-  "count": 1444,
+  "updatedAt": "2026-11-19T13:23:02.005Z",
+  "count": 1446,
   "targets": [
     {
       "mid": "2086351451",
@@ -30,6 +30,24 @@
     "2086351451:space": 2
   },
   "videos": [
+    {
+      "bvid": "BV1Afsb6XEPp",
+      "aid": 117641402452265,
+      "title": "【王语晨】20240526 SNH48 GROUP 2023年度潜力新人TOP16答谢公演·重庆站cut",
+      "created": 1795065489,
+      "duration": 2287,
+      "play": 172,
+      "mid": "358477444"
+    },
+    {
+      "bvid": "BV1FHs46gEFL",
+      "aid": 117641184282484,
+      "title": "【王语晨】20240524 SNH48 GROUP 2023年度潜力新人TOP16汇报公演成都站cut",
+      "created": 1795062176,
+      "duration": 1750,
+      "play": 78,
+      "mid": "358477444"
+    },
     {
       "bvid": "BV1GqsS6tEj2",
       "aid": 117637107418542,
