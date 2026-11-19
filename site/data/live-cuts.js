@@ -1,9 +1,9 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-11-19T13:22:45.685Z",
-  "count": 826,
-  "matched": 573,
+  "updatedAt": "2026-11-19T23:06:31.943Z",
+  "count": 830,
+  "matched": 577,
   "replays": 277,
-  "clips": 549,
+  "clips": 553,
   "targets": [
     {
       "mid": "1805448354",
@@ -28,6 +28,66 @@ window.LIVE_CUTS = {
     "358477444:space": 12
   },
   "cuts": [
+    {
+      "bvid": "BV1Afsb6XEPp",
+      "title": "【王语晨】20240526 SNH48 GROUP 2023年度潜力新人TOP16答谢公演·重庆站cut",
+      "created": 1795065489,
+      "date": "2026-11-19",
+      "titleDate": "2024-05-26",
+      "kind": "cut",
+      "cover": "http://i1.hdslb.com/bfs/archive/e8f2ae9a89098731c4896c60683207d9f216ee3a.jpg",
+      "url": "https://www.bilibili.com/video/BV1Afsb6XEPp",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "",
+      "liveId": "1001603123788976128",
+      "liveDate": "2024-05-26"
+    },
+    {
+      "bvid": "BV1FHs46gEFL",
+      "title": "【王语晨】20240524 SNH48 GROUP 2023年度潜力新人TOP16汇报公演成都站cut",
+      "created": 1795062176,
+      "date": "2026-11-19",
+      "titleDate": "2024-05-24",
+      "kind": "cut",
+      "cover": "http://i2.hdslb.com/bfs/archive/681aea4f1a09ca171625141d42391b383a0e33c5.jpg",
+      "url": "https://www.bilibili.com/video/BV1FHs46gEFL",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "",
+      "liveId": "1000909618762551296",
+      "liveDate": "2024-05-24"
+    },
+    {
+      "bvid": "BV1GqsS6tEj2",
+      "title": "【王语晨】20240518 GNZ48 Team NIII《天枢之弈》公演cut",
+      "created": 1795000032,
+      "date": "2026-11-18",
+      "titleDate": "2024-05-18",
+      "kind": "cut",
+      "cover": "http://i0.hdslb.com/bfs/archive/fd2dd3e8b3feb9933a30ab0fdec42a68363ee0bd.jpg",
+      "url": "https://www.bilibili.com/video/BV1GqsS6tEj2",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "",
+      "liveId": "998695733515063296",
+      "liveDate": "2024-05-18"
+    },
+    {
+      "bvid": "BV1V4s16UEy5",
+      "title": "【王语晨】20240414 GNZ48 Team NIII《启程：Team NIII》公演cut",
+      "created": 1794975068,
+      "date": "2026-11-18",
+      "titleDate": "2024-04-14",
+      "kind": "cut",
+      "cover": "http://i0.hdslb.com/bfs/archive/30c697129b49a407ea8b396b1e63797f5a6f496c.jpg",
+      "url": "https://www.bilibili.com/video/BV1V4s16UEy5",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "",
+      "liveId": "1118670058602434560",
+      "liveDate": "2025-04-14"
+    },
     {
       "bvid": "BV1cfsB6yE7o",
       "title": "【王语晨】20240412 GNZ48 Team NIII《启程：Team NIII》公演",
