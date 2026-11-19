@@ -43,23 +43,32 @@
     }).join('');
   }
 
-  /* ---------- 名场面卡 ---------- */
-  function renderCard() {
-    var m = MOMENTS[momentIdx];
-    var lines = String(m.text).split('\n').map(esc).join('<br>');
+  /* ---------- 名场面卡 ----------
+   * 骨架只建一次；切换名场面只改 chip/title/quote 三个文字节点，
+   * 寄语列表和按钮不重建 ⇒ 卡片高度不变、页面不跳动。
+   */
+  function buildCard() {
     $('#stageCardBody').innerHTML =
-      '<div class="stage-card-meta"><span class="stage-card-chip">' + esc(m.tag) + '</span><b>' + esc(m.title) + '</b></div>' +
-      '<div class="stage-card-quote">' + lines + '</div>' +
+      '<div class="stage-card-meta"><span class="stage-card-chip" id="mChip"></span><b id="mTitle"></b></div>' +
+      '<div class="stage-card-quote" id="mQuote"></div>' +
       '<div class="stage-wish-list"><div class="stage-wish-list-hd">💌 大家写下的舞台寄语 <span id="wishTotal"></span></div>' +
       '<div class="stage-wish-scroll" id="wishScroll"></div></div>' +
       '<div class="stage-card-foot"><button class="stage-next" type="button" id="stageNext">💧 下一场</button>' +
       '<button class="stage-write" type="button" id="stageWrite">✍️ 写应援寄语</button></div>';
-    $('#stageNext').addEventListener('click', function () {
-      momentIdx = (momentIdx + 1) % MOMENTS.length; renderCard();
-    });
+    $('#stageNext').addEventListener('click', function (e) { e.preventDefault(); switchMoment(1); });
     $('#stageWrite').addEventListener('click', openWrite);
-    renderWishList();
   }
+  function renderMoment() {
+    var m = MOMENTS[momentIdx];
+    $('#mChip').textContent = m.tag;
+    $('#mTitle').textContent = m.title;
+    $('#mQuote').innerHTML = String(m.text).split('\n').map(esc).join('<br>');
+  }
+  function switchMoment(delta) {
+    momentIdx = (momentIdx + delta + MOMENTS.length) % MOMENTS.length;
+    renderMoment();   // 只更新文字，卡片高度不变
+  }
+  function renderCard() { renderMoment(); renderWishList(); }
 
   /* ---------- 寄语列表（可滚动） ---------- */
   function timeStr(d) {
@@ -80,30 +89,43 @@
 
   /* ---------- 星星 / 小鱼泡泡浮层 ---------- */
   var skyTimer = null;
-  // 泡泡池：氛围短句（⭐）+ 访客寄语（🐟），动态读最新 wishes
+  // 泡泡池：氛围短句（⭐）+ 全部访客寄语（🐟），不截断（长祝福一条不落）
   function bubblePool() {
     var pool = AMBIENT.map(function (s) { return { ico: '⭐', t: s, s: '' }; });
-    wishes.slice(0, 30).forEach(function (w) { pool.push({ ico: '🐟', t: w.t, s: w.s || '' }); });
+    wishes.forEach(function (w) { pool.push({ ico: '🐟', t: w.t, s: w.s || '' }); });
     return pool;
   }
-  // 生成一个泡泡：从底部升起 → 飘到顶部淡出 → 自动移除（同时上屏 ≤8，永不铺满）
+  // 循环游标：所有寄语按顺序一条接一条轮流上屏（纯轮询，非随机），一直循环
+  var bubbleCursor = 0;
+  // 生成一个泡泡：从底部升起 → 飘到顶部淡出 → 自动移除
   function spawnBubble() {
     var float = $('#stageSkyFloat'); if (!float) return;
-    if (float.querySelectorAll('.wish-bubble').length >= 8) return;
     var pool = bubblePool(); if (!pool.length) return;
-    var item = pool[Math.floor(Math.random() * pool.length)];
-    var left = 4 + Math.random() * 72;              // 水平随机 4%~76%
-    var dur = 12 + Math.random() * 9;               // 上浮 12~21s
-    var dx = Math.round(Math.random() * 44 - 22);   // 左右轻摆
+    // 同屏上限 = min(12, 池子大小)：寄语多时最多 12 条热闹，寄语少时不重复
+    var skyMax = Math.min(12, pool.length);
+    if (float.querySelectorAll('.wish-bubble').length >= skyMax) return;
+    // 从游标位置顺序找一条「当前不在屏上」的；若全在屏上（寄语很少）就强制取游标那条，保证一直滚
+    var shown = Array.prototype.map.call(float.querySelectorAll('.wish-bubble'), function (n) { return n.getAttribute('data-t'); });
+    var item = null, start = bubbleCursor % pool.length;
+    for (var k = 0; k < pool.length; k++) {
+      var cand = pool[(start + k) % pool.length];
+      if (shown.indexOf(cand.t) < 0) { item = cand; bubbleCursor = (start + k + 1) % pool.length; break; }
+    }
+    if (!item) { item = pool[start]; bubbleCursor = (start + 1) % pool.length; }
+    var left = 3 + Math.random() * 70;              // 水平随机 3%~73%
+    var dur = 13 + Math.random() * 8;               // 上浮 13~21s（长句慢慢滚，看得清全文）
+    var dx = Math.round(Math.random() * 40 - 20);   // 左右轻摆
     var el = document.createElement('span');
     el.className = 'wish-bubble';
+    el.setAttribute('data-t', item.t);
     el.style.left = left + '%';
     el.style.setProperty('--dur', dur.toFixed(1) + 's');
     el.style.setProperty('--dx', dx + 'px');
-    el.innerHTML = '<span class="wico">' + item.ico + '</span><span class="wtxt">' + esc(item.t) + '</span>' +
-      (item.s ? '<span class="wsign">—' + esc(item.s) + '</span>' : '');
+    // 全文显示：长句换行不缩写；署名放第二行
+    el.innerHTML = '<span class="wico">' + item.ico + '</span><span class="wtxt">' + esc(item.t) +
+      (item.s ? '<span class="wsign">\n— ' + esc(item.s) + '</span>' : '') + '</span>';
     float.appendChild(el);
-    setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, (dur + 0.8) * 1000);
+    setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, (dur + 0.5) * 1000);
   }
   function renderSky() {
     var sky = $('#stageSky'); if (!sky) return;
@@ -120,8 +142,8 @@
       var fdiv = document.createElement('div'); fdiv.id = 'stageSkyFloat'; fdiv.className = 'stage-sky-float';
       sky.appendChild(fdiv);
     }
-    for (var j = 0; j < 5; j++) setTimeout(spawnBubble, j * 850);   // 起手先铺 5 个
-    if (!skyTimer) skyTimer = setInterval(spawnBubble, 1900);        // 之后持续补新泡泡
+    for (var j = 0; j < 8; j++) setTimeout(spawnBubble, j * 500);    // 起手先铺 8 个，立刻热闹
+    if (!skyTimer) skyTimer = setInterval(spawnBubble, 1400);        // 之后持续补新泡泡，保持滚动
   }
 
   /* ---------- 读取寄语 ---------- */
@@ -236,17 +258,16 @@
 
   /* ---------- 启动 ---------- */
   function init() {
-    renderBg(); renderCard(); renderSky(); loadWishes();
+    buildCard(); renderBg(); renderCard(); renderSky(); loadWishes();
     // 初始化收起态的 DOM（变量 collapsed=true）
     $('#stageCard').classList.add('collapsed');
     $('.stage-ov').classList.add('card-collapsed');
     document.addEventListener('click', function (e) {
       var bd = e.target.closest('[data-bg]');
-      if (bd) { bgIdx = Number(bd.dataset.bg); renderBg(); return; }
+      if (bd) { e.preventDefault(); bgIdx = Number(bd.dataset.bg); renderBg(); return; }
     });
-    $('#cardPrev').addEventListener('click', function () {
-      momentIdx = (momentIdx - 1 + MOMENTS.length) % MOMENTS.length; renderCard();
-    });
+    $('#cardPrev').addEventListener('click', function (e) { e.preventDefault(); switchMoment(-1); });
+    $('#cardNext').addEventListener('click', function (e) { e.preventDefault(); switchMoment(1); });
     $('#stageFab').addEventListener('click', openWrite);   // 底部悬浮写寄语按钮
     $('#stgWriteCancel').addEventListener('click', closeWrite);
     $('#stgGo').addEventListener('click', submitWish);
@@ -265,6 +286,8 @@
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') { closeWrite(); $('#stgAlbum').classList.remove('on'); }
     });
+    // 主页「写寄语」按钮跳过来（?write=1）→ 自动打开写寄语弹窗
+    if (/[?&]write=1(?:&|$)/.test(location.search)) setTimeout(openWrite, 400);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();

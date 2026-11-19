@@ -2207,6 +2207,17 @@
     fab.addEventListener('click', () => openBlindBox(true));
     document.body.appendChild(fab);
 
+    // 主页底部「写寄语」悬浮按钮 → 跳舞台页（放在盲盒上方，不重叠）
+    if (!$('#stageJumpFab')) {
+      const sf = document.createElement('a');
+      sf.className = 'stage-jump-fab';
+      sf.id = 'stageJumpFab';
+      sf.href = './stage.html?write=1';
+      sf.innerHTML = '<span>✍️</span> 写寄语';
+      sf.title = '写一句舞台应援寄语，挂到《在人间凑数的日子》舞台';
+      document.body.appendChild(sf);
+    }
+
     // 兜底：出图前已预加载校验过，这里只会出现在中途断网/缓存失效的情况
     window.__bmImgFail = function () { toast('这张图暂时加载不出来，点「换一张」试试'); };
 

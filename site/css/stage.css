@@ -39,15 +39,15 @@ body {
 
 /* 寄语浮层：星星 / 小鱼泡泡 */
 .stage-sky { position: absolute; inset: 0; z-index: 4; overflow: hidden; pointer-events: none; }
-.wish-bubble { position: absolute; bottom: -60px; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
-  max-width: min(78vw, 420px); padding: 6px 11px; border-radius: 999px;
-  background: rgba(10,14,24,.48); border: 1px solid rgba(255,255,255,.2); color: #f4f7ff;
-  font-size: clamp(10px, 2.7vw, 12.5px); backdrop-filter: blur(8px);
+.wish-bubble { position: absolute; bottom: -80px; display: inline-flex; align-items: flex-start; gap: 6px;
+  max-width: min(84vw, 440px); padding: 7px 12px; border-radius: 16px;
+  background: rgba(10,14,24,.52); border: 1px solid rgba(255,255,255,.2); color: #f4f7ff;
+  font-size: clamp(11px, 2.9vw, 13px); line-height: 1.5; backdrop-filter: blur(8px);
   box-shadow: 0 4px 18px rgba(0,0,0,.3); pointer-events: none; cursor: default;
   animation: bubbleRise var(--dur, 16s) linear forwards; }
-.wish-bubble .wico { font-size: 13px; flex: none; filter: drop-shadow(0 0 6px rgba(255,217,138,.7)); }
-.wish-bubble .wtxt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.wish-bubble .wsign { color: #ffd98a; flex: none; opacity: .9; }
+.wish-bubble .wico { font-size: 13px; flex: none; margin-top: 1px; filter: drop-shadow(0 0 6px rgba(255,217,138,.7)); }
+.wish-bubble .wtxt { white-space: pre-line; overflow-wrap: anywhere; word-break: break-word; }  /* 全文换行，不缩写 */
+.wish-bubble .wsign { display: block; color: #ffd98a; opacity: .92; font-size: .92em; margin-top: 2px; }
 /* 小鱼吐泡泡：从底部升起，边升边左右轻摆，到顶部淡出消失 */
 @keyframes bubbleRise {
   0%   { transform: translate3d(0, 0, 0) scale(.8); opacity: 0; }
@@ -83,6 +83,7 @@ body {
 .stage-card-nav::before, .stage-card-toggle::before { content: ''; display: block; width: 8px; height: 8px;
   border: solid #fff; border-width: 0 2px 2px 0; box-sizing: border-box; }
 .arr-left::before { transform: rotate(135deg); margin-left: 2px; }          /* ‹ */
+.arr-right::before { transform: rotate(-45deg); margin-left: -2px; }        /* › 下一个 */
 .arr-down::before { transform: rotate(45deg); margin-top: -3px; }           /* ⌄ 收起 */
 .arr-up::before { transform: rotate(225deg); margin-top: 3px; }             /* ⌃ 展开 */
 .stage-card-nav:active, .stage-card-toggle:active { background: rgba(255,255,255,.2); }

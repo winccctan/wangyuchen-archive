@@ -867,6 +867,16 @@ button.sc-btn { border: 0; cursor: pointer; font-family: inherit; line-height: 1
 }
 .bm-fab-ico { font-size: 17px; }
 .bm-fab:active { transform: scale(.95); }
+/* 主页「写寄语」悬浮按钮（盲盒上方，跳舞台页）*/
+.stage-jump-fab { position: fixed; z-index: 70; right: 14px;
+  bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+  display: inline-flex; align-items: center; gap: 5px; text-decoration: none;
+  padding: 9px 15px; border: 1px solid rgba(255,224,170,.75); border-radius: 999px;
+  background: linear-gradient(135deg, rgba(20,24,36,.9), rgba(40,30,20,.9)); color: #ffe0aa;
+  font-size: 13.5px; font-weight: 600; line-height: 1.2; backdrop-filter: blur(8px);
+  box-shadow: 0 6px 18px rgba(0,0,0,.32); }
+.stage-jump-fab span { font-size: 16px; }
+.stage-jump-fab:active { transform: scale(.96); }
 /* 一圈脉冲，提示这是个新玩法（不挡点击） */
 .bm-fab::after {
   content: ''; position: absolute; inset: -4px; border-radius: 999px; pointer-events: none;
