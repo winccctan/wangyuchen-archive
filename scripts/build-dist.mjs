@@ -126,7 +126,8 @@ const files = [
   'assets/mv-next18-full.mp4',
   'assets/mv-next18.jpg',
   'assets/skin-mvp.jpg',      // 2025年度MVP定制公演海报（照片皮肤默认背景图）
-  'assets/stage-mvp.jpg'      // 舞台纪念页背景图（复用 MVP 海报）
+  'assets/stage-mvp.jpg',     // 舞台纪念页背景图（复用 MVP 海报）
+  'audio/stage-bgm.mp3'       // 舞台纪念页背景音乐（4分05秒 / 160k / 4.6MB，默认关闭·点击播放）
 ];
 
 // 整目录复制：口袋表情图（105 张 gif，共 ~300KB），逐个列白名单不现实

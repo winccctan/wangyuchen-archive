@@ -185,3 +185,57 @@ body {
 @media (max-width: 480px) {
   .stage-fab { right: 12px; padding: 11px 17px; font-size: 13px; }
 }
+
+/* ===== 背景音乐按钮（默认关闭，点击播放整首·循环）===== */
+.stage-music { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 14px); left: 14px; z-index: 9;
+  width: 36px; height: 36px; padding: 0; border-radius: 50%; border: 1px solid rgba(255,255,255,.3);
+  background: rgba(8,10,18,.42); color: #ffe0aa; cursor: pointer; backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center;
+  transition: background .22s, border-color .22s, transform .18s; }
+.stage-music:active { transform: scale(.94); }
+.stage-music .sm-note { font-size: 15px; line-height: 1; opacity: .92; }
+.stage-music .sm-eq { display: none; align-items: flex-end; gap: 2.5px; height: 13px; }
+.stage-music .sm-eq i { width: 2.5px; border-radius: 2px; background: #ffe0aa; height: 100%;
+  transform-origin: bottom; animation: smEq 1.05s ease-in-out infinite; }
+.stage-music .sm-eq i:nth-child(1) { height: 45%; animation-delay: 0s; }
+.stage-music .sm-eq i:nth-child(2) { height: 78%; animation-delay: .16s; }
+.stage-music .sm-eq i:nth-child(3) { height: 55%; animation-delay: .33s; }
+.stage-music .sm-eq i:nth-child(4) { height: 92%; animation-delay: .49s; }
+@keyframes smEq { 0%,100% { transform: scaleY(.4) } 50% { transform: scaleY(1) } }
+.stage-music.on { border-color: rgba(255,224,170,.72); background: rgba(255,200,120,.2);
+  box-shadow: 0 0 18px rgba(255,190,110,.42); }
+.stage-music.on .sm-note { display: none; }
+.stage-music.on .sm-eq { display: flex; }
+.stage-music.loading { animation: smPulse .85s ease-in-out infinite; }
+@keyframes smPulse { 0%,100% { opacity: .4 } 50% { opacity: 1 } }
+
+/* ===== 蜡烛氛围光（背景海报里那支蜡烛，暖光呼吸 + 火苗跳动）=====
+ * 位置由 stage.js 按 background-size:cover / background-position:center 22% 映射计算，
+ * 元素挂在 .stage-bg 内部 ⇒ 跟着 Ken Burns 缩放一起动，始终对得上蜡烛。 */
+.stage-candle { position: absolute; z-index: 1; display: none; pointer-events: none; mix-blend-mode: screen; }
+.stage-candle .cg-halo { position: absolute; left: 50%; top: 42%; width: 250%; height: 235%;
+  transform: translate(-50%, -50%); border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 50%,
+    rgba(255,206,140,.78) 0%, rgba(255,178,96,.46) 26%, rgba(255,152,64,.20) 48%, rgba(255,140,50,0) 70%);
+  filter: blur(8px); animation: cgBreath 2.9s ease-in-out infinite; will-change: opacity, transform; }
+.stage-candle .cg-flame { position: absolute; left: 50%; top: -2%; width: 62%; height: 34%;
+  transform: translate(-50%, -50%); border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 50%,
+    rgba(255,250,232,.98) 0%, rgba(255,216,150,.8) 30%, rgba(255,172,74,.26) 56%, rgba(255,150,50,0) 74%);
+  filter: blur(3.5px); animation: cgFlicker 1.7s ease-in-out infinite; will-change: opacity, transform; }
+@keyframes cgBreath {
+  0%,100% { opacity: .34; transform: translate(-50%,-50%) scale(.96); }
+  26%     { opacity: 1;   transform: translate(-50%,-50%) scale(1.09); }
+  48%     { opacity: .5;  transform: translate(-50%,-50%) scale(1); }
+  72%     { opacity: .96; transform: translate(-50%,-50%) scale(1.06); }
+}
+@keyframes cgFlicker {
+  0%,100% { opacity: .8;  transform: translate(-50%,-50%) scale(1); }
+  18%     { opacity: .46; transform: translate(-52.5%,-49%) scale(.88); }
+  38%     { opacity: 1;   transform: translate(-47.5%,-52%) scale(1.12); }
+  56%     { opacity: .6;  transform: translate(-51%,-48.5%) scale(.94); }
+  74%     { opacity: .95; transform: translate(-49%,-51%) scale(1.05); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stage-candle .cg-halo, .stage-candle .cg-flame { animation: none; }
+}

@@ -6,11 +6,14 @@
 <meta name="robots" content="noindex,nofollow">
 <meta name="theme-color" content="#0b0d16">
 <title>在人间凑数的日子 · 舞台现场</title>
-<link rel="stylesheet" href="./css/stage.css?v=20261120s13">
+<link rel="stylesheet" href="./css/stage.css?v=20261120s17">
 </head>
 <body>
 <div class="stage-ov">
-  <div class="stage-bg" id="stageBg"></div>
+  <div class="stage-bg" id="stageBg">
+    <!-- 蜡烛氛围光：位置由 stage.js 按背景图 cover 映射算，只在 MVP 海报那张显示 -->
+    <i class="stage-candle" id="stageCandle" aria-hidden="true"><i class="cg-halo"></i><i class="cg-flame"></i></i>
+  </div>
   <div class="stage-vignette"></div>
 
   <div class="stage-top">
@@ -19,6 +22,12 @@
     <span class="stage-top-sub">王语晨 · 2025 年度 MVP 定制公演 · 11.28</span>
   </div>
   <a class="stage-close" id="stageClose" href="./" title="返回补档站" aria-label="返回补档站" style="text-decoration:none;display:flex;align-items:center;justify-content:center">✕</a>
+
+  <!-- 背景音乐：默认关闭，点击播放/暂停（整首循环） -->
+  <button class="stage-music" id="stageMusic" type="button" aria-label="播放背景音乐" title="播放背景音乐">
+    <span class="sm-note">♪</span>
+    <span class="sm-eq"><i></i><i></i><i></i><i></i></span>
+  </button>
 
   <div class="stage-caption" id="stageCaption">在人间凑数的日子 · 幸好有这一场，让我们都不再凑数</div>
 
@@ -67,6 +76,6 @@
 
 <div class="stg-toast" id="stgToast"></div>
 
-<script src="./js/stage.js?v=20261120s13"></script>
+<script src="./js/stage.js?v=20261120s17"></script>
 </body>
 </html>

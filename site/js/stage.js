@@ -11,7 +11,7 @@
   }); }
 
   var BG = [
-    { f: './assets/stage-mvp.jpg', label: 'MVP定制公演' },
+    { f: './assets/stage-mvp.jpg', label: 'MVP定制公演', candle: 1 },  // 这张里有蜡烛 → 挂氛围光
     { f: './assets/wb-night.jpg', label: '夜色' },
     { f: './assets/wb-red.jpg', label: '热烈' },
     { f: './assets/wb-warm.jpg', label: '暖光' },
@@ -41,6 +41,32 @@
       return '<button type="button" class="stage-bgdot' + (i === bgIdx ? ' on' : '') +
         '" data-bg="' + i + '" title="' + esc(x.label) + '" aria-label="' + esc(x.label) + '"></button>';
     }).join('');
+    placeCandle();
+  }
+
+  /* ---------- 蜡烛氛围光定位 ----------
+   * 原图 1020×1578，蜡烛中心约在 (28.1%, 52.9%)，宽 11.5% / 高 9.8%。
+   * 必须按 background-size:cover + background-position:center 22% 反算屏幕坐标，
+   * 才能和背景图里的蜡烛严格重合（改 CSS 的位置就同步改这里）。
+   */
+  var CANDLE = { u: 0.310, v: 0.540, w: 0.105, h: 0.130 };
+  var CANDLE_W = 1020, CANDLE_H = 1578;
+  function placeCandle() {
+    var bg = $('#stageBg'), c = $('#stageCandle');
+    if (!bg || !c) return;
+    if (!BG[bgIdx].candle) { c.style.display = 'none'; return; }
+    var W = bg.clientWidth, H = bg.clientHeight;
+    if (!W || !H) { c.style.display = 'none'; return; }
+    var s = Math.max(W / CANDLE_W, H / CANDLE_H);              // cover
+    var dw = CANDLE_W * s, dh = CANDLE_H * s;
+    var ox = (W - dw) * 0.5;                                    // background-position x: center
+    var oy = (H - dh) * 0.22;                                   // background-position y: 22%
+    var cw = CANDLE.w * dw, ch = CANDLE.h * dh;
+    c.style.display = 'block';
+    c.style.width = cw + 'px';
+    c.style.height = ch + 'px';
+    c.style.left = (ox + CANDLE.u * dw - cw / 2) + 'px';
+    c.style.top = (oy + CANDLE.v * dh - ch / 2) + 'px';
   }
 
   /* ---------- 名场面卡 ----------
@@ -256,9 +282,46 @@
     clearTimeout(toast._t); toast._t = setTimeout(function () { t.classList.remove('on'); }, 2200);
   }
 
+  /* ---------- 背景音乐（默认关闭；点击播放整首，循环）---------- */
+  var bgm = null, bgmOn = false, bgmFade = null;
+  function fadeVol(el, target, ms) {
+    clearInterval(bgmFade);
+    var from = el.volume, steps = Math.max(1, Math.round(ms / 40)), i = 0;
+    bgmFade = setInterval(function () {
+      i += 1;
+      try { el.volume = Math.min(1, Math.max(0, from + (target - from) * (i / steps))); } catch (e) {}
+      if (i >= steps) clearInterval(bgmFade);
+    }, 40);
+  }
+  function initMusic() {
+    var btn = $('#stageMusic'); if (!btn) return;
+    bgm = new Audio();
+    bgm.src = './audio/stage-bgm.mp3';
+    bgm.loop = true;          // 整首放完接着放
+    bgm.preload = 'none';     // 不点不下载（4.6MB，省流量）
+    bgm.volume = 0;
+    btn.addEventListener('click', function (e) {
+      e.preventDefault();
+      if (bgmOn) {                                  // 关：立刻暂停
+        bgmOn = false; bgm.pause(); btn.classList.remove('on');
+        btn.setAttribute('aria-label', '播放背景音乐'); btn.title = '播放背景音乐';
+        return;
+      }
+      btn.classList.add('loading');
+      var p = bgm.play();
+      if (p && p.then) p.then(function () {
+        bgmOn = true; btn.classList.remove('loading'); btn.classList.add('on');
+        btn.setAttribute('aria-label', '暂停背景音乐'); btn.title = '暂停背景音乐';
+        fadeVol(bgm, 0.72, 700);                    // 淡入，避免一上来太响
+      }).catch(function () {
+        btn.classList.remove('loading'); toast('音乐没加载出来，再点一下试试');
+      });
+    });
+  }
+
   /* ---------- 启动 ---------- */
   function init() {
-    buildCard(); renderBg(); renderCard(); renderSky(); loadWishes();
+    buildCard(); renderBg(); renderCard(); renderSky(); initMusic(); loadWishes();
     // 初始化收起态的 DOM（变量 collapsed=true）
     $('#stageCard').classList.add('collapsed');
     $('.stage-ov').classList.add('card-collapsed');
@@ -269,6 +332,11 @@
     $('#cardPrev').addEventListener('click', function (e) { e.preventDefault(); switchMoment(-1); });
     $('#cardNext').addEventListener('click', function (e) { e.preventDefault(); switchMoment(1); });
     $('#stageFab').addEventListener('click', openWrite);   // 底部悬浮写寄语按钮
+    // 视口变化 / 横竖屏切换：重算蜡烛光斑位置（背景图 cover 映射会变）
+    var ct = null;
+    var reCandle = function () { clearTimeout(ct); ct = setTimeout(placeCandle, 160); };
+    window.addEventListener('resize', reCandle);
+    window.addEventListener('orientationchange', reCandle);
     $('#stgWriteCancel').addEventListener('click', closeWrite);
     $('#stgGo').addEventListener('click', submitWish);
     $('#stgMask').addEventListener('click', function (e) { if (e.target === this) closeWrite(); });
