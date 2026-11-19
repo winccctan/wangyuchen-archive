@@ -126,8 +126,7 @@ const files = [
   'assets/mv-next18-full.mp4',
   'assets/mv-next18.jpg',
   'assets/skin-mvp.jpg',      // 2025年度MVP定制公演海报（照片皮肤默认背景图）
-  'assets/stage-mvp.jpg',     // 舞台纪念页背景图（复用 MVP 海报）
-  'audio/stage-bgm.mp3'       // 舞台纪念页背景音乐（4分05秒 / 160k / 4.6MB，默认关闭·点击播放）
+  'assets/stage-mvp.jpg'      // 舞台纪念页背景图（复用 MVP 海报）
 ];
 
 // 整目录复制：口袋表情图（105 张 gif，共 ~300KB），逐个列白名单不现实
@@ -135,7 +134,8 @@ const dirs = [
   'assets/emoji',
   'cards/photos', // 生写小卡图鉴实物照（19 张 ~6.7MB，「生写小卡」子标签用）
   'assets/sticker', // 饭制表情包微信版（51 张 240×240 / 单张 ≤500KB，「饭制表情包」子标签用）
-  'day' // 「这一天」按天数据：index.json（日期→各类条数）+ 49 个月文件（约 1.7MB），按月按需加载
+  'day', // 「这一天」按天数据：index.json（日期→各类条数）+ 49 个月文件（约 1.7MB），按月按需加载
+  'audio' // 舞台页背景音乐（换歌就换文件名，不用改这里；旧文件记得删）
 ];
 
 let total = 0;

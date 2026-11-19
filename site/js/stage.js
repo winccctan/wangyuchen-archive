@@ -296,7 +296,7 @@
   function initMusic() {
     var btn = $('#stageMusic'); if (!btn) return;
     bgm = new Audio();
-    bgm.src = './audio/stage-bgm.mp3';
+    bgm.src = './audio/stage-bgm-260328.mp3';   // 《降落伞》260328 前座 Cut（换歌换文件名，天然绕开缓存）
     bgm.loop = true;          // 整首放完接着放
     bgm.preload = 'none';     // 不点不下载（4.6MB，省流量）
     bgm.volume = 0;
