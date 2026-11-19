@@ -254,7 +254,7 @@ function render(d) {
     ? d.country48.map(c => '<tr><td>' + c.name + '</td><td class="n">' + c.today + '</td><td class="n">' + c.d7 + '</td></tr>').join('')
     : '<tr><td colspan="3" class="dim">暂无记录（姊妹站国家分布 2026-10-15 起启用）</td></tr>';
   // 各页面的访客来自哪里（2026-10-25）：一行一个「页面 × 国家」，页面列用 rowspan 合并
-  const PG_NAME = { members: '成员档案 /', gift: '红蓝歌会 /gift', mvp: 'MVP /mvp', pai: '竞价明细 pai.wyc0518.cc' };
+  const PG_NAME = { members: '成员档案 /', gift: '红蓝歌会 /gift', mvp: 'MVP /mvp', pai: '竞价明细 pai.wyc0518.cc', cut: '切片 · 字幕 /cut' };
   let pageCtryRows48 = '';
   (d.pageCountries48 || []).forEach((p) => {
     const nm = PG_NAME[p.page] || p.page;
@@ -284,7 +284,7 @@ function render(d) {
 
   document.getElementById('pane-a48').innerHTML =
     '<h2>各页面访问（all48.wyc0518.cc）</h2><table class="wide"><tr><td>页面</td><td class="n">累计</td><td class="n">今日</td><td class="n">独立累计</td><td class="n">独立今日</td><td class="n">今日占比</td></tr>' + pageRows48 + '</table>' +
-    '<p class="dim">「累计 / 今日」＝该页面被打开的次数（PV），「独立」＝按 IP 去重后的人（UV），同一 WiFi 下多人算 1 人。「今日占比」＝该页今日打开次数 / 三页合计。三个页面从 <b>2026-10-25</b> 起分开统计，之前的数字只覆盖首页。</p>' +
+    '<p class="dim">「累计 / 今日」＝该页面被打开的次数（PV），「独立」＝按 IP 去重后的人（UV），同一 WiFi 下多人算 1 人。「今日占比」＝该页今日打开次数 / 各页合计。各页从 <b>2026-10-25</b> 起分开统计（竞价 <b>11-16</b>、切片 <b>11-20</b> 接入），更早的数字只覆盖首页。</p>' +
     '<h2>各页面访问（lv.wyc0518.cc · 礼物榜 / 鸡腿榜）</h2><table class="wide"><tr><td>页面</td><td class="n">累计</td><td class="n">今日</td><td class="n">独立累计</td><td class="n">独立今日</td><td class="n">今日占比</td></tr>' + pageRowsLv + '</table>' +
     '<p class="dim">lv 站（口袋48 鸡腿榜 / 公演榜 / 每周鸡腿榜）以前<b>一条埋点都没有</b>，所以这张表从 <b>2026-11-06</b> 才开始有数据。口径和上面一样：打开一次算一次，独立访客按 IP 去重、不存明文 IP。</p>' +
     '<h2>全站合计</h2><table class="wide"><tr><td>动作</td><td class="n">累计</td><td class="n">今日</td><td class="n">独立累计</td><td class="n">独立今日</td></tr>' + evRows48 + '</table>' +

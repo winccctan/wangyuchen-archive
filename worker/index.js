@@ -286,6 +286,9 @@ function forbiddenNotSameSite() {
 const TRACK_HOSTS = new Set([
   'all48.wyc0518.cc', 'lv.wyc0518.cc', 'all48-lv.yqz-tansy.workers.dev',
   'pai.wyc0518.cc', 'all48-pai.yqz-tansy.workers.dev',
+  // 2026-11-20 加 all48 的 workers.dev 域名：切片页在 workers.dev 上核验时
+  // Referer 是它 ⇒ 之前一律 403（「打点没反应」），本地调试会白折腾。
+  'all48-archive.yqz-tansy.workers.dev',
 ]);
 function isTrackHost(request) {
   const origin = request.headers.get('Origin');
@@ -472,6 +475,10 @@ const EVENTS = [
   // 竞价明细站（pai.wyc0518.cc，2026-11-16 接统计）：挂在工具页的那张卡跳过去。
   // 同样用 `all48:p:` 前缀 ⇒ 报表的「各页面访问 / 各页面国家分布」自动多一行，不用改报表结构。
   ['all48:p:pai', '48 站 · 竞价明细（pai）'],
+  // 切片 · 字幕工具（all48.wyc0518.cc/cut/，2026-11-20 接统计）：挂在工具页的「切片」卡上。
+  // 🔴 它原来只有 devstat（设备口径，进 /devstats 的「各页设备」），**没打这条页面事件** ⇒
+  //    站长报表的「各页面访问」和「各页面 · 访客来自哪里」里根本没有它。页面里补一条 1×1 像素即可。
+  ['all48:p:cut', '48 站 · 切片 · 字幕（/cut）'],
   // /gift 上的「暗票预估」面板（2026-11-09，站长：「暗票按钮加上埋点吧 站点统计可以看」）：
   // 只记两条 —— 打开面板 / 真的把长图生成出来。都是「一次会话一次」，不按点击次数刷。
   // 🔴 前缀必须 `all48:`，这样自动进报表的「姊妹站」那张表，不跟补档站自己的动作混。
