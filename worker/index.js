@@ -1841,6 +1841,11 @@ async function handleApi(url, request, env, ctx) {
     if (!isSameSite(request)) return forbiddenNotSameSite();
     return stageWishesPost(request, env);
   }
+  // 管理用：删除单条寄语或清空（需 sync/gh token）——站长审核违规寄语用
+  if (p === '/api/stage-wishes' && request.method === 'DELETE') {
+    if (!(await isSyncAuthorized(request, env) || await isGhAuthorized(request, env))) return json({ error: 'forbidden' }, 403);
+    return stageWishesDelete(request, env);
+  }
   return json({ error: 'unknown api: ' + p }, 404);
 }
 
@@ -1901,6 +1906,23 @@ async function stageWishesPost(request, env) {
     return json({ error: '写入失败，请稍后再试' }, 500);
   }
   return json({ ok: true, count: arr.length });
+}
+// 管理端：{clear:true} 清空全部；{t:'文字'} 删除文字完全匹配的一条（站长审核用）
+async function stageWishesDelete(request, env) {
+  let b = {};
+  try { b = await request.json(); } catch (_) {}
+  if (b && b.clear === true) {
+    await env.KV.put(STAGE_WISH_KEY, '[]');
+    return json({ ok: true, cleared: true });
+  }
+  const t = String((b && b.t) || '');
+  if (!t) return json({ error: 'need t or clear' }, 400);
+  let arr = [];
+  try { arr = await env.KV.get(STAGE_WISH_KEY, { type: 'json' }); } catch (_) {}
+  if (!Array.isArray(arr)) arr = [];
+  const next = arr.filter(function (w) { return String(w.t) !== t; });
+  await env.KV.put(STAGE_WISH_KEY, JSON.stringify(next));
+  return json({ ok: true, removed: arr.length - next.length, count: next.length });
 }
 
 /* ------------------------- 粉丝档案（fans 表） -------------------------
