@@ -53,8 +53,7 @@
       '<div class="stage-wish-list"><div class="stage-wish-list-hd">💌 大家写下的舞台寄语 <span id="wishTotal"></span></div>' +
       '<div class="stage-wish-scroll" id="wishScroll"></div></div>' +
       '<div class="stage-card-foot"><button class="stage-next" type="button" id="stageNext">💧 下一场</button>' +
-      '<button class="stage-write" type="button" id="stageWrite">✍️ 写应援寄语</button></div>' +
-      '<div class="stage-card-info">寄语保存在服务器，所有来看这场舞台的人都能看到 · 生成纪念卡只在本机合成，不上传</div>';
+      '<button class="stage-write" type="button" id="stageWrite">✍️ 写应援寄语</button></div>';
     $('#stageNext').addEventListener('click', function () {
       momentIdx = (momentIdx + 1) % MOMENTS.length; renderCard();
     });
@@ -254,7 +253,8 @@
     $('#cardToggle').addEventListener('click', function () {
       collapsed = !collapsed;
       $('#stageCard').classList.toggle('collapsed', collapsed);
-      this.textContent = collapsed ? '⌃' : '⌄';
+      this.classList.toggle('arr-down', !collapsed);
+      this.classList.toggle('arr-up', collapsed);
       this.setAttribute('aria-label', collapsed ? '展开卡片' : '收起卡片');
     });
     document.addEventListener('keydown', function (e) {
