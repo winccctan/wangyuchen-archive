@@ -30,7 +30,7 @@
   var AMBIENT = ['GNZ48 · TEAM NIII', '2025 年度 MVP 定制公演', '11.28 星梦剧院', '喊 call 应援', '这一场 我们都在'];
   var ICONS = ['⭐', '🐟', '✨', '💫', '🌟'];
 
-  var bgIdx = 0, momentIdx = 0, wishes = [], collapsed = false;
+  var bgIdx = 0, momentIdx = 0, wishes = [], collapsed = true;   // 默认收起：舞台画面干净 + 悬浮写寄语按钮常显
   var SIGN_KEY = 'wyc-stage-sign-v1';
 
   /* ---------- 背景 ---------- */
@@ -237,6 +237,9 @@
   /* ---------- 启动 ---------- */
   function init() {
     renderBg(); renderCard(); renderSky(); loadWishes();
+    // 初始化收起态的 DOM（变量 collapsed=true）
+    $('#stageCard').classList.add('collapsed');
+    $('.stage-ov').classList.add('card-collapsed');
     document.addEventListener('click', function (e) {
       var bd = e.target.closest('[data-bg]');
       if (bd) { bgIdx = Number(bd.dataset.bg); renderBg(); return; }
@@ -244,6 +247,7 @@
     $('#cardPrev').addEventListener('click', function () {
       momentIdx = (momentIdx - 1 + MOMENTS.length) % MOMENTS.length; renderCard();
     });
+    $('#stageFab').addEventListener('click', openWrite);   // 底部悬浮写寄语按钮
     $('#stgWriteCancel').addEventListener('click', closeWrite);
     $('#stgGo').addEventListener('click', submitWish);
     $('#stgMask').addEventListener('click', function (e) { if (e.target === this) closeWrite(); });
@@ -253,6 +257,7 @@
     $('#cardToggle').addEventListener('click', function () {
       collapsed = !collapsed;
       $('#stageCard').classList.toggle('collapsed', collapsed);
+      $('.stage-ov').classList.toggle('card-collapsed', collapsed);
       this.classList.toggle('arr-down', !collapsed);
       this.classList.toggle('arr-up', collapsed);
       this.setAttribute('aria-label', collapsed ? '展开卡片' : '收起卡片');

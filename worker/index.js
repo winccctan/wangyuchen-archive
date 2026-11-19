@@ -1841,10 +1841,17 @@ async function handleApi(url, request, env, ctx) {
     if (!isSameSite(request)) return forbiddenNotSameSite();
     return stageWishesPost(request, env);
   }
-  // 管理用：删除单条寄语或清空（需 sync/gh token）——站长审核违规寄语用
+  // 管理用：删除单条寄语或清空（需后台 admin token 或 sync/gh token）——站长审核违规寄语用
   if (p === '/api/stage-wishes' && request.method === 'DELETE') {
-    if (!(await isSyncAuthorized(request, env) || await isGhAuthorized(request, env))) return json({ error: 'forbidden' }, 403);
+    if (!(await adminOk(request, env) || await isSyncAuthorized(request, env) || await isGhAuthorized(request, env))) {
+      return json({ error: 'forbidden' }, 403);
+    }
     return stageWishesDelete(request, env);
+  }
+  // 管理用：读取全部寄语（含原始顺序，供后台审核）——需 admin token
+  if (p === '/api/admin/wishes' && request.method === 'GET') {
+    if (!(await adminOk(request, env))) return json({ error: 'forbidden' }, 403);
+    return stageWishesGet(env);
   }
   return json({ error: 'unknown api: ' + p }, 404);
 }

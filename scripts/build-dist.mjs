@@ -47,6 +47,7 @@ const files = [
   'index.html',
   'stats.html', // 翻译使用统计（带密码；主站由 Worker 屏蔽该路径，只有 GitHub Pages 备份站能打开）
   'admin-7f2a.html', // 行程后台（隐藏地址 + 密码；不在站内暴露入口，页面 noindex）
+  'wish-admin-7f2a.html', // 寄语审核后台（隐藏地址 + 密码；复用 admin:pass，不在站内暴露入口）
   'stage.html', // 舞台纪念页「在人间凑数的日子」（独立页，单独链接，不挂主页）
   'css/style.css',
   'css/stage.css',
