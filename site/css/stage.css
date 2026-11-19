@@ -39,16 +39,25 @@ body {
 
 /* 寄语浮层：星星 / 小鱼泡泡 */
 .stage-sky { position: absolute; inset: 0; z-index: 4; overflow: hidden; pointer-events: none; }
-.wish-bubble { position: absolute; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
+.wish-bubble { position: absolute; bottom: -60px; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
   max-width: min(78vw, 420px); padding: 6px 11px; border-radius: 999px;
   background: rgba(10,14,24,.48); border: 1px solid rgba(255,255,255,.2); color: #f4f7ff;
   font-size: clamp(10px, 2.7vw, 12.5px); backdrop-filter: blur(8px);
-  box-shadow: 0 4px 18px rgba(0,0,0,.3); pointer-events: auto; cursor: default;
-  animation: wishFloat var(--dur, 9s) ease-in-out infinite; animation-delay: var(--del, 0s); }
+  box-shadow: 0 4px 18px rgba(0,0,0,.3); pointer-events: none; cursor: default;
+  animation: bubbleRise var(--dur, 16s) linear forwards; }
 .wish-bubble .wico { font-size: 13px; flex: none; filter: drop-shadow(0 0 6px rgba(255,217,138,.7)); }
 .wish-bubble .wtxt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .wish-bubble .wsign { color: #ffd98a; flex: none; opacity: .9; }
-@keyframes wishFloat { 0%,100% { transform: translate3d(0,0,0) } 50% { transform: translate3d(var(--dx,8px),-14px,0) } }
+/* 小鱼吐泡泡：从底部升起，边升边左右轻摆，到顶部淡出消失 */
+@keyframes bubbleRise {
+  0%   { transform: translate3d(0, 0, 0) scale(.8); opacity: 0; }
+  8%   { opacity: .95; }
+  25%  { transform: translate3d(var(--dx, 12px), -25vh, 0) scale(1); }
+  50%  { transform: translate3d(calc(var(--dx, 12px) * -1), -52vh, 0) scale(1); opacity: .9; }
+  75%  { transform: translate3d(var(--dx, 12px), -78vh, 0) scale(1.02); }
+  92%  { opacity: .55; }
+  100% { transform: translate3d(0, -108vh, 0) scale(1.05); opacity: 0; }
+}
 /* 星星点点背景 */
 .stage-star { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: #fff;
   box-shadow: 0 0 8px 2px rgba(255,255,255,.6); opacity: .6; animation: starTwinkle var(--sd, 3s) ease-in-out infinite; }

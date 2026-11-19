@@ -80,38 +80,49 @@
   }
 
   /* ---------- 星星 / 小鱼泡泡浮层 ---------- */
+  var skyTimer = null;
+  // 泡泡池：氛围短句（⭐）+ 访客寄语（🐟），动态读最新 wishes
+  function bubblePool() {
+    var pool = AMBIENT.map(function (s) { return { ico: '⭐', t: s, s: '' }; });
+    wishes.slice(0, 30).forEach(function (w) { pool.push({ ico: '🐟', t: w.t, s: w.s || '' }); });
+    return pool;
+  }
+  // 生成一个泡泡：从底部升起 → 飘到顶部淡出 → 自动移除（同时上屏 ≤8，永不铺满）
+  function spawnBubble() {
+    var float = $('#stageSkyFloat'); if (!float) return;
+    if (float.querySelectorAll('.wish-bubble').length >= 8) return;
+    var pool = bubblePool(); if (!pool.length) return;
+    var item = pool[Math.floor(Math.random() * pool.length)];
+    var left = 4 + Math.random() * 72;              // 水平随机 4%~76%
+    var dur = 12 + Math.random() * 9;               // 上浮 12~21s
+    var dx = Math.round(Math.random() * 44 - 22);   // 左右轻摆
+    var el = document.createElement('span');
+    el.className = 'wish-bubble';
+    el.style.left = left + '%';
+    el.style.setProperty('--dur', dur.toFixed(1) + 's');
+    el.style.setProperty('--dx', dx + 'px');
+    el.innerHTML = '<span class="wico">' + item.ico + '</span><span class="wtxt">' + esc(item.t) + '</span>' +
+      (item.s ? '<span class="wsign">—' + esc(item.s) + '</span>' : '');
+    float.appendChild(el);
+    setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, (dur + 0.8) * 1000);
+  }
   function renderSky() {
-    var sky = $('#stageSky');
-    // 星星点点
-    var stars = '';
-    for (var i = 0; i < 22; i++) {
-      var sl = 3 + Math.random() * 94, st = 6 + Math.random() * 70;
-      var sd = (2 + Math.random() * 3).toFixed(1);
-      stars += '<span class="stage-star" style="left:' + sl + '%;top:' + st + '%;--sd:' + sd + 's"></span>';
+    var sky = $('#stageSky'); if (!sky) return;
+    // 星星点点 + 泡泡容器只初始化一次，不被后续数据刷新打断
+    if (!$('#stageStars')) {
+      var stars = '';
+      for (var i = 0; i < 22; i++) {
+        var sl = 3 + Math.random() * 94, st = 6 + Math.random() * 70;
+        var sd = (2 + Math.random() * 3).toFixed(1);
+        stars += '<span class="stage-star" style="left:' + sl + '%;top:' + st + '%;--sd:' + sd + 's"></span>';
+      }
+      var sdiv = document.createElement('div'); sdiv.id = 'stageStars'; sdiv.innerHTML = stars;
+      sky.appendChild(sdiv);
+      var fdiv = document.createElement('div'); fdiv.id = 'stageSkyFloat'; fdiv.className = 'stage-sky-float';
+      sky.appendChild(fdiv);
     }
-    // 氛围短句（星星，不署名）
-    var ambient = AMBIENT.map(function (s, i) {
-      var p = skyPos(i, 6);
-      return bubbleHtml('⭐', esc(s), '', p, i);
-    }).join('');
-    // 访客寄语（小鱼泡泡，带署名）——最多取最新 12 条上屏
-    var fb = wishes.slice(0, 12).map(function (w, i) {
-      var p = skyPos(i + 2, 12);
-      return bubbleHtml('🐟', esc(w.t), w.s ? esc(w.s) : '', p, i + 6);
-    }).join('');
-    sky.innerHTML = stars + '<div class="stage-sky-float">' + ambient + fb + '</div>';
-  }
-  function skyPos(i, base) {
-    var rows = [ [8,12], [64,16], [14,30], [70,36], [6,52], [62,60], [20,70], [58,74] ];
-    var p = rows[i % rows.length];
-    return { l: p[0] + (Math.random() * 4 - 2), t: p[1] + (Math.random() * 4 - 2) };
-  }
-  function bubbleHtml(ico, txt, sign, pos, i) {
-    var dur = (7 + Math.random() * 5).toFixed(1), del = (Math.random() * 3).toFixed(1);
-    var dx = (Math.random() * 16 - 8).toFixed(0);
-    return '<span class="wish-bubble" style="left:' + pos.l + '%;top:' + pos.t + '%;--dur:' + dur + 's;--del:' + del + 's;--dx:' + dx + 'px">' +
-      '<span class="wico">' + ico + '</span><span class="wtxt">' + txt + '</span>' +
-      (sign ? '<span class="wsign">—' + sign + '</span>' : '') + '</span>';
+    for (var j = 0; j < 5; j++) setTimeout(spawnBubble, j * 850);   // 起手先铺 5 个
+    if (!skyTimer) skyTimer = setInterval(spawnBubble, 1900);        // 之后持续补新泡泡
   }
 
   /* ---------- 读取寄语 ---------- */
