@@ -243,7 +243,7 @@
     $('#cardToggle').addEventListener('click', function () {
       collapsed = !collapsed;
       $('#stageCard').classList.toggle('collapsed', collapsed);
-      this.textContent = collapsed ? '展开' : '收起';
+      this.textContent = collapsed ? '⌃' : '⌄';
       this.setAttribute('aria-label', collapsed ? '展开卡片' : '收起卡片');
     });
     document.addEventListener('keydown', function (e) {
