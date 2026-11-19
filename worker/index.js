@@ -1834,7 +1834,73 @@ async function handleApi(url, request, env, ctx) {
   if (p === '/api/pocket/events' && request.method === 'GET') {
     return withEdgeCache('/api/pocket/events', 15, () => handlePocketEventsGet(env));
   }
+  // —— 舞台纪念页寄语墙（独立页 stage.html 用；所有访客共享）——
+  // 读公开、写限同源；只存文字+署名+时间，绝不写 uid / IP / 粉丝号。
+  if (p === '/api/stage-wishes' && request.method === 'GET') return stageWishesGet(env);
+  if (p === '/api/stage-wishes' && request.method === 'POST') {
+    if (!isSameSite(request)) return forbiddenNotSameSite();
+    return stageWishesPost(request, env);
+  }
   return json({ error: 'unknown api: ' + p }, 404);
+}
+
+/* ===================== 舞台纪念页寄语墙 =====================
+ * 独立页 stage.html 用，KV 单键 stage-wishes 存最多 200 条。
+ * 🔴 隐私铁律：只存文字(t)+署名(s)+时间(d)，绝不写 uid / IP / 粉丝号。
+ *    署名纯数字打码；IP 只用于进程内限流，不落盘。
+ */
+const STAGE_WISH_KEY = 'stage-wishes';
+const STAGE_WISH_MAX = 200;
+const STAGE_WISH_RATE = new Map(); // ip -> {n, reset}
+function stageWishRateOk(ip, limit = 3, winMs = 10 * 60 * 1000) {
+  const now = Date.now();
+  const r = STAGE_WISH_RATE.get(ip);
+  if (!r || now > r.reset) { STAGE_WISH_RATE.set(ip, { n: 1, reset: now + winMs }); return true; }
+  if (r.n >= limit) return false;
+  r.n += 1;
+  return true;
+}
+function stageCleanText(s, max) {
+  let t = String(s || '').replace(/<[^>]*>/g, '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim();
+  if (t.length > max) t = t.slice(0, max);
+  return t;
+}
+function stageSign(s) {
+  let v = stageCleanText(s, 16);
+  if (/^\d{6,}$/.test(v)) v = v.slice(0, 4) + '****' + v.slice(-2); // 纯数字昵称打码
+  return v;
+}
+async function stageWishesGet(env) {
+  let arr = [];
+  try { arr = await env.KV.get(STAGE_WISH_KEY, { type: 'json' }); } catch (_) {}
+  if (!Array.isArray(arr)) arr = [];
+  // 寄语墙必须实时：不走边缘缓存，回源读最新 KV（KV 最终一致，约 10s~几分钟可见）
+  return new Response(JSON.stringify({ wishes: arr }), {
+    headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'access-control-allow-origin': '*' }
+  });
+}
+async function stageWishesPost(request, env) {
+  const ip = String(request.headers.get('cf-connecting-ip') || 'unknown');
+  if (!stageWishRateOk(ip)) return json({ error: '稍等一会儿再写吧' }, 429);
+  let b;
+  try { b = await request.json(); } catch (_) { return json({ error: 'bad json' }, 400); }
+  const t = stageCleanText(b && b.t, 80);
+  if (!t) return json({ error: '先写一句应援寄语吧' }, 400);
+  const s = stageSign(b && b.s);
+  const rec = { t, s, d: Date.now() };
+  let arr = [];
+  try { arr = await env.KV.get(STAGE_WISH_KEY, { type: 'json' }); } catch (_) {}
+  if (!Array.isArray(arr)) arr = [];
+  // 全网最近一条若文字完全相同且 1 分钟内，视为重复提交，不重复占坑
+  if (arr.length && arr[0].t === t && Date.now() - (arr[0].d || 0) < 60 * 1000) {
+    return json({ ok: true, count: arr.length, dup: true });
+  }
+  arr.unshift(rec);
+  if (arr.length > STAGE_WISH_MAX) arr = arr.slice(0, STAGE_WISH_MAX);
+  try { await env.KV.put(STAGE_WISH_KEY, JSON.stringify(arr)); } catch (e) {
+    return json({ error: '写入失败，请稍后再试' }, 500);
+  }
+  return json({ ok: true, count: arr.length });
 }
 
 /* ------------------------- 粉丝档案（fans 表） -------------------------

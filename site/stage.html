@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#0b0d16">
+<title>在人间凑数的日子 · 舞台现场</title>
+<link rel="stylesheet" href="./css/stage.css?v=20261120s01">
+</head>
+<body>
+<div class="stage-ov">
+  <div class="stage-bg" id="stageBg"></div>
+  <div class="stage-vignette"></div>
+
+  <div class="stage-top">
+    <span class="stage-top-badge">✦ 舞 台 现 场</span>
+    <span class="stage-top-title">《在人间凑数的日子》</span>
+    <span class="stage-top-sub">王语晨 · 2025 年度 MVP 定制公演 · 11.28</span>
+  </div>
+  <a class="stage-close" id="stageClose" href="./" title="返回补档站" aria-label="返回补档站" style="text-decoration:none;display:flex;align-items:center;justify-content:center">✕</a>
+
+  <div class="stage-caption" id="stageCaption">在人间凑数的日子 · 幸好有这一场，让我们都不再凑数</div>
+
+  <div class="stage-sky" id="stageSky"></div>
+
+  <div class="stage-bgbar" id="stageBgbar"></div>
+
+  <div class="stage-card" id="stageCard">
+    <div class="stage-card-hd">
+      <span class="stage-card-tag">《在人间凑数的日子》</span>
+      <button class="stage-card-nav" type="button" data-sm="-1" id="cardPrev" aria-label="上一个瞬间">‹</button>
+      <button class="stage-card-toggle" type="button" id="cardToggle" aria-label="收起卡片">收起</button>
+    </div>
+    <div class="stage-card-body" id="stageCardBody"></div>
+  </div>
+</div>
+
+<!-- 写寄语弹窗 -->
+<div class="stg-mask" id="stgMask">
+  <div class="stg-dialog">
+    <h3>写一句应援寄语</h3>
+    <p class="stg-hint">写给这一场舞台的她们，也写给在现场的自己。寄出后会挂在舞台上，所有来看这场舞台的人都能看到。</p>
+    <textarea id="stgText" maxlength="60" placeholder="例如：谢谢你们成为我的星星，今晚的月亮真亮。"></textarea>
+    <div class="stg-count" id="stgCount">0/60</div>
+    <label class="stg-sign">署名（选填）<input id="stgSign" maxlength="16" placeholder="一个陪你追舞台的人"></label>
+    <div class="stg-msg" id="stgMsg"></div>
+    <div class="stg-acts">
+      <button class="stg-cancel" type="button" id="stgWriteCancel">取消</button>
+      <button class="stg-go" type="button" id="stgGo">寄出并生成纪念卡 →</button>
+    </div>
+  </div>
+</div>
+
+<!-- 出图预览：手机长按保存，桌面下载；不上传 -->
+<div class="stg-album" id="stgAlbum">
+  <img id="stgAlbumImg" alt="舞台纪念卡">
+  <div class="stg-album-tip">长按图片保存到相册 · 或分享给朋友</div>
+  <div class="stg-album-acts">
+    <a id="stgAlbumDl" download="舞台纪念卡.jpg" href="#">下载</a>
+    <button type="button" id="stgAlbumClose">关闭</button>
+  </div>
+</div>
+
+<div class="stg-toast" id="stgToast"></div>
+
+<script src="./js/stage.js?v=20261120s01"></script>
+</body>
+</html>

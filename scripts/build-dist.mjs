@@ -47,8 +47,11 @@ const files = [
   'index.html',
   'stats.html', // 翻译使用统计（带密码；主站由 Worker 屏蔽该路径，只有 GitHub Pages 备份站能打开）
   'admin-7f2a.html', // 行程后台（隐藏地址 + 密码；不在站内暴露入口，页面 noindex）
+  'stage.html', // 舞台纪念页「在人间凑数的日子」（独立页，单独链接，不挂主页）
   'css/style.css',
+  'css/stage.css',
   'js/app.js',
+  'js/stage.js',
   'vendor/hls.min.js',
   'assets/newfan-guide.jpg',
   'assets/gs2024-1.jpg',      // 2024 公式照（微博，蓝格纹礼服）
@@ -121,7 +124,8 @@ const files = [
   'assets/mv-next18.mp4',
   'assets/mv-next18-full.mp4',
   'assets/mv-next18.jpg',
-  'assets/skin-mvp.jpg'       // 2025年度MVP定制公演海报（照片皮肤默认背景图）
+  'assets/skin-mvp.jpg',      // 2025年度MVP定制公演海报（照片皮肤默认背景图）
+  'assets/stage-mvp.jpg'      // 舞台纪念页背景图（复用 MVP 海报）
 ];
 
 // 整目录复制：口袋表情图（105 张 gif，共 ~300KB），逐个列白名单不现实
