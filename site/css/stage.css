@@ -13,11 +13,53 @@ body {
 .stage-ov { position: relative; width: 100vw; height: 100vh; height: 100dvh; overflow: hidden; }
 
 /* 背景 */
+/* 🔴 Ken Burns（缓推循环）+ 呼吸明暗：两个独立 animation，蜡烛随背景一起动（像镜头推进）
+   蜡烛在 .stage-bg 内部，跟着一起缩放/明暗，场景整体统一，不额外加元素
+   呼吸用 .stage-breath 黑遮罩的 opacity 做（纯合成器层，不用 filter，手机上不重绘大图） */
 .stage-bg { position: absolute; inset: 0; background-size: cover; background-position: center 22%;
-  transform: scale(1.06); transition: background-image .5s ease; animation: stageKen 20s ease-out forwards; }
+  transform: scale(1.06); transition: background-image .5s ease;
+  animation: stageKen 26s ease-in-out infinite alternate; }
 @keyframes stageKen { from { transform: scale(1.1) } to { transform: scale(1.02) } }
+/* 呼吸遮罩：opacity 0 → .13 循环 = 亮度 1 → .87，比 filter: brightness 便宜得多
+   z-index 3：盖在背景+蜡烛上，但在泡泡(4)/字幕(5)/顶栏(6)/卡片(7)/写寄语(8)之下
+   ⇒ 只有场景在呼吸，文字和控件不受影响、不闪 */
+.stage-breath { position: absolute; inset: 0; z-index: 3; background: #000; pointer-events: none;
+  opacity: 0; animation: stageBreathe 9s ease-in-out infinite; }
+@keyframes stageBreathe { 0%, 100% { opacity: 0 } 50% { opacity: .13 } }
 .stage-vignette { position: absolute; inset: 0; pointer-events: none;
   background: linear-gradient(180deg, rgba(6,8,16,.74) 0%, rgba(6,8,16,.12) 28%, rgba(6,8,16,.05) 48%, rgba(6,8,16,.88) 100%); }
+
+/* ===== A. 聚光灯光柱：从画面上方斜打下来两道柔光带，极缓慢左右扫 ===== */
+.stage-beam { position: absolute; inset: 0; z-index: 4; pointer-events: none;
+  mix-blend-mode: screen; opacity: .9; }
+.stage-beam i { position: absolute; top: -14%; left: 0; width: 26vw; height: 128%;
+  background: linear-gradient(178deg, rgba(255,220,160,.5) 0%, rgba(255,220,160,.16) 46%, rgba(255,220,160,0) 78%);
+  filter: blur(9px); transform-origin: 50% 0%;
+  animation: beamSweep 24s ease-in-out infinite alternate; }
+.stage-beam i:nth-child(1) { left: 6%; }
+.stage-beam i:nth-child(2) { left: 70%; width: 22vw; opacity: .82;
+  animation-duration: 29s; animation-delay: -13s; }
+@keyframes beamSweep {
+  0%   { transform: rotate(-6deg) translateX(-14%); opacity: .5; }
+  50%  { transform: rotate(5deg) translateX(10%); opacity: .95; }
+  100% { transform: rotate(-3deg) translateX(-8%); opacity: .6; }
+}
+
+/* ===== B. 前景虚化光斑：4 颗大而柔的失焦圆，缓慢飘，给画面景深 ===== */
+.stage-bokeh { position: absolute; inset: 0; z-index: 6; pointer-events: none; overflow: hidden; }
+.stage-bokeh i { position: absolute; border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,224,170,.42) 0%, rgba(255,224,170,.12) 50%, transparent 70%);
+  filter: blur(20px); mix-blend-mode: screen;
+  animation: bokehDrift 22s ease-in-out infinite alternate; }
+.stage-bokeh i:nth-child(1) { width: 210px; height: 210px; left: -30px; top: 56%; animation-duration: 18s; }
+.stage-bokeh i:nth-child(2) { width: 150px; height: 150px; right: -20px; top: 24%; animation-duration: 24s; animation-delay: -8s; }
+.stage-bokeh i:nth-child(3) { width: 250px; height: 250px; left: 20%; bottom: -60px; animation-duration: 28s; animation-delay: -14s; opacity: .7; }
+.stage-bokeh i:nth-child(4) { width: 130px; height: 130px; right: 8%; bottom: 6%; animation-duration: 20s; animation-delay: -4s; opacity: .6; }
+@keyframes bokehDrift {
+  0%   { transform: translate(0, 0) scale(1); opacity: .35; }
+  50%  { transform: translate(18px, -14px) scale(1.12); opacity: .8; }
+  100% { transform: translate(-12px, 10px) scale(.94); opacity: .4; }
+}
 
 /* 顶部胶囊 */
 .stage-top { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 16px); left: 0; right: 0; z-index: 6;
@@ -38,7 +80,7 @@ body {
   text-shadow: 0 2px 12px rgba(0,0,0,.8); padding: 0 18px; pointer-events: none; }
 
 /* 寄语浮层：星星 / 小鱼泡泡 */
-.stage-sky { position: absolute; inset: 0; z-index: 4; overflow: hidden; pointer-events: none; }
+.stage-sky { position: absolute; inset: 0; z-index: 4; overflow: visible; pointer-events: none; }
 .wish-bubble { position: absolute; bottom: -80px; display: inline-flex; align-items: flex-start; gap: 6px;
   max-width: min(84vw, 440px); padding: 7px 12px; border-radius: 16px;
   background: rgba(10,14,24,.52); border: 1px solid rgba(255,255,255,.2); color: #f4f7ff;
@@ -60,8 +102,30 @@ body {
 }
 /* 星星点点背景 */
 .stage-star { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: #fff;
-  box-shadow: 0 0 8px 2px rgba(255,255,255,.6); opacity: .6; animation: starTwinkle var(--sd, 3s) ease-in-out infinite; }
+  box-shadow: 0 0 8px 2px rgba(255,255,255,.6); opacity: .6; animation: starTwinkle var(--sd, 3s) ease-in-out infinite;
+  cursor: pointer; pointer-events: auto; }
+.stage-star::after { content: ''; position: absolute; inset: -14px; border-radius: 50%; }   /* 放大点触区 */
+.stage-star:hover { background: #ffe6b0; box-shadow: 0 0 12px 4px rgba(255,224,170,.85); opacity: 1; }
 @keyframes starTwinkle { 0%,100% { opacity: .18; transform: scale(.7) } 50% { opacity: .85; transform: scale(1.25) } }
+
+/* 点星星蹦出的一句话：从星星位置向下展开（长句不顶出顶部），停留后淡出上飘 */
+.star-wish { position: absolute; z-index: 6; display: inline-flex; align-items: flex-start; gap: 6px;
+  width: max-content; max-width: min(78vw, 400px); padding: 9px 13px; border-radius: 16px;
+  background: rgba(14,18,30,.72); border: 1px solid rgba(255,224,170,.5); color: #fff;
+  font-size: clamp(12px, 3.1vw, 14px); line-height: 1.55; backdrop-filter: blur(10px);
+  box-shadow: 0 6px 26px rgba(0,0,0,.45), 0 0 24px rgba(255,224,170,.18);
+  pointer-events: none; transform: translate(-50%, 0) scale(.5); transform-origin: 50% 0%;
+  opacity: 0; animation: starWishPop 4.4s cubic-bezier(.22,.9,.35,1) forwards; }
+.star-wish .wico { font-size: 14px; flex: none; margin-top: 1px; }
+.star-wish .wtxt { white-space: normal; word-break: break-word; overflow-wrap: anywhere; }
+.star-wish .wsign { display: block; color: #ffd98a; opacity: .95; font-size: .92em; margin-top: 3px; }
+@keyframes starWishPop {
+  0%   { transform: translate(-50%, 0) scale(.5); opacity: 0; }
+  12%  { transform: translate(-50%, 0) scale(1.04); opacity: 1; }
+  20%  { transform: translate(-50%, 0) scale(1); }
+  78%  { transform: translate(-50%, 0) scale(1); opacity: 1; }
+  100% { transform: translate(-50%, -14px) scale(.96); opacity: 0; }
+}
 
 /* 底部名场面卡 */
 .stage-card { position: absolute; left: 50%; transform: translateX(-50%); z-index: 7;
@@ -135,7 +199,8 @@ body {
 
 /* 出图预览层：画面即全部（点一下还能把顶栏/翻页也隐掉），手机长按存图，不上传 */
 .stg-album { position: fixed; inset: 0; z-index: 100; background: #06080e;
-  display: none; flex-direction: column; align-items: center; overflow: hidden; padding: 0; }
+  display: none; flex-direction: column; align-items: center; overflow: hidden; padding: 0;
+  overscroll-behavior: none; }
 .stg-album.on { display: flex; }
 /* 顶部浮条：压在画面上，不占版面 */
 .stg-album-hd { position: absolute; left: 0; right: 0; top: 0; z-index: 3;
@@ -247,7 +312,7 @@ body.album-open .stg-toast { bottom: calc(env(safe-area-inset-bottom, 0px) + 74p
 }
 
 /* ===== 寄语浮层容器 + 卡片内可滚动列表（stage.js 补充）===== */
-.stage-sky-float { position: absolute; inset: 0; pointer-events: none; }
+.stage-sky-float { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
 .wish-bubble .wtxt { max-width: min(64vw, 320px); }
 /* 卡片内寄语列表 */
 .stage-wish-list { margin: 12px 0 4px; border-top: 1px solid rgba(255,255,255,.12); padding-top: 10px; }
@@ -334,6 +399,7 @@ body.album-open .stg-toast { bottom: calc(env(safe-area-inset-bottom, 0px) + 74p
 }
 @media (prefers-reduced-motion: reduce) {
   .stage-candle .cg-halo, .stage-candle .cg-flame { animation: none; }
+  .stage-bg, .stage-breath, .stage-beam i, .stage-bokeh i { animation: none !important; }
 }
 
 /* 列表头右侧「寄语成册」按钮 */
@@ -384,7 +450,8 @@ body.screen .stage-qr { display: flex; }
 .stg-book-nav.on { display: flex; }
 .stg-book-nav button { width: 28px; height: 28px; border-radius: 50%; cursor: pointer;
   border: 1px solid rgba(255,255,255,.22); background: rgba(255,255,255,.08); color: #fff;
-  font-size: 16px; line-height: 1; display: flex; align-items: center; justify-content: center; padding: 0; }
+  font-size: 16px; line-height: 1; display: flex; align-items: center; justify-content: center; padding: 0;
+  touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 .stg-book-nav button:disabled { opacity: .26; cursor: default; }
 .stg-book-nav span { font-size: 12.5px; color: #ffd98a; min-width: 46px; text-align: center; font-variant-numeric: tabular-nums; }
 

@@ -6,15 +6,18 @@
 <meta name="robots" content="noindex,nofollow">
 <meta name="theme-color" content="#0b0d16">
 <title>在人间凑数的日子 · 舞台现场</title>
-<link rel="stylesheet" href="./css/stage.css?v=20261120s19">
+<link rel="stylesheet" href="./css/stage.css?v=20261120s20">
 </head>
 <body>
 <div class="stage-ov">
   <div class="stage-bg" id="stageBg">
     <!-- 蜡烛氛围光：位置由 stage.js 按背景图 cover 映射算，只在 MVP 海报那张显示 -->
     <i class="stage-candle" id="stageCandle" aria-hidden="true"><i class="cg-halo"></i><i class="cg-flame"></i></i>
+    <i class="stage-breath" aria-hidden="true"></i>
   </div>
+  <div class="stage-beam" aria-hidden="true"><i></i><i></i></div>
   <div class="stage-vignette"></div>
+  <div class="stage-bokeh" aria-hidden="true"><i></i><i></i><i></i></div>
 
   <div class="stage-top">
     <span class="stage-top-badge">✦ 舞 台 现 场</span>
@@ -126,6 +129,6 @@
 <div class="stg-toast" id="stgToast"></div>
 
 <script src="./vendor/qrcode.js"></script>
-<script src="./js/stage.js?v=20261120s19"></script>
+<script src="./js/stage.js?v=20261120s20"></script>
 </body>
 </html>

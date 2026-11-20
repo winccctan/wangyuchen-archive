@@ -217,6 +217,11 @@
       sky.appendChild(sdiv);
       var fdiv = document.createElement('div'); fdiv.id = 'stageSkyFloat'; fdiv.className = 'stage-sky-float';
       sky.appendChild(fdiv);
+      // 点一颗星星 → 从寄语里随机抽一条，在那颗星星的位置展开一句话（事件委托，星星增删/刷新都有效）
+      sdiv.addEventListener('click', function (e) {
+        var st = e.target.closest('.stage-star');
+        if (st) revealFromStar(st);
+      });
     }
     syncStars();
     if (isScreen) {
@@ -229,6 +234,31 @@
       for (var j = 0; j < 8; j++) setTimeout(spawnBubble, j * 500);
     }
     if (!skyTimer) skyTimer = setInterval(spawnBubble, isScreen ? 1500 : 1400);
+  }
+
+  /* ---------- 点星星：随机展开一句寄语（用现有 wishes 池，零写入） ---------- */
+  function revealFromStar(star) {
+    var sky = $('#stageSky'); if (!sky) return;
+    // 候选池：访客寄语优先；一条都没有就退回氛围短句
+    var pool = wishes.slice();
+    if (!pool.length) pool = AMBIENT.map(function (s) { return { t: s, s: '' }; });
+    if (!pool.length) { toast('还没有寄语，先写一条吧'); return; }
+    var w = pool[Math.floor(Math.random() * pool.length)];
+    var sr = star.getBoundingClientRect(), skyR = sky.getBoundingClientRect();
+    // 星星在舞台内的像素坐标
+    var sx = sr.left - skyR.left, sy = sr.top - skyR.top;
+    var vw = skyR.width, vh = skyR.height;
+    // 水平：永远居中（卡片最宽 400，左右各留 16px 安全，居中绝不溢出）；垂直：随星星但夹在安全区
+    var cx = vw / 2;
+    var cy = Math.min(vh * 0.64, Math.max(64, sy + 14));
+    var el = document.createElement('span');
+    el.className = 'star-wish';
+    el.style.left = cx + 'px';
+    el.style.top = cy + 'px';
+    el.innerHTML = '<span class="wico">⭐</span><span class="wtxt">' + esc(w.t) +
+      (w.s ? '<span class="wsign">\n— ' + esc(w.s) + '</span>' : '') + '</span>';
+    sky.appendChild(el);
+    setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 4600);
   }
 
   /* ---------- 读取寄语（生产数据 + 本机新增） ---------- */
@@ -706,10 +736,16 @@
    * 尺寸严格取静态封面图的 rect（同一张 1080×1528），翻页时不会跳。
    */
   function syncLiveSize() {
-    var im = $('#stgAlbumImg'), lv = $('#stgBookLive');
-    if (!im || !lv || !lv.classList.contains('on')) return;
+    var im = $('#stgAlbumImg'), lv = $('#stgBookLive'), box = $('#stgPageBox');
+    if (!im || !lv || !box || !lv.classList.contains('on')) return;
     var r = im.getBoundingClientRect();
     if (!r.width || !r.height) return;
+    // 位置直接取图片的 rect：页面盒上下内边距不等（顶栏 50 / 翻页 56），
+    // 按盒子中心居中会整体偏下 3px，翻到内页就看得出来在跳。这里逐像素对齐。
+    var b = box.getBoundingClientRect();
+    lv.style.transform = 'none';
+    lv.style.left = (r.left - b.left) + 'px';
+    lv.style.top = (r.top - b.top) + 'px';
     lv.style.width = r.width + 'px';
     lv.style.height = r.height + 'px';
     lv.style.setProperty('--cw', r.width + 'px');
@@ -751,6 +787,24 @@
     setTimeout(fit, 140);                // 兜底：首屏布局/字体稳定后再校一次
   }
 
+  // 翻页：先把目标页解码好，再换 src；并锁住滚动位置 —— 点按钮时画面一丝都不许动
+  var preloaded = {};
+  function preloadPage(i) {
+    var u = bookPages[i];
+    if (!u || preloaded[u]) return;
+    preloaded[u] = true;
+    var im = new Image(); im.src = u;
+  }
+  function goPage(delta) {
+    var next = bookIdx + delta;
+    if (next < 0 || next >= bookPages.length) return;
+    var sy = window.scrollY, sx = window.scrollX, as = $('#stgAlbum').scrollTop;
+    bookIdx = next;
+    renderBookPage();
+    if (window.scrollY !== sy || window.scrollX !== sx) window.scrollTo(sx, sy);
+    if ($('#stgAlbum').scrollTop !== as) $('#stgAlbum').scrollTop = as;
+  }
+
   function renderBookPage() {
     if (!bookPages.length) return;
     var url = bookPages[bookIdx];
@@ -759,6 +813,7 @@
     // 第 1 页（封面）用活画面；其余页是排版好的图
     if (bookIdx === 0 && bookPages.length > 1) showLiveCover();
     else { lv.classList.remove('on'); im.style.visibility = ''; }
+    preloadPage(bookIdx - 1); preloadPage(bookIdx + 1);   // 相邻页预热，翻页不等解码
     $('#stgBookIdx').textContent = (bookIdx + 1) + ' / ' + bookPages.length;
     $('#stgBookPrev').disabled = bookIdx <= 0;
     $('#stgBookNext').disabled = bookIdx >= bookPages.length - 1;
@@ -880,10 +935,10 @@
       $('#stgAlbum').classList.toggle('chrome-off');
     });
     $('#stgBookPrev').addEventListener('click', function (e) {
-      e.stopPropagation(); if (bookIdx > 0) { bookIdx--; renderBookPage(); }
+      e.stopPropagation(); this.blur(); goPage(-1);
     });
     $('#stgBookNext').addEventListener('click', function (e) {
-      e.stopPropagation(); if (bookIdx < bookPages.length - 1) { bookIdx++; renderBookPage(); }
+      e.stopPropagation(); this.blur(); goPage(1);
     });
     $('#stgText').addEventListener('input', function () { $('#stgCount').textContent = this.value.length + '/60'; });
     $('#cardToggle').addEventListener('click', function () {
@@ -901,8 +956,8 @@
         if ($('#stgAlbum').classList.contains('on')) closeAlbum();
       }
       if (bookPages.length && $('#stgAlbum').classList.contains('on')) {
-        if (e.key === 'ArrowLeft' && bookIdx > 0) { bookIdx--; renderBookPage(); }
-        if (e.key === 'ArrowRight' && bookIdx < bookPages.length - 1) { bookIdx++; renderBookPage(); }
+        if (e.key === 'ArrowLeft') { e.preventDefault(); goPage(-1); }
+        if (e.key === 'ArrowRight') { e.preventDefault(); goPage(1); }
       }
     });
     // 主页「写寄语」按钮跳过来（?write=1）→ 自动打开写寄语弹窗
