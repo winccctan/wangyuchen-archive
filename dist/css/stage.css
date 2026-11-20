@@ -127,6 +127,86 @@ body {
   100% { transform: translate(-50%, -14px) scale(.96); opacity: 0; }
 }
 
+/* ===== E. 入场仪式：从「打开网页」到「走进来」=====
+ * 推门进一个空间，不是跳进一个网页。黑场 → 一束光亮起 → 一句极淡的话浮现又散开 → 到舞台。
+ * 总长约 2.4s，只首次进舞台页播一次（sessionStorage 记一次）；?book=1/?screen=1 不播。
+ * prefers-reduced-motion 直接跳过。 */
+.stage-intro { position: fixed; inset: 0; z-index: 500; background: #04050b; overflow: hidden;
+  display: flex; align-items: center; justify-content: center; pointer-events: none;
+  animation: introLift 2.6s ease-in-out forwards; }
+.stage-intro-glow { position: absolute; left: 50%; top: 46%; width: 150vmax; height: 150vmax;
+  transform: translate(-50%, -50%); border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle, rgba(255,224,170,.30) 0%, rgba(255,196,120,.12) 24%, rgba(255,196,120,0) 54%);
+  opacity: 0; animation: introGlow 2.6s ease-in-out forwards; }
+.stage-intro-txt { position: relative; z-index: 2; text-align: center; padding: 0 34px; pointer-events: none;
+  font-size: clamp(13px, 3.5vw, 16px); letter-spacing: .34em; color: rgba(255,236,208,.92);
+  text-shadow: 0 2px 18px rgba(0,0,0,.85);
+  opacity: 0; animation: introTxt 2.6s ease-in-out forwards; }
+.stage-intro-txt .ii-line { width: 1px; height: 26px; margin: 0 auto 16px;
+  background: linear-gradient(180deg, rgba(255,224,170,0), rgba(255,224,170,.6)); }
+@keyframes introLift {
+  0%   { opacity: 1; }
+  66%  { opacity: 1; }
+  100% { opacity: 0; visibility: hidden; }
+}
+@keyframes introGlow {
+  0%   { opacity: 0; transform: translate(-50%,-50%) scale(.55); }
+  42%  { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+  100% { opacity: .55; transform: translate(-50%,-50%) scale(1.35); }
+}
+@keyframes introTxt {
+  0%   { opacity: 0; transform: translateY(8px); letter-spacing: .5em; }
+  32%  { opacity: 1; transform: translateY(0); letter-spacing: .34em; }
+  62%  { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-10px); letter-spacing: .26em; }
+}
+
+/* ===== D. 深夜模式（22:00–4:00）：更暗 / 星星更多更亮 / 光柱更暖 =====
+ * 纯氛围层，盖在场景上、不碰文字和控件。?night=1 可在白天强制预览。 */
+body.night .stage-breath { animation-name: stageBreatheNight; }
+@keyframes stageBreatheNight { 0%,100% { opacity: .05 } 50% { opacity: .30 } }
+body.night .stage-vignette {
+  background: linear-gradient(180deg, rgba(4,5,12,.86) 0%, rgba(4,5,12,.28) 28%, rgba(4,5,12,.10) 48%, rgba(4,5,12,.92) 100%); }
+body.night .stage-beam { opacity: .78; }
+body.night .stage-beam i { background: linear-gradient(178deg, rgba(255,206,140,.42) 0%, rgba(255,206,140,.14) 46%, rgba(255,206,140,0) 78%); }
+body.night .stage-star { opacity: .82; box-shadow: 0 0 10px 2.5px rgba(255,244,224,.72); }
+/* 蜡烛光深夜更暖（背景那张本来就有的氛围光，不是新增蜡烛元素） */
+body.night .stage-candle .cg-halo { background: radial-gradient(ellipse at 50% 50%,
+  rgba(255,192,116,.82) 0%, rgba(255,162,82,.5) 26%, rgba(255,138,52,.22) 48%, rgba(255,126,40,0) 70%); }
+
+/* ===== C. 寄语沉淀成光：每条寄语化作一粒微光落进舞台，积成会呼吸的光点海 =====
+ * 落在画面下段的「人群里」，像台下举起的一片星海；卡片(z7)/FAB(z8) 在其上，不重叠。
+ * 落点用 wish 的稳定哈希算 ⇒ 刷新不跳位，越多人写夜空越亮。 */
+.stage-sediment { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
+/* 光点本身可点（点击弹一句寄语）：放大点触区，hover 增亮，跟星星一致 */
+.stage-sediment .sd-dot { position: absolute; width: 4px; height: 4px; border-radius: 50%;
+  background: #ffe6b4; box-shadow: 0 0 8px 2px rgba(255,214,150,.7);
+  opacity: .2; transform: scale(.5);
+  pointer-events: auto; cursor: pointer;
+  animation: sdSettle 1.7s cubic-bezier(.2,.7,.3,1) forwards, sdTwinkle 4.6s ease-in-out infinite; }
+.stage-sediment .sd-dot::after { content: ''; position: absolute; inset: -13px; border-radius: 50%; }
+.stage-sediment .sd-dot:hover { background: #fff3d6; box-shadow: 0 0 14px 5px rgba(255,224,170,.95); opacity: 1; }
+@keyframes sdSettle {
+  0%   { transform: translate3d(0,-14vh,0) scale(.5); opacity: 0; }
+  35%  { opacity: .95; }
+  100% { transform: translate3d(0,0,0) scale(1); opacity: .78; }
+}
+@keyframes sdTwinkle { 0%,100% { opacity: .3 } 50% { opacity: .95 } }
+/* 刚寄出的那句：从字幕位置落下来，多一个「被放下」的动作 */
+.stage-sediment .sd-dot.sd-new { animation: sdDrop 2.1s cubic-bezier(.2,.7,.3,1) forwards, sdTwinkle 4.6s ease-in-out infinite; }
+@keyframes sdDrop {
+  0%   { transform: translate3d(0,-58vh,0) scale(.7); opacity: 0; }
+  22%  { opacity: 1; }
+  100% { transform: translate3d(0,0,0) scale(1); opacity: .85; }
+}
+/* 泡泡飘到顶消失 → 从那个位置落一粒光点（视觉连续：泡泡上去，光点落下） */
+.stage-sediment .sd-dot.sd-drop { animation: sdFadeIn 2.4s cubic-bezier(.2,.7,.3,1) forwards, sdTwinkle 4.6s ease-in-out infinite; }
+@keyframes sdFadeIn {
+  0%   { transform: translate3d(0,-52vh,0) scale(.55); opacity: 0; }
+  30%  { opacity: .95; }
+  100% { transform: translate3d(0,0,0) scale(1); opacity: .8; }
+}
+
 /* 底部名场面卡 */
 .stage-card { position: absolute; left: 50%; transform: translateX(-50%); z-index: 7;
   bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);

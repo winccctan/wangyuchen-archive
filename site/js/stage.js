@@ -8,6 +8,9 @@
  *   ② 星星随寄语变多      —— 24 颗起，每多一条寄语 +2 颗，封顶 96
  *   ③ 寄语成册            —— 本机 Canvas 排成 A4 多页图集（1080×1528 PNG），可翻页/长按保存/下载
  *   ④ 册子独立成页        —— ?book=1 打开就是整本，可单独分享链接；「‹ 返回舞台」回主页面
+ *   ⑤ 入场仪式            —— 推门走进来的过场（黑场→光亮→一句淡话散开），只首次播一次
+ *   ⑥ 寄语沉淀成光        —— 每条寄语化作一粒微光落进舞台，积成会呼吸的光点海
+ *   ⑦ 深夜模式            —— 22:00–4:00 自动更暗/星星更多/光柱更暖（?night=1 白天可预览）
  */
 (function () {
   'use strict';
@@ -15,6 +18,13 @@
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
     return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
   }); }
+  // 稳定哈希：落点用文字算，刷新不跳位（纯展示，非隐私）
+  function hash32(str) {
+    var h = 2166136261 >>> 0;
+    str = String(str || '');
+    for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = (h * 16777619) >>> 0; }
+    return h;
+  }
 
   var BG = [
     { f: './assets/stage-mvp.jpg', label: 'MVP定制公演', candle: 1 },  // 这张里有蜡烛 → 挂氛围光
@@ -46,6 +56,13 @@
   var SIGN_KEY = 'wyc-stage-sign-v1';
   var isScreen = /[?&]screen=1(?:&|$)/.test(location.search);
   var isBook = /[?&]book=1(?:&|$)/.test(location.search);   // 独立册子页：只显示整本寄语集
+  // 深夜模式：北京时间 22:00–4:00 自动开启；?night=1 白天强制预览，?day=1 强制白天
+  var nightMode = (function () {
+    if (/[?&]night=1(?:&|$)/.test(location.search)) return true;
+    if (/[?&]day=1(?:&|$)/.test(location.search)) return false;
+    var bjHour = (new Date(Date.now() + 28800000)).getUTCHours();
+    return bjHour >= 22 || bjHour < 4;
+  })();
 
   /* ---------- 背景 ---------- */
   function renderBg() {
@@ -142,7 +159,11 @@
   /* ---------- 星星（随寄语数量增长）/ 小鱼泡泡浮层 ---------- */
   var STAR_BASE = 24, STAR_MAX = 96;
   var skyTimer = null;
-  function starTarget() { return Math.min(STAR_MAX, STAR_BASE + wishes.length * 2); }
+  function starTarget() {
+    var base = STAR_BASE + wishes.length * 2;
+    if (nightMode) base = Math.round(base * 1.6);   // 深夜星星更多
+    return Math.min(STAR_MAX, base);
+  }
   function makeStar() {
     var sl = 3 + Math.random() * 94, st = 4 + Math.random() * 78;
     var sd = (2 + Math.random() * 3.6).toFixed(1);
@@ -207,7 +228,11 @@
       (item.s ? '<span class="wsign">\n— ' + esc(item.s) + '</span>' : '') + '</span>';
     float.appendChild(el);
     var life = Math.max(0.8, dur - aged + 0.5) * 1000;
-    setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, life);
+    setTimeout(function () {
+      if (!el.parentNode) return;
+      bubbleToLight(el);   // 飘完化作一粒暖光落下（视觉连续）
+      el.parentNode.removeChild(el);
+    }, life);
   }
   function renderSky() {
     var sky = $('#stageSky'); if (!sky) return;
@@ -234,6 +259,76 @@
       for (var j = 0; j < 8; j++) setTimeout(spawnBubble, j * 500);
     }
     if (!skyTimer) skyTimer = setInterval(spawnBubble, isScreen ? 1500 : 1400);
+  }
+
+  /* ---------- C. 寄语沉淀成光：泡泡飘完化作一粒暖光落进舞台，积成会呼吸的光点海 ----------
+   * 🔴 用户指出「消失变光点」的效果没有 —— 之前是进页面就撒好一堆点，只有结果没有过程。
+   *    现在：基底只铺少量装饰点（不空屏）；真正的「积成星海」靠每个泡泡飘到顶消失时，
+   *    从它的位置落下一粒光点（bubbleToLight），刚寄出的那句也从字幕落一粒（dropSediment）。
+   * 落点用文字哈希算 → 刷新不跳位；落在画面下段（像台下举起的星海），卡片在其上不重叠。
+   * 只增不重建：一句只化一次光，已化的不再重复（避免闪烁/刷屏）。 */
+  function sdTopFor(key) { return (62 + ((hash32(key) >>> 7) % 26)).toFixed(1) + '%'; }
+  function sdLeftFor(key) { return (4 + (hash32(key) % 88)).toFixed(1) + '%'; }
+  function sdSeen(box, key) {
+    var dup = false;
+    Array.prototype.forEach.call(box.children, function (n) { if (n.getAttribute('data-t') === key) dup = true; });
+    return dup;
+  }
+  // 基底：少量装饰点（纯氛围），让首屏不那么空；真正的星海由泡泡转化而来
+  function renderSediment() {
+    var sky = $('#stageSky'); if (!sky) return;
+    var box = $('#stageSediment');
+    if (!box) {
+      box = document.createElement('div'); box.id = 'stageSediment'; box.className = 'stage-sediment';
+      sky.appendChild(box);
+      // 光点也可点击：跟星星一样随机弹一句寄语（事件委托，点增删/刷新都有效）
+      box.addEventListener('click', function (e) {
+        var d = e.target.closest('.sd-dot');
+        if (d) revealFromStar(d);
+      });
+    }
+    var baseCount = nightMode ? 16 : 10;   // 夜里基础更密
+    var have = 0;
+    Array.prototype.forEach.call(box.children, function (n) {
+      if (String(n.getAttribute('data-t') || '').indexOf('base-') === 0) have++;
+    });
+    for (var i = have; i < baseCount; i++) {
+      var el = document.createElement('i');
+      el.className = 'sd-dot';
+      el.setAttribute('data-t', 'base-' + i);
+      el.style.left = (4 + Math.random() * 88).toFixed(1) + '%';
+      el.style.top = (62 + Math.random() * 24).toFixed(1) + '%';
+      el.style.animationDelay = (Math.random() * 4.6).toFixed(2) + 's';
+      box.appendChild(el);
+    }
+  }
+  // 泡泡飘到顶消失的那一下：从它所在列落下一粒光点（视觉连续：泡泡上去 → 光点落下）
+  function bubbleToLight(el) {
+    var key = el.getAttribute('data-t'); if (!key) return;
+    var box = $('#stageSediment'); if (!box) return;
+    var cap = (isScreen ? 220 : 140) + (nightMode ? 40 : 0);
+    if (box.children.length >= cap) return;
+    if (sdSeen(box, key)) return;                      // 这句已化过光，不重复落
+    var d = document.createElement('i');
+    d.className = 'sd-dot sd-drop';
+    d.setAttribute('data-t', key);
+    d.style.left = el.style.left || sdLeftFor(key);    // 同列落下，视觉连续
+    d.style.top = sdTopFor(key);
+    d.style.animationDelay = '0s, ' + (Math.random() * 4.6).toFixed(2) + 's';
+    box.appendChild(d);
+  }
+  // 刚寄出的那句：从字幕位置落下来，有个「被放下」的动作
+  function dropSediment(rec) {
+    var box = $('#stageSediment'); if (!box) return;
+    var key = rec.t || ''; if (!key) return;
+    if (sdSeen(box, key)) return;
+    var el = document.createElement('i');
+    el.className = 'sd-dot sd-new';
+    el.setAttribute('data-t', key);
+    el.style.left = sdLeftFor(key);
+    el.style.top = sdTopFor(key);
+    el.style.animationDelay = '0s, 2.1s';
+    box.appendChild(el);
   }
 
   /* ---------- 点星星：随机展开一句寄语（用现有 wishes 池，零写入） ---------- */
@@ -285,7 +380,7 @@
       var sig = (w.t || '') + '|' + (w.d || '');
       if (seen[sig]) return false; seen[sig] = 1; return true;
     }));
-    renderWishList(); renderSky();
+    renderWishList(); renderSky(); renderSediment();
     // 独立册子页：数据到了就直接排版成册；一条都没有就退回舞台页，别留个空页面
     if (isBook) setTimeout(function () {
       if (!wishes.length) {
@@ -330,7 +425,7 @@
         wishes.unshift(rec);
       }
       if (wishes.length > 200) wishes.length = 200;
-      renderWishList(); renderSky();
+      renderWishList(); renderSky(); renderSediment(); dropSediment(rec);
       closeWrite();
       makeCard(text, sign);
     };
@@ -894,11 +989,32 @@
     }, 50000);
   }
 
+  /* ---------- E. 入场仪式：推门走进来（只首次播一次） ---------- */
+  function initIntro() {
+    var intro = $('#stageIntro');
+    if (!intro) return;
+    // 独立册子页 / 大屏投屏 不播过场（要的是干净画面 / 现场直接铺满）
+    var reduced = false;
+    try { reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+    if (isBook || isScreen || reduced) { intro.parentNode.removeChild(intro); return; }
+    // 同一会话只播一次：第二次回到舞台不再等 2.6s
+    var SEEN = 'wyc-stage-intro-seen-v1';
+    var seen = false;
+    try { seen = sessionStorage.getItem(SEEN) === '1'; } catch (e) {}
+    if (seen) { intro.parentNode.removeChild(intro); return; }
+    try { sessionStorage.setItem(SEEN, '1'); } catch (e) {}
+    intro.hidden = false;
+    // 动画结束就拆掉，不留一层盖在页面上
+    setTimeout(function () { if (intro.parentNode) intro.parentNode.removeChild(intro); }, 2700);
+  }
+
   /* ---------- 启动 ---------- */
   function init() {
     initScreenMode();
+    if (nightMode) document.body.classList.add('night');   // 深夜：更暗 / 星星更多 / 光柱更暖
+    initIntro();                                           // 推门过场（只首次）
     if (isBook) document.body.classList.add('book-only');   // 独立册子页：底下的舞台 UI 全隐
-    buildCard(); renderBg(); renderCard(); renderSky(); initMusic(); loadWishes();
+    buildCard(); renderBg(); renderCard(); renderSky(); renderSediment(); initMusic(); loadWishes();
     // 初始化收起态的 DOM（变量 collapsed=true）
     $('#stageCard').classList.add('collapsed');
     $('.stage-ov').classList.add('card-collapsed');

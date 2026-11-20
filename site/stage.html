@@ -6,9 +6,15 @@
 <meta name="robots" content="noindex,nofollow">
 <meta name="theme-color" content="#0b0d16">
 <title>在人间凑数的日子 · 舞台现场</title>
-<link rel="stylesheet" href="./css/stage.css?v=20261120s20">
+<link rel="stylesheet" href="./css/stage.css?v=20261121s21">
 </head>
 <body>
+<!-- 入场仪式：推门走进来（只首次播一次，?book=1/?screen=1 不播，JS 控制是否插入/移除） -->
+<div class="stage-intro" id="stageIntro" hidden aria-hidden="true">
+  <i class="stage-intro-glow"></i>
+  <div class="stage-intro-txt"><i class="ii-line"></i>在人间凑数的日子</div>
+</div>
+
 <div class="stage-ov">
   <div class="stage-bg" id="stageBg">
     <!-- 蜡烛氛围光：位置由 stage.js 按背景图 cover 映射算，只在 MVP 海报那张显示 -->
@@ -129,6 +135,6 @@
 <div class="stg-toast" id="stgToast"></div>
 
 <script src="./vendor/qrcode.js"></script>
-<script src="./js/stage.js?v=20261120s20"></script>
+<script src="./js/stage.js?v=20261121s21"></script>
 </body>
 </html>
