@@ -1,9 +1,9 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-11-20T07:25:22.522Z",
-  "count": 830,
-  "matched": 577,
+  "updatedAt": "2026-11-20T17:00:57.860Z",
+  "count": 832,
+  "matched": 578,
   "replays": 277,
-  "clips": 553,
+  "clips": 555,
   "targets": [
     {
       "mid": "1805448354",
@@ -28,6 +28,34 @@ window.LIVE_CUTS = {
     "358477444:space": 12
   },
   "cuts": [
+    {
+      "bvid": "BV1r7sB6rEiQ",
+      "title": "【王语晨】20240728 SNH48 GROUP年度青春盛典第二阶段入围作品展演cut",
+      "created": 1795149216,
+      "date": "2026-11-20",
+      "titleDate": "2024-07-28",
+      "kind": "cut",
+      "cover": "http://i2.hdslb.com/bfs/archive/2dd8955520d5edacdf1b2c21c172a9ac6301ba91.jpg",
+      "url": "https://www.bilibili.com/video/BV1r7sB6rEiQ",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "",
+      "liveId": "1024136050867245056",
+      "liveDate": "2024-07-28"
+    },
+    {
+      "bvid": "BV1qxsB6KEtE",
+      "title": "【王语晨】20240608 SNH48 GROUP 2023年度潜力新人TOP16汇报公演·北京站cut",
+      "created": 1795148035,
+      "date": "2026-11-20",
+      "titleDate": "2024-06-08",
+      "kind": "cut",
+      "cover": "http://i0.hdslb.com/bfs/archive/b2ac5706ab723c39a6baed70e8ab9575a44d8ef0.jpg",
+      "url": "https://www.bilibili.com/video/BV1qxsB6KEtE",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": ""
+    },
     {
       "bvid": "BV1Afsb6XEPp",
       "title": "【王语晨】20240526 SNH48 GROUP 2023年度潜力新人TOP16答谢公演·重庆站cut",
