@@ -54,6 +54,7 @@ const files = [
   'js/app.js',
   'js/stage.js',
   'vendor/hls.min.js',
+  'vendor/qrcode.js',         // 舞台页二维码（大屏模式扫码写入 / 册子分享面板），UMD 自带，无外链
   'assets/newfan-guide.jpg',
   'assets/gs2024-1.jpg',      // 2024 公式照（微博，蓝格纹礼服）
   'assets/gs2024-2.jpg',
