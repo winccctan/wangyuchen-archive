@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#0b0d16">
+<title>在人间凑数的日子 · 舞台现场</title>
+<link rel="stylesheet" href="./css/stage.css?v=20261121s21">
+</head>
+<body>
+<!-- 入场仪式：推门走进来（只首次播一次，?book=1/?screen=1 不播，JS 控制是否插入/移除） -->
+<div class="stage-intro" id="stageIntro" hidden aria-hidden="true">
+  <i class="stage-intro-glow"></i>
+  <div class="stage-intro-txt"><i class="ii-line"></i>在人间凑数的日子</div>
+</div>
+
+<div class="stage-ov">
+  <div class="stage-bg" id="stageBg">
+    <!-- 蜡烛氛围光：位置由 stage.js 按背景图 cover 映射算，只在 MVP 海报那张显示 -->
+    <i class="stage-candle" id="stageCandle" aria-hidden="true"><i class="cg-halo"></i><i class="cg-flame"></i></i>
+    <i class="stage-breath" aria-hidden="true"></i>
+  </div>
+  <div class="stage-beam" aria-hidden="true"><i></i><i></i></div>
+  <div class="stage-vignette"></div>
+  <div class="stage-bokeh" aria-hidden="true"><i></i><i></i><i></i></div>
+
+  <div class="stage-top">
+    <span class="stage-top-badge">✦ 舞 台 现 场</span>
+    <span class="stage-top-title">《在人间凑数的日子》</span>
+    <span class="stage-top-sub">王语晨 · 2025 年度 MVP 定制公演 · 11.28</span>
+  </div>
+  <a class="stage-close" id="stageClose" href="./" title="返回补档站" aria-label="返回补档站" style="text-decoration:none;display:flex;align-items:center;justify-content:center">✕</a>
+
+  <!-- 背景音乐：默认关闭，点击播放/暂停（整首循环） -->
+  <button class="stage-music" id="stageMusic" type="button" aria-label="播放背景音乐" title="播放背景音乐">
+    <span class="sm-note">♪</span>
+    <span class="sm-eq"><i></i><i></i><i></i><i></i></span>
+  </button>
+
+  <div class="stage-caption" id="stageCaption">在人间凑数的日子 · 幸好有这一场，让我们都不再凑数</div>
+
+  <div class="stage-sky" id="stageSky"></div>
+
+  <div class="stage-bgbar" id="stageBgbar"></div>
+
+  <button class="stage-fab" id="stageFab" type="button">✍️ 写寄语</button>
+
+  <!-- 大屏模式右下角：现场扫码写寄语（?screen=1 才显示） -->
+  <div class="stage-qr" id="stageQr">
+    <div class="qr-box" id="qrBox"></div>
+    <div class="qr-tip">扫码，写下你的那句</div>
+  </div>
+
+  <div class="stage-card" id="stageCard">
+    <div class="stage-card-hd">
+      <span class="stage-card-tag">《在人间凑数的日子》</span>
+      <button class="stage-card-nav arr-left" type="button" data-sm="-1" id="cardPrev" aria-label="上一个瞬间"></button>
+      <button class="stage-card-nav arr-right" type="button" data-sm="1" id="cardNext" aria-label="下一个瞬间"></button>
+      <button class="stage-card-toggle arr-down" type="button" id="cardToggle" aria-label="收起卡片"></button>
+    </div>
+    <div class="stage-card-body" id="stageCardBody"></div>
+  </div>
+</div>
+
+<!-- 写寄语弹窗 -->
+<div class="stg-mask" id="stgMask">
+  <div class="stg-dialog">
+    <h3>写一句应援寄语</h3>
+    <p class="stg-hint">写给这一场舞台的她们，也写给在现场的自己。寄出后会挂在舞台上，所有来看这场舞台的人都能看到。</p>
+    <textarea id="stgText" maxlength="60" placeholder="例如：谢谢你们成为我的星星，今晚的月亮真亮。"></textarea>
+    <div class="stg-count" id="stgCount">0/60</div>
+    <label class="stg-sign">署名（选填）<input id="stgSign" maxlength="16" placeholder="一个陪你追舞台的人"></label>
+    <div class="stg-msg" id="stgMsg"></div>
+    <div class="stg-acts">
+      <button class="stg-cancel" type="button" id="stgWriteCancel">取消</button>
+      <button class="stg-go" type="button" id="stgGo">寄出并生成纪念卡 →</button>
+    </div>
+  </div>
+</div>
+
+<!-- 出图预览：手机长按保存，桌面下载；不上传 -->
+<div class="stg-album" id="stgAlbum">
+  <div class="stg-album-hd">
+    <button type="button" class="sah-back" id="stgAlbumBack">‹ 返回舞台</button>
+    <span class="sah-title" id="stgAlbumTitle">舞台寄语集</span>
+    <button type="button" class="sah-share" id="stgAlbumShare" aria-label="分享这本册子">↗ 分享</button>
+  </div>
+  <button type="button" class="sah-x" id="stgAlbumClose" aria-label="关闭">✕</button>
+  <!-- 页面盒：图片与「活的封面」共用同一块空间，尺寸由图片等比决定，绝不会被 flex 压扁 -->
+  <div class="stg-page-box" id="stgPageBox">
+    <!-- 封面第 1 页：活的舞台画面（动态星星 + 蜡烛氛围光），翻到内容页时换成静态图 -->
+    <div class="stg-book-live" id="stgBookLive" aria-hidden="true">
+      <div class="sbl-bg" id="stgLiveBg">
+        <i class="stage-candle" id="stgLiveCandle"><i class="cg-halo"></i><i class="cg-flame"></i></i>
+      </div>
+      <div class="sbl-stars" id="stgLiveSky"></div>
+      <div class="sbl-vig"></div>
+      <div class="sbl-txt">
+        <div class="sbl-badge">✦ 舞 台 寄 语 集</div>
+        <div class="sbl-title">在人间凑数的日子</div>
+        <div class="sbl-sub">王语晨 · 2025 年度 MVP 定制公演 · 11.28</div>
+        <div class="sbl-line"></div>
+        <div class="sbl-count">共 <b id="stgLiveCount">0</b> 条寄语</div>
+        <div class="sbl-date" id="stgLiveDate"></div>
+        <div class="sbl-foot">写在这一个舞台上，也留给以后翻看的我们</div>
+      </div>
+    </div>
+    <img id="stgAlbumImg" alt="舞台寄语">
+  </div>
+  <div class="stg-book-nav" id="stgBookNav">
+    <button type="button" id="stgBookPrev" aria-label="上一页">‹</button>
+    <span id="stgBookIdx">1 / 1</span>
+    <button type="button" id="stgBookNext" aria-label="下一页">›</button>
+  </div>
+  <!-- 下面不再摆一排按钮：分享在顶栏，下载收进分享面板，桌面端由「发当前页图片」保存 -->
+  <div hidden><a id="stgAlbumDl" download="舞台纪念卡.jpg" href="#">下载</a></div>
+</div>
+
+<!-- 分享面板：无论什么环境都要把「整本链接」明确给出来（可选中 / 可复制 / 可扫码） -->
+<div class="stg-share" id="stgShare">
+  <div class="stg-share-card">
+    <div class="ssc-t">分享整本寄语集</div>
+    <div class="ssc-qr" id="stgShareQr"></div>
+    <div class="ssc-tip">扫码或复制链接，对方打开就是整本</div>
+    <div class="ssc-url" id="stgShareUrl" title="点击全选"></div>
+    <button type="button" class="ssc-copy" id="stgShareCopy">复制链接</button>
+    <div class="ssc-acts">
+      <button type="button" class="ssc-ghost" id="stgShareImg">发当前页图片</button>
+      <button type="button" class="ssc-ghost" id="stgShareClose">关闭</button>
+    </div>
+  </div>
+</div>
+
+<div class="stg-toast" id="stgToast"></div>
+
+<script src="./vendor/qrcode.js"></script>
+<script src="./js/stage.js?v=20261121s21"></script>
+</body>
+</html>
