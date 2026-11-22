@@ -1,12 +1,12 @@
 {
  "_comment": "礼物价目字典（自动合并产物，勿手改）。来源优先级：手工表 > 上次快照 > 官方在售。",
  "_note": "官方无「含下架」接口，限定礼物靠弹幕/房间记录里出现后人工核价补入 data/gift-prices.json。",
- "builtAt": 1790128603605,
+ "builtAt": 1795358280070,
  "officialLive": true,
  "counts": {
-  "total": 74,
-  "manual": 36,
-  "official": 38,
+  "total": 80,
+  "manual": 41,
+  "official": 29,
   "exclude": 23
  },
  "resolved": {
@@ -197,7 +197,7 @@
   },
   "秋天的奶茶": {
    "price": 48,
-   "via": "official",
+   "via": "snapshot",
    "id": "517760052235145200"
   },
   "心锁": {
@@ -212,7 +212,7 @@
   },
   "一路长虹": {
    "price": 318,
-   "via": "official",
+   "via": "snapshot",
    "id": "1304877467279626200"
   },
   "“妤”你击掌": {
@@ -222,42 +222,42 @@
   },
   "一杵清辉": {
    "price": 48,
-   "via": "official",
+   "via": "snapshot",
    "id": "1307034462430498800"
   },
   "好柿成双": {
    "price": 48,
-   "via": "official",
+   "via": "snapshot",
    "id": "1307034330150539300"
   },
   "月兔桂笺": {
    "price": 48,
-   "via": "official",
+   "via": "snapshot",
    "id": "1307034159719190500"
   },
   "桂叶凝珠": {
    "price": 48,
-   "via": "official",
+   "via": "snapshot",
    "id": "1307033979682885600"
   },
   "星航月兔": {
    "price": 1200,
-   "via": "official",
+   "via": "snapshot",
    "id": "1307033796916088800"
   },
   "提灯赴月": {
    "price": 1200,
-   "via": "official",
+   "via": "snapshot",
    "id": "1307033629798240300"
   },
   "瓶装桂花": {
    "price": 1200,
-   "via": "official",
+   "via": "snapshot",
    "id": "1307033401133174800"
   },
   "月饼礼盒": {
    "price": 1200,
-   "via": "official",
+   "via": "snapshot",
    "id": "1307033137043017700"
   },
   "生日蛋糕": {
@@ -379,6 +379,36 @@
    "price": 5050,
    "via": "manual",
    "id": ""
+  },
+  "草莓卷": {
+   "price": 48,
+   "via": "manual",
+   "id": ""
+  },
+  "热红酒": {
+   "price": 48,
+   "via": "manual",
+   "id": ""
+  },
+  "温暖手套": {
+   "price": 48,
+   "via": "manual",
+   "id": ""
+  },
+  "恋人牌": {
+   "price": 1200,
+   "via": "manual",
+   "id": ""
+  },
+  "宝宝是我": {
+   "price": 4545,
+   "via": "manual",
+   "id": ""
+  },
+  "照相机": {
+   "price": 48,
+   "via": "official",
+   "id": "1160648774165270500"
   }
  }
 }
