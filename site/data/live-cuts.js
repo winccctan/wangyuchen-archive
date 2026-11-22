@@ -1,9 +1,9 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-11-20T17:00:57.860Z",
-  "count": 832,
-  "matched": 578,
-  "replays": 277,
-  "clips": 555,
+  "updatedAt": "2026-11-22T16:21:28.505Z",
+  "count": 835,
+  "matched": 580,
+  "replays": 278,
+  "clips": 557,
   "targets": [
     {
       "mid": "1805448354",
@@ -28,6 +28,47 @@ window.LIVE_CUTS = {
     "358477444:space": 12
   },
   "cuts": [
+    {
+      "bvid": "BV1bey5zHEF7",
+      "title": "【王语晨】20261122 GNZ48 Team Z《Zenith ·穹顶之上》公演cut",
+      "created": 1795351599,
+      "date": "2026-11-22",
+      "titleDate": "2026-11-22",
+      "kind": "cut",
+      "cover": "http://i0.hdslb.com/bfs/archive/a83eb74cb9f68699c2404e8c82d2ea2e8772b0a5.jpg",
+      "url": "https://www.bilibili.com/video/BV1bey5zHEF7",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨公演cut"
+    },
+    {
+      "bvid": "BV1ZByLzqEh8",
+      "title": "【王语晨】20261122 直播回放",
+      "created": 1795346021,
+      "date": "2026-11-22",
+      "titleDate": "2026-11-22",
+      "kind": "replay",
+      "cover": "http://i2.hdslb.com/bfs/archive/82d8ab05abd3417866ee071e5f5e12c2fc87bd3f.jpg",
+      "url": "https://www.bilibili.com/video/BV1ZByLzqEh8",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨直播回放",
+      "liveId": "1331328244810321920",
+      "liveDate": "2026-11-22"
+    },
+    {
+      "bvid": "BV1MGyVzmEUX",
+      "title": "【王语晨】20261122 GNZ48 Team NIII《拾忆：TEAM NIII》公演cut",
+      "created": 1795336614,
+      "date": "2026-11-22",
+      "titleDate": "2026-11-22",
+      "kind": "cut",
+      "cover": "http://i1.hdslb.com/bfs/archive/c53cb1ae6544dcb9198db8856e381babf8561401.jpg",
+      "url": "https://www.bilibili.com/video/BV1MGyVzmEUX",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨公演cut"
+    },
     {
       "bvid": "BV1r7sB6rEiQ",
       "title": "【王语晨】20240728 SNH48 GROUP年度青春盛典第二阶段入围作品展演cut",
@@ -7812,7 +7853,9 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1WGUsBwEpF",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": "合集·王语晨口袋语音"
+      "collection": "合集·王语晨口袋语音",
+      "liveId": "1331328244810321920",
+      "liveDate": "2026-11-22"
     },
     {
       "bvid": "BV1vKUWBjEZF",
