@@ -1,8 +1,80 @@
 window.PERF_CUTS = {
  "uid": 7794095795,
  "account": "GNZ48王语晨的甜橙小铺",
- "updatedAt": "2026-11-22T01:27:42.507Z",
+ "updatedAt": "2026-11-22T17:18:10.636Z",
  "cuts": [
+  {
+   "date": "2026-11-22",
+   "perf": "《Zenith·穹顶之上》第二十九场",
+   "song": "Neon",
+   "mblogid": "RsASU7jE0",
+   "uid": 7794095795,
+   "url": "https://weibo.com/7794095795/RsASU7jE0",
+   "h5": "https://video.weibo.com/show?fid=1034:5368148405452903",
+   "cover": "https://wx4.sinaimg.cn/orj1080/008vtemvly1ijb8ijohr3j31hc0u0gow.jpg",
+   "text": "#王语晨[超话]# \n【GNZ48王语晨 | 公演cut】20261122\n《Zenith·穹顶之上》第二十九场\n\n《 Neon 》\n\n王语晨cut http://t.cn/AXTaU7vG ​​​",
+   "liveId": "1329047466319613952"
+  },
+  {
+   "date": "2026-11-22",
+   "perf": "《Zenith·穹顶之上》第二十九场",
+   "song": "冷月光",
+   "mblogid": "RsAMG2Dis",
+   "uid": 7794095795,
+   "url": "https://weibo.com/7794095795/RsAMG2Dis",
+   "h5": "https://video.weibo.com/show?fid=1034:5368144760602641",
+   "cover": "https://wx2.sinaimg.cn/orj1080/008vtemvly1ijb82v6c12j31hc0u0q72.jpg",
+   "text": "#王语晨[超话]# \n【GNZ48王语晨 | 公演cut】20261122\n《Zenith·穹顶之上》第二十九场\n\n《 冷月光 》\n\n王语晨cut http://t.cn/AXTa7rHm ​​​",
+   "liveId": "1329047466319613952"
+  },
+  {
+   "date": "2026-11-22",
+   "perf": "《Zenith·穹顶之上》第二十九场",
+   "song": "MC1",
+   "mblogid": "RsADZDbbc",
+   "uid": 7794095795,
+   "url": "https://weibo.com/7794095795/RsADZDbbc",
+   "h5": "https://video.weibo.com/show?fid=1034:5368139685494807",
+   "cover": "https://wx4.sinaimg.cn/orj1080/008vtemvly1ijb7h04vtcj31hc0u0wi7.jpg",
+   "text": "#王语晨[超话]# \n【GNZ48王语晨 | 公演cut】20261122\n《Zenith·穹顶之上》第二十九场\n\nmc1“压力比较大的话会吃什么来解压”\n\n王语晨cut http://t.cn/AXTXdiMR ​​​",
+   "liveId": "1329047466319613952"
+  },
+  {
+   "date": "2026-11-22",
+   "perf": "TEAM NIII·第三十八场《 拾忆：TEAM NIII 》",
+   "song": "High Light",
+   "mblogid": "Rsz1jEHTp",
+   "uid": 7794095795,
+   "url": "https://weibo.com/7794095795/Rsz1jEHTp",
+   "h5": "https://video.weibo.com/show?fid=1034:5368076586123275",
+   "cover": "https://wx3.sinaimg.cn/orj1080/008vtemvly1ijb09756ojj31hc0u0wh6.jpg",
+   "text": "#王语晨[超话]# \n【GNZ48王语晨 | 公演cut】20261122\nTEAM NIII·第三十八场《 拾忆：TEAM NIII 》\n\n《 High Light 》\n\n王语晨cut http://t.cn/AXTXLo4B ​​​",
+   "liveId": "1329047714777600000"
+  },
+  {
+   "date": "2026-11-22",
+   "perf": "TEAM NIII·第三十八场《 拾忆：TEAM NIII 》",
+   "song": "非正式告别",
+   "mblogid": "RsyUJaYk3",
+   "uid": 7794095795,
+   "url": "https://weibo.com/7794095795/RsyUJaYk3",
+   "h5": "https://video.weibo.com/show?fid=1034:5368072798929005",
+   "cover": "https://wx3.sinaimg.cn/orj1080/008vtemvly1ijaztjnwudj31hc0u0tb8.jpg",
+   "text": "#王语晨[超话]# \n【GNZ48王语晨 | 公演cut】20261122\nTEAM NIII·第三十八场《 拾忆：TEAM NIII 》\n\n《 非正式告别 》\n\n王语晨cut http://t.cn/AXTXAcGg ​​​",
+   "liveId": "1329047714777600000"
+  },
+  {
+   "date": "2026-11-22",
+   "perf": "TEAM NIII·第三十八场《 拾忆：TEAM NIII 》",
+   "song": "MC1",
+   "mblogid": "RsyG17IaV",
+   "uid": 7794095795,
+   "url": "https://weibo.com/7794095795/RsyG17IaV",
+   "h5": "https://video.weibo.com/show?fid=1034:5368064108331046",
+   "cover": "https://wx1.sinaimg.cn/orj1080/008vtemvly1ijaysk83x4j31hc0u0mz1.jpg",
+   "text": "#王语晨[超话]# \n【GNZ48王语晨 | 公演cut】20261122\nTEAM NIII·第三十八场《 拾忆：TEAM NIII 》\n\nMC1“有没有觉得自己命很大的瞬间”\n\n王语晨cut http://t.cn/AXTXh1SH ​​​",
+   "liveId": "1329047714777600000"
+  },
   {
    "date": "2026-11-15",
    "perf": "TEAM NIII·第三十七场《 拾忆：TEAM NIII 》",
