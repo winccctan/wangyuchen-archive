@@ -1,6 +1,6 @@
 {
-  "updatedAt": "2026-11-22T16:23:43.089Z",
-  "count": 1448,
+  "updatedAt": "2026-11-23T00:57:22.757Z",
+  "count": 1451,
   "targets": [
     {
       "mid": "2086351451",
@@ -26,10 +26,37 @@
     "358477444:season:7130625": 2,
     "358477444:season:6805043": 2,
     "358477444:season:2812669": 2,
-    "358477444:space": 1,
+    "358477444:space": 2,
     "2086351451:space": 2
   },
   "videos": [
+    {
+      "bvid": "BV1bey5zHEF7",
+      "aid": 117660159314946,
+      "title": "【王语晨】20261122 GNZ48 Team Z《Zenith ·穹顶之上》公演cut",
+      "created": 1795351599,
+      "duration": 1648,
+      "play": 166,
+      "mid": "358477444"
+    },
+    {
+      "bvid": "BV1ZByLzqEh8",
+      "aid": 117659790214402,
+      "title": "【王语晨】20261122 直播回放",
+      "created": 1795346021,
+      "duration": 6753,
+      "play": 105,
+      "mid": "358477444"
+    },
+    {
+      "bvid": "BV1MGyVzmEUX",
+      "aid": 117659169457682,
+      "title": "【王语晨】20261122 GNZ48 Team NIII《拾忆：TEAM NIII》公演cut",
+      "created": 1795336614,
+      "duration": 1675,
+      "play": 129,
+      "mid": "358477444"
+    },
     {
       "bvid": "BV1r7sB6rEiQ",
       "aid": 117646888535915,
