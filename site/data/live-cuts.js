@@ -1,9 +1,9 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-11-23T00:57:07.564Z",
-  "count": 835,
-  "matched": 580,
+  "updatedAt": "2026-11-23T14:47:50.942Z",
+  "count": 836,
+  "matched": 581,
   "replays": 278,
-  "clips": 557,
+  "clips": 558,
   "targets": [
     {
       "mid": "1805448354",
@@ -28,6 +28,21 @@ window.LIVE_CUTS = {
     "358477444:space": 12
   },
   "cuts": [
+    {
+      "bvid": "BV1GjyJzuEg5",
+      "title": "【王语晨】SNH48 GROUP女团水上运动会EP01cut",
+      "created": 1795407122,
+      "date": "2026-11-23",
+      "titleDate": "",
+      "kind": "cut",
+      "cover": "http://i0.hdslb.com/bfs/archive/9e0dc56398d0a35f930b967ce4f15521d838195a.jpg",
+      "url": "https://www.bilibili.com/video/BV1GjyJzuEg5",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨官方视频cut",
+      "liveId": "1331406438049583104",
+      "liveDate": "2026-11-22"
+    },
     {
       "bvid": "BV1bey5zHEF7",
       "title": "【王语晨】20261122 GNZ48 Team Z《Zenith ·穹顶之上》公演cut",
