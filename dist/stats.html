@@ -927,7 +927,7 @@ function bjDayBack(back) {
 }
 
 function rbAgg(days) {
-  const a = { pv: 0, sd: 0, q: 0, p: {}, r: {}, dv: {}, tb: {}, fm: {}, mb: {}, fl: {} };
+  const a = { pv: 0, sd: 0, q: 0, p: {}, r: {}, dv: {}, tb: {}, fm: {}, mb: {}, am: {}, fl: {} };
   const add = (t, m) => {
     if (!m || typeof m !== 'object') return;
     for (const k in m) t[k] = (t[k] || 0) + (Number(m[k]) || 0);
@@ -937,7 +937,7 @@ function rbAgg(days) {
     a.sd += Number(d.sd) || 0;
     a.q += Number(d.q) || 0;
     add(a.p, d.p); add(a.r, d.r); add(a.dv, d.dv); add(a.tb, d.tb);
-    add(a.fm, d.fm); add(a.mb, d.mb); add(a.fl, d.fl);
+    add(a.fm, d.fm); add(a.mb, d.mb); add(a.am, d.am); add(a.fl, d.fl);
   });
   return a;
 }
@@ -1012,7 +1012,31 @@ function rbHtml() {
     + '</table>'
     + '<p class="dim">这个口径是<b>按会话计数，不是按人</b>：同一个人开两次页面算两次。「打开次数」＝上报条数（'
     + '一次会话关页面 / 切后台时报一条），所以和别的站的 UV 不一样，别和上面那张表直接对。「平均停留」'
-    + '单次封顶 1 小时。成员榜是<b>被点开的次数</b>，不记谁点的，全站只存计数、不存 IP、不存 uid。</p>';
+    + '单次封顶 1 小时。成员榜是<b>被点开的次数</b>，不记谁点的，全站只存计数、不存 IP、不存 uid。</p>'
+    + niiiHtml(a);
+}
+
+/* NIII 年报页（2026-11-24）：列表页 PV / 成员年报页 PV / 哪个成员被看得最多。
+ * 和红蓝页共用上方的时间筛选与同一份 /api/stats 数据，不额外发请求。 */
+function niiiHtml(a) {
+  const listPv = (a.p && a.p['/niii-annual']) || 0;
+  let pagePv = 0;
+  for (const k in (a.p || {})) if (k.indexOf('/annual/v/') === 0) pagePv += Number(a.p[k]) || 0;
+  const rows = Object.keys(a.am || {}).map((k) => [k, Number(a.am[k]) || 0])
+    .sort((x, y) => y[1] - x[1]);
+  const memRows = rows.length
+    ? rows.map(([k, v]) => '<tr><td>' + esc(k) + '</td><td class="n">' + v + '</td></tr>').join('')
+    : '<tr><td colspan="2" class="dim">暂无记录（2026-11-24 起启用）</td></tr>';
+  return '<div style="margin-top:20px;border-top:1px solid #2a2e3d;padding-top:14px">'
+    + '<h3 style="font-size:14px;margin:0 0 8px">NIII 年报 · 访问量（跟随上方时间筛选）</h3>'
+    + '<table class="wide"><tr><td>页面</td><td class="n">打开次数</td></tr>'
+    + '<tr><td>成员列表 /niii-annual</td><td class="n">' + listPv + '</td></tr>'
+    + '<tr><td>成员年报 /annual/v/…</td><td class="n">' + pagePv + '</td></tr></table>'
+    + '<table class="wide" style="margin-top:8px"><tr><td>成员</td><td class="n">被查看次数</td></tr>'
+    + memRows + '</table>'
+    + '<p class="dim">「被查看」＝在列表页点开该成员卡片 + 打开该成员年报页，两者合计，'
+    + '按会话计数（同一人开两次算两次）。<b>2026-11-24 起才有数据</b>，启用前访问补不出来。'
+    + '只记公开成员名，不记 uid、IP 或谁看的；老链接也从启用那一刻开始统计。</p></div>';
 }
 
 async function loadRb() {
