@@ -132,7 +132,10 @@ const files = [
   //    720p 版（1140×720）供闪卡截帧用；旧 760×480 版留作兜底
   'assets/fluff-1128-720.mp4',
   'assets/fluff-1128.mp4',
-  'assets/fluff-1128.jpg'
+  'assets/fluff-1128.jpg',
+  // —— 2026-11-24：GNZ48 官方发的同场拍摄花絮（微博 32 秒），花絮弹窗第 2 条
+  'assets/fluff-gnz-720.mp4',
+  'assets/fluff-gnz.jpg'
 ];
 
 // 整目录复制：口袋表情图（105 张 gif，共 ~300KB），逐个列白名单不现实

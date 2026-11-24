@@ -84,12 +84,23 @@ body.book-only .stage-fluff { display: none; }
 .fluff-box { position: relative; width: min(100%, 900px); }
 .fluff-box video { display: block; width: 100%; max-height: min(78vh, 600px); border-radius: 12px;
   background: #000; box-shadow: 0 16px 60px rgba(0,0,0,.6); }
+/* 两条花絮的切换：单行、胶囊、移动端不换行 */
+.fluff-tabs { display: flex; gap: 8px; justify-content: center; margin: 0 0 12px; }
+.fluff-tab { flex: 0 1 auto; max-width: 46%; padding: 8px 12px; border-radius: 999px; cursor: pointer;
+  border: 1px solid rgba(255,224,170,.28); background: rgba(12,14,24,.7); color: rgba(255,255,255,.8);
+  font-family: inherit; font-size: 12.5px; font-weight: 600; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; }
+.fluff-tab.on { border-color: rgba(255,224,170,.85); color: #3a2610;
+  background: linear-gradient(135deg,#ffe0a0,#ffb877); }
+.fluff-tab:active { transform: scale(.97); }
 .fluff-x { position: absolute; top: -12px; right: -12px; z-index: 2; width: 32px; height: 32px;
   border-radius: 50%; border: 1px solid rgba(255,255,255,.35); background: rgba(8,10,18,.78);
   color: #fff; font-size: 13px; cursor: pointer; }
 @media (max-width: 480px) {
   .fluff-x { top: -40px; right: 0; }
   .fluff-box video { max-height: 70vh; }
+  .fluff-tabs { gap: 6px; margin-bottom: 9px; }
+  .fluff-tab { max-width: 48%; padding: 7px 9px; font-size: 11.5px; }
 }
 /* 「做闪卡」按钮：贴在视频下方 */
 .fluff-make { display: block; margin: 14px auto 0; padding: 11px 22px; border-radius: 999px;

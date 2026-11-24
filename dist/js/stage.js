@@ -1008,15 +1008,37 @@
     setTimeout(function () { if (intro.parentNode) intro.parentNode.removeChild(intro); }, 2700);
   }
 
-  /* ---------- 11.28 花絮：本地视频直接播，不跳微博 ---------- */
+  /* ---------- 花絮现场：两条本地花絮，弹窗内切换播放（不跳微博） ---------- */
+  /* 同一 video 换源，闪卡截帧逻辑照旧取 #fluffVideo，两条视频都能截。
+     第 2 条 = GNZ48 官方 11.24 发的《在人间凑数的日子》拍摄花絮（微博视频 4K 源转 720p 存本地）。 */
+  var FLUFFS = [
+    { src: './assets/fluff-1128-720.mp4?v=1', poster: './assets/fluff-1128.jpg' },
+    { src: './assets/fluff-gnz-720.mp4?v=1',  poster: './assets/fluff-gnz.jpg' }
+  ];
+  function setFluff(i) {
+    var v = $('#fluffVideo'), f = FLUFFS[i];
+    if (!v || !f) return;
+    if (v.getAttribute('src') !== f.src) {
+      try { v.pause(); } catch (e) {}
+      v.src = f.src;
+      v.poster = f.poster;
+      try { v.load(); } catch (e) {}
+    } else {
+      try { v.currentTime = 0; } catch (e) {}
+    }
+    var tabs = document.querySelectorAll('#fluffTabs .fluff-tab');
+    for (var k = 0; k < tabs.length; k++) {
+      tabs[k].classList.toggle('on', Number(tabs[k].getAttribute('data-fluff')) === i);
+    }
+    var p = v.play();
+    if (p && p.catch) p.catch(function () {});   // 自动播放被拦时点原生控件即可
+  }
   function openFluff() {
-    var m = $('#fluffMask'), v = $('#fluffVideo');
-    if (!m || !v) return;
+    var m = $('#fluffMask');
+    if (!m) return;
     m.hidden = false;
     document.body.classList.add('fluff-open');
-    try { v.currentTime = 0; } catch (e) {}
-    var p = v.play();
-    if (p && p.catch) p.catch(function () {});   // 自动播放被拦时用户点原生控件即可
+    setFluff(0);
   }
   function closeFluff() {
     var m = $('#fluffMask'), v = $('#fluffVideo');
@@ -1164,8 +1186,12 @@
     $('#cardPrev').addEventListener('click', function (e) { e.preventDefault(); switchMoment(-1); });
     $('#cardNext').addEventListener('click', function (e) { e.preventDefault(); switchMoment(1); });
     $('#stageFab').addEventListener('click', openWrite);   // 底部悬浮写寄语按钮
-    $('#stageFluff').addEventListener('click', openFluff); // 顶部花絮：直接播
+    $('#stageFluff').addEventListener('click', openFluff); // 顶部花絮：打开弹窗播第一条
     $('#fluffClose').addEventListener('click', closeFluff);
+    $('#fluffTabs').addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('.fluff-tab') : null;
+      if (b) setFluff(Number(b.getAttribute('data-fluff')) || 0);
+    });
     $('#fluffMask').addEventListener('click', function (e) { if (e.target === this) closeFluff(); });
     $('#fluffMake').addEventListener('click', openSpark);
     $('#sparkFlip').addEventListener('click', function () { flipSpark(!sparkFlipped); });
