@@ -132,6 +132,14 @@
   </div>
 </div>
 
+<div class="stg-toast" id="stgToast"></div>
+
+<!-- 11.28 花絮：点顶部入口直接播本地视频，不跳微博 -->
+<div class="fluff-mask" id="fluffMask" hidden>
+  <div class="fluff-box">
+    <button class="fluff-x" id="fluffClose" type="button" aria-label="关闭视频">✕</button>
+    <video id="fluffVideo" src="./assets/fluff-1128-720.mp4?v=1" poster="./assets/fluff-1128.jpg"
+           controls playsinline webkit-playsinline preload="none"></video>
     <button class="fluff-make" id="fluffMake" type="button">✦ 截这一帧，做张闪卡</button>
   </div>
 </div>
@@ -164,18 +172,6 @@
       <button class="spark-again" id="sparkAgain" type="button">换一帧</button>
       <button class="spark-close" id="sparkClose" type="button">关闭</button>
     </div>
-  </div>
-</div>
-
-<script src="./vendor/qrcode.js"></script>
-<div class="stg-toast" id="stgToast"></div>
-
-<!-- 11.28 花絮：点顶部入口直接播本地视频，不跳微博 -->
-<div class="fluff-mask" id="fluffMask" hidden>
-  <div class="fluff-box">
-    <button class="fluff-x" id="fluffClose" type="button" aria-label="关闭视频">✕</button>
-    <video id="fluffVideo" src="./assets/fluff-1128-720.mp4?v=1" poster="./assets/fluff-1128.jpg"
-           controls playsinline webkit-playsinline preload="none"></video>
   </div>
 </div>
 
