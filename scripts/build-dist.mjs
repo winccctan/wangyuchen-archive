@@ -129,6 +129,8 @@ const files = [
   'assets/skin-mvp.jpg',      // 2025年度MVP定制公演海报（照片皮肤默认背景图）
   'assets/stage-mvp.jpg',     // 舞台纪念页背景图（复用 MVP 海报）
   // —— 2026-11-24：11.28 花絮（王语晨微博 61 秒），点「花絮现场」徽标直接播
+  //    720p 版（1140×720）供闪卡截帧用；旧 760×480 版留作兜底
+  'assets/fluff-1128-720.mp4',
   'assets/fluff-1128.mp4',
   'assets/fluff-1128.jpg'
 ];

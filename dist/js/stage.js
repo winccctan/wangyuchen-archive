@@ -1026,6 +1026,127 @@
     try { v.pause(); } catch (e) {}
   }
 
+  /* ---------- 闪卡：截当前帧 → 卡面，本机合成不上传 ---------- */
+  var sparkT = 0, sparkFlipped = false;
+  var RARITY = [
+    { n: 'SSR', w: 12, a: '#fff3c4', b: '#ffcf6b' },
+    { n: 'SR',  w: 28, a: '#e6d4ff', b: '#b48cff' },
+    { n: 'R',   w: 60, a: '#d7ecff', b: '#7fb8ff' }
+  ];
+  function pickRarity() {
+    var r = Math.random() * 100, acc = 0;
+    for (var i = 0; i < RARITY.length; i++) { acc += RARITY[i].w; if (r < acc) return RARITY[i]; }
+    return RARITY[RARITY.length - 1];
+  }
+  // 把 video 当前帧 cover 裁进卡面 canvas（620×860）
+  function drawSparkFrame() {
+    var v = $('#fluffVideo'), cv = $('#sparkCanvas');
+    if (!v || !cv) return false;
+    var c = cv.getContext('2d'), W = cv.width, H = cv.height;
+    try {
+      var vw = v.videoWidth, vh = v.videoHeight;
+      if (!vw || !vh) return false;
+      var scale = Math.max(W / vw, H / vh), dw = vw * scale, dh = vh * scale;
+      c.drawImage(v, (W - dw) / 2, (H - dh) / 2, dw, dh);
+      // 轻微压暗，让卡面文字更清楚
+      c.fillStyle = 'rgba(8,10,18,.12)'; c.fillRect(0, 0, W, H);
+      return true;
+    } catch (e) { return false; }
+  }
+  function openSpark() {
+    var v = $('#fluffVideo');
+    if (!v || !v.videoWidth || v.readyState < 2) { toast('视频还没加载好，稍等一下'); return; }
+    try { v.pause(); } catch (e) {}
+    if (!drawSparkFrame()) { toast('截帧失败，换个时间点再试'); return; }
+    var rr = pickRarity();
+    var badge = $('#sparkRarity');
+    badge.textContent = rr.n;
+    badge.style.background = 'linear-gradient(135deg,' + rr.a + ',' + rr.b + ')';
+    $('#sparkNo').textContent = 'NO.' + String(Math.floor(Math.random() * 900) + 100);
+    sparkFlipped = false;
+    $('#sparkCard').classList.remove('flipped');
+    $('#sparkMask').hidden = false;
+  }
+  function closeSpark() {
+    $('#sparkMask').hidden = true;
+    try { $('#fluffVideo').play(); } catch (e) {}
+  }
+  function flipSpark(toBack) {
+    sparkFlipped = toBack;
+    $('#sparkCard').classList.toggle('flipped', toBack);
+    $('#sparkFlip').textContent = toBack ? '看正面' : '翻面写寄语';
+  }
+  function saveSpark() {
+    var wish = String($('#sparkWish').value || '').trim();
+    var sign = String($('#sparkSign').value || '').trim();
+    var cv = $('#sparkCanvas'), W = cv.width, H = cv.height;
+    var out = document.createElement('canvas'); out.width = W; out.height = H;
+    var c = out.getContext('2d');
+    // ① 卡面：跟屏幕正面一样 = 截帧 + 底部渐变
+    c.drawImage(cv, 0, 0);
+    var g = c.createLinearGradient(0, H * 0.62, 0, H);
+    g.addColorStop(0, 'rgba(6,8,14,0)'); g.addColorStop(1, 'rgba(6,8,14,.92)');
+    c.fillStyle = g; c.fillRect(0, H * 0.62, W, H * 0.38);
+    // ② 金色圆角边框（对应 .spark-face 的 border + radius 16px@330 → 30px@620）
+    c.save();
+    c.strokeStyle = 'rgba(255,224,170,.8)'; c.lineWidth = 3;
+    rrect(c, 2, 2, W - 4, H - 4, 30); c.stroke();
+    c.restore();
+    // ③ 左上稀有度角标（用当前卡面那张的颜色，不再重抽）
+    var badgeN = $('#sparkRarity').textContent || 'R';
+    var rrBg = ($('#sparkRarity').style.background || '').indexOf('gradient') >= 0
+      ? $('#sparkRarity').style.background : 'linear-gradient(135deg,#d7ecff,#7fb8ff)';
+    c.save();
+    c.font = '700 22px ' + F_SANS; c.textBaseline = 'middle';
+    var bw = Math.max(74, c.measureText(badgeN).width + 44), bh = 42, bx = 24, by = 24;
+    var rg = c.createLinearGradient(bx, by, bx + bw, by + bh);
+    rg.addColorStop(0, '#fff3c4'); rg.addColorStop(1, '#ffcf6b');
+    c.fillStyle = rg; rrect(c, bx, by, bw, bh, 21); c.fill();
+    c.fillStyle = '#3a2610'; c.textAlign = 'center';
+    c.fillText(badgeN, bx + bw / 2, by + bh / 2 + 1);
+    c.restore();
+    // ④ 右上编号
+    c.save();
+    c.font = '500 21px ' + F_SANS; c.fillStyle = 'rgba(255,255,255,.92)';
+    c.textAlign = 'right'; c.textBaseline = 'middle';
+    c.shadowColor = '#000'; c.shadowBlur = 6;
+    c.fillText($('#sparkNo').textContent || 'NO.001', W - 28, 45);
+    c.restore();
+    // ⑤ 底部标题三行（对应 .spark-front-txt）
+    c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+    c.fillStyle = '#ffe0aa'; c.font = '500 21px ' + F_SANS;
+    c.fillText('✦ 花 絮 现 场', W / 2, H - 122);
+    c.fillStyle = '#fff'; c.font = '700 44px ' + F_SANS;
+    c.fillText('在人间凑数的日子', W / 2, H - 70);
+    c.fillStyle = 'rgba(255,255,255,.78)'; c.font = '400 21px ' + F_SANS;
+    c.fillText('王语晨 · 11.28', W / 2, H - 38);
+    // ⑥ 写下的寄语（有才画）：卡面下沿上方，不盖住主标题
+    if (wish) {
+      var chars = Array.from(wish), maxW = W - 120, line = '', lines = [], lh = 40;
+      c.font = '600 30px ' + F_SANS;
+      for (var i = 0; i < chars.length; i++) {
+        var ch = chars[i];
+        if (ch === '\n') { lines.push(line); line = ''; continue; }
+        var test = line + ch;
+        if (c.measureText(test).width > maxW && line && NO_HEAD.indexOf(ch) < 0) { lines.push(line); line = ch; }
+        else line = test;
+      }
+      if (line) lines.push(line);
+      lines = lines.slice(0, 3);
+      var baseY = H - 175 - (lines.length - 1) * lh;
+      c.fillStyle = '#fff'; c.font = '600 30px ' + F_SANS;
+      lines.forEach(function (ln) { c.fillText(ln, W / 2, baseY); baseY += lh; });
+      if (sign) {
+        c.fillStyle = 'rgba(255,255,255,.72)'; c.font = '400 20px ' + F_SANS;
+        c.fillText('—— ' + sign, W / 2, baseY + 6);
+      }
+    }
+    var url = out.toDataURL('image/jpeg', 0.94);
+    var a = document.createElement('a'); a.href = url; a.download = '花絮闪卡-' + badgeN + '.jpg';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    toast('闪卡已保存到本机');
+  }
+
   /* ---------- 启动 ---------- */
   function init() {
     initScreenMode();
@@ -1046,6 +1167,17 @@
     $('#stageFluff').addEventListener('click', openFluff); // 顶部花絮：直接播
     $('#fluffClose').addEventListener('click', closeFluff);
     $('#fluffMask').addEventListener('click', function (e) { if (e.target === this) closeFluff(); });
+    $('#fluffMake').addEventListener('click', openSpark);
+    $('#sparkFlip').addEventListener('click', function () { flipSpark(!sparkFlipped); });
+    $('#sparkFlipBack').addEventListener('click', function () { flipSpark(false); });
+    $('#sparkAgain').addEventListener('click', function () { closeSpark(); });
+    $('#sparkClose').addEventListener('click', closeSpark);
+    $('#sparkSave').addEventListener('click', saveSpark);
+    $('#sparkCard').addEventListener('click', function (e) {
+      if (e.target.closest('button') || e.target.closest('textarea') || e.target.closest('input')) return;
+      flipSpark(!sparkFlipped);
+    });
+    $('#sparkMask').addEventListener('click', function (e) { if (e.target === this) closeSpark(); });
     // 视口变化 / 横竖屏切换：重算蜡烛光斑位置（背景图 cover 映射会变）
     var ct = null;
     var reCandle = function () {
@@ -1088,6 +1220,7 @@
     });
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') {
+        if (!$('#sparkMask').hidden) { closeSpark(); return; }
         closeFluff();
         closeWrite();
         if ($('#stgShare').classList.contains('on')) { closeShare(); return; }

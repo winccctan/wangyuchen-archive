@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex,nofollow">
 <meta name="theme-color" content="#0b0d16">
 <title>在人间凑数的日子 · 舞台现场</title>
-<link rel="stylesheet" href="./css/stage.css?v=20261124s01">
+<link rel="stylesheet" href="./css/stage.css?v=20261124s02">
 </head>
 <body>
 <!-- 入场仪式：推门走进来（只首次播一次，?book=1/?screen=1 不播，JS 控制是否插入/移除） -->
@@ -132,18 +132,54 @@
   </div>
 </div>
 
+    <button class="fluff-make" id="fluffMake" type="button">✦ 截这一帧，做张闪卡</button>
+  </div>
+</div>
+
+<!-- 闪卡：截帧做卡面，镭射扫光 + 翻面寄语，本机合成不上传 -->
+<div class="spark-mask" id="sparkMask" hidden>
+  <div class="spark-wrap">
+    <div class="spark-card" id="sparkCard">
+      <div class="spark-face spark-front">
+        <canvas id="sparkCanvas" width="620" height="860"></canvas>
+        <i class="spark-sheen" aria-hidden="true"></i>
+        <span class="spark-rarity" id="sparkRarity">SSR</span>
+        <span class="spark-no" id="sparkNo">NO.001</span>
+        <div class="spark-front-txt">
+          <div class="sft-kicker">✦ 花 絮 现 场</div>
+          <div class="sft-title">在人间凑数的日子</div>
+          <div class="sft-sub">王语晨 · 11.28</div>
+        </div>
+      </div>
+      <div class="spark-face spark-back">
+        <div class="sbk-kicker">✦ 写在这张卡背面</div>
+        <textarea id="sparkWish" maxlength="30" placeholder="这一帧，想说一句……"></textarea>
+        <input id="sparkSign" maxlength="12" placeholder="署名（选填）">
+        <button class="sbk-save" id="sparkSave" type="button">保存这张闪卡</button>
+        <button class="sbk-flip" id="sparkFlipBack" type="button">翻回正面</button>
+      </div>
+    </div>
+    <div class="spark-acts">
+      <button class="spark-flip" id="sparkFlip" type="button">翻面写寄语</button>
+      <button class="spark-again" id="sparkAgain" type="button">换一帧</button>
+      <button class="spark-close" id="sparkClose" type="button">关闭</button>
+    </div>
+  </div>
+</div>
+
+<script src="./vendor/qrcode.js"></script>
 <div class="stg-toast" id="stgToast"></div>
 
 <!-- 11.28 花絮：点顶部入口直接播本地视频，不跳微博 -->
 <div class="fluff-mask" id="fluffMask" hidden>
   <div class="fluff-box">
     <button class="fluff-x" id="fluffClose" type="button" aria-label="关闭视频">✕</button>
-    <video id="fluffVideo" src="./assets/fluff-1128.mp4" poster="./assets/fluff-1128.jpg"
+    <video id="fluffVideo" src="./assets/fluff-1128-720.mp4?v=1" poster="./assets/fluff-1128.jpg"
            controls playsinline webkit-playsinline preload="none"></video>
   </div>
 </div>
 
 <script src="./vendor/qrcode.js"></script>
-<script src="./js/stage.js?v=20261124s01"></script>
+<script src="./js/stage.js?v=20261124s02"></script>
 </body>
 </html>
