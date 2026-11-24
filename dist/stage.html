@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex,nofollow">
 <meta name="theme-color" content="#0b0d16">
 <title>在人间凑数的日子 · 舞台现场</title>
-<link rel="stylesheet" href="./css/stage.css?v=20261121s21">
+<link rel="stylesheet" href="./css/stage.css?v=20261124s01">
 </head>
 <body>
 <!-- 入场仪式：推门走进来（只首次播一次，?book=1/?screen=1 不播，JS 控制是否插入/移除） -->
@@ -26,7 +26,7 @@
   <div class="stage-bokeh" aria-hidden="true"><i></i><i></i><i></i></div>
 
   <div class="stage-top">
-    <span class="stage-top-badge">✦ 舞 台 现 场</span>
+    <button class="stage-top-badge stage-fluff" id="stageFluff" type="button" aria-label="观看花絮视频">✦ 花 絮 现 场 <span class="sf-play">▶</span></button>
     <span class="stage-top-title">《在人间凑数的日子》</span>
     <span class="stage-top-sub">王语晨 · 2025 年度 MVP 定制公演 · 11.28</span>
   </div>
@@ -134,7 +134,16 @@
 
 <div class="stg-toast" id="stgToast"></div>
 
+<!-- 11.28 花絮：点顶部入口直接播本地视频，不跳微博 -->
+<div class="fluff-mask" id="fluffMask" hidden>
+  <div class="fluff-box">
+    <button class="fluff-x" id="fluffClose" type="button" aria-label="关闭视频">✕</button>
+    <video id="fluffVideo" src="./assets/fluff-1128.mp4" poster="./assets/fluff-1128.jpg"
+           controls playsinline webkit-playsinline preload="none"></video>
+  </div>
+</div>
+
 <script src="./vendor/qrcode.js"></script>
-<script src="./js/stage.js?v=20261121s21"></script>
+<script src="./js/stage.js?v=20261124s01"></script>
 </body>
 </html>

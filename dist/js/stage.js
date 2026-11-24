@@ -1008,6 +1008,24 @@
     setTimeout(function () { if (intro.parentNode) intro.parentNode.removeChild(intro); }, 2700);
   }
 
+  /* ---------- 11.28 花絮：本地视频直接播，不跳微博 ---------- */
+  function openFluff() {
+    var m = $('#fluffMask'), v = $('#fluffVideo');
+    if (!m || !v) return;
+    m.hidden = false;
+    document.body.classList.add('fluff-open');
+    try { v.currentTime = 0; } catch (e) {}
+    var p = v.play();
+    if (p && p.catch) p.catch(function () {});   // 自动播放被拦时用户点原生控件即可
+  }
+  function closeFluff() {
+    var m = $('#fluffMask'), v = $('#fluffVideo');
+    if (!m) return;
+    m.hidden = true;
+    document.body.classList.remove('fluff-open');
+    try { v.pause(); } catch (e) {}
+  }
+
   /* ---------- 启动 ---------- */
   function init() {
     initScreenMode();
@@ -1025,6 +1043,9 @@
     $('#cardPrev').addEventListener('click', function (e) { e.preventDefault(); switchMoment(-1); });
     $('#cardNext').addEventListener('click', function (e) { e.preventDefault(); switchMoment(1); });
     $('#stageFab').addEventListener('click', openWrite);   // 底部悬浮写寄语按钮
+    $('#stageFluff').addEventListener('click', openFluff); // 顶部花絮：直接播
+    $('#fluffClose').addEventListener('click', closeFluff);
+    $('#fluffMask').addEventListener('click', function (e) { if (e.target === this) closeFluff(); });
     // 视口变化 / 横竖屏切换：重算蜡烛光斑位置（背景图 cover 映射会变）
     var ct = null;
     var reCandle = function () {
@@ -1067,6 +1088,7 @@
     });
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') {
+        closeFluff();
         closeWrite();
         if ($('#stgShare').classList.contains('on')) { closeShare(); return; }
         if ($('#stgAlbum').classList.contains('on')) closeAlbum();

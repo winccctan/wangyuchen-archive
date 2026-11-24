@@ -127,7 +127,10 @@ const files = [
   'assets/mv-next18-full.mp4',
   'assets/mv-next18.jpg',
   'assets/skin-mvp.jpg',      // 2025年度MVP定制公演海报（照片皮肤默认背景图）
-  'assets/stage-mvp.jpg'      // 舞台纪念页背景图（复用 MVP 海报）
+  'assets/stage-mvp.jpg',     // 舞台纪念页背景图（复用 MVP 海报）
+  // —— 2026-11-24：11.28 花絮（王语晨微博 61 秒），点「花絮现场」徽标直接播
+  'assets/fluff-1128.mp4',
+  'assets/fluff-1128.jpg'
 ];
 
 // 整目录复制：口袋表情图（105 张 gif，共 ~300KB），逐个列白名单不现实

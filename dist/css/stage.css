@@ -70,6 +70,27 @@ body {
   padding: 4px 13px; background: rgba(10,12,20,.34); backdrop-filter: blur(6px); white-space: nowrap; }
 .stage-top-title { font-size: clamp(19px, 5.2vw, 27px); font-weight: 700; letter-spacing: 1px; white-space: nowrap; }
 .stage-top-sub { font-size: clamp(10px, 2.8vw, 12.5px); color: rgba(255,255,255,.82); white-space: nowrap; }
+/* 顶部「花絮现场」徽标本身就是播放入口：点它直接播本地视频，不跳微博 */
+.stage-fluff { pointer-events: auto; font-family: inherit; cursor: pointer;
+  padding: 4px 13px; transition: background .2s, border-color .2s; }
+.stage-fluff:hover { background: rgba(255,224,170,.22); border-color: rgba(255,224,170,.85); }
+.stage-fluff .sf-play { font-size: 9px; color: #ffd98a; }
+.stage-fluff:active { transform: scale(.96); }
+body.book-only .stage-fluff { display: none; }
+/* 花絮播放弹层 */
+.fluff-mask { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center;
+  padding: 16px; background: rgba(3,4,9,.93); backdrop-filter: blur(4px); }
+.fluff-mask[hidden] { display: none; }
+.fluff-box { position: relative; width: min(100%, 900px); }
+.fluff-box video { display: block; width: 100%; max-height: min(78vh, 600px); border-radius: 12px;
+  background: #000; box-shadow: 0 16px 60px rgba(0,0,0,.6); }
+.fluff-x { position: absolute; top: -12px; right: -12px; z-index: 2; width: 32px; height: 32px;
+  border-radius: 50%; border: 1px solid rgba(255,255,255,.35); background: rgba(8,10,18,.78);
+  color: #fff; font-size: 13px; cursor: pointer; }
+@media (max-width: 480px) {
+  .fluff-x { top: -40px; right: 0; }
+  .fluff-box video { max-height: 70vh; }
+}
 .stage-close { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 14px); right: 14px; z-index: 9;
   width: 36px; height: 36px; border-radius: 50%; border: 1px solid rgba(255,255,255,.3);
   background: rgba(8,10,18,.42); color: #fff; font-size: 15px; cursor: pointer; backdrop-filter: blur(6px); }
