@@ -918,6 +918,8 @@ const RB_PAGE = {
 const RB_TAB = { member: '成员榜', contrib: '贡献分析', rush: '冲刺预测' };
 const RB_RANGE = { 1: '今天', 3: '近 3 天', 7: '近 7 天' };
 let rbRange = 7, rbDays = [], rbLoaded = false, rbBusy = false;
+// 2026-11-25：年报去重访客（服务端已做区间并集，这里只拿数字）
+let rbUniq = { uv: 0, amu: {} };
 
 // 北京时间往回推 n 天，返回 YYYYMMDD（服务端 to 默认今天，所以只传 from）
 function bjDayBack(back) {
@@ -1017,26 +1019,43 @@ function rbHtml() {
 }
 
 /* NIII 年报页（2026-11-24）：列表页 PV / 成员年报页 PV / 哪个成员被看得最多。
+ * 2026-11-25 加「去重人数」：同一台设备重复看只算 1，跨天在服务端并集。
  * 和红蓝页共用上方的时间筛选与同一份 /api/stats 数据，不额外发请求。 */
 function niiiHtml(a) {
   const listPv = (a.p && a.p['/niii-annual']) || 0;
   let pagePv = 0;
   for (const k in (a.p || {})) if (k.indexOf('/annual/v/') === 0) pagePv += Number(a.p[k]) || 0;
-  const rows = Object.keys(a.am || {}).map((k) => [k, Number(a.am[k]) || 0])
-    .sort((x, y) => y[1] - x[1]);
+  const uv = Number(rbUniq.uv) || 0;
+  const amu = rbUniq.amu || {};
+  // 合并两张榜：次数（am）+ 去重人数（amu），按次数倒序、次数相同按人数倒序
+  const names = {};
+  for (const k in (a.am || {})) names[k] = 1;
+  for (const k in amu) names[k] = 1;
+  const rows = Object.keys(names).map((k) => [k, Number(a.am[k]) || 0, Number(amu[k]) || 0])
+    .sort((x, y) => y[1] - x[1] || y[2] - x[2]);
   const memRows = rows.length
-    ? rows.map(([k, v]) => '<tr><td>' + esc(k) + '</td><td class="n">' + v + '</td></tr>').join('')
-    : '<tr><td colspan="2" class="dim">暂无记录（2026-11-24 起启用）</td></tr>';
+    ? rows.map(([k, v, u]) => '<tr><td>' + esc(k) + '</td><td class="n">' + v + '</td>'
+        + '<td class="n">' + (u || '—') + '</td></tr>').join('')
+    : '<tr><td colspan="3" class="dim">暂无记录（2026-11-24 起启用）</td></tr>';
   return '<div style="margin-top:20px;border-top:1px solid #2a2e3d;padding-top:14px">'
     + '<h3 style="font-size:14px;margin:0 0 8px">NIII 年报 · 访问量（跟随上方时间筛选）</h3>'
+    + '<div class="cards" style="margin-bottom:12px">'
+    + '<div class="card"><div class="k">去重访客</div><div class="v">' + uv + '</div>'
+      + '<div class="k" style="margin-top:6px">不同设备数</div></div>'
+    + '<div class="card"><div class="k">打开次数</div><div class="v">' + (listPv + pagePv) + '</div>'
+      + '<div class="k" style="margin-top:6px">列表 + 年报页合计</div></div>'
+    + '</div>'
     + '<table class="wide"><tr><td>页面</td><td class="n">打开次数</td></tr>'
     + '<tr><td>成员列表 /niii-annual</td><td class="n">' + listPv + '</td></tr>'
     + '<tr><td>成员年报 /annual/v/…</td><td class="n">' + pagePv + '</td></tr></table>'
-    + '<table class="wide" style="margin-top:8px"><tr><td>成员</td><td class="n">被查看次数</td></tr>'
+    + '<table class="wide" style="margin-top:8px"><tr><td>成员</td><td class="n">被查看次数</td>'
+    + '<td class="n">去重人数</td></tr>'
     + memRows + '</table>'
-    + '<p class="dim">「被查看」＝在列表页点开该成员卡片 + 打开该成员年报页，两者合计，'
-    + '按会话计数（同一人开两次算两次）。<b>2026-11-24 起才有数据</b>，启用前访问补不出来。'
-    + '只记公开成员名，不记 uid、IP 或谁看的；老链接也从启用那一刻开始统计。</p></div>';
+    + '<p class="dim">「被查看次数」按会话计数（同一人开两次算两次）；'
+    + '<b>「去重人数」</b>按匿名设备串去重，同一台设备重复看只算 1 个，跨天也只算 1 个。'
+    + '设备串是随机生成的，不绑定 uid、昵称或 IP，服务端只存加盐哈希，反推不到是谁。'
+    + '因此它是<b>设备维度</b>不是真人维度：换设备/无痕会多算，多人共用一台会少算。'
+    + '次数自 <b>2026-11-24</b> 起有数据；<b>去重人数自 2026-11-25 起才统计</b>，之前补不出来。</p></div>';
 }
 
 async function loadRb() {
@@ -1050,6 +1069,7 @@ async function loadRb() {
     const j = await r.json();
     if (j && j.error) throw new Error(j.error);
     rbDays = (j && j.days) || [];
+    rbUniq = (j && j.uniq) || { uv: 0, amu: {} };
     rbLoaded = true;
     box.innerHTML = rbChips() + rbHtml();
     box.querySelectorAll('.chip').forEach((b) => {
