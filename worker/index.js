@@ -289,6 +289,9 @@ const TRACK_HOSTS = new Set([
   // 2026-11-20 加 all48 的 workers.dev 域名：切片页在 workers.dev 上核验时
   // Referer 是它 ⇒ 之前一律 403（「打点没反应」），本地调试会白折腾。
   'all48-archive.yqz-tansy.workers.dev',
+  // 2026-11-27 加 ticket：电子票根站（ticket.wyc0518.cc，挂在 all48 工具页第三张卡）。
+  // 它自己的 Worker 叫 ticket-archive，workers.dev 域名也一并放行，方便上线前先核验。
+  'ticket.wyc0518.cc', 'ticket-archive.yqz-tansy.workers.dev',
 ]);
 function isTrackHost(request) {
   const origin = request.headers.get('Origin');
@@ -479,6 +482,14 @@ const EVENTS = [
   // 🔴 它原来只有 devstat（设备口径，进 /devstats 的「各页设备」），**没打这条页面事件** ⇒
   //    站长报表的「各页面访问」和「各页面 · 访客来自哪里」里根本没有它。页面里补一条 1×1 像素即可。
   ['all48:p:cut', '48 站 · 切片 · 字幕（/cut）'],
+  // 电子票根（ticket.wyc0518.cc，2026-11-27 接统计）：all48 工具页里那张「电子票根」卡跳过去。
+  // 🔴 和 pai / cut 一样带 `all48:p:` 前缀 ⇒ 报表的「各页面访问 / 各页面国家分布」自动多一行，不用改报表结构。
+  // 页面自己往 /track 打 1×1 像素（一次会话一次），不记 IP 明文、不带任何票根内容。
+  ['all48:p:ticket', '48 站 · 电子票根（ticket）'],
+  // 票根「真被用起来」的两个信号（同样一次会话一次，不按点击次数刷）：
+  // 存进云端（说明真存了票根）/ 用保存码在另一台设备恢复成功（说明这套备份链真的救了人）。
+  ['all48:tk:save', '48 站 · 票根 云端备份成功'],
+  ['all48:tk:restore', '48 站 · 票根 保存码恢复成功'],
   // /gift 上的「暗票预估」面板（2026-11-09，站长：「暗票按钮加上埋点吧 站点统计可以看」）：
   // 只记两条 —— 打开面板 / 真的把长图生成出来。都是「一次会话一次」，不按点击次数刷。
   // 🔴 前缀必须 `all48:`，这样自动进报表的「姊妹站」那张表，不跟补档站自己的动作混。
