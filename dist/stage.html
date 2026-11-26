@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex,nofollow">
 <meta name="theme-color" content="#0b0d16">
 <title>在人间凑数的日子 · 舞台现场</title>
-<link rel="stylesheet" href="./css/stage.css?v=20261124s03">
+<link rel="stylesheet" href="./css/stage.css?v=20261126s01">
 </head>
 <body>
 <!-- 入场仪式：推门走进来（只首次播一次，?book=1/?screen=1 不播，JS 控制是否插入/移除） -->
@@ -134,13 +134,14 @@
 
 <div class="stg-toast" id="stgToast"></div>
 
-<!-- 花絮现场：一个入口两条本地花絮，弹窗里直接切换播放，不跳微博 -->
+<!-- 花絮现场：一个入口三条本地花絮，弹窗里直接切换播放，不跳微博 -->
 <div class="fluff-mask" id="fluffMask" hidden>
   <div class="fluff-box">
     <button class="fluff-x" id="fluffClose" type="button" aria-label="关闭视频">✕</button>
     <div class="fluff-tabs" id="fluffTabs">
-      <button class="fluff-tab on" type="button" data-fluff="0">11.28 花絮 · 剧场版</button>
-      <button class="fluff-tab" type="button" data-fluff="1">官方花絮 · GNZ48</button>
+      <button class="fluff-tab on" type="button" data-fluff="0">11.28 花絮</button>
+      <button class="fluff-tab" type="button" data-fluff="1">官方花絮</button>
+      <button class="fluff-tab" type="button" data-fluff="2">公演采访</button>
     </div>
     <video id="fluffVideo" src="./assets/fluff-1128-720.mp4?v=1" poster="./assets/fluff-1128.jpg"
            controls playsinline webkit-playsinline preload="none"></video>
@@ -180,6 +181,6 @@
 </div>
 
 <script src="./vendor/qrcode.js"></script>
-<script src="./js/stage.js?v=20261124s03"></script>
+<script src="./js/stage.js?v=20261126s01"></script>
 </body>
 </html>

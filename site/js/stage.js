@@ -1008,12 +1008,14 @@
     setTimeout(function () { if (intro.parentNode) intro.parentNode.removeChild(intro); }, 2700);
   }
 
-  /* ---------- 花絮现场：两条本地花絮，弹窗内切换播放（不跳微博） ---------- */
-  /* 同一 video 换源，闪卡截帧逻辑照旧取 #fluffVideo，两条视频都能截。
-     第 2 条 = GNZ48 官方 11.24 发的《在人间凑数的日子》拍摄花絮（微博视频 4K 源转 720p 存本地）。 */
+  /* ---------- 花絮现场：三条本地花絮，弹窗内切换播放（不跳微博） ---------- */
+  /* 同一 video 换源，闪卡截帧逻辑照旧取 #fluffVideo，三条视频都能截。
+     第 2 条 = GNZ48 官方 11.24 发的《在人间凑数的日子》拍摄花絮（微博视频 4K 源转 720p 存本地）。
+     第 3 条 = GNZ48 官方 11.26 发的公演采访（微博 5369518362199284，720p 原片转存本地）。 */
   var FLUFFS = [
     { src: './assets/fluff-1128-720.mp4?v=1', poster: './assets/fluff-1128.jpg' },
-    { src: './assets/fluff-gnz-720.mp4?v=1',  poster: './assets/fluff-gnz.jpg' }
+    { src: './assets/fluff-gnz-720.mp4?v=1',  poster: './assets/fluff-gnz.jpg' },
+    { src: './assets/fluff-int-720.mp4?v=1',  poster: './assets/fluff-int.jpg' }
   ];
   function setFluff(i) {
     var v = $('#fluffVideo'), f = FLUFFS[i];
