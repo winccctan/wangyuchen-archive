@@ -288,7 +288,7 @@ function render(d) {
     '<h2>各页面访问（lv.wyc0518.cc · 礼物榜 / 鸡腿榜）</h2><table class="wide"><tr><td>页面</td><td class="n">累计</td><td class="n">今日</td><td class="n">独立累计</td><td class="n">独立今日</td><td class="n">今日占比</td></tr>' + pageRowsLv + '</table>' +
     '<p class="dim">lv 站（口袋48 鸡腿榜 / 公演榜 / 每周鸡腿榜）以前<b>一条埋点都没有</b>，所以这张表从 <b>2026-11-06</b> 才开始有数据。口径和上面一样：打开一次算一次，独立访客按 IP 去重、不存明文 IP。</p>' +
     '<h2>全站合计</h2><table class="wide"><tr><td>动作</td><td class="n">累计</td><td class="n">今日</td><td class="n">独立累计</td><td class="n">独立今日</td></tr>' + evRows48 + '</table>' +
-    '<p class="dim">这一行＝那个站打开的<b>总次数</b>（三个页面相加）。2026-10-25 之前 /gift、/mvp 两个页面还没有埋点，所以那之前的累计只算了首页，偏少。</p>' +
+    '<p class="dim">这一行＝ all48 站自己上报的打开<b>总次数</b>（成员档案 / 红蓝 / MVP 三页相加）。竞价明细、切片、电子票根跑在各自域名上，只在上面的「各页面访问」里单列、<b>不计入这一行</b> —— 所以两处数字本来就对不上，别拿来核对。2026-10-25 之前 /gift、/mvp 两个页面还没有埋点，所以那之前的累计只算了首页，偏少。</p>' +
     '<h2>访客来自哪里（今日 / 近 7 天）</h2><table><tr><td>国家·地区</td><td class="n">今日</td><td class="n">近 7 天</td></tr>' + ctryRows48 + '</table>' +
     '<p class="dim">姊妹站的访问量：那个站自己没有统计，页面一打开就往这里打一条。独立访客按 IP 去重（不保存明文 IP）。它的人<b>不进 wyc 档案站的「到访人数 / 国家分布」</b>，这张是它自己的独立国家分布，两站分开看。2026-10-15 起启用国家分布。</p>' +
     '<h2>各页面 · 访客来自哪里（今日 / 近 7 天）</h2><table class="wide"><tr><td>页面</td><td>国家·地区</td><td class="n">今日</td><td class="n">近 7 天</td></tr>' + pageCtryRows48 + '</table>' +
