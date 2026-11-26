@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<title>寄语审核</title>
+<style>
+  :root { --ink:#123a45; --ink2:#5b7c87; --line:rgba(13,69,86,.14); --brand:#0f7f9b; --bg:#eef7fa; }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:16px 12px 60px; background:var(--bg); color:var(--ink);
+    font:15px/1.6 -apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif; }
+  .wrap { max-width:640px; margin:0 auto; }
+  h1 { font-size:19px; margin:6px 0 4px; }
+  .sub { font-size:12.5px; color:var(--ink2); margin:0 0 16px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:14px; }
+  label { display:block; font-size:13px; color:var(--ink2); margin:6px 0 5px; }
+  input { width:100%; font:inherit; padding:12px; border:1px solid var(--line);
+    border-radius:10px; background:#fff; color:var(--ink); -webkit-appearance:none; }
+  button { font:inherit; font-weight:600; padding:12px 16px; border:0; border-radius:11px;
+    background:var(--brand); color:#fff; cursor:pointer; margin-top:12px; }
+  button.ghost { background:#fff; color:var(--brand); border:1px solid var(--brand); }
+  button.danger { background:#c0392b; }
+  button.mini { padding:6px 12px; font-size:13px; margin:0; }
+  .msg { padding:10px 12px; border-radius:10px; font-size:14px; margin:10px 0; }
+  .msg.bad { background:#fdecec; color:#a32d2d; }
+  .msg.ok { background:#e6f6f2; color:#0f6e56; }
+  .item { border:1px solid var(--line); border-radius:12px; padding:12px; margin-bottom:10px; background:#fbfdfe; }
+  .item .t { font-size:15px; word-break:break-word; }
+  .item .m { font-size:12px; color:var(--ink2); margin-top:6px; display:flex; gap:10px; align-items:center; }
+  .item .m .sp { flex:1; }
+  .empty { text-align:center; color:var(--ink2); font-size:14px; padding:26px 0; }
+  .hide { display:none; }
+  .bar { display:flex; gap:10px; align-items:center; }
+  .bar button { margin-top:0; }
+  .cnt { font-size:13px; color:var(--ink2); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>寄语审核</h1>
+  <p class="sub">舞台纪念页 · 删除不当寄语（密码登录，仅站长可用）</p>
+
+  <div class="card" id="loginCard">
+    <label for="pass">密码</label>
+    <input type="password" id="pass" placeholder="输入后台密码" autocomplete="current-password">
+    <button id="loginBtn">登录</button>
+    <div class="msg bad hide" id="loginErr"></div>
+  </div>
+
+  <div id="adminArea" class="hide">
+    <div class="card">
+      <div class="bar">
+        <span class="cnt" id="cnt"></span>
+        <span class="sp" style="flex:1"></span>
+        <button class="ghost mini" id="refreshBtn">刷新</button>
+        <button class="danger mini" id="clearBtn">清空全部</button>
+      </div>
+    </div>
+    <div id="list"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  var TOKEN_KEY = 'wyc-admin-token-v1';
+  var $ = function(s){ return document.querySelector(s); };
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){
+    return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+  function getTok(){ try{ return localStorage.getItem(TOKEN_KEY)||''; }catch(e){ return ''; } }
+  function setTok(t){ try{ if(t) localStorage.setItem(TOKEN_KEY,t); else localStorage.removeItem(TOKEN_KEY); }catch(e){} }
+  function hdr(){ return { 'x-admin-token': getTok(), 'content-type':'application/json' }; }
+
+  function showErr(el,msg){ el.textContent=msg; el.classList.remove('hide'); }
+  function timeStr(d){ var n=Number(d)||0; if(!n) return ''; var t=new Date(n);
+    return t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0')+
+      ' '+String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0'); }
+
+  function login(){
+    var pass=$('#pass').value.trim(); if(!pass){ showErr($('#loginErr'),'请输入密码'); return; }
+    $('#loginBtn').disabled=true; $('#loginBtn').textContent='登录中…';
+    fetch('./api/admin/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({pass:pass})})
+      .then(function(r){ return r.json().then(function(j){return {ok:r.ok,j:j};}); })
+      .then(function(res){
+        $('#loginBtn').disabled=false; $('#loginBtn').textContent='登录';
+        if(!res.ok || !res.j.token){ showErr($('#loginErr'),res.j.error||'登录失败'); return; }
+        setTok(res.j.token); enterAdmin();
+      }).catch(function(){ $('#loginBtn').disabled=false; $('#loginBtn').textContent='登录';
+        showErr($('#loginErr'),'网络错误'); });
+  }
+
+  function enterAdmin(){
+    $('#loginCard').classList.add('hide'); $('#adminArea').classList.remove('hide');
+    loadList();
+  }
+
+  function loadList(){
+    fetch('./api/admin/wishes',{headers:hdr(),cache:'no-store'})
+      .then(function(r){ if(r.status===403){ setTok(''); $('#adminArea').classList.add('hide');
+          $('#loginCard').classList.remove('hide'); showErr($('#loginErr'),'登录已过期，请重新登录'); return null; }
+        return r.json(); })
+      .then(function(j){ if(!j) return; renderList(j.wishes||[]); })
+      .catch(function(){ $('#list').innerHTML='<div class="empty">读取失败，请点刷新</div>'; });
+  }
+
+  function renderList(list){
+    $('#cnt').textContent='共 '+list.length+' 条寄语';
+    if(!list.length){ $('#list').innerHTML='<div class="empty">还没有寄语</div>'; return; }
+    $('#list').innerHTML=list.map(function(w,i){
+      return '<div class="item"><div class="t">'+esc(w.t)+'</div>'+
+        '<div class="m"><span>'+(w.s?'— '+esc(w.s):'（匿名）')+'</span>'+
+        '<span>'+esc(timeStr(w.d))+'</span><span class="sp"></span>'+
+        '<button class="danger mini" data-i="'+i+'">删除</button></div></div>';
+    }).join('');
+    $('#list').querySelectorAll('button[data-i]').forEach(function(b){
+      b.addEventListener('click',function(){ removeOne(list[Number(b.dataset.i)]); });
+    });
+  }
+
+  function removeOne(w){
+    if(!window.confirm('确定删除这条寄语？\n\n'+w.t)) return;
+    fetch('./api/stage-wishes',{method:'DELETE',headers:hdr(),body:JSON.stringify({t:w.t})})
+      .then(function(r){ return r.json(); }).then(function(){ loadList(); })
+      .catch(function(){ alert('删除失败'); });
+  }
+  function clearAll(){
+    if(!window.confirm('确定清空全部寄语？此操作不可恢复。')) return;
+    fetch('./api/stage-wishes',{method:'DELETE',headers:hdr(),body:JSON.stringify({clear:true})})
+      .then(function(r){ return r.json(); }).then(function(){ loadList(); })
+      .catch(function(){ alert('清空失败'); });
+  }
+
+  $('#loginBtn').addEventListener('click',login);
+  $('#pass').addEventListener('keydown',function(e){ if(e.key==='Enter') login(); });
+  $('#refreshBtn').addEventListener('click',loadList);
+  $('#clearBtn').addEventListener('click',clearAll);
+  if(getTok()) enterAdmin();
+})();
+</script>
+</body>
+</html>
