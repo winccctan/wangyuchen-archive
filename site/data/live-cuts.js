@@ -1,9 +1,9 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-11-24T14:57:24.391Z",
-  "count": 837,
+  "updatedAt": "2026-11-27T13:57:42.472Z",
+  "count": 839,
   "matched": 582,
   "replays": 278,
-  "clips": 559,
+  "clips": 561,
   "targets": [
     {
       "mid": "1805448354",
@@ -28,6 +28,32 @@ window.LIVE_CUTS = {
     "358477444:space": 12
   },
   "cuts": [
+    {
+      "bvid": "BV1ZU1tzGEdX",
+      "title": "【王语晨】20261127 GNZ48 4班《4 Future》公演cut",
+      "created": 1795785029,
+      "date": "2026-11-27",
+      "titleDate": "2026-11-27",
+      "kind": "cut",
+      "cover": "http://i0.hdslb.com/bfs/archive/ea57d899e1d1d8b2107e4e001a13684c1cdf44e2.jpg",
+      "url": "https://www.bilibili.com/video/BV1ZU1tzGEdX",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": ""
+    },
+    {
+      "bvid": "BV1vg1xzhEbG",
+      "title": "【王语晨】2026 SNH48 GROUP女团水上运动会VLOG（上）-cut",
+      "created": 1795782998,
+      "date": "2026-11-27",
+      "titleDate": "",
+      "kind": "cut",
+      "cover": "http://i0.hdslb.com/bfs/archive/2a01f088cdd0eb92d482981cb4249054d0ddab1c.jpg",
+      "url": "https://www.bilibili.com/video/BV1vg1xzhEbG",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨官方视频cut"
+    },
     {
       "bvid": "BV1rY1czBE1G",
       "title": "【王语晨】Z倒过来就是N，N倒过来就是Z",
