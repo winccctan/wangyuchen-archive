@@ -1,8 +1,8 @@
 window.LIVE_CUTS = {
-  "updatedAt": "2026-11-27T13:57:42.472Z",
-  "count": 839,
-  "matched": 582,
-  "replays": 278,
+  "updatedAt": "2026-11-28T00:05:47.235Z",
+  "count": 840,
+  "matched": 584,
+  "replays": 279,
   "clips": 561,
   "targets": [
     {
@@ -29,6 +29,21 @@ window.LIVE_CUTS = {
   },
   "cuts": [
     {
+      "bvid": "BV1i814ziE6x",
+      "title": "【王语晨】20261127 直播回放",
+      "created": 1795798304,
+      "date": "2026-11-28",
+      "titleDate": "2026-11-27",
+      "kind": "replay",
+      "cover": "http://i2.hdslb.com/bfs/archive/3002dac496d3321c4901b94b227a86a735aaaf54.jpg",
+      "url": "https://www.bilibili.com/video/BV1i814ziE6x",
+      "up": "Chzhnh",
+      "mid": "358477444",
+      "collection": "合集·王语晨直播回放",
+      "liveId": "1333205774009962496",
+      "liveDate": "2026-11-27"
+    },
+    {
       "bvid": "BV1ZU1tzGEdX",
       "title": "【王语晨】20261127 GNZ48 4班《4 Future》公演cut",
       "created": 1795785029,
@@ -39,7 +54,9 @@ window.LIVE_CUTS = {
       "url": "https://www.bilibili.com/video/BV1ZU1tzGEdX",
       "up": "Chzhnh",
       "mid": "358477444",
-      "collection": ""
+      "collection": "",
+      "liveId": "1333205774009962496",
+      "liveDate": "2026-11-27"
     },
     {
       "bvid": "BV1vg1xzhEbG",
